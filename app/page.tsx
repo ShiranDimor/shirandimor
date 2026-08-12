@@ -1,10 +1,57 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { supabase } from '@/lib/supabase';
+
+type Trade = {
+  id: string;
+  direction: string;
+  symbol: string;
+  entry_price: number;
+  current_price: number | null;
+  exit_price: number | null;
+  status: string;
+  realized_pnl_usd: number | null;
+};
 
 export default function HomePage() {
   const [showLeadForm, setShowLeadForm] = useState(false);
+  const [openTrades, setOpenTrades] = useState<Trade[]>([]);
+  const [lastClosed, setLastClosed] = useState<Trade | null>(null);
+  const [openCount, setOpenCount] = useState(0);
+
+  useEffect(() => {
+    loadTrades();
+  }, []);
+
+  async function loadTrades() {
+    const { data: open } = await supabase
+      .from('trades')
+      .select('*')
+      .eq('status', 'open')
+      .order('opened_at', { ascending: false });
+
+    const { data: closed } = await supabase
+      .from('trades')
+      .select('*')
+      .eq('status', 'closed')
+      .order('closed_at', { ascending: false })
+      .limit(1);
+
+    if (open) {
+      setOpenTrades(open.slice(0, 2));
+      setOpenCount(open.length);
+    }
+    if (closed && closed.length > 0) setLastClosed(closed[0]);
+  }
+
+  function pctChange(trade: Trade) {
+    const current = trade.status === 'open' ? trade.current_price : trade.exit_price;
+    if (!current) return 0;
+    const pct = ((current - trade.entry_price) / trade.entry_price) * 100 * (trade.direction === 'short' ? -1 : 1);
+    return pct;
+  }
 
   return (
     <div className="wrap">
@@ -86,11 +133,26 @@ export default function HomePage() {
       <div className="portfolio-teaser">
         <div className="pt-head">
           <div className="pt-title">התיק בקבוצת הסוחרים</div>
-          <div className="pt-badge">3 עסקאות פתוחות</div>
+          <div className="pt-badge">{openCount} עסקאות פתוחות</div>
         </div>
-        <div className="teaser-row"><span className="sym blurred">SPCX</span><span className="pnl profit" style={{ color: 'var(--profit)' }}>+6.41%</span></div>
-        <div className="teaser-row"><span className="sym blurred">CRWV</span><span className="pnl profit" style={{ color: 'var(--profit)' }}>+10.14%</span></div>
-        <div className="teaser-row"><span className="sym" style={{ color: 'var(--text-secondary)' }}>FSLR (נסגרה)</span><span className="pnl profit" style={{ color: 'var(--profit)' }}>+7.08%</span></div>
+        {openTrades.length === 0 && !lastClosed && (
+          <div style={{ fontSize: '13px', color: 'var(--text-tertiary)', padding: '10px 0' }}>עדיין אין עסקאות להצגה</div>
+        )}
+        {openTrades.map((trade) => {
+          const pct = pctChange(trade);
+          return (
+            <div className="teaser-row" key={trade.id}>
+              <span className="sym blurred">{trade.symbol}</span>
+              <span className="pnl" style={{ color: pct >= 0 ? 'var(--profit)' : 'var(--loss)' }}>{pct >= 0 ? '+' : ''}{pct.toFixed(2)}%</span>
+            </div>
+          );
+        })}
+        {lastClosed && (
+          <div className="teaser-row">
+            <span className="sym" style={{ color: 'var(--text-secondary)' }}>{lastClosed.symbol} (נסגרה)</span>
+            <span className="pnl" style={{ color: pctChange(lastClosed) >= 0 ? 'var(--profit)' : 'var(--loss)' }}>{pctChange(lastClosed) >= 0 ? '+' : ''}{pctChange(lastClosed).toFixed(2)}%</span>
+          </div>
+        )}
         <Link className="teaser-cta" href="/portfolio">צפייה בתיק המסחר המלא ←</Link>
       </div>
 
