@@ -32,7 +32,7 @@ export default function SubscribePage() {
           <div>תיק מסחר אישי וניתוח העסקאות ע"י שירן</div>
         </div>
 
-        <a href="#" className="btn-primary" style={{ display: 'block', textAlign: 'center', textDecoration: 'none' }}>
+        <a href="https://pay.grow.link/200a7cdcb258ee6ffdea0f423a1ace0e-MzE4MDU5OA" target="_blank" className="btn-primary" style={{ display: 'block', textAlign: 'center', textDecoration: 'none' }}>
           מעבר לדף התשלום המאובטח ←
         </a>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', marginTop: '10px' }}>
