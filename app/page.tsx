@@ -57,6 +57,7 @@ export default function HomePage() {
     <div className="wrap">
       <header>
         <div className="brand">מסחר <span>אחראי</span> במניות</div>
+        <Link href="/login" className="nav-link">כניסה לסוחרים</Link>
       </header>
 
       <div className="hero-v2">
@@ -71,14 +72,13 @@ export default function HomePage() {
         )}
 
         {showLeadForm && (
-          <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-hairline-strong)', borderRight: '3px solid var(--profit)', borderRadius: '10px', padding: '16px', marginBottom: '10px' }}>
-            <div className="field" style={{ marginBottom: '10px' }}><input type="text" placeholder="שם מלא" /></div>
-            <div className="field" style={{ marginBottom: '10px' }}><input type="email" placeholder="אימייל" /></div>
-            <div className="field" style={{ marginBottom: '10px' }}><input type="tel" placeholder="נייד (לוואטסאפ)" /></div>
-            <button className="btn-primary">הצטרפי לקבוצה</button>
-            <p style={{ fontSize: '10.5px', color: 'var(--text-tertiary)', textAlign: 'center', marginTop: '8px' }}>
-              הפרטים משמשים רק כדי לצרף אתכם לקבוצת הוואטסאפ - לא נפתח חשבון באתר, ואין צורך בסיסמה
+          <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-hairline-strong)', borderRight: '3px solid var(--profit)', borderRadius: '10px', padding: '16px', marginBottom: '10px', textAlign: 'center' }}>
+            <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '14px' }}>
+              ההצטרפות מתבצעת ישירות דרך וואטסאפ - לחיצה על הכפתור תפתח את הקבוצה ותוכלי להצטרף בלחיצה אחת.
             </p>
+            <a href="https://chat.whatsapp.com/GEf9Y4vFRDSEWKixrETWcg" target="_blank" rel="noopener noreferrer" className="btn-primary" style={{ display: 'block', textDecoration: 'none' }}>
+              פתיחת קבוצת הוואטסאפ ←
+            </a>
           </div>
         )}
 
