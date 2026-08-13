@@ -3,10 +3,20 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 
+type PendingLead = {
+  id: string;
+  email: string;
+  full_name: string | null;
+  created_at: string;
+};
+
 export default function AdminPage() {
   const [checking, setChecking] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [userEmail, setUserEmail] = useState('');
+
+  const [pendingLeads, setPendingLeads] = useState<PendingLead[]>([]);
+  const [approving, setApproving] = useState<string | null>(null);
 
   const [direction, setDirection] = useState<'long' | 'short'>('long');
   const [symbol, setSymbol] = useState('');
@@ -19,6 +29,25 @@ export default function AdminPage() {
   useEffect(() => {
     checkAdmin();
   }, []);
+
+  async function loadPendingLeads() {
+    const { data } = await supabase
+      .from('profiles')
+      .select('id, email, full_name, created_at')
+      .eq('role', 'lead')
+      .order('created_at', { ascending: false });
+    if (data) setPendingLeads(data);
+  }
+
+  async function approveSubscriber(id: string) {
+    setApproving(id);
+    const { error } = await supabase
+      .from('profiles')
+      .update({ role: 'subscriber', subscription_status: 'active', subscription_started_at: new Date().toISOString() })
+      .eq('id', id);
+    setApproving(null);
+    if (!error) loadPendingLeads();
+  }
 
   async function checkAdmin() {
     const { data: { user } } = await supabase.auth.getUser();
@@ -38,6 +67,7 @@ export default function AdminPage() {
 
     setIsAdmin(profile?.role === 'admin');
     setChecking(false);
+    if (profile?.role === 'admin') loadPendingLeads();
   }
 
   async function handleAddTrade() {
@@ -107,7 +137,21 @@ export default function AdminPage() {
     <div className="wrap">
       <header><div className="brand">מסחר <span>אחראי</span> במניות</div></header>
 
-      <div className="section-label"><h2>הוספת עסקה חדשה לתיק</h2></div>
+      <div className="section-label"><h2>ממתינים לאישור</h2><span className="count">{pendingLeads.length}</span></div>
+      {pendingLeads.length === 0 && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)', marginBottom: '20px' }}>אין כרגע ממתינים</p>}
+      {pendingLeads.map((lead) => (
+        <div className="admin-row" key={lead.id}>
+          <div>
+            <div className="name">{lead.full_name || 'ללא שם'}</div>
+            <div className="email">{lead.email}</div>
+          </div>
+          <button className="approve-btn" onClick={() => approveSubscriber(lead.id)} disabled={approving === lead.id}>
+            {approving === lead.id ? 'מאשרת...' : 'אישור כמנוי'}
+          </button>
+        </div>
+      ))}
+
+      <div className="section-label" style={{ marginTop: '28px' }}><h2>הוספת עסקה חדשה לתיק</h2></div>
       <div className="journal-form">
         <div className="toggle-row">
           <div className={`toggle-opt ${direction === 'long' ? 'long-active' : ''}`} onClick={() => setDirection('long')} style={{ cursor: 'pointer' }}>לונג</div>
