@@ -2,7 +2,7 @@
   "crons": [
     {
       "path": "/api/update-prices",
-      "schedule": "0 * * * *"
+      "schedule": "0 14 * * *"
     }
   ]
 }
