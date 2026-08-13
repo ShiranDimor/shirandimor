@@ -158,7 +158,10 @@ export default function AdminPage() {
 
   return (
     <div className="wrap">
-      <header><div className="brand">מסחר <span>אחראי</span> במניות</div></header>
+      <header>
+        <div className="brand">מסחר <span>אחראי</span> במניות</div>
+        <a href="/account" className="nav-link">הגדרת סיסמה</a>
+      </header>
 
       <div className="section-label"><h2>ממתינים לאישור</h2><span className="count">{pendingLeads.length}</span></div>
       {pendingLeads.length === 0 && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)', marginBottom: '20px' }}>אין כרגע ממתינים</p>}
