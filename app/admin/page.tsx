@@ -10,12 +10,20 @@ type PendingLead = {
   created_at: string;
 };
 
+type ApprovedSub = {
+  id: string;
+  email: string;
+  full_name: string | null;
+  subscription_status: string | null;
+};
+
 export default function AdminPage() {
   const [checking, setChecking] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [userEmail, setUserEmail] = useState('');
 
   const [pendingLeads, setPendingLeads] = useState<PendingLead[]>([]);
+  const [approvedSubs, setApprovedSubs] = useState<ApprovedSub[]>([]);
   const [approving, setApproving] = useState<string | null>(null);
 
   const [direction, setDirection] = useState<'long' | 'short'>('long');
@@ -39,6 +47,15 @@ export default function AdminPage() {
     if (data) setPendingLeads(data);
   }
 
+  async function loadApprovedSubs() {
+    const { data } = await supabase
+      .from('profiles')
+      .select('id, email, full_name, subscription_status')
+      .eq('role', 'subscriber')
+      .order('subscription_started_at', { ascending: false });
+    if (data) setApprovedSubs(data);
+  }
+
   async function approveSubscriber(id: string) {
     setApproving(id);
     const { error } = await supabase
@@ -46,7 +63,10 @@ export default function AdminPage() {
       .update({ role: 'subscriber', subscription_status: 'active', subscription_started_at: new Date().toISOString() })
       .eq('id', id);
     setApproving(null);
-    if (!error) loadPendingLeads();
+    if (!error) {
+      loadPendingLeads();
+      loadApprovedSubs();
+    }
   }
 
   async function checkAdmin() {
@@ -67,7 +87,10 @@ export default function AdminPage() {
 
     setIsAdmin(profile?.role === 'admin');
     setChecking(false);
-    if (profile?.role === 'admin') loadPendingLeads();
+    if (profile?.role === 'admin') {
+      loadPendingLeads();
+      loadApprovedSubs();
+    }
   }
 
   async function handleAddTrade() {
@@ -148,6 +171,18 @@ export default function AdminPage() {
           <button className="approve-btn" onClick={() => approveSubscriber(lead.id)} disabled={approving === lead.id}>
             {approving === lead.id ? 'מאשרת...' : 'אישור כמנוי'}
           </button>
+        </div>
+      ))}
+
+      <div className="section-label" style={{ marginTop: '28px' }}><h2>מנויים מאושרים</h2><span className="count">{approvedSubs.length}</span></div>
+      {approvedSubs.length === 0 && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)', marginBottom: '20px' }}>עדיין אין מנויים מאושרים</p>}
+      {approvedSubs.map((sub) => (
+        <div className="admin-row" key={sub.id}>
+          <div>
+            <div className="name">{sub.full_name || 'ללא שם'}</div>
+            <div className="email">{sub.email}</div>
+          </div>
+          <span style={{ fontSize: '11px', color: 'var(--profit)', fontWeight: 700 }}>{sub.subscription_status === 'active' ? 'פעיל' : sub.subscription_status}</span>
         </div>
       ))}
 
