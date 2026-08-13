@@ -219,6 +219,11 @@ export default function HomePage() {
         <p>"השוק לא תמיד פשוט. הדרך שבה סוחרים בו יכולה להיות."</p>
         <span>- שירן דימור -</span>
       </div>
+
+      <footer>
+        מסחר בשוק ההון כרוך בסיכון. אין באמור המלצה לפעולה כלשהי.<br />
+        <Link href="/terms" style={{ color: 'var(--text-tertiary)', textDecoration: 'underline' }}>תקנון</Link> · <Link href="/privacy" style={{ color: 'var(--text-tertiary)', textDecoration: 'underline' }}>מדיניות פרטיות</Link>
+      </footer>
     </div>
   );
 }
