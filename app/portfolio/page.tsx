@@ -17,12 +17,26 @@ type Trade = {
   closed_at: string | null;
 };
 
+const MONTH_LABELS = ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני', 'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר'];
+
+function monthKey(dateStr: string) {
+  const d = new Date(dateStr);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function monthLabel(key: string) {
+  const [year, month] = key.split('-');
+  return `${MONTH_LABELS[parseInt(month, 10) - 1]} ${year}`;
+}
+
 export default function PortfolioPage() {
   const [loading, setLoading] = useState(true);
   const [loggedIn, setLoggedIn] = useState(false);
   const [hasFullAccess, setHasFullAccess] = useState(false);
   const [openTrades, setOpenTrades] = useState<Trade[]>([]);
   const [closedTrades, setClosedTrades] = useState<Trade[]>([]);
+  const [monthFilter, setMonthFilter] = useState('all');
+  const [initialBalance, setInitialBalance] = useState<number | null>(null);
 
   const [risk, setRisk] = useState('');
   const [entry, setEntry] = useState('');
@@ -57,8 +71,15 @@ export default function PortfolioPage() {
       .eq('status', 'closed')
       .order('closed_at', { ascending: false });
 
+    const { data: settings } = await supabase
+      .from('portfolio_settings')
+      .select('initial_balance')
+      .eq('id', 1)
+      .single();
+
     if (open) setOpenTrades(open);
     if (closed) setClosedTrades(closed);
+    if (settings) setInitialBalance(Number(settings.initial_balance));
     setLoading(false);
   }
 
@@ -67,6 +88,20 @@ export default function PortfolioPage() {
     if (!current) return 0;
     return ((current - trade.entry_price) / trade.entry_price) * 100 * (trade.direction === 'short' ? -1 : 1);
   }
+
+  const availableMonths = Array.from(
+    new Set(closedTrades.filter((t) => t.closed_at).map((t) => monthKey(t.closed_at as string)))
+  ).sort().reverse();
+
+  const monthFilteredClosed = monthFilter === 'all'
+    ? closedTrades
+    : closedTrades.filter((t) => t.closed_at && monthKey(t.closed_at) === monthFilter);
+
+  const closedProfitTrades = monthFilteredClosed.filter((t) => pct(t) >= 0);
+  const closedLossTrades = monthFilteredClosed.filter((t) => pct(t) < 0);
+
+  const allClosedProfit = closedTrades.filter((t) => pct(t) >= 0).length;
+  const winRate = closedTrades.length > 0 ? (allClosedProfit / closedTrades.length) * 100 : null;
 
   const shares = risk && entry && stop
     ? Math.floor(parseFloat(risk) / Math.abs(parseFloat(entry) - parseFloat(stop)))
@@ -133,10 +168,21 @@ export default function PortfolioPage() {
         })}
       </div>
 
-      <div className="section-label" style={{ marginTop: '28px' }}><h2>עסקאות סגורות</h2><span className="count">{closedTrades.length}</span></div>
+      <div className="section-label" style={{ marginTop: '28px' }}><h2>עסקאות סגורות</h2><span className="count">{monthFilteredClosed.length}</span></div>
+
+      {availableMonths.length > 0 && (
+        <div className="filter-row">
+          <div className={`filter-chip ${monthFilter === 'all' ? 'active' : ''}`} style={{ cursor: 'pointer' }} onClick={() => setMonthFilter('all')}>הכל</div>
+          {availableMonths.map((m) => (
+            <div key={m} className={`filter-chip ${monthFilter === m ? 'active' : ''}`} style={{ cursor: 'pointer' }} onClick={() => setMonthFilter(m)}>{monthLabel(m)}</div>
+          ))}
+        </div>
+      )}
+
+      <div className="section-label"><h2>נסגרו ברווח</h2><span className="count">{closedProfitTrades.length}</span></div>
       <div className="trades-list">
-        {closedTrades.length === 0 && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>אין עדיין עסקאות סגורות</p>}
-        {closedTrades.map((trade) => {
+        {closedProfitTrades.length === 0 && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>אין עסקאות שנסגרו ברווח בטווח הזה</p>}
+        {closedProfitTrades.map((trade) => {
           const p = pct(trade);
           return (
             <div className="trade-card" key={trade.id}>
@@ -146,7 +192,32 @@ export default function PortfolioPage() {
                   <div className="trade-symbol">{trade.symbol}</div>
                 </div>
                 <div className="trade-pnl">
-                  <div className="pct" style={{ color: p >= 0 ? 'var(--profit)' : 'var(--loss)' }}>{p >= 0 ? '+' : ''}{p.toFixed(2)}%</div>
+                  <div className="pct" style={{ color: 'var(--profit)' }}>{p >= 0 ? '+' : ''}{p.toFixed(2)}%</div>
+                </div>
+              </div>
+              <div className="trade-details">
+                <div className="detail-item"><div className="label">כניסה</div><div className="value">${trade.entry_price}</div></div>
+                <div className="detail-item"><div className="label">יציאה</div><div className="value">${trade.exit_price}</div></div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="section-label" style={{ marginTop: '28px' }}><h2>נסגרו בהפסד</h2><span className="count">{closedLossTrades.length}</span></div>
+      <div className="trades-list">
+        {closedLossTrades.length === 0 && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>אין עסקאות שנסגרו בהפסד בטווח הזה</p>}
+        {closedLossTrades.map((trade) => {
+          const p = pct(trade);
+          return (
+            <div className="trade-card" key={trade.id}>
+              <div className="trade-top">
+                <div className="trade-symbol-group">
+                  <div className={`direction-mark ${trade.direction}`}>{trade.direction === 'long' ? 'L' : 'S'}</div>
+                  <div className="trade-symbol">{trade.symbol}</div>
+                </div>
+                <div className="trade-pnl">
+                  <div className="pct" style={{ color: 'var(--loss)' }}>{p.toFixed(2)}%</div>
                 </div>
               </div>
               <div className="trade-details">
@@ -160,7 +231,25 @@ export default function PortfolioPage() {
 
       {hasFullAccess && (
         <>
-          <div className="section-label" style={{ marginTop: '28px' }}><h2>מחשבון גודל פוזיציה</h2></div>
+          <div className="section-label" style={{ marginTop: '28px' }}><h2>נתוני התיק</h2></div>
+          <div className="calc-panel" style={{ padding: '18px 16px', marginBottom: '20px' }}>
+            <div className="calc-result">
+              <span className="rlabel">גודל תיק התחלתי</span>
+              <span className="rvalue">{initialBalance !== null ? `$${initialBalance.toLocaleString()}` : '—'}</span>
+            </div>
+            <div className="calc-result" style={{ marginTop: '8px' }}>
+              <span className="rlabel">אחוז הצלחה</span>
+              <span className="rvalue" style={{ color: winRate !== null ? (winRate >= 50 ? 'var(--profit)' : 'var(--loss)') : undefined }}>
+                {winRate !== null ? `${winRate.toFixed(1)}%` : '—'}
+              </span>
+            </div>
+            <div className="calc-result" style={{ marginTop: '8px' }}>
+              <span className="rlabel">עסקאות סגורות סה"כ</span>
+              <span className="rvalue">{closedTrades.length}</span>
+            </div>
+          </div>
+
+          <div className="section-label"><h2>מחשבון גודל פוזיציה</h2></div>
           <div className="calc-panel" style={{ padding: '18px 16px' }}>
             <div className="form-row" style={{ marginBottom: '10px' }}>
               <div className="field" style={{ marginBottom: 0 }}><label>סיכון כספי ($)</label><input type="number" value={risk} onChange={(e) => setRisk(e.target.value)} placeholder="500" /></div>

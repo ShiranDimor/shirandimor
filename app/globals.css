@@ -271,6 +271,9 @@
   .calc-panel { background: var(--bg-surface-raised); border: 1px solid var(--border-hairline-strong); border-right: 3px solid var(--teal); border-radius: 10px; }
   .calc-panel .calc-title { font-family: var(--font-display); }
   .calc-panel .calc-sub { font-size: 12.5px; color: var(--text-secondary); line-height: 1.6; }
+  .calc-result { display: flex; align-items: center; justify-content: space-between; background: var(--bg-void); border: 1px solid var(--border-hairline); border-radius: 8px; padding: 10px 12px; }
+  .calc-result .rlabel { font-size: 12.5px; color: var(--text-secondary); }
+  .calc-result .rvalue { font-family: var(--font-mono); font-size: 14px; font-weight: 600; color: var(--teal); }
   .trust-item { flex: 1; text-align: center; }
   .trust-item .num { font-family: var(--font-mono); font-size: 18px; font-weight: 600; color: var(--teal); }
   .trust-item .lbl { font-size: 10.5px; color: var(--text-tertiary); margin-top: 3px; }
