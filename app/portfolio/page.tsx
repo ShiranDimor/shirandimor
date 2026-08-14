@@ -201,7 +201,10 @@ export default function PortfolioPage() {
             <p className="lb-title">יש כאן עסקאות אמיתיות, אבל הן שמורות למנויים</p>
             <p className="lb-sub">הסימבולים מוסתרים כדי לשמור על פרטיות חברי הקבוצה - ההצטרפות פותחת גישה לתמונה המלאה: מספרים אמיתיים, כולל הפסדים.</p>
           </div>
-          <Link href="/subscribe" className="lb-cta">לגישה מלאה ←</Link>
+          <div className="lb-cta-row">
+            <Link href="/subscribe" className="lb-cta">לגישה מלאה ←</Link>
+            <Link href="/?join=1" className="lb-cta-secondary">הצטרפות חינם לעדכונים ←</Link>
+          </div>
         </div>
       )}
 
