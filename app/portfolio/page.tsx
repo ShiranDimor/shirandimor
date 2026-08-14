@@ -57,9 +57,18 @@ export default function PortfolioPage() {
   const [risk, setRisk] = useState('');
   const [entry, setEntry] = useState('');
   const [stop, setStop] = useState('');
+  const [showStickyCta, setShowStickyCta] = useState(false);
 
   useEffect(() => {
     load();
+  }, []);
+
+  useEffect(() => {
+    function onScroll() {
+      setShowStickyCta(window.scrollY > 400);
+    }
+    window.addEventListener('scroll', onScroll);
+    return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
   async function load() {
@@ -416,6 +425,11 @@ export default function PortfolioPage() {
         )}
       </details>
 
+      {!hasFullAccess && showStickyCta && (
+        <div className="sticky-cta">
+          <Link href="/?join=1">הצטרפות לקבוצת העדכונים - ללא עלות</Link>
+        </div>
+      )}
     </div>
   );
 }

@@ -420,10 +420,11 @@
     padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
     box-shadow: 0 -4px 16px rgba(0,0,0,0.25);
   }
-  .sticky-cta button {
+  .sticky-cta button, .sticky-cta a {
     max-width: 480px; margin: 0 auto; display: block; width: 100%;
     background: var(--teal); color: var(--bg-void); border: none; border-radius: 10px;
     padding: 13px; font-size: 14.5px; font-weight: 700; cursor: pointer; font-family: var(--font-body);
+    text-align: center; text-decoration: none; box-sizing: border-box;
   }
   /* מרווח תחתון לתוכן כדי שהסרגל הדביק לא יסתיר את הכפתורים/פוטר */
   .wrap { padding-bottom: 76px; }
