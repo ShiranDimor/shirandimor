@@ -103,6 +103,16 @@
   }
   .filter-chip.active { color: var(--bg-void); background: var(--teal); border-color: var(--teal); font-weight: 600; }
 
+  .month-select-wrap { margin-bottom: 16px; }
+  .month-select {
+    width: 100%; background: var(--bg-surface); border: 1px solid var(--border-hairline-strong);
+    border-radius: 8px; padding: 11px 12px; color: var(--text-primary); font-family: var(--font-body);
+    font-size: 13.5px; font-weight: 500; appearance: none;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' stroke='%238E96A8' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+    background-repeat: no-repeat; background-position: left 12px center;
+  }
+  .month-select:focus { outline: none; border-color: var(--teal); }
+
   .trades-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 32px; }
   .trade-card { background: var(--bg-surface); border: 1px solid var(--border-hairline); border-radius: 12px; padding: 14px 16px; transition: border-color 0.15s ease; }
   .trade-card:hover { border-color: var(--border-hairline-strong); }

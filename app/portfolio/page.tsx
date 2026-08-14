@@ -29,13 +29,18 @@ function monthLabel(key: string) {
   return `${MONTH_LABELS[parseInt(month, 10) - 1]} ${year}`;
 }
 
+function currentMonthKey() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
 export default function PortfolioPage() {
   const [loading, setLoading] = useState(true);
   const [loggedIn, setLoggedIn] = useState(false);
   const [hasFullAccess, setHasFullAccess] = useState(false);
   const [openTrades, setOpenTrades] = useState<Trade[]>([]);
   const [closedTrades, setClosedTrades] = useState<Trade[]>([]);
-  const [monthFilter, setMonthFilter] = useState('all');
+  const [monthFilter, setMonthFilter] = useState(currentMonthKey);
   const [initialBalance, setInitialBalance] = useState<number | null>(null);
 
   const [risk, setRisk] = useState('');
@@ -90,7 +95,7 @@ export default function PortfolioPage() {
   }
 
   const availableMonths = Array.from(
-    new Set(closedTrades.filter((t) => t.closed_at).map((t) => monthKey(t.closed_at as string)))
+    new Set([currentMonthKey(), ...closedTrades.filter((t) => t.closed_at).map((t) => monthKey(t.closed_at as string))])
   ).sort().reverse();
 
   const monthFilteredClosed = monthFilter === 'all'
@@ -171,11 +176,13 @@ export default function PortfolioPage() {
       <div className="section-label" style={{ marginTop: '28px' }}><h2>עסקאות סגורות</h2><span className="count">{monthFilteredClosed.length}</span></div>
 
       {availableMonths.length > 0 && (
-        <div className="filter-row">
-          <div className={`filter-chip ${monthFilter === 'all' ? 'active' : ''}`} style={{ cursor: 'pointer' }} onClick={() => setMonthFilter('all')}>הכל</div>
-          {availableMonths.map((m) => (
-            <div key={m} className={`filter-chip ${monthFilter === m ? 'active' : ''}`} style={{ cursor: 'pointer' }} onClick={() => setMonthFilter(m)}>{monthLabel(m)}</div>
-          ))}
+        <div className="month-select-wrap">
+          <select className="month-select" value={monthFilter} onChange={(e) => setMonthFilter(e.target.value)}>
+            <option value="all">כל החודשים</option>
+            {availableMonths.map((m) => (
+              <option key={m} value={m}>{monthLabel(m)}</option>
+            ))}
+          </select>
         </div>
       )}
 
