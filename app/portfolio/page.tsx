@@ -118,7 +118,7 @@ export default function PortfolioPage() {
   }
 
   if (loading) {
-    return <div className="wrap"><p style={{ padding: '40px', textAlign: 'center' }}>טוענת...</p></div>;
+    return <div className="wrap"><p style={{ padding: '40px', textAlign: 'center' }}>טוענים...</p></div>;
   }
 
   return (
@@ -127,11 +127,15 @@ export default function PortfolioPage() {
         <Link href="/" className="brand">מסחר <span>אחראי</span> במניות</Link>
         {loggedIn ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <Link href="/" className="nav-link">בית</Link>
             {hasFullAccess && <Link href="/journal" className="nav-link">יומן שלי</Link>}
             <button onClick={handleLogout} className="nav-link" style={{ background: 'none', border: 'none', cursor: 'pointer', font: 'inherit', padding: 0 }}>התנתקות</button>
           </div>
         ) : (
-          <Link href="/login" className="nav-link">כניסה לסוחרים</Link>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <Link href="/" className="nav-link">בית</Link>
+            <Link href="/login" className="nav-link">כניסה לסוחרים</Link>
+          </div>
         )}
       </header>
 
@@ -140,7 +144,7 @@ export default function PortfolioPage() {
           <div className="lb-icon">🔒</div>
           <div className="lb-text">
             <p className="lb-title">יש כאן עסקאות אמיתיות, אבל הן שמורות למנויים</p>
-            <p className="lb-sub">הסימבולים מטושטשים כדי לשמור על הקבוצה - הצטרפי ותראי הכל, מספרים ותוצאות כולל.</p>
+            <p className="lb-sub">הסימבולים מוסתרים כדי לשמור על פרטיות חברי הקבוצה - ההצטרפות פותחת גישה לתמונה המלאה: מספרים אמיתיים, כולל הפסדים.</p>
           </div>
           <Link href="/subscribe" className="lb-cta">לגישה מלאה ←</Link>
         </div>

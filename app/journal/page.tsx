@@ -118,13 +118,16 @@ export default function JournalPage() {
   }
 
   if (loading) {
-    return <div className="wrap"><p style={{ padding: '40px', textAlign: 'center' }}>טוענת...</p></div>;
+    return <div className="wrap"><p style={{ padding: '40px', textAlign: 'center' }}>טוענים...</p></div>;
   }
 
   if (!userId) {
     return (
       <div className="wrap">
-        <header><div className="brand">מסחר <span>אחראי</span> במניות</div></header>
+        <header>
+          <Link href="/" className="brand">מסחר <span>אחראי</span> במניות</Link>
+          <Link href="/" className="nav-link">בית</Link>
+        </header>
         <p style={{ padding: '40px 0', textAlign: 'center' }}>צריך להתחבר קודם. <Link href="/login" style={{ color: 'var(--teal)' }}>כניסה</Link></p>
       </div>
     );
@@ -135,12 +138,13 @@ export default function JournalPage() {
       <header>
         <Link href="/" className="brand">מסחר <span>אחראי</span> במניות</Link>
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <Link href="/" className="nav-link">בית</Link>
           <Link href="/portfolio" className="nav-link">← לתיק</Link>
           <button onClick={handleLogout} className="nav-link" style={{ background: 'none', border: 'none', cursor: 'pointer', font: 'inherit', padding: 0 }}>התנתקות</button>
         </div>
       </header>
 
-      <div className="section-label"><h2>יומן המסחר שלי</h2><span className="count">פרטי - רק את/ה ואני</span></div>
+      <div className="section-label"><h2>יומן המסחר שלי</h2><span className="count">פרטי - נשאר בינינו</span></div>
 
       <button className="add-btn" onClick={() => setShowForm(!showForm)}>+ עסקה חדשה</button>
 
@@ -163,7 +167,7 @@ export default function JournalPage() {
             <span style={{ fontSize: '12.5px', color: 'var(--text-secondary)' }}>כמות מניות מחושבת</span>
             <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, color: 'var(--teal)' }}>{calcShares || '—'}</span>
           </div>
-          <button className="btn-primary" onClick={handleAdd} disabled={saving}>{saving ? 'שומרת...' : 'שמירת עסקה'}</button>
+          <button className="btn-primary" onClick={handleAdd} disabled={saving}>{saving ? 'שומרים...' : 'שמירת עסקה'}</button>
         </div>
       )}
 
@@ -204,7 +208,7 @@ export default function JournalPage() {
                     <div className="field" style={{ marginBottom: 0 }}><label>תאריך סגירה</label><input type="date" value={exitDate} onChange={(ev) => setExitDate(ev.target.value)} /></div>
                   </div>
                   <div style={{ display: 'flex', gap: '8px' }}>
-                    <button className="btn-primary" style={{ flex: 1 }} onClick={() => handleClose(e)} disabled={closing || !exitPrice}>{closing ? 'סוגרת...' : 'אישור סגירה'}</button>
+                    <button className="btn-primary" style={{ flex: 1 }} onClick={() => handleClose(e)} disabled={closing || !exitPrice}>{closing ? 'סוגרים...' : 'אישור סגירה'}</button>
                     <button className="btn-outline" style={{ flex: 1 }} onClick={() => { setClosingId(null); setExitPrice(''); setExitDate(''); }}>ביטול</button>
                   </div>
                 </div>

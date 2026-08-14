@@ -4,18 +4,32 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 
-export default function AdminDashboard() {
+type ApprovedSub = {
+  id: string;
+  email: string;
+  full_name: string | null;
+  subscription_status: string | null;
+};
+
+export default function AdminSubscribersPage() {
   const [checking, setChecking] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [userEmail, setUserEmail] = useState('');
 
-  const [pendingCount, setPendingCount] = useState(0);
-  const [approvedCount, setApprovedCount] = useState(0);
-  const [openTradesCount, setOpenTradesCount] = useState(0);
+  const [approvedSubs, setApprovedSubs] = useState<ApprovedSub[]>([]);
 
   useEffect(() => {
     checkAdmin();
   }, []);
+
+  async function loadApprovedSubs() {
+    const { data } = await supabase
+      .from('profiles')
+      .select('id, email, full_name, subscription_status')
+      .eq('role', 'subscriber')
+      .order('subscription_started_at', { ascending: false });
+    if (data) setApprovedSubs(data);
+  }
 
   async function checkAdmin() {
     const { data: { user } } = await supabase.auth.getUser();
@@ -35,22 +49,9 @@ export default function AdminDashboard() {
 
     setIsAdmin(profile?.role === 'admin');
     setChecking(false);
-
     if (profile?.role === 'admin') {
-      loadCounts();
+      loadApprovedSubs();
     }
-  }
-
-  async function loadCounts() {
-    const [pending, approved, openTrades] = await Promise.all([
-      supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'lead'),
-      supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'subscriber'),
-      supabase.from('trades').select('id', { count: 'exact', head: true }).eq('status', 'open'),
-    ]);
-
-    setPendingCount(pending.count || 0);
-    setApprovedCount(approved.count || 0);
-    setOpenTradesCount(openTrades.count || 0);
   }
 
   async function handleLogout() {
@@ -92,35 +93,25 @@ export default function AdminDashboard() {
   return (
     <div className="wrap">
       <header>
-        <a href="/" className="brand">מסחר <span>אחראי</span> במניות</a>
+        <Link href="/admin" className="brand">מסחר <span>אחראי</span> במניות</Link>
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-          <a href="/" className="nav-link">בית</a>
-          <a href="/account" className="nav-link">הגדרת סיסמה</a>
+          <Link href="/" className="nav-link">בית</Link>
+          <Link href="/admin" className="nav-link">← לניהול</Link>
           <button onClick={handleLogout} className="nav-link" style={{ background: 'none', border: 'none', cursor: 'pointer', font: 'inherit', padding: 0 }}>התנתקות</button>
         </div>
       </header>
 
-      <div className="section-label"><h2>אזור הניהול</h2></div>
-
-      <div className="admin-tiles">
-        <Link href="/admin/trades" className="admin-tile">
-          <div className="at-icon">📊</div>
-          <div className="at-title">תיק מסחר</div>
-          <div className="at-count">{openTradesCount} עסקאות פתוחות</div>
-        </Link>
-
-        <Link href="/admin/pending" className={`admin-tile ${pendingCount > 0 ? 'attention' : ''}`}>
-          <div className="at-icon">🕒</div>
-          <div className="at-title">מנויים לאישור</div>
-          <div className="at-count">{pendingCount} ממתינים</div>
-        </Link>
-
-        <Link href="/admin/subscribers" className="admin-tile">
-          <div className="at-icon">✅</div>
-          <div className="at-title">מנויים מאושרים</div>
-          <div className="at-count">{approvedCount} פעילים</div>
-        </Link>
-      </div>
+      <div className="section-label"><h2>מנויים מאושרים</h2><span className="count">{approvedSubs.length}</span></div>
+      {approvedSubs.length === 0 && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)', marginBottom: '20px' }}>עדיין אין מנויים מאושרים</p>}
+      {approvedSubs.map((sub) => (
+        <div className="admin-row" key={sub.id}>
+          <div>
+            <div className="name">{sub.full_name || 'ללא שם'}</div>
+            <div className="email">{sub.email}</div>
+          </div>
+          <span style={{ fontSize: '11px', color: 'var(--profit)', fontWeight: 700 }}>{sub.subscription_status === 'active' ? 'פעיל' : sub.subscription_status}</span>
+        </div>
+      ))}
     </div>
   );
 }

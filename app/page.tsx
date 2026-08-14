@@ -17,9 +17,36 @@ type Trade = {
 
 export default function HomePage() {
   const [showLeadForm, setShowLeadForm] = useState(false);
+  const [leadSubmitted, setLeadSubmitted] = useState(false);
+  const [leadName, setLeadName] = useState('');
+  const [leadContact, setLeadContact] = useState('');
+  const [leadSubmitting, setLeadSubmitting] = useState(false);
+  const [leadError, setLeadError] = useState('');
   const [openTrades, setOpenTrades] = useState<Trade[]>([]);
   const [lastClosed, setLastClosed] = useState<Trade | null>(null);
   const [openCount, setOpenCount] = useState(0);
+
+  async function handleLeadSubmit() {
+    if (!leadName || !leadContact) {
+      setLeadError('צריך למלא שם ופרטי יצירת קשר');
+      return;
+    }
+    setLeadSubmitting(true);
+    setLeadError('');
+
+    try {
+      await fetch('/api/lead', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: leadName, contact: leadContact }),
+      });
+    } catch (e) {
+      // ממשיכים לוואטסאפ גם אם השליחה נכשלה, כדי לא לאבד את ההצטרפות
+    }
+
+    setLeadSubmitting(false);
+    setLeadSubmitted(true);
+  }
 
   useEffect(() => {
     loadTrades();
@@ -57,7 +84,11 @@ export default function HomePage() {
     <div className="wrap">
       <header>
         <Link href="/" className="brand">מסחר <span>אחראי</span> במניות</Link>
-        <Link href="/login" className="nav-link">כניסה לסוחרים</Link>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <Link href="/" className="nav-link">בית</Link>
+          <Link href="/portfolio" className="nav-link">תיק</Link>
+          <Link href="/login" className="nav-link">כניסה לסוחרים</Link>
+        </div>
       </header>
 
       <div className="hero-v2">
@@ -72,10 +103,30 @@ export default function HomePage() {
           </button>
         )}
 
-        {showLeadForm && (
+        {showLeadForm && !leadSubmitted && (
+          <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-hairline-strong)', borderRight: '3px solid var(--profit)', borderRadius: '10px', padding: '16px', marginBottom: '10px' }}>
+            <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '14px', textAlign: 'center' }}>
+              כמה פרטים קצרים, ומיד נפתחת הדרך לקבוצת הוואטסאפ.
+            </p>
+            <div className="field" style={{ marginBottom: '10px' }}>
+              <label>שם</label>
+              <input type="text" value={leadName} onChange={(e) => setLeadName(e.target.value)} placeholder="השם המלא" />
+            </div>
+            <div className="field">
+              <label>טלפון או אימייל</label>
+              <input type="text" value={leadContact} onChange={(e) => setLeadContact(e.target.value)} placeholder="050-0000000" />
+            </div>
+            <button className="btn-primary" onClick={handleLeadSubmit} disabled={leadSubmitting}>
+              {leadSubmitting ? 'שולחים...' : 'המשך לקבוצת הוואטסאפ ←'}
+            </button>
+            {leadError && <p style={{ color: 'var(--loss)', fontSize: '12px', textAlign: 'center', marginTop: '8px' }}>{leadError}</p>}
+          </div>
+        )}
+
+        {showLeadForm && leadSubmitted && (
           <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-hairline-strong)', borderRight: '3px solid var(--profit)', borderRadius: '10px', padding: '16px', marginBottom: '10px', textAlign: 'center' }}>
             <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '14px' }}>
-              ההצטרפות מתבצעת ישירות דרך וואטסאפ - לחיצה על הכפתור תפתח את הקבוצה ותוכלי להצטרף בלחיצה אחת.
+              מעולה! לחיצה על הכפתור פותחת את קבוצת הוואטסאפ - ההצטרפות שם היא בלחיצה אחת.
             </p>
             <a href="https://chat.whatsapp.com/GEf9Y4vFRDSEWKixrETWcg" target="_blank" rel="noopener noreferrer" className="btn-primary" style={{ display: 'block', textDecoration: 'none' }}>
               פתיחת קבוצת הוואטסאפ ←
@@ -88,7 +139,7 @@ export default function HomePage() {
 
       <div className="trust-strip">
         <div className="trust-item"><div className="num">0%</div><div className="lbl">הבטחות תשואה</div></div>
-        <div className="trust-item"><div className="num">100%</div><div className="lbl">שקיפות, כולל כשלים</div></div>
+        <div className="trust-item"><div className="num">100%</div><div className="lbl">שקיפות, כולל הפסדים</div></div>
         <div className="trust-item"><div className="num">3</div><div className="lbl">סגנונות מסחר, קבוצה אחת</div></div>
       </div>
 
@@ -169,6 +220,7 @@ export default function HomePage() {
             <div>הצצה לעולם שוק ההון, בלי לשלם עליה אלפי שקלים</div>
             <div>מושג אחד בשבוע - פשוט, ברור, ואפשר להשתמש בו מיד</div>
             <div>הצטרפות בלחיצה אחת, בלי התחייבות ובלי מכירות</div>
+            <div>אפשר לשדרג לקבוצת הסוחרים בכל שלב, בקצב האישי</div>
           </div>
           <a className="gc-cta" href="#" onClick={(e) => { e.preventDefault(); window.scrollTo(0, 0); setShowLeadForm(true); }}>הצטרפות ללא עלות</a>
         </div>
@@ -180,7 +232,7 @@ export default function HomePage() {
           <div className="gc-perks">
             <div><strong>בניית תיק השקעות</strong> - תוך יומי, סווינג, טווח ארוך</div>
             <div>וובינרים לייב - שאלות, ניתוחים ולמידה בזמן אמת</div>
-            <div><strong>ליווי אישי</strong> לצד קהילה סגורה לדיון מעמיק</div>
+            <div><strong>ליווי אישי</strong> - לצד קהילה סגורה לדיון מעמיק</div>
             <div><strong>יומן מסחר שקוף</strong> - כולל עסקאות מפסידות</div>
             <div>תיק מסחר אישי וניתוח העסקאות ע"י שירן</div>
           </div>

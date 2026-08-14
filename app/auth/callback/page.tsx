@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 
 export default function AuthCallbackPage() {
   const router = useRouter();
-  const [status, setStatus] = useState('מתחברת...');
+  const [status, setStatus] = useState('מתבצעת התחברות...');
 
   useEffect(() => {
     handleCallback();
@@ -16,7 +17,7 @@ export default function AuthCallbackPage() {
     const { data: { session } } = await supabase.auth.getSession();
 
     if (!session) {
-      setStatus('הכניסה נכשלה. נסי שוב.');
+      setStatus('הכניסה נכשלה. אפשר לנסות שוב.');
       setTimeout(() => router.push('/login'), 2000);
       return;
     }
@@ -39,7 +40,10 @@ export default function AuthCallbackPage() {
 
   return (
     <div className="wrap">
-      <header><div className="brand">מסחר <span>אחראי</span> במניות</div></header>
+      <header>
+        <Link href="/" className="brand">מסחר <span>אחראי</span> במניות</Link>
+        <Link href="/" className="nav-link">בית</Link>
+      </header>
       <p style={{ padding: '60px 0', textAlign: 'center', color: 'var(--text-secondary)' }}>{status}</p>
     </div>
   );

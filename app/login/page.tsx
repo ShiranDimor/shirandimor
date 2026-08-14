@@ -13,6 +13,7 @@ export default function LoginPage() {
   const [sent, setSent] = useState(false);
   const [error, setError] = useState('');
   const [showMagicLink, setShowMagicLink] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   async function handlePasswordLogin() {
     if (!email || !password) return;
@@ -58,7 +59,7 @@ export default function LoginPage() {
     setLoading(false);
 
     if (authError) {
-      setError('משהו השתבש. נסי שוב בעוד רגע.');
+      setError('משהו השתבש. כדאי לנסות שוב בעוד רגע.');
       return;
     }
 
@@ -69,6 +70,7 @@ export default function LoginPage() {
     <div className="wrap">
       <header>
         <Link href="/" className="brand">מסחר <span>אחראי</span> במניות</Link>
+        <Link href="/" className="nav-link">בית</Link>
       </header>
 
       <div className="form-title" style={{ color: 'var(--lavender)' }}>כניסה לסוחרים</div>
@@ -90,20 +92,34 @@ export default function LoginPage() {
           {!showMagicLink && (
             <div className="field">
               <label>סיסמה</label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                style={{ borderColor: 'var(--lavender-dim)' }}
-              />
+              <div className="pw-wrap">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  style={{ borderColor: 'var(--lavender-dim)' }}
+                />
+                <button
+                  type="button"
+                  className="pw-toggle"
+                  onClick={() => setShowPassword((s) => !s)}
+                  aria-label={showPassword ? 'הסתרת סיסמה' : 'הצגת סיסמה'}
+                >
+                  {showPassword ? (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" /><circle cx="12" cy="12" r="3" /></svg>
+                  ) : (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3l18 18" /><path d="M10.6 5.2A10.7 10.7 0 0 1 12 5c6.5 0 10 7 10 7a17.6 17.6 0 0 1-4 4.7M6.3 6.3C3.6 8 2 12 2 12s3.5 7 10 7c1.3 0 2.5-.2 3.6-.6" /><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" /></svg>
+                  )}
+                </button>
+              </div>
             </div>
           )}
 
           {!showMagicLink ? (
             <>
               <button className="btn-primary" style={{ background: 'var(--lavender)' }} onClick={handlePasswordLogin} disabled={loading}>
-                {loading ? 'נכנסת...' : 'כניסה'}
+                {loading ? 'מתבצעת כניסה...' : 'כניסה'}
               </button>
               <p style={{ marginTop: '12px', fontSize: '12px', color: 'var(--text-tertiary)', textAlign: 'center' }}>
                 <a href="#" onClick={(e) => { e.preventDefault(); setShowMagicLink(true); setError(''); }} style={{ color: 'var(--lavender)' }}>
@@ -114,10 +130,10 @@ export default function LoginPage() {
           ) : (
             <>
               <button className="btn-primary" style={{ background: 'var(--lavender)' }} onClick={handleMagicLink} disabled={loading}>
-                {loading ? 'שולחת...' : 'שליחת קישור כניסה'}
+                {loading ? 'שולחים...' : 'שליחת קישור כניסה'}
               </button>
               <p style={{ marginTop: '10px', fontSize: '11px', color: 'var(--text-tertiary)', textAlign: 'center' }}>
-                אם המייל שלך מזוהה כמנוי/ה פעיל/ה, יישלח אליך קישור כניסה מאובטח תוך דקה
+                אם יש לך מנוי פעיל, יישלח אליך קישור כניסה מאובטח תוך דקה
               </p>
               <p style={{ marginTop: '12px', fontSize: '12px', color: 'var(--text-tertiary)', textAlign: 'center' }}>
                 <a href="#" onClick={(e) => { e.preventDefault(); setShowMagicLink(false); setError(''); }} style={{ color: 'var(--lavender)' }}>
@@ -132,7 +148,7 @@ export default function LoginPage() {
       ) : (
         <div style={{ background: 'rgba(156,143,217,0.1)', border: '1px solid var(--lavender)', borderRadius: '10px', padding: '16px', textAlign: 'center' }}>
           <div style={{ fontSize: '20px', marginBottom: '8px' }}>✉️</div>
-          <div style={{ fontSize: '14px', fontWeight: 600, marginBottom: '4px' }}>בדקי את תיבת המייל שלך</div>
+          <div style={{ fontSize: '14px', fontWeight: 600, marginBottom: '4px' }}>כדאי לבדוק את תיבת המייל</div>
           <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
             שלחנו קישור כניסה מאובטח - לחיצה עליו תכניס אותך ישירות לאזור האישי, ושם תוכלי להגדיר סיסמה קבועה לפעם הבאה
           </div>
