@@ -10,9 +10,8 @@ export default function SubscribePage() {
         <Link href="/" className="nav-link">בית</Link>
       </header>
 
-      <div className="form-title">
-        הצטרפות לקבוצת הסוחרים <span style={{ fontSize: '14px', color: 'var(--text-tertiary)', fontWeight: 400 }}>"מדברים עסקאות"</span>
-      </div>
+      <div className="form-title">הצטרפות לקבוצת הסוחרים</div>
+      <div style={{ fontSize: '14px', color: 'var(--text-tertiary)', textAlign: 'center', marginBottom: '4px' }}>"מדברים עסקאות"</div>
       <div className="form-sub">מנוי חודשי · ללא התחייבות</div>
 
       <div className="price-card">
