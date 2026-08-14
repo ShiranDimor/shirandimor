@@ -11,17 +11,23 @@ async function mondayRequest(token: string, query: string, variables: Record<str
   return res.json();
 }
 
-async function findLeadGroupId(token: string, boardId: string) {
+async function getBoardSchema(token: string, boardId: string) {
   const data = await mondayRequest(
     token,
     `query ($boardId: ID!) {
-      boards (ids: [$boardId]) { groups { id title } }
+      boards (ids: [$boardId]) { columns { id title type } groups { id title } }
     }`,
     { boardId }
   );
-  const groups = data?.data?.boards?.[0]?.groups || [];
-  const match = groups.find((g: { id: string; title: string }) => g.title === LEAD_GROUP_NAME);
-  return match?.id as string | undefined;
+  const board = data?.data?.boards?.[0];
+  const columns: { id: string; title: string; type: string }[] = board?.columns || [];
+  const groups: { id: string; title: string }[] = board?.groups || [];
+
+  return {
+    groupId: groups.find((g) => g.title === LEAD_GROUP_NAME)?.id,
+    phoneColumnId: columns.find((c) => c.type === 'phone')?.id,
+    emailColumnId: columns.find((c) => c.type === 'email')?.id,
+  };
 }
 
 export async function POST(request: Request) {
@@ -40,17 +46,21 @@ export async function POST(request: Request) {
   }
 
   try {
-    const groupId = await findLeadGroupId(token, boardId);
+    const { groupId, phoneColumnId, emailColumnId } = await getBoardSchema(token, boardId);
     if (!groupId) {
       console.error(`Monday.com: לא נמצאה קבוצה בשם "${LEAD_GROUP_NAME}" בלוח ${boardId}`);
     }
 
+    const columnValues: Record<string, unknown> = {};
+    if (phoneColumnId) columnValues[phoneColumnId] = { phone: phone.startsWith('0') ? `972${phone.slice(1)}` : phone, countryShortName: 'IL' };
+    if (emailColumnId && email) columnValues[emailColumnId] = { email, text: email };
+
     const createItemData = await mondayRequest(
       token,
-      `mutation ($boardId: ID!, $groupId: String, $itemName: String!) {
-        create_item (board_id: $boardId, group_id: $groupId, item_name: $itemName) { id }
+      `mutation ($boardId: ID!, $groupId: String, $itemName: String!, $columnValues: JSON) {
+        create_item (board_id: $boardId, group_id: $groupId, item_name: $itemName, column_values: $columnValues) { id }
       }`,
-      { boardId, groupId: groupId || null, itemName: name }
+      { boardId, groupId: groupId || null, itemName: name, columnValues: JSON.stringify(columnValues) }
     );
 
     const itemId = createItemData?.data?.create_item?.id;

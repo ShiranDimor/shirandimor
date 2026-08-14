@@ -61,6 +61,8 @@ export default function PortfolioPage() {
   }, []);
 
   async function load() {
+    fetch('/api/refresh-prices').catch(() => {});
+
     const { data: { user } } = await supabase.auth.getUser();
 
     if (user) {
@@ -101,6 +103,11 @@ export default function PortfolioPage() {
     const current = trade.status === 'open' ? trade.current_price : trade.exit_price;
     if (!current) return 0;
     return ((current - trade.entry_price) / trade.entry_price) * 100 * (trade.direction === 'short' ? -1 : 1);
+  }
+
+  function unrealizedUsd(trade: Trade) {
+    if (!trade.current_price || !trade.shares_calculated) return null;
+    return (trade.current_price - trade.entry_price) * trade.shares_calculated * (trade.direction === 'short' ? -1 : 1);
   }
 
   const availableMonths = Array.from(
@@ -192,7 +199,38 @@ export default function PortfolioPage() {
         </>
       )}
 
-      <details className="section-collapse" open>
+      <div className="section-label"><h2>תובנות התיק</h2></div>
+      <div className="insights-panel" style={{ marginBottom: '28px' }}>
+        <div className="insights-ring-row">
+          <StatsRing
+            percent={winRate ?? 0}
+            label={`${closedTrades.length} עסקאות סגורות`}
+            sublabel={`תיק התחלתי $${initialBalance !== null ? initialBalance.toLocaleString() : '—'}`}
+          />
+        </div>
+        <div className="insight-grid">
+          <div className="insight-tile">
+            <div className="iv">{avgDaysToClose !== null ? avgDaysToClose.toFixed(1) : '—'}</div>
+            <div className="il">ימי החזקה בממוצע</div>
+          </div>
+          <div className="insight-tile">
+            <div className="iv" style={{ color: avgPnlPct !== null ? (avgPnlPct >= 0 ? 'var(--profit)' : 'var(--loss)') : undefined }}>
+              {avgPnlPct !== null ? `${avgPnlPct >= 0 ? '+' : ''}${avgPnlPct.toFixed(2)}%` : '—'}
+            </div>
+            <div className="il">רווח/הפסד ממוצע לעסקה</div>
+          </div>
+          <div className="insight-tile">
+            <div className="iv">{riskReward !== null ? `1:${riskReward.toFixed(1)}` : '—'}</div>
+            <div className="il">יחס סיכון-סיכוי</div>
+          </div>
+          <div className="insight-tile">
+            <div className="iv">{tradesThisMonth}</div>
+            <div className="il">עסקאות החודש</div>
+          </div>
+        </div>
+      </div>
+
+      <details className="section-collapse">
         <summary>
           <h2>עסקאות פתוחות</h2>
           <div className="summary-right"><span className="count">{openTrades.length}</span><span className="collapse-chevron">▾</span></div>
@@ -201,6 +239,7 @@ export default function PortfolioPage() {
         {openTrades.length === 0 && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>אין כרגע עסקאות פתוחות</p>}
         {openTrades.map((trade) => {
           const p = pct(trade);
+          const u = unrealizedUsd(trade);
           return (
             <div className="trade-card" key={trade.id}>
               <div className="trade-top">
@@ -211,6 +250,7 @@ export default function PortfolioPage() {
                 </div>
                 <div className="trade-pnl">
                   <div className="pct" style={{ color: p >= 0 ? 'var(--profit)' : 'var(--loss)' }}>{p >= 0 ? '+' : ''}{p.toFixed(2)}%</div>
+                  {u !== null && <div className="usd" style={{ color: u >= 0 ? 'var(--profit)' : 'var(--loss)', fontSize: '12px' }}>{u >= 0 ? '+' : '-'}${Math.abs(u).toFixed(0)}</div>}
                 </div>
               </div>
               <div className="trade-date-row">נפתחה ב-{formatDate(trade.opened_at)}</div>
@@ -300,40 +340,6 @@ export default function PortfolioPage() {
         </div>
       </details>
 
-      {hasFullAccess && (
-        <>
-          <div className="section-label" style={{ marginTop: '28px' }}><h2>תובנות התיק</h2></div>
-          <div className="insights-panel">
-            <div className="insights-ring-row">
-              <StatsRing
-                percent={winRate ?? 0}
-                label={`${closedTrades.length} עסקאות סגורות`}
-                sublabel={`תיק התחלתי $${initialBalance !== null ? initialBalance.toLocaleString() : '—'}`}
-              />
-            </div>
-            <div className="insight-grid">
-              <div className="insight-tile">
-                <div className="iv">{avgDaysToClose !== null ? avgDaysToClose.toFixed(1) : '—'}</div>
-                <div className="il">ימי החזקה בממוצע</div>
-              </div>
-              <div className="insight-tile">
-                <div className="iv" style={{ color: avgPnlPct !== null ? (avgPnlPct >= 0 ? 'var(--profit)' : 'var(--loss)') : undefined }}>
-                  {avgPnlPct !== null ? `${avgPnlPct >= 0 ? '+' : ''}${avgPnlPct.toFixed(2)}%` : '—'}
-                </div>
-                <div className="il">רווח/הפסד ממוצע לעסקה</div>
-              </div>
-              <div className="insight-tile">
-                <div className="iv">{riskReward !== null ? `1:${riskReward.toFixed(1)}` : '—'}</div>
-                <div className="il">יחס סיכון-סיכוי</div>
-              </div>
-              <div className="insight-tile">
-                <div className="iv">{tradesThisMonth}</div>
-                <div className="il">עסקאות החודש</div>
-              </div>
-            </div>
-          </div>
-        </>
-      )}
     </div>
   );
 }
