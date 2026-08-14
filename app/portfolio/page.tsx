@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import ClearableInput from '@/components/ClearableInput';
 import StatsRing from '@/components/StatsRing';
+import EquityCurve from '@/components/EquityCurve';
 
 type Trade = {
   id: string;
@@ -163,6 +164,21 @@ export default function PortfolioPage() {
 
   const tradesThisMonth = [...openTrades, ...closedTrades].filter((t) => monthKey(t.opened_at) === currentMonthKey()).length;
 
+  const equityPoints = (() => {
+    if (initialBalance === null) return [];
+    const chronological = closedTrades
+      .filter((t) => t.closed_at)
+      .slice()
+      .sort((a, b) => new Date(a.closed_at as string).getTime() - new Date(b.closed_at as string).getTime());
+    let running = initialBalance;
+    const points = [{ date: 'התחלה', value: Math.round(running) }];
+    for (const t of chronological) {
+      running += t.realized_pnl_usd ?? 0;
+      points.push({ date: formatDate(t.closed_at), value: Math.round(running) });
+    }
+    return points;
+  })();
+
   const shares = risk && entry && stop
     ? Math.floor(parseFloat(risk) / Math.abs(parseFloat(entry) - parseFloat(stop)))
     : null;
@@ -224,6 +240,11 @@ export default function PortfolioPage() {
           </div>
         </>
       )}
+
+      <div className="section-label"><h2>צמיחת התיק</h2></div>
+      <div className="equity-card">
+        <EquityCurve points={equityPoints} />
+      </div>
 
       <div className="section-label"><h2>תובנות התיק</h2></div>
       <div className="insights-panel" style={{ marginBottom: '28px' }}>

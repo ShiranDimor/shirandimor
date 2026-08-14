@@ -35,9 +35,20 @@ export default function AdminTradesPage() {
   const [closedTrades, setClosedTrades] = useState<Trade[]>([]);
 
   const [closingId, setClosingId] = useState<string | null>(null);
+  const [closingPopoverPos, setClosingPopoverPos] = useState<{ top: number; left: number } | null>(null);
   const [exitPrice, setExitPrice] = useState('');
   const [exitDate, setExitDate] = useState('');
   const [closing, setClosing] = useState(false);
+
+  function startQuickClose(trade: Trade, e: React.MouseEvent<HTMLButtonElement>) {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const popW = 230;
+    const left = Math.min(Math.max(8, rect.left), window.innerWidth - popW - 8);
+    setClosingPopoverPos({ top: rect.bottom + 8, left });
+    setClosingId(trade.id);
+    setExitPrice('');
+    setExitDate('');
+  }
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editSymbol, setEditSymbol] = useState('');
@@ -196,7 +207,7 @@ export default function AdminTradesPage() {
 
     if (!price || !shares) return;
     if (shares >= trade.shares_calculated) {
-      setSellQtyError('למכירת כל הכמות יש להשתמש בכפתור "סגירת עסקה"');
+      setSellQtyError('למכירת כל הכמות יש להשתמש בכפתור "⚡ סגירה"');
       return;
     }
 
@@ -213,6 +224,7 @@ export default function AdminTradesPage() {
   }
 
   async function handlePriceUpdate(trade: Trade) {
+    if (priceUpdateId !== trade.id) return;
     const price = parseFloat(newCurrentPrice);
     if (!price) return;
     setUpdatingPrice(true);
@@ -406,21 +418,6 @@ export default function AdminTradesPage() {
       );
     }
 
-    if (!isClosed && closingId === trade.id) {
-      return (
-        <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--border-hairline)' }}>
-          <div className="form-row" style={{ marginBottom: '10px' }}>
-            <div className="field" style={{ marginBottom: 0 }}><label>מחיר סגירה</label><ClearableInput type="number" value={exitPrice} onChange={(e) => setExitPrice(e.target.value)} onClear={() => setExitPrice('')} placeholder="130.50" /></div>
-            <div className="field" style={{ marginBottom: 0 }}><label>תאריך סגירה</label><input type="date" value={exitDate} onChange={(e) => setExitDate(e.target.value)} /></div>
-          </div>
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <button className="btn-primary" style={{ flex: 1 }} onClick={() => handleCloseTrade(trade)} disabled={closing || !exitPrice}>{closing ? 'סוגרים...' : 'אישור סגירה'}</button>
-            <button className="btn-outline" style={{ flex: 1 }} onClick={() => { setClosingId(null); setExitPrice(''); setExitDate(''); }}>ביטול</button>
-          </div>
-        </div>
-      );
-    }
-
     if (!isClosed && addQtyId === trade.id) {
       return (
         <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--border-hairline)' }}>
@@ -454,36 +451,15 @@ export default function AdminTradesPage() {
       );
     }
 
-    if (!isClosed && priceUpdateId === trade.id) {
-      return (
-        <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--border-hairline)' }}>
-          <div className="field">
-            <label>מחיר נוכחי</label>
-            <ClearableInput type="number" value={newCurrentPrice} onChange={(e) => setNewCurrentPrice(e.target.value)} onClear={() => setNewCurrentPrice('')} placeholder="132.50" />
-          </div>
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <button className="btn-primary" style={{ flex: 1 }} onClick={() => handlePriceUpdate(trade)} disabled={updatingPrice || !newCurrentPrice}>{updatingPrice ? 'מעדכנים...' : 'עדכון מחיר'}</button>
-            <button className="btn-outline" style={{ flex: 1 }} onClick={() => setPriceUpdateId(null)}>ביטול</button>
-          </div>
-        </div>
-      );
-    }
-
     return (
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '10px' }}>
         {!isClosed && (
           <>
-            <button className="btn-outline" style={{ flex: 1, padding: '8px', fontSize: '13px' }} onClick={() => { setClosingId(trade.id); setExitPrice(''); setExitDate(''); }}>
-              סגירת עסקה
-            </button>
             <button className="btn-outline" style={{ flex: 1, padding: '8px', fontSize: '13px' }} onClick={() => startAddQty(trade)}>
               הוספת כמות
             </button>
             <button className="btn-outline" style={{ flex: 1, padding: '8px', fontSize: '13px' }} onClick={() => startSellQty(trade)}>
               מכירה חלקית
-            </button>
-            <button className="btn-outline" style={{ flex: 1, padding: '8px', fontSize: '13px' }} onClick={() => startPriceUpdate(trade)}>
-              עדכון מחיר נוכחי
             </button>
           </>
         )}
@@ -510,8 +486,9 @@ export default function AdminTradesPage() {
                 <th>נסגרה ב-</th>
                 <th>כניסה</th>
                 <th>סטופ/יציאה</th>
+                {!isClosed && <th>נוכחי</th>}
                 <th>מניות</th>
-                {isClosed && <th></th>}
+                <th></th>
               </tr>
             </thead>
             <tbody>
@@ -527,12 +504,32 @@ export default function AdminTradesPage() {
                   <td>{isClosed ? formatDate(trade.closed_at) : '—'}</td>
                   <td>${trade.entry_price.toFixed(2)}</td>
                   <td>{isClosed ? `$${trade.exit_price?.toFixed(2)}` : `$${trade.stop_loss}`}</td>
-                  <td>{trade.shares_calculated}</td>
-                  {isClosed && (
-                    <td>
-                      <button className="row-delete-btn" onClick={() => handleDeleteTrade(trade)} title="מחיקת עסקה">🗑</button>
+                  {!isClosed && (
+                    <td className="editable-cell" onClick={() => priceUpdateId !== trade.id && startPriceUpdate(trade)}>
+                      {priceUpdateId === trade.id ? (
+                        <input
+                          autoFocus
+                          type="number"
+                          value={newCurrentPrice}
+                          onChange={(e) => setNewCurrentPrice(e.target.value)}
+                          onClick={(e) => e.stopPropagation()}
+                          onKeyDown={(e) => { if (e.key === 'Enter') handlePriceUpdate(trade); if (e.key === 'Escape') setPriceUpdateId(null); }}
+                          onBlur={() => handlePriceUpdate(trade)}
+                          disabled={updatingPrice}
+                        />
+                      ) : (
+                        <><span className="pencil">✎</span>${trade.current_price ?? trade.entry_price}</>
+                      )}
                     </td>
                   )}
+                  <td>{trade.shares_calculated}</td>
+                  <td>
+                    {isClosed ? (
+                      <button className="row-delete-btn" onClick={() => handleDeleteTrade(trade)} title="מחיקת עסקה">🗑</button>
+                    ) : (
+                      <button className="qa-btn" onClick={(e) => startQuickClose(trade, e)}>⚡ סגירה</button>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -602,6 +599,24 @@ export default function AdminTradesPage() {
         {renderTradeTable(closedTrades, true, 'אין עדיין עסקאות סגורות')}
       </details>
 
+      {closingId && closingPopoverPos && (() => {
+        const trade = openTrades.find((t) => t.id === closingId);
+        if (!trade) return null;
+        return (
+          <>
+            <div className="qa-popover-backdrop" onClick={() => setClosingId(null)} />
+            <div className="qa-popover" style={{ top: closingPopoverPos.top, left: closingPopoverPos.left }}>
+              <div className="qp-title">⚡ סגירה מהירה · {trade.symbol}</div>
+              <div className="qp-field"><label>מחיר סגירה</label><ClearableInput type="number" value={exitPrice} onChange={(e) => setExitPrice(e.target.value)} onClear={() => setExitPrice('')} placeholder="130.50" /></div>
+              <div className="qp-field"><label>תאריך סגירה</label><input type="date" value={exitDate} onChange={(e) => setExitDate(e.target.value)} /></div>
+              <div className="qp-row">
+                <button className="qp-confirm" onClick={() => handleCloseTrade(trade)} disabled={closing || !exitPrice}>{closing ? 'סוגרים...' : 'אישור סגירה'}</button>
+                <button className="qp-cancel" onClick={() => setClosingId(null)}>ביטול</button>
+              </div>
+            </div>
+          </>
+        );
+      })()}
     </div>
   );
 }

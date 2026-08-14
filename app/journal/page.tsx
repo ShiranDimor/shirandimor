@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import ClearableInput from '@/components/ClearableInput';
 import StatsRing from '@/components/StatsRing';
+import EquityCurve from '@/components/EquityCurve';
+import CalendarHeatmap from '@/components/CalendarHeatmap';
 
 type JournalEntry = {
   id: string;
@@ -68,9 +70,20 @@ export default function JournalPage() {
   }
 
   const [closingId, setClosingId] = useState<string | null>(null);
+  const [closingPopoverPos, setClosingPopoverPos] = useState<{ top: number; left: number } | null>(null);
   const [exitPrice, setExitPrice] = useState('');
   const [exitDate, setExitDate] = useState('');
   const [closing, setClosing] = useState(false);
+
+  function startQuickClose(entry: JournalEntry, e: React.MouseEvent<HTMLButtonElement>) {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const popW = 230;
+    const left = Math.min(Math.max(8, rect.left), window.innerWidth - popW - 8);
+    setClosingPopoverPos({ top: rect.bottom + 8, left });
+    setClosingId(entry.id);
+    setExitPrice('');
+    setExitDate('');
+  }
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editSymbol, setEditSymbol] = useState('');
@@ -195,7 +208,7 @@ export default function JournalPage() {
 
     if (!price || !shares) return;
     if (shares >= entry.shares) {
-      setSellQtyError('למכירת כל הכמות יש להשתמש בכפתור "סגירת עסקה"');
+      setSellQtyError('למכירת כל הכמות יש להשתמש בכפתור "⚡ סגירה"');
       return;
     }
 
@@ -355,6 +368,34 @@ export default function JournalPage() {
           .map((e) => (new Date(e.closed_at as string).getTime() - new Date(e.opened_at).getTime()) / 86400000);
         const avgDaysToClose = daysToClose.length > 0 ? daysToClose.reduce((s, x) => s + x, 0) / daysToClose.length : null;
 
+        const equityPoints = (() => {
+          const chronological = closedEntries
+            .filter((e) => e.closed_at)
+            .slice()
+            .sort((a, b) => new Date(a.closed_at as string).getTime() - new Date(b.closed_at as string).getTime());
+          let running = 0;
+          const points = [{ date: 'התחלה', value: 0 }];
+          for (const e of chronological) {
+            running += e.realized_pnl_usd ?? 0;
+            points.push({ date: formatDate(e.closed_at), value: Math.round(running) });
+          }
+          return points;
+        })();
+
+        const now = new Date();
+        const calResults = closedEntries
+          .filter((e) => {
+            if (!e.closed_at) return false;
+            const d = new Date(e.closed_at);
+            return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+          })
+          .reduce((map, e) => {
+            const day = new Date(e.closed_at as string).getDate();
+            map.set(day, (map.get(day) ?? 0) + (e.realized_pnl_usd ?? 0));
+            return map;
+          }, new Map<number, number>());
+        const calDayResults = Array.from(calResults.entries()).map(([day, pnl]) => ({ day, pnl }));
+
         function renderActionPanel(e: JournalEntry) {
           return (
             <>
@@ -374,17 +415,6 @@ export default function JournalPage() {
                 <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
                   <button className="btn-primary" style={{ flex: 1 }} onClick={() => saveEdit(e)} disabled={savingEdit}>{savingEdit ? 'שומרים...' : 'שמירת שינויים'}</button>
                   <button className="btn-outline" style={{ flex: 1 }} onClick={cancelEdit}>ביטול</button>
-                </div>
-              </div>
-            ) : closingId === e.id ? (
-              <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--border-hairline)' }}>
-                <div className="form-row" style={{ marginBottom: '10px' }}>
-                  <div className="field" style={{ marginBottom: 0 }}><label>מחיר סגירה</label><ClearableInput type="number" value={exitPrice} onChange={(ev) => setExitPrice(ev.target.value)} onClear={() => setExitPrice('')} placeholder="130.50" /></div>
-                  <div className="field" style={{ marginBottom: 0 }}><label>תאריך סגירה</label><input type="date" value={exitDate} onChange={(ev) => setExitDate(ev.target.value)} /></div>
-                </div>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <button className="btn-primary" style={{ flex: 1 }} onClick={() => handleClose(e)} disabled={closing || !exitPrice}>{closing ? 'סוגרים...' : 'אישור סגירה'}</button>
-                  <button className="btn-outline" style={{ flex: 1 }} onClick={() => { setClosingId(null); setExitPrice(''); setExitDate(''); }}>ביטול</button>
                 </div>
               </div>
             ) : addQtyId === e.id ? (
@@ -416,9 +446,6 @@ export default function JournalPage() {
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '10px' }}>
                 {e.status === 'open' && (
                   <>
-                    <button className="btn-outline" style={{ flex: 1, padding: '8px', fontSize: '13px' }} onClick={() => { setClosingId(e.id); setExitPrice(''); setExitDate(''); }}>
-                      סגירת עסקה
-                    </button>
                     <button className="btn-outline" style={{ flex: 1, padding: '8px', fontSize: '13px' }} onClick={() => startAddQty(e)}>
                       הוספת כמות
                     </button>
@@ -442,6 +469,7 @@ export default function JournalPage() {
         function renderTable(list: JournalEntry[], emptyText: string) {
           if (list.length === 0) return <p className="trade-table-empty">{emptyText}</p>;
           const showDelete = list.length > 0 && list[0].status === 'closed';
+          const showQuickClose = !showDelete;
           return (
             <>
               <div className="trade-table-wrap">
@@ -455,7 +483,7 @@ export default function JournalPage() {
                       <th>סטופ/יציאה</th>
                       <th>מניות</th>
                       <th>תוצאה</th>
-                      {showDelete && <th></th>}
+                      {(showDelete || showQuickClose) && <th></th>}
                     </tr>
                   </thead>
                   <tbody>
@@ -478,6 +506,11 @@ export default function JournalPage() {
                         {showDelete && (
                           <td>
                             <button className="row-delete-btn" onClick={() => handleDelete(e)} title="מחיקת עסקה">🗑</button>
+                          </td>
+                        )}
+                        {showQuickClose && (
+                          <td>
+                            <button className="qa-btn" onClick={(ev) => startQuickClose(e, ev)}>⚡ סגירה</button>
                           </td>
                         )}
                       </tr>
@@ -505,6 +538,16 @@ export default function JournalPage() {
 
         return (
           <>
+            <div className="section-label"><h2>צמיחת היומן שלי</h2></div>
+            <div className="equity-card">
+              <EquityCurve points={equityPoints} />
+            </div>
+
+            <div className="section-label"><h2>{now.toLocaleDateString('he-IL', { month: 'long', year: 'numeric' })}</h2></div>
+            <div className="equity-card" style={{ marginBottom: '28px' }}>
+              <CalendarHeatmap year={now.getFullYear()} month={now.getMonth()} results={calDayResults} />
+            </div>
+
             <details className="section-collapse" open>
               <summary>
                 <h2>עסקאות פתוחות</h2>
@@ -559,6 +602,25 @@ export default function JournalPage() {
                 </div>
               </div>
             </div>
+
+            {closingId && closingPopoverPos && (() => {
+              const entry = openEntries.find((en) => en.id === closingId);
+              if (!entry) return null;
+              return (
+                <>
+                  <div className="qa-popover-backdrop" onClick={() => setClosingId(null)} />
+                  <div className="qa-popover" style={{ top: closingPopoverPos.top, left: closingPopoverPos.left }}>
+                    <div className="qp-title">⚡ סגירה מהירה · {entry.symbol}</div>
+                    <div className="qp-field"><label>מחיר סגירה</label><ClearableInput type="number" value={exitPrice} onChange={(e) => setExitPrice(e.target.value)} onClear={() => setExitPrice('')} placeholder="130.50" /></div>
+                    <div className="qp-field"><label>תאריך סגירה</label><input type="date" value={exitDate} onChange={(e) => setExitDate(e.target.value)} /></div>
+                    <div className="qp-row">
+                      <button className="qp-confirm" onClick={() => handleClose(entry)} disabled={closing || !exitPrice}>{closing ? 'סוגרים...' : 'אישור סגירה'}</button>
+                      <button className="qp-cancel" onClick={() => setClosingId(null)}>ביטול</button>
+                    </div>
+                  </div>
+                </>
+              );
+            })()}
           </>
         );
       })()}
