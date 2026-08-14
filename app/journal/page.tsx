@@ -36,7 +36,6 @@ export default function JournalPage() {
   const [symbol, setSymbol] = useState('');
   const [entryPrice, setEntryPrice] = useState('');
   const [stopLoss, setStopLoss] = useState('');
-  const [portfolioSize, setPortfolioSize] = useState('');
   const [riskAmount, setRiskAmount] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -267,7 +266,6 @@ export default function JournalPage() {
       symbol: symbol.toUpperCase(),
       entry_price: parseFloat(entryPrice),
       stop_loss: parseFloat(stopLoss),
-      starting_portfolio_usd: portfolioSize ? parseFloat(portfolioSize) : null,
       risk_amount_usd: parseFloat(riskAmount),
       shares: calcShares,
       status: 'open',
@@ -324,10 +322,7 @@ export default function JournalPage() {
             <div className="field"><label>מחיר כניסה</label><ClearableInput type="number" value={entryPrice} onChange={(e) => setEntryPrice(e.target.value)} onClear={() => setEntryPrice('')} placeholder="127.32" /></div>
             <div className="field"><label>סטופ לוס</label><ClearableInput type="number" value={stopLoss} onChange={(e) => setStopLoss(e.target.value)} onClear={() => setStopLoss('')} placeholder="121.00" /></div>
           </div>
-          <div className="form-row">
-            <div className="field"><label>גודל תיק ($)</label><ClearableInput type="number" value={portfolioSize} onChange={(e) => setPortfolioSize(e.target.value)} onClear={() => setPortfolioSize('')} placeholder="10000" /></div>
-            <div className="field"><label>סיכון כספי ($)</label><ClearableInput type="number" value={riskAmount} onChange={(e) => setRiskAmount(e.target.value)} onClear={() => setRiskAmount('')} placeholder="500" /></div>
-          </div>
+          <div className="field"><label>סיכון כספי ($)</label><ClearableInput type="number" value={riskAmount} onChange={(e) => setRiskAmount(e.target.value)} onClear={() => setRiskAmount('')} placeholder="500" /></div>
           <div style={{ background: 'var(--bg-void)', border: '1px solid var(--border-hairline)', borderRadius: '8px', padding: '10px 12px', marginBottom: '14px', display: 'flex', justifyContent: 'space-between' }}>
             <span style={{ fontSize: '12.5px', color: 'var(--text-secondary)' }}>כמות מניות מחושבת</span>
             <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, color: 'var(--teal)' }}>{calcShares || '—'}</span>
@@ -446,6 +441,7 @@ export default function JournalPage() {
 
         function renderTable(list: JournalEntry[], emptyText: string) {
           if (list.length === 0) return <p className="trade-table-empty">{emptyText}</p>;
+          const showDelete = list.length > 0 && list[0].status === 'closed';
           return (
             <>
               <div className="trade-table-wrap">
@@ -459,6 +455,7 @@ export default function JournalPage() {
                       <th>סטופ/יציאה</th>
                       <th>מניות</th>
                       <th>תוצאה</th>
+                      {showDelete && <th></th>}
                     </tr>
                   </thead>
                   <tbody>
@@ -478,6 +475,11 @@ export default function JournalPage() {
                         <td className="pnl-cell" style={{ color: e.status === 'open' ? 'var(--text-secondary)' : (e.realized_pnl_usd ?? 0) >= 0 ? 'var(--profit)' : 'var(--loss)' }}>
                           {e.status === 'open' ? 'פתוחה' : `${(e.realized_pnl_usd ?? 0) >= 0 ? '+' : ''}$${(e.realized_pnl_usd ?? 0).toFixed(2)}`}
                         </td>
+                        {showDelete && (
+                          <td>
+                            <button className="row-delete-btn" onClick={() => handleDelete(e)} title="מחיקת עסקה">🗑</button>
+                          </td>
+                        )}
                       </tr>
                     ))}
                   </tbody>

@@ -129,6 +129,8 @@
   .trade-table td.pnl-cell { font-weight: 600; }
   .trade-table .usd-sub { font-size: 10.5px; color: var(--text-tertiary); display: block; margin-top: 1px; }
   .trade-table-empty { padding: 16px; font-size: 13px; color: var(--text-tertiary); text-align: center; }
+  .row-delete-btn { background: none; border: none; cursor: pointer; font-size: 14px; padding: 4px 6px; border-radius: 6px; opacity: 0.75; transition: opacity 0.15s ease, background 0.15s ease; }
+  .row-delete-btn:hover { opacity: 1; background: var(--loss-bg); }
 
   .entry-actions-list { display: flex; flex-direction: column; gap: 6px; margin-top: -6px; margin-bottom: 32px; }
   .entry-actions-row { background: var(--bg-surface); border: 1px solid var(--border-hairline); border-radius: 10px; padding: 10px 12px; }

@@ -511,6 +511,7 @@ export default function AdminTradesPage() {
                 <th>כניסה</th>
                 <th>סטופ/יציאה</th>
                 <th>מניות</th>
+                {isClosed && <th></th>}
               </tr>
             </thead>
             <tbody>
@@ -527,6 +528,11 @@ export default function AdminTradesPage() {
                   <td>${trade.entry_price.toFixed(2)}</td>
                   <td>{isClosed ? `$${trade.exit_price?.toFixed(2)}` : `$${trade.stop_loss}`}</td>
                   <td>{trade.shares_calculated}</td>
+                  {isClosed && (
+                    <td>
+                      <button className="row-delete-btn" onClick={() => handleDeleteTrade(trade)} title="מחיקת עסקה">🗑</button>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
