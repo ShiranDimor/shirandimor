@@ -225,9 +225,13 @@
   .hero-v2 h1 { font-family: var(--font-display); font-size: 32px; line-height: 1.25; margin-bottom: 16px; font-weight: 500; letter-spacing: -0.3px; }
   .hero-v2 h1 em { font-style: normal; color: var(--teal); }
   .hero-v2 p { color: var(--text-secondary); font-size: 15px; margin-bottom: 24px; line-height: 1.65; max-width: 40ch; }
-  .cta-main { display: block; text-align: center; background: var(--teal); color: var(--bg-void); border-radius: 10px; padding: 15px; font-size: 15.5px; font-weight: 700; text-decoration: none; margin-bottom: 10px; transition: transform 0.15s ease, box-shadow 0.15s ease; box-shadow: 0 0 0 0 rgba(79,201,196,0); }
+  .cta-main { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 8px; text-align: center; background: var(--teal); color: var(--bg-void); border-radius: 10px; padding: 15px; font-size: 15.5px; font-weight: 700; text-decoration: none; margin-bottom: 10px; transition: transform 0.15s ease, box-shadow 0.15s ease; box-shadow: 0 0 0 0 rgba(79,201,196,0); }
   .cta-main:hover { transform: translateY(-1px); box-shadow: 0 8px 24px -8px rgba(79,201,196,0.45); }
   .cta-main:active { transform: translateY(0); }
+  .cta-main .free-tag {
+    font-size: 11px; font-weight: 700; color: var(--bg-void); background: rgba(8,11,18,0.16);
+    border-radius: 20px; padding: 3px 10px; white-space: nowrap;
+  }
   .cta-sub-link { display: block; text-align: center; font-size: 12.5px; color: var(--text-tertiary); text-decoration: none; }
   .cta-sub-link span { color: var(--lavender); font-weight: 600; }
 

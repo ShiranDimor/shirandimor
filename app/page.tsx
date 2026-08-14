@@ -67,7 +67,8 @@ export default function HomePage() {
 
         {!showLeadForm && (
           <button className="cta-main" style={{ border: 'none', cursor: 'pointer', width: '100%' }} onClick={() => setShowLeadForm(true)}>
-            הצטרפות לקבוצת העדכונים - חינם
+            הצטרפות לקבוצת העדכונים
+            <span className="free-tag">ללא עלות</span>
           </button>
         )}
 
@@ -161,7 +162,7 @@ export default function HomePage() {
       <div className="groups-compare">
         <div className="group-card free">
           <h3>קבוצת עדכונים</h3>
-          <div className="gc-price">חינם</div>
+          <div className="gc-price">ללא עלות</div>
           <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '-10px', marginBottom: '14px' }}>בלי חובת רכישה, בלי לחץ</div>
           <div className="gc-perks">
             <div>עדכונים בלי רעש - מה שבאמת קורה בשוק, בלי הצפה של הודעות</div>
@@ -169,7 +170,7 @@ export default function HomePage() {
             <div>מושג אחד בשבוע - פשוט, ברור, ואפשר להשתמש בו מיד</div>
             <div>הצטרפות בלחיצה אחת, בלי התחייבות ובלי מכירות</div>
           </div>
-          <a className="gc-cta" href="#" onClick={(e) => { e.preventDefault(); window.scrollTo(0, 0); setShowLeadForm(true); }}>הצטרפות חינם</a>
+          <a className="gc-cta" href="#" onClick={(e) => { e.preventDefault(); window.scrollTo(0, 0); setShowLeadForm(true); }}>הצטרפות ללא עלות</a>
         </div>
         <div className="group-card paid">
           <div className="gc-tag">גישה מלאה</div>
