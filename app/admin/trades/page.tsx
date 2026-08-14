@@ -4,13 +4,15 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 
-type OpenTrade = {
+type Trade = {
   id: string;
   direction: string;
   symbol: string;
   entry_price: number;
   stop_loss: number;
   shares_calculated: number;
+  exit_price: number | null;
+  notes: string | null;
 };
 
 export default function AdminTradesPage() {
@@ -18,11 +20,21 @@ export default function AdminTradesPage() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [userEmail, setUserEmail] = useState('');
 
-  const [openTrades, setOpenTrades] = useState<OpenTrade[]>([]);
+  const [openTrades, setOpenTrades] = useState<Trade[]>([]);
+  const [closedTrades, setClosedTrades] = useState<Trade[]>([]);
+
   const [closingId, setClosingId] = useState<string | null>(null);
   const [exitPrice, setExitPrice] = useState('');
   const [exitDate, setExitDate] = useState('');
   const [closing, setClosing] = useState(false);
+
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editSymbol, setEditSymbol] = useState('');
+  const [editEntry, setEditEntry] = useState('');
+  const [editStop, setEditStop] = useState('');
+  const [editShares, setEditShares] = useState('');
+  const [editExitPrice, setEditExitPrice] = useState('');
+  const [savingEdit, setSavingEdit] = useState(false);
 
   const [direction, setDirection] = useState<'long' | 'short'>('long');
   const [symbol, setSymbol] = useState('');
@@ -36,16 +48,23 @@ export default function AdminTradesPage() {
     checkAdmin();
   }, []);
 
-  async function loadOpenTrades() {
-    const { data } = await supabase
+  async function loadTrades() {
+    const { data: open } = await supabase
       .from('trades')
-      .select('id, direction, symbol, entry_price, stop_loss, shares_calculated')
+      .select('id, direction, symbol, entry_price, stop_loss, shares_calculated, exit_price, notes')
       .eq('status', 'open')
       .order('opened_at', { ascending: false });
-    if (data) setOpenTrades(data);
+    if (open) setOpenTrades(open);
+
+    const { data: closed } = await supabase
+      .from('trades')
+      .select('id, direction, symbol, entry_price, stop_loss, shares_calculated, exit_price, notes')
+      .eq('status', 'closed')
+      .order('closed_at', { ascending: false });
+    if (closed) setClosedTrades(closed);
   }
 
-  async function handleCloseTrade(trade: OpenTrade) {
+  async function handleCloseTrade(trade: Trade) {
     if (!exitPrice) return;
     setClosing(true);
 
@@ -69,8 +88,58 @@ export default function AdminTradesPage() {
       setClosingId(null);
       setExitPrice('');
       setExitDate('');
-      loadOpenTrades();
+      loadTrades();
     }
+  }
+
+  function startEdit(trade: Trade) {
+    setEditingId(trade.id);
+    setEditSymbol(trade.symbol);
+    setEditEntry(String(trade.entry_price));
+    setEditStop(String(trade.stop_loss));
+    setEditShares(String(trade.shares_calculated));
+    setEditExitPrice(trade.exit_price !== null ? String(trade.exit_price) : '');
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+  }
+
+  async function saveEdit(trade: Trade, isClosed: boolean) {
+    setSavingEdit(true);
+
+    const entry = parseFloat(editEntry);
+    const stop = parseFloat(editStop);
+    const shares = parseFloat(editShares);
+    const dirFactor = trade.direction === 'short' ? -1 : 1;
+
+    const updates: Record<string, unknown> = {
+      symbol: editSymbol.toUpperCase(),
+      entry_price: entry,
+      stop_loss: stop,
+      shares_calculated: shares,
+    };
+
+    if (isClosed && editExitPrice) {
+      const exit = parseFloat(editExitPrice);
+      updates.exit_price = exit;
+      updates.realized_pnl_usd = (exit - entry) * shares * dirFactor;
+    }
+
+    const { error } = await supabase.from('trades').update(updates).eq('id', trade.id);
+
+    setSavingEdit(false);
+
+    if (!error) {
+      setEditingId(null);
+      loadTrades();
+    }
+  }
+
+  async function handleDeleteTrade(trade: Trade) {
+    if (!window.confirm(`למחוק לצמיתות את העסקה ${trade.symbol}?`)) return;
+    const { error } = await supabase.from('trades').delete().eq('id', trade.id);
+    if (!error) loadTrades();
   }
 
   async function checkAdmin() {
@@ -92,7 +161,7 @@ export default function AdminTradesPage() {
     setIsAdmin(profile?.role === 'admin');
     setChecking(false);
     if (profile?.role === 'admin') {
-      loadOpenTrades();
+      loadTrades();
     }
   }
 
@@ -134,7 +203,7 @@ export default function AdminTradesPage() {
       setSymbol('');
       setEntryPrice('');
       setStopLoss('');
-      loadOpenTrades();
+      loadTrades();
     }
   }
 
@@ -174,6 +243,28 @@ export default function AdminTradesPage() {
     );
   }
 
+  function renderEditForm(trade: Trade, isClosed: boolean) {
+    return (
+      <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--border-hairline)' }}>
+        <div className="form-row" style={{ marginBottom: '10px' }}>
+          <div className="field" style={{ marginBottom: 0 }}><label>סימבול</label><input type="text" value={editSymbol} onChange={(e) => setEditSymbol(e.target.value)} /></div>
+          <div className="field" style={{ marginBottom: 0 }}><label>מניות</label><input type="number" value={editShares} onChange={(e) => setEditShares(e.target.value)} /></div>
+        </div>
+        <div className="form-row" style={{ marginBottom: isClosed ? '10px' : 0 }}>
+          <div className="field" style={{ marginBottom: 0 }}><label>מחיר כניסה</label><input type="number" value={editEntry} onChange={(e) => setEditEntry(e.target.value)} /></div>
+          <div className="field" style={{ marginBottom: 0 }}><label>סטופ לוס</label><input type="number" value={editStop} onChange={(e) => setEditStop(e.target.value)} /></div>
+        </div>
+        {isClosed && (
+          <div className="field"><label>מחיר יציאה</label><input type="number" value={editExitPrice} onChange={(e) => setEditExitPrice(e.target.value)} /></div>
+        )}
+        <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
+          <button className="btn-primary" style={{ flex: 1 }} onClick={() => saveEdit(trade, isClosed)} disabled={savingEdit}>{savingEdit ? 'שומרים...' : 'שמירת שינויים'}</button>
+          <button className="btn-outline" style={{ flex: 1 }} onClick={cancelEdit}>ביטול</button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="wrap">
       <header>
@@ -201,7 +292,9 @@ export default function AdminTradesPage() {
             <div className="detail-item"><div className="label">מניות</div><div className="value">{trade.shares_calculated}</div></div>
           </div>
 
-          {closingId === trade.id ? (
+          {editingId === trade.id ? (
+            renderEditForm(trade, false)
+          ) : closingId === trade.id ? (
             <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--border-hairline)' }}>
               <div className="form-row" style={{ marginBottom: '10px' }}>
                 <div className="field" style={{ marginBottom: 0 }}><label>מחיר סגירה</label><input type="number" value={exitPrice} onChange={(e) => setExitPrice(e.target.value)} placeholder="130.50" /></div>
@@ -213,13 +306,48 @@ export default function AdminTradesPage() {
               </div>
             </div>
           ) : (
-            <button
-              className="btn-outline"
-              style={{ marginTop: '10px', padding: '8px', fontSize: '13px' }}
-              onClick={() => { setClosingId(trade.id); setExitPrice(''); setExitDate(''); }}
-            >
-              סגירת עסקה
-            </button>
+            <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
+              <button className="btn-outline" style={{ flex: 1, padding: '8px', fontSize: '13px' }} onClick={() => { setClosingId(trade.id); setExitPrice(''); setExitDate(''); }}>
+                סגירת עסקה
+              </button>
+              <button className="btn-outline" style={{ flex: 1, padding: '8px', fontSize: '13px' }} onClick={() => startEdit(trade)}>
+                עריכה
+              </button>
+              <button className="btn-outline" style={{ padding: '8px 14px', fontSize: '13px', color: 'var(--loss)', borderColor: 'var(--loss)' }} onClick={() => handleDeleteTrade(trade)}>
+                מחיקה
+              </button>
+            </div>
+          )}
+        </div>
+      ))}
+
+      <div className="section-label" style={{ marginTop: '28px' }}><h2>עסקאות סגורות בתיק</h2><span className="count">{closedTrades.length}</span></div>
+      {closedTrades.length === 0 && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)', marginBottom: '20px' }}>אין עדיין עסקאות סגורות</p>}
+      {closedTrades.map((trade) => (
+        <div className="trade-card" key={trade.id} style={{ marginBottom: '10px' }}>
+          <div className="trade-top">
+            <div className="trade-symbol-group">
+              <div className={`direction-mark ${trade.direction}`}>{trade.direction === 'long' ? 'L' : 'S'}</div>
+              <div className="trade-symbol">{trade.symbol}</div>
+            </div>
+          </div>
+          <div className="trade-details">
+            <div className="detail-item"><div className="label">כניסה</div><div className="value">${trade.entry_price}</div></div>
+            <div className="detail-item"><div className="label">יציאה</div><div className="value">${trade.exit_price}</div></div>
+            <div className="detail-item"><div className="label">מניות</div><div className="value">{trade.shares_calculated}</div></div>
+          </div>
+
+          {editingId === trade.id ? (
+            renderEditForm(trade, true)
+          ) : (
+            <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
+              <button className="btn-outline" style={{ flex: 1, padding: '8px', fontSize: '13px' }} onClick={() => startEdit(trade)}>
+                עריכה
+              </button>
+              <button className="btn-outline" style={{ padding: '8px 14px', fontSize: '13px', color: 'var(--loss)', borderColor: 'var(--loss)' }} onClick={() => handleDeleteTrade(trade)}>
+                מחיקה
+              </button>
+            </div>
           )}
         </div>
       ))}

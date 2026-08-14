@@ -64,6 +64,14 @@ export default function JournalPage() {
   const [exitDate, setExitDate] = useState('');
   const [closing, setClosing] = useState(false);
 
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editSymbol, setEditSymbol] = useState('');
+  const [editEntry, setEditEntry] = useState('');
+  const [editStop, setEditStop] = useState('');
+  const [editShares, setEditShares] = useState('');
+  const [editExitPrice, setEditExitPrice] = useState('');
+  const [savingEdit, setSavingEdit] = useState(false);
+
   async function handleClose(entry: JournalEntry) {
     if (!exitPrice) return;
     setClosing(true);
@@ -90,6 +98,56 @@ export default function JournalPage() {
       setExitDate('');
       load();
     }
+  }
+
+  function startEdit(entry: JournalEntry) {
+    setEditingId(entry.id);
+    setEditSymbol(entry.symbol);
+    setEditEntry(String(entry.entry_price));
+    setEditStop(String(entry.stop_loss));
+    setEditShares(String(entry.shares));
+    setEditExitPrice(entry.exit_price !== null ? String(entry.exit_price) : '');
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+  }
+
+  async function saveEdit(entry: JournalEntry) {
+    setSavingEdit(true);
+
+    const entryPriceNum = parseFloat(editEntry);
+    const stopNum = parseFloat(editStop);
+    const sharesNum = parseFloat(editShares);
+    const dirFactor = entry.direction === 'short' ? -1 : 1;
+
+    const updates: Record<string, unknown> = {
+      symbol: editSymbol.toUpperCase(),
+      entry_price: entryPriceNum,
+      stop_loss: stopNum,
+      shares: sharesNum,
+    };
+
+    if (entry.status === 'closed' && editExitPrice) {
+      const exit = parseFloat(editExitPrice);
+      updates.exit_price = exit;
+      updates.realized_pnl_usd = (exit - entryPriceNum) * sharesNum * dirFactor;
+    }
+
+    const { error } = await supabase.from('journal_entries').update(updates).eq('id', entry.id);
+
+    setSavingEdit(false);
+
+    if (!error) {
+      setEditingId(null);
+      load();
+    }
+  }
+
+  async function handleDelete(entry: JournalEntry) {
+    if (!window.confirm(`למחוק לצמיתות את העסקה ${entry.symbol}?`)) return;
+    const { error } = await supabase.from('journal_entries').delete().eq('id', entry.id);
+    if (!error) load();
   }
 
   async function handleAdd() {
@@ -200,27 +258,49 @@ export default function JournalPage() {
               <div className="detail-item"><div className="label">מניות</div><div className="value">{e.shares}</div></div>
             </div>
 
-            {e.status === 'open' && (
-              closingId === e.id ? (
-                <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--border-hairline)' }}>
-                  <div className="form-row" style={{ marginBottom: '10px' }}>
-                    <div className="field" style={{ marginBottom: 0 }}><label>מחיר סגירה</label><input type="number" value={exitPrice} onChange={(ev) => setExitPrice(ev.target.value)} placeholder="130.50" /></div>
-                    <div className="field" style={{ marginBottom: 0 }}><label>תאריך סגירה</label><input type="date" value={exitDate} onChange={(ev) => setExitDate(ev.target.value)} /></div>
-                  </div>
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    <button className="btn-primary" style={{ flex: 1 }} onClick={() => handleClose(e)} disabled={closing || !exitPrice}>{closing ? 'סוגרים...' : 'אישור סגירה'}</button>
-                    <button className="btn-outline" style={{ flex: 1 }} onClick={() => { setClosingId(null); setExitPrice(''); setExitDate(''); }}>ביטול</button>
-                  </div>
+            {editingId === e.id ? (
+              <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--border-hairline)' }}>
+                <div className="form-row" style={{ marginBottom: '10px' }}>
+                  <div className="field" style={{ marginBottom: 0 }}><label>סימבול</label><input type="text" value={editSymbol} onChange={(ev) => setEditSymbol(ev.target.value)} /></div>
+                  <div className="field" style={{ marginBottom: 0 }}><label>מניות</label><input type="number" value={editShares} onChange={(ev) => setEditShares(ev.target.value)} /></div>
                 </div>
-              ) : (
-                <button
-                  className="btn-outline"
-                  style={{ marginTop: '10px', padding: '8px', fontSize: '13px' }}
-                  onClick={() => { setClosingId(e.id); setExitPrice(''); setExitDate(''); }}
-                >
-                  סגירת עסקה
+                <div className="form-row" style={{ marginBottom: e.status === 'closed' ? '10px' : 0 }}>
+                  <div className="field" style={{ marginBottom: 0 }}><label>מחיר כניסה</label><input type="number" value={editEntry} onChange={(ev) => setEditEntry(ev.target.value)} /></div>
+                  <div className="field" style={{ marginBottom: 0 }}><label>סטופ לוס</label><input type="number" value={editStop} onChange={(ev) => setEditStop(ev.target.value)} /></div>
+                </div>
+                {e.status === 'closed' && (
+                  <div className="field"><label>מחיר יציאה</label><input type="number" value={editExitPrice} onChange={(ev) => setEditExitPrice(ev.target.value)} /></div>
+                )}
+                <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
+                  <button className="btn-primary" style={{ flex: 1 }} onClick={() => saveEdit(e)} disabled={savingEdit}>{savingEdit ? 'שומרים...' : 'שמירת שינויים'}</button>
+                  <button className="btn-outline" style={{ flex: 1 }} onClick={cancelEdit}>ביטול</button>
+                </div>
+              </div>
+            ) : closingId === e.id ? (
+              <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--border-hairline)' }}>
+                <div className="form-row" style={{ marginBottom: '10px' }}>
+                  <div className="field" style={{ marginBottom: 0 }}><label>מחיר סגירה</label><input type="number" value={exitPrice} onChange={(ev) => setExitPrice(ev.target.value)} placeholder="130.50" /></div>
+                  <div className="field" style={{ marginBottom: 0 }}><label>תאריך סגירה</label><input type="date" value={exitDate} onChange={(ev) => setExitDate(ev.target.value)} /></div>
+                </div>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button className="btn-primary" style={{ flex: 1 }} onClick={() => handleClose(e)} disabled={closing || !exitPrice}>{closing ? 'סוגרים...' : 'אישור סגירה'}</button>
+                  <button className="btn-outline" style={{ flex: 1 }} onClick={() => { setClosingId(null); setExitPrice(''); setExitDate(''); }}>ביטול</button>
+                </div>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
+                {e.status === 'open' && (
+                  <button className="btn-outline" style={{ flex: 1, padding: '8px', fontSize: '13px' }} onClick={() => { setClosingId(e.id); setExitPrice(''); setExitDate(''); }}>
+                    סגירת עסקה
+                  </button>
+                )}
+                <button className="btn-outline" style={{ flex: 1, padding: '8px', fontSize: '13px' }} onClick={() => startEdit(e)}>
+                  עריכה
                 </button>
-              )
+                <button className="btn-outline" style={{ padding: '8px 14px', fontSize: '13px', color: 'var(--loss)', borderColor: 'var(--loss)' }} onClick={() => handleDelete(e)}>
+                  מחיקה
+                </button>
+              </div>
             )}
           </div>
         ))}
