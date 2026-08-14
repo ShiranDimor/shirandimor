@@ -1,18 +1,51 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import ClearableInput from '@/components/ClearableInput';
 
-type Step = 'email' | 'phone' | 'sent' | 'rejected';
+type Step = 'email' | 'phone' | 'sent' | 'rejected' | 'password';
 
 export default function LoginPage() {
+  const router = useRouter();
   const [step, setStep] = useState<Step>('email');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  async function handlePasswordLogin() {
+    if (!email || !password) return;
+    setLoading(true);
+    setError('');
+
+    const { data, error: authError } = await supabase.auth.signInWithPassword({ email, password });
+
+    setLoading(false);
+
+    if (authError || !data.user) {
+      setError('מייל או סיסמה שגויים.');
+      return;
+    }
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', data.user.id)
+      .single();
+
+    if (profile?.role === 'admin') {
+      router.push('/admin');
+    } else if (profile?.role === 'subscriber') {
+      router.push('/portfolio');
+    } else {
+      router.push('/subscribe');
+    }
+  }
 
   async function sendMagicLink() {
     const { error: authError } = await supabase.auth.signInWithOtp({
@@ -113,6 +146,62 @@ export default function LoginPage() {
           </button>
           <p style={{ marginTop: '10px', fontSize: '11px', color: 'var(--text-tertiary)', textAlign: 'center' }}>
             מי שעדיין לא מנוי מאושר - נבקש אימות נייד לפני שליחת הקישור
+          </p>
+          <p style={{ marginTop: '12px', fontSize: '12px', color: 'var(--text-tertiary)', textAlign: 'center' }}>
+            <a href="#" onClick={(e) => { e.preventDefault(); setStep('password'); setError(''); }} style={{ color: 'var(--lavender)' }}>
+              יש לך סיסמה? כניסה איתה
+            </a>
+          </p>
+
+          {error && <p style={{ color: 'var(--loss)', fontSize: '12px', textAlign: 'center', marginTop: '10px' }}>{error}</p>}
+        </>
+      )}
+
+      {step === 'password' && (
+        <>
+          <div className="field">
+            <label>אימייל</label>
+            <ClearableInput
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              onClear={() => setEmail('')}
+              placeholder="name@example.com"
+              style={{ borderColor: 'var(--lavender-dim)' }}
+            />
+          </div>
+          <div className="field">
+            <label>סיסמה</label>
+            <div className="pw-wrap">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                style={{ borderColor: 'var(--lavender-dim)' }}
+              />
+              <button
+                type="button"
+                className="pw-toggle"
+                onClick={() => setShowPassword((s) => !s)}
+                aria-label={showPassword ? 'הסתרת סיסמה' : 'הצגת סיסמה'}
+              >
+                {showPassword ? (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" /><circle cx="12" cy="12" r="3" /></svg>
+                ) : (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3l18 18" /><path d="M10.6 5.2A10.7 10.7 0 0 1 12 5c6.5 0 10 7 10 7a17.6 17.6 0 0 1-4 4.7M6.3 6.3C3.6 8 2 12 2 12s3.5 7 10 7c1.3 0 2.5-.2 3.6-.6" /><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" /></svg>
+                )}
+              </button>
+            </div>
+          </div>
+
+          <button className="btn-primary" style={{ background: 'var(--lavender)' }} onClick={handlePasswordLogin} disabled={loading || !email || !password}>
+            {loading ? 'מתבצעת כניסה...' : 'כניסה'}
+          </button>
+          <p style={{ marginTop: '12px', fontSize: '12px', color: 'var(--text-tertiary)', textAlign: 'center' }}>
+            <a href="#" onClick={(e) => { e.preventDefault(); setStep('email'); setError(''); }} style={{ color: 'var(--lavender)' }}>
+              ← חזרה לכניסה עם קישור למייל
+            </a>
           </p>
 
           {error && <p style={{ color: 'var(--loss)', fontSize: '12px', textAlign: 'center', marginTop: '10px' }}>{error}</p>}

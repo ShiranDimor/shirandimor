@@ -189,6 +189,14 @@
     display: flex; align-items: center; justify-content: center;
   }
   .input-clear:hover { color: var(--text-secondary); background: var(--border-hairline-strong); }
+  .pw-wrap { position: relative; }
+  .pw-wrap input { padding-left: 40px; }
+  .pw-toggle {
+    position: absolute; left: 4px; top: 50%; transform: translateY(-50%);
+    background: none; border: none; cursor: pointer; padding: 8px;
+    display: flex; align-items: center; justify-content: center; color: var(--text-tertiary);
+  }
+  .pw-toggle:hover { color: var(--text-secondary); }
   .btn-primary { width: 100%; background: var(--teal); color: var(--bg-void); border: none; border-radius: 8px; padding: 12px; font-size: 15px; font-weight: 600; cursor: pointer; font-family: var(--font-body); }
   .btn-outline { width: 100%; background: transparent; color: var(--text-primary); border: 1px solid var(--border-hairline-strong); border-radius: 8px; padding: 12px; font-size: 15px; font-weight: 600; cursor: pointer; font-family: var(--font-body); }
   .form-title { font-family: var(--font-display); font-size: 22px; text-align: center; margin: 20px 0 6px; }
