@@ -16,8 +16,14 @@ type JournalEntry = {
   shares: number;
   realized_pnl_usd: number | null;
   opened_at: string;
+  closed_at: string | null;
   parent_entry_id: string | null;
 };
+
+function formatDate(iso: string | null) {
+  if (!iso) return '';
+  return new Date(iso).toLocaleDateString('he-IL');
+}
 
 export default function JournalPage() {
   const [loading, setLoading] = useState(true);
@@ -329,9 +335,15 @@ export default function JournalPage() {
         </div>
       )}
 
-      <div className="trades-list">
-        {entries.length === 0 && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>עדיין לא הזנת עסקאות</p>}
-        {entries.map((e) => (
+      {entries.length === 0 && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>עדיין לא הזנת עסקאות</p>}
+
+      {(() => {
+        const openEntries = entries.filter((e) => e.status === 'open');
+        const closedProfit = entries.filter((e) => e.status === 'closed' && (e.realized_pnl_usd ?? 0) >= 0);
+        const closedLoss = entries.filter((e) => e.status === 'closed' && (e.realized_pnl_usd ?? 0) < 0);
+
+        function renderCard(e: JournalEntry) {
+          return (
           <div className="trade-card" key={e.id}>
             <div className="trade-top">
               <div className="trade-symbol-group">
@@ -347,6 +359,10 @@ export default function JournalPage() {
                   </div>
                 )}
               </div>
+            </div>
+            <div className="trade-date-row">
+              נפתחה ב-{formatDate(e.opened_at)}
+              {e.status === 'closed' && <> · נסגרה ב-{formatDate(e.closed_at)}</>}
             </div>
             <div className="trade-details">
               <div className="detail-item"><div className="label">כניסה</div><div className="value">${e.entry_price.toFixed(2)}</div></div>
@@ -436,8 +452,46 @@ export default function JournalPage() {
               </div>
             )}
           </div>
-        ))}
-      </div>
+          );
+        }
+
+        return (
+          <>
+            <details className="section-collapse" open>
+              <summary>
+                <h2>עסקאות פתוחות</h2>
+                <div className="summary-right"><span className="count">{openEntries.length}</span><span className="collapse-chevron">▾</span></div>
+              </summary>
+              <div className="trades-list">
+                {openEntries.length === 0 && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>אין כרגע עסקאות פתוחות</p>}
+                {openEntries.map(renderCard)}
+              </div>
+            </details>
+
+            <details className="section-collapse">
+              <summary>
+                <h2>נסגרו ברווח</h2>
+                <div className="summary-right"><span className="count">{closedProfit.length}</span><span className="collapse-chevron">▾</span></div>
+              </summary>
+              <div className="trades-list">
+                {closedProfit.length === 0 && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>אין עדיין עסקאות שנסגרו ברווח</p>}
+                {closedProfit.map(renderCard)}
+              </div>
+            </details>
+
+            <details className="section-collapse">
+              <summary>
+                <h2>נסגרו בהפסד</h2>
+                <div className="summary-right"><span className="count">{closedLoss.length}</span><span className="collapse-chevron">▾</span></div>
+              </summary>
+              <div className="trades-list">
+                {closedLoss.length === 0 && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>אין עדיין עסקאות שנסגרו בהפסד</p>}
+                {closedLoss.map(renderCard)}
+              </div>
+            </details>
+          </>
+        );
+      })()}
     </div>
   );
 }

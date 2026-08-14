@@ -28,9 +28,17 @@ export default function HomePage() {
   const [lastClosed, setLastClosed] = useState<Trade | null>(null);
   const [openCount, setOpenCount] = useState(0);
 
+  function handlePhoneChange(value: string) {
+    setLeadPhone(value.replace(/\D/g, '').slice(0, 10));
+  }
+
   async function handleLeadSubmit() {
     if (!leadName || !leadPhone) {
       setLeadError('צריך למלא שם ומספר נייד');
+      return;
+    }
+    if (!/^05\d{8}$/.test(leadPhone)) {
+      setLeadError('מספר נייד לא תקין - לדוגמה 0501234567');
       return;
     }
     setLeadSubmitting(true);
@@ -115,7 +123,7 @@ export default function HomePage() {
             </div>
             <div className="field" style={{ marginBottom: '10px' }}>
               <label>נייד</label>
-              <ClearableInput type="tel" value={leadPhone} onChange={(e) => setLeadPhone(e.target.value)} onClear={() => setLeadPhone('')} placeholder="050-0000000" />
+              <ClearableInput type="tel" inputMode="numeric" value={leadPhone} onChange={(e) => handlePhoneChange(e.target.value)} onClear={() => setLeadPhone('')} placeholder="0501234567" maxLength={10} />
             </div>
             <div className="field">
               <label>אימייל <span style={{ color: 'var(--text-tertiary)', fontWeight: 400 }}>(לא חובה)</span></label>

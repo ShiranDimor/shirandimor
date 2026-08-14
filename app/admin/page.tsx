@@ -95,7 +95,6 @@ export default function AdminDashboard() {
         <a href="/" className="brand">מסחר <span>אחראי</span> במניות</a>
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
           <a href="/" className="nav-link">בית</a>
-          <a href="/account" className="nav-link">הגדרת סיסמה</a>
           <button onClick={handleLogout} className="nav-link" style={{ background: 'none', border: 'none', cursor: 'pointer', font: 'inherit', padding: 0 }}>התנתקות</button>
         </div>
       </header>

@@ -9,6 +9,7 @@ type ApprovedSub = {
   email: string;
   full_name: string | null;
   subscription_status: string | null;
+  subscription_started_at: string | null;
 };
 
 export default function AdminSubscribersPage() {
@@ -17,6 +18,7 @@ export default function AdminSubscribersPage() {
   const [userEmail, setUserEmail] = useState('');
 
   const [approvedSubs, setApprovedSubs] = useState<ApprovedSub[]>([]);
+  const [sortBy, setSortBy] = useState<'date' | 'name'>('date');
 
   useEffect(() => {
     checkAdmin();
@@ -25,7 +27,7 @@ export default function AdminSubscribersPage() {
   async function loadApprovedSubs() {
     const { data } = await supabase
       .from('profiles')
-      .select('id, email, full_name, subscription_status')
+      .select('id, email, full_name, subscription_status, subscription_started_at')
       .eq('role', 'subscriber')
       .order('subscription_started_at', { ascending: false });
     if (data) setApprovedSubs(data);
@@ -58,6 +60,13 @@ export default function AdminSubscribersPage() {
     await supabase.auth.signOut();
     window.location.href = '/';
   }
+
+  const sortedSubs = [...approvedSubs].sort((a, b) => {
+    if (sortBy === 'name') {
+      return (a.full_name || a.email).localeCompare(b.full_name || b.email, 'he');
+    }
+    return new Date(b.subscription_started_at || 0).getTime() - new Date(a.subscription_started_at || 0).getTime();
+  });
 
   if (checking) {
     return <div className="wrap"><p style={{ padding: '40px', textAlign: 'center' }}>בודקים הרשאות...</p></div>;
@@ -102,12 +111,21 @@ export default function AdminSubscribersPage() {
       </header>
 
       <div className="section-label"><h2>מנויים מאושרים</h2><span className="count">{approvedSubs.length}</span></div>
+
+      <div className="filter-row" style={{ marginBottom: '14px' }}>
+        <div className={`filter-chip ${sortBy === 'date' ? 'active' : ''}`} style={{ cursor: 'pointer' }} onClick={() => setSortBy('date')}>לפי תאריך הצטרפות</div>
+        <div className={`filter-chip ${sortBy === 'name' ? 'active' : ''}`} style={{ cursor: 'pointer' }} onClick={() => setSortBy('name')}>לפי א-ב</div>
+      </div>
+
       {approvedSubs.length === 0 && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)', marginBottom: '20px' }}>עדיין אין מנויים מאושרים</p>}
-      {approvedSubs.map((sub) => (
+      {sortedSubs.map((sub) => (
         <div className="admin-row" key={sub.id}>
           <div>
             <div className="name">{sub.full_name || 'ללא שם'}</div>
             <div className="email">{sub.email}</div>
+            <div className="email" style={{ marginTop: '2px' }}>
+              תאריך הצטרפות: {sub.subscription_started_at ? new Date(sub.subscription_started_at).toLocaleDateString('he-IL') : '—'}
+            </div>
           </div>
           <span style={{ fontSize: '11px', color: 'var(--profit)', fontWeight: 700 }}>{sub.subscription_status === 'active' ? 'פעיל' : sub.subscription_status}</span>
         </div>

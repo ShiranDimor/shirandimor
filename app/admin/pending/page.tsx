@@ -18,6 +18,7 @@ export default function AdminPendingPage() {
 
   const [pendingLeads, setPendingLeads] = useState<PendingLead[]>([]);
   const [approving, setApproving] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState<'date' | 'name'>('date');
 
   useEffect(() => {
     checkAdmin();
@@ -72,6 +73,13 @@ export default function AdminPendingPage() {
     window.location.href = '/';
   }
 
+  const sortedLeads = [...pendingLeads].sort((a, b) => {
+    if (sortBy === 'name') {
+      return (a.full_name || a.email).localeCompare(b.full_name || b.email, 'he');
+    }
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+  });
+
   if (checking) {
     return <div className="wrap"><p style={{ padding: '40px', textAlign: 'center' }}>בודקים הרשאות...</p></div>;
   }
@@ -115,12 +123,19 @@ export default function AdminPendingPage() {
       </header>
 
       <div className="section-label"><h2>מנויים לאישור</h2><span className="count">{pendingLeads.length}</span></div>
+
+      <div className="filter-row" style={{ marginBottom: '14px' }}>
+        <div className={`filter-chip ${sortBy === 'date' ? 'active' : ''}`} style={{ cursor: 'pointer' }} onClick={() => setSortBy('date')}>לפי תאריך הצטרפות</div>
+        <div className={`filter-chip ${sortBy === 'name' ? 'active' : ''}`} style={{ cursor: 'pointer' }} onClick={() => setSortBy('name')}>לפי א-ב</div>
+      </div>
+
       {pendingLeads.length === 0 && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)', marginBottom: '20px' }}>אין כרגע ממתינים</p>}
-      {pendingLeads.map((lead) => (
+      {sortedLeads.map((lead) => (
         <div className="admin-row" key={lead.id}>
           <div>
             <div className="name">{lead.full_name || 'ללא שם'}</div>
             <div className="email">{lead.email}</div>
+            <div className="email" style={{ marginTop: '2px' }}>תאריך הצטרפות: {new Date(lead.created_at).toLocaleDateString('he-IL')}</div>
           </div>
           <button className="approve-btn" onClick={() => approveSubscriber(lead.id)} disabled={approving === lead.id}>
             {approving === lead.id ? 'מאשרים...' : 'אישור כמנוי'}

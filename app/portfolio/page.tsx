@@ -30,6 +30,11 @@ function monthLabel(key: string) {
   return `${MONTH_LABELS[parseInt(month, 10) - 1]} ${year}`;
 }
 
+function formatDate(iso: string | null) {
+  if (!iso) return '';
+  return new Date(iso).toLocaleDateString('he-IL');
+}
+
 function currentMonthKey() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
@@ -151,8 +156,12 @@ export default function PortfolioPage() {
         </div>
       )}
 
-      <div className="section-label"><h2>עסקאות פתוחות</h2><span className="count">{openTrades.length}</span></div>
-      <div className="trades-list">
+      <details className="section-collapse" open>
+        <summary>
+          <h2>עסקאות פתוחות</h2>
+          <div className="summary-right"><span className="count">{openTrades.length}</span><span className="collapse-chevron">▾</span></div>
+        </summary>
+        <div className="trades-list">
         {openTrades.length === 0 && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>אין כרגע עסקאות פתוחות</p>}
         {openTrades.map((trade) => {
           const p = pct(trade);
@@ -168,6 +177,7 @@ export default function PortfolioPage() {
                   <div className="pct" style={{ color: p >= 0 ? 'var(--profit)' : 'var(--loss)' }}>{p >= 0 ? '+' : ''}{p.toFixed(2)}%</div>
                 </div>
               </div>
+              <div className="trade-date-row">נפתחה ב-{formatDate(trade.opened_at)}</div>
               <div className="trade-details">
                 <div className="detail-item"><div className="label">כניסה</div><div className="value">${trade.entry_price}</div></div>
                 <div className="detail-item"><div className="label">נוכחי</div><div className="value">${trade.current_price ?? trade.entry_price}</div></div>
@@ -176,7 +186,8 @@ export default function PortfolioPage() {
             </div>
           );
         })}
-      </div>
+        </div>
+      </details>
 
       <div className="section-label" style={{ marginTop: '28px' }}><h2>עסקאות סגורות</h2><span className="count">{monthFilteredClosed.length}</span></div>
 
@@ -191,8 +202,12 @@ export default function PortfolioPage() {
         </div>
       )}
 
-      <div className="section-label"><h2>נסגרו ברווח</h2><span className="count">{closedProfitTrades.length}</span></div>
-      <div className="trades-list">
+      <details className="section-collapse">
+        <summary>
+          <h2>נסגרו ברווח</h2>
+          <div className="summary-right"><span className="count">{closedProfitTrades.length}</span><span className="collapse-chevron">▾</span></div>
+        </summary>
+        <div className="trades-list">
         {closedProfitTrades.length === 0 && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>אין עסקאות שנסגרו ברווח בטווח הזה</p>}
         {closedProfitTrades.map((trade) => {
           const p = pct(trade);
@@ -207,6 +222,7 @@ export default function PortfolioPage() {
                   <div className="pct" style={{ color: 'var(--profit)' }}>{p >= 0 ? '+' : ''}{p.toFixed(2)}%</div>
                 </div>
               </div>
+              <div className="trade-date-row">נפתחה ב-{formatDate(trade.opened_at)} · נסגרה ב-{formatDate(trade.closed_at)}</div>
               <div className="trade-details">
                 <div className="detail-item"><div className="label">כניסה</div><div className="value">${trade.entry_price}</div></div>
                 <div className="detail-item"><div className="label">יציאה</div><div className="value">${trade.exit_price}</div></div>
@@ -214,10 +230,15 @@ export default function PortfolioPage() {
             </div>
           );
         })}
-      </div>
+        </div>
+      </details>
 
-      <div className="section-label" style={{ marginTop: '28px' }}><h2>נסגרו בהפסד</h2><span className="count">{closedLossTrades.length}</span></div>
-      <div className="trades-list">
+      <details className="section-collapse">
+        <summary>
+          <h2>נסגרו בהפסד</h2>
+          <div className="summary-right"><span className="count">{closedLossTrades.length}</span><span className="collapse-chevron">▾</span></div>
+        </summary>
+        <div className="trades-list">
         {closedLossTrades.length === 0 && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>אין עסקאות שנסגרו בהפסד בטווח הזה</p>}
         {closedLossTrades.map((trade) => {
           const p = pct(trade);
@@ -232,6 +253,7 @@ export default function PortfolioPage() {
                   <div className="pct" style={{ color: 'var(--loss)' }}>{p.toFixed(2)}%</div>
                 </div>
               </div>
+              <div className="trade-date-row">נפתחה ב-{formatDate(trade.opened_at)} · נסגרה ב-{formatDate(trade.closed_at)}</div>
               <div className="trade-details">
                 <div className="detail-item"><div className="label">כניסה</div><div className="value">${trade.entry_price}</div></div>
                 <div className="detail-item"><div className="label">יציאה</div><div className="value">${trade.exit_price}</div></div>
@@ -239,7 +261,8 @@ export default function PortfolioPage() {
             </div>
           );
         })}
-      </div>
+        </div>
+      </details>
 
       {hasFullAccess && (
         <>

@@ -15,8 +15,14 @@ type Trade = {
   exit_price: number | null;
   notes: string | null;
   opened_at: string;
+  closed_at: string | null;
   parent_trade_id: string | null;
 };
+
+function formatDate(iso: string | null) {
+  if (!iso) return '';
+  return new Date(iso).toLocaleDateString('he-IL');
+}
 
 export default function AdminTradesPage() {
   const [checking, setChecking] = useState(true);
@@ -66,14 +72,14 @@ export default function AdminTradesPage() {
   async function loadTrades() {
     const { data: open } = await supabase
       .from('trades')
-      .select('id, direction, symbol, entry_price, stop_loss, shares_calculated, exit_price, notes, opened_at, parent_trade_id')
+      .select('id, direction, symbol, entry_price, stop_loss, shares_calculated, exit_price, notes, opened_at, closed_at, parent_trade_id')
       .eq('status', 'open')
       .order('opened_at', { ascending: false });
     if (open) setOpenTrades(open);
 
     const { data: closed } = await supabase
       .from('trades')
-      .select('id, direction, symbol, entry_price, stop_loss, shares_calculated, exit_price, notes, opened_at, parent_trade_id')
+      .select('id, direction, symbol, entry_price, stop_loss, shares_calculated, exit_price, notes, opened_at, closed_at, parent_trade_id')
       .eq('status', 'closed')
       .order('closed_at', { ascending: false });
     if (closed) setClosedTrades(closed);
@@ -454,43 +460,55 @@ export default function AdminTradesPage() {
         </div>
       </header>
 
-      <div className="section-label"><h2>עסקאות פתוחות בתיק</h2><span className="count">{openTrades.length}</span></div>
-      {openTrades.length === 0 && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)', marginBottom: '20px' }}>אין כרגע עסקאות פתוחות</p>}
-      {openTrades.map((trade) => (
-        <div className="trade-card" key={trade.id} style={{ marginBottom: '10px' }}>
-          <div className="trade-top">
-            <div className="trade-symbol-group">
-              <div className={`direction-mark ${trade.direction}`}>{trade.direction === 'long' ? 'L' : 'S'}</div>
-              <div className="trade-symbol">{trade.symbol}</div>
+      <details className="section-collapse" open>
+        <summary>
+          <h2>עסקאות פתוחות בתיק</h2>
+          <div className="summary-right"><span className="count">{openTrades.length}</span><span className="collapse-chevron">▾</span></div>
+        </summary>
+        {openTrades.length === 0 && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)', marginBottom: '20px' }}>אין כרגע עסקאות פתוחות</p>}
+        {openTrades.map((trade) => (
+          <div className="trade-card" key={trade.id} style={{ marginBottom: '10px' }}>
+            <div className="trade-top">
+              <div className="trade-symbol-group">
+                <div className={`direction-mark ${trade.direction}`}>{trade.direction === 'long' ? 'L' : 'S'}</div>
+                <div className="trade-symbol">{trade.symbol}</div>
+              </div>
             </div>
+            <div className="trade-date-row">נפתחה ב-{formatDate(trade.opened_at)}</div>
+            <div className="trade-details">
+              <div className="detail-item"><div className="label">כניסה</div><div className="value">${trade.entry_price.toFixed(2)}</div></div>
+              <div className="detail-item"><div className="label">סטופ</div><div className="value">${trade.stop_loss}</div></div>
+              <div className="detail-item"><div className="label">מניות</div><div className="value">{trade.shares_calculated}</div></div>
+            </div>
+            {renderActionsPanel(trade, false)}
           </div>
-          <div className="trade-details">
-            <div className="detail-item"><div className="label">כניסה</div><div className="value">${trade.entry_price.toFixed(2)}</div></div>
-            <div className="detail-item"><div className="label">סטופ</div><div className="value">${trade.stop_loss}</div></div>
-            <div className="detail-item"><div className="label">מניות</div><div className="value">{trade.shares_calculated}</div></div>
-          </div>
-          {renderActionsPanel(trade, false)}
-        </div>
-      ))}
+        ))}
+      </details>
 
-      <div className="section-label" style={{ marginTop: '28px' }}><h2>עסקאות סגורות בתיק</h2><span className="count">{closedTrades.length}</span></div>
-      {closedTrades.length === 0 && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)', marginBottom: '20px' }}>אין עדיין עסקאות סגורות</p>}
-      {closedTrades.map((trade) => (
-        <div className="trade-card" key={trade.id} style={{ marginBottom: '10px' }}>
-          <div className="trade-top">
-            <div className="trade-symbol-group">
-              <div className={`direction-mark ${trade.direction}`}>{trade.direction === 'long' ? 'L' : 'S'}</div>
-              <div className="trade-symbol">{trade.symbol}</div>
+      <details className="section-collapse" style={{ marginTop: '16px' }}>
+        <summary>
+          <h2>עסקאות סגורות בתיק</h2>
+          <div className="summary-right"><span className="count">{closedTrades.length}</span><span className="collapse-chevron">▾</span></div>
+        </summary>
+        {closedTrades.length === 0 && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)', marginBottom: '20px' }}>אין עדיין עסקאות סגורות</p>}
+        {closedTrades.map((trade) => (
+          <div className="trade-card" key={trade.id} style={{ marginBottom: '10px' }}>
+            <div className="trade-top">
+              <div className="trade-symbol-group">
+                <div className={`direction-mark ${trade.direction}`}>{trade.direction === 'long' ? 'L' : 'S'}</div>
+                <div className="trade-symbol">{trade.symbol}</div>
+              </div>
             </div>
+            <div className="trade-date-row">נפתחה ב-{formatDate(trade.opened_at)} · נסגרה ב-{formatDate(trade.closed_at)}</div>
+            <div className="trade-details">
+              <div className="detail-item"><div className="label">כניסה</div><div className="value">${trade.entry_price.toFixed(2)}</div></div>
+              <div className="detail-item"><div className="label">יציאה</div><div className="value">${trade.exit_price?.toFixed(2)}</div></div>
+              <div className="detail-item"><div className="label">מניות</div><div className="value">{trade.shares_calculated}</div></div>
+            </div>
+            {renderActionsPanel(trade, true)}
           </div>
-          <div className="trade-details">
-            <div className="detail-item"><div className="label">כניסה</div><div className="value">${trade.entry_price.toFixed(2)}</div></div>
-            <div className="detail-item"><div className="label">יציאה</div><div className="value">${trade.exit_price?.toFixed(2)}</div></div>
-            <div className="detail-item"><div className="label">מניות</div><div className="value">{trade.shares_calculated}</div></div>
-          </div>
-          {renderActionsPanel(trade, true)}
-        </div>
-      ))}
+        ))}
+      </details>
 
       <div className="section-label" style={{ marginTop: '28px' }}><h2>הוספת עסקה חדשה לתיק</h2></div>
       <div className="journal-form">
