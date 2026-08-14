@@ -19,7 +19,8 @@ export default function HomePage() {
   const [showLeadForm, setShowLeadForm] = useState(false);
   const [leadSubmitted, setLeadSubmitted] = useState(false);
   const [leadName, setLeadName] = useState('');
-  const [leadContact, setLeadContact] = useState('');
+  const [leadPhone, setLeadPhone] = useState('');
+  const [leadEmail, setLeadEmail] = useState('');
   const [leadSubmitting, setLeadSubmitting] = useState(false);
   const [leadError, setLeadError] = useState('');
   const [openTrades, setOpenTrades] = useState<Trade[]>([]);
@@ -27,8 +28,8 @@ export default function HomePage() {
   const [openCount, setOpenCount] = useState(0);
 
   async function handleLeadSubmit() {
-    if (!leadName || !leadContact) {
-      setLeadError('צריך למלא שם ופרטי יצירת קשר');
+    if (!leadName || !leadPhone) {
+      setLeadError('צריך למלא שם ומספר נייד');
       return;
     }
     setLeadSubmitting(true);
@@ -38,7 +39,7 @@ export default function HomePage() {
       await fetch('/api/lead', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: leadName, contact: leadContact }),
+        body: JSON.stringify({ name: leadName, phone: leadPhone, email: leadEmail }),
       });
     } catch (e) {
       // ממשיכים לוואטסאפ גם אם השליחה נכשלה, כדי לא לאבד את ההצטרפות
@@ -112,9 +113,13 @@ export default function HomePage() {
               <label>שם</label>
               <input type="text" value={leadName} onChange={(e) => setLeadName(e.target.value)} placeholder="השם המלא" />
             </div>
+            <div className="field" style={{ marginBottom: '10px' }}>
+              <label>נייד</label>
+              <input type="tel" value={leadPhone} onChange={(e) => setLeadPhone(e.target.value)} placeholder="050-0000000" />
+            </div>
             <div className="field">
-              <label>טלפון או אימייל</label>
-              <input type="text" value={leadContact} onChange={(e) => setLeadContact(e.target.value)} placeholder="050-0000000" />
+              <label>אימייל <span style={{ color: 'var(--text-tertiary)', fontWeight: 400 }}>(לא חובה)</span></label>
+              <input type="email" value={leadEmail} onChange={(e) => setLeadEmail(e.target.value)} placeholder="name@example.com" />
             </div>
             <button className="btn-primary" onClick={handleLeadSubmit} disabled={leadSubmitting}>
               {leadSubmitting ? 'שולחים...' : 'המשך לקבוצת הוואטסאפ ←'}

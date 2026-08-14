@@ -25,9 +25,9 @@ async function findLeadGroupId(token: string, boardId: string) {
 }
 
 export async function POST(request: Request) {
-  const { name, contact } = await request.json();
+  const { name, phone, email } = await request.json();
 
-  if (!name || !contact) {
+  if (!name || !phone) {
     return NextResponse.json({ error: 'חסרים פרטים' }, { status: 400 });
   }
 
@@ -63,7 +63,7 @@ export async function POST(request: Request) {
         }`,
         {
           itemId,
-          body: `פרטי יצירת קשר: ${contact}\nמקור: טופס הצטרפות לקבוצת העדכונים באתר`,
+          body: `נייד: ${phone}${email ? `\nאימייל: ${email}` : ''}\nמקור: טופס הצטרפות לקבוצת העדכונים באתר`,
         }
       );
     } else {
