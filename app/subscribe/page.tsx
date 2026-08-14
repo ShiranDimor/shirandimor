@@ -6,8 +6,8 @@ export default function SubscribePage() {
   return (
     <div className="wrap">
       <header>
-        <div className="brand">מסחר <span>אחראי</span> במניות</div>
-        <Link href="/" className="nav-link">← חזרה</Link>
+        <Link href="/" className="brand">מסחר <span>אחראי</span> במניות</Link>
+        <Link href="/" className="nav-link">בית</Link>
       </header>
 
       <div className="form-title">
@@ -16,7 +16,7 @@ export default function SubscribePage() {
       <div className="form-sub">מנוי חודשי · ללא התחייבות</div>
 
       <div className="price-card">
-        <div style={{ display: 'inline-block', background: 'rgba(79,174,126,0.12)', color: 'var(--profit)', fontSize: '11.5px', fontWeight: 700, padding: '4px 12px', borderRadius: '20px', marginBottom: '14px' }}>
+        <div style={{ display: 'inline-block', background: 'var(--profit-bg)', color: 'var(--profit)', fontSize: '11.5px', fontWeight: 700, padding: '4px 12px', borderRadius: '20px', marginBottom: '14px' }}>
           חודש ראשון ב-50% הנחה
         </div>
         <div className="amount">₪200<span>/חודש ראשון</span></div>

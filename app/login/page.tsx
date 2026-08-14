@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 
 export default function LoginPage() {
@@ -67,7 +68,7 @@ export default function LoginPage() {
   return (
     <div className="wrap">
       <header>
-        <div className="brand">מסחר <span>אחראי</span> במניות</div>
+        <Link href="/" className="brand">מסחר <span>אחראי</span> במניות</Link>
       </header>
 
       <div className="form-title" style={{ color: 'var(--lavender)' }}>כניסה לסוחרים</div>

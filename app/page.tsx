@@ -56,7 +56,7 @@ export default function HomePage() {
   return (
     <div className="wrap">
       <header>
-        <div className="brand">מסחר <span>אחראי</span> במניות</div>
+        <Link href="/" className="brand">מסחר <span>אחראי</span> במניות</Link>
         <Link href="/login" className="nav-link">כניסה לסוחרים</Link>
       </header>
 

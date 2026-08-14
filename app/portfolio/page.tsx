@@ -19,6 +19,7 @@ type Trade = {
 
 export default function PortfolioPage() {
   const [loading, setLoading] = useState(true);
+  const [loggedIn, setLoggedIn] = useState(false);
   const [hasFullAccess, setHasFullAccess] = useState(false);
   const [openTrades, setOpenTrades] = useState<Trade[]>([]);
   const [closedTrades, setClosedTrades] = useState<Trade[]>([]);
@@ -35,6 +36,7 @@ export default function PortfolioPage() {
     const { data: { user } } = await supabase.auth.getUser();
 
     if (user) {
+      setLoggedIn(true);
       const { data: profile } = await supabase
         .from('profiles')
         .select('role')
@@ -70,6 +72,11 @@ export default function PortfolioPage() {
     ? Math.floor(parseFloat(risk) / Math.abs(parseFloat(entry) - parseFloat(stop)))
     : null;
 
+  async function handleLogout() {
+    await supabase.auth.signOut();
+    window.location.href = '/';
+  }
+
   if (loading) {
     return <div className="wrap"><p style={{ padding: '40px', textAlign: 'center' }}>טוענת...</p></div>;
   }
@@ -77,14 +84,25 @@ export default function PortfolioPage() {
   return (
     <div className="wrap">
       <header>
-        <div className="brand">מסחר <span>אחראי</span> במניות</div>
-        <Link href="/" className="nav-link">← חזרה</Link>
+        <Link href="/" className="brand">מסחר <span>אחראי</span> במניות</Link>
+        {loggedIn ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+            {hasFullAccess && <Link href="/journal" className="nav-link">יומן שלי</Link>}
+            <button onClick={handleLogout} className="nav-link" style={{ background: 'none', border: 'none', cursor: 'pointer', font: 'inherit', padding: 0 }}>התנתקות</button>
+          </div>
+        ) : (
+          <Link href="/login" className="nav-link">כניסה לסוחרים</Link>
+        )}
       </header>
 
       {!hasFullAccess && (
         <div className="lock-banner">
-          <span>👁 צפייה כאורח - סימבולי עסקאות פתוחות מוסתרים</span>
-          <Link href="/subscribe">לגישה מלאה ←</Link>
+          <div className="lb-icon">🔒</div>
+          <div className="lb-text">
+            <p className="lb-title">יש כאן עסקאות אמיתיות, אבל הן שמורות למנויים</p>
+            <p className="lb-sub">הסימבולים מטושטשים כדי לשמור על הקבוצה - הצטרפי ותראי הכל, מספרים ותוצאות כולל.</p>
+          </div>
+          <Link href="/subscribe" className="lb-cta">לגישה מלאה ←</Link>
         </div>
       )}
 
@@ -115,7 +133,7 @@ export default function PortfolioPage() {
         })}
       </div>
 
-      <div className="section-label" style={{ marginTop: '28px' }}><h2>עסקאות סגורות</h2><span className="count">גלוי לכולם</span></div>
+      <div className="section-label" style={{ marginTop: '28px' }}><h2>עסקאות סגורות</h2><span className="count">{closedTrades.length}</span></div>
       <div className="trades-list">
         {closedTrades.length === 0 && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>אין עדיין עסקאות סגורות</p>}
         {closedTrades.map((trade) => {
