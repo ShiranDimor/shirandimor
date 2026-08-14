@@ -28,6 +28,7 @@ export default function HomePage() {
   const [lastClosed, setLastClosed] = useState<Trade | null>(null);
   const [openCount, setOpenCount] = useState(0);
   const [showStickyCta, setShowStickyCta] = useState(false);
+  const [hasFullAccess, setHasFullAccess] = useState(false);
 
   function handlePhoneChange(value: string) {
     setLeadPhone(value.replace(/\D/g, '').slice(0, 10));
@@ -75,6 +76,12 @@ export default function HomePage() {
   }, []);
 
   async function loadTrades() {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+      setHasFullAccess(profile?.role === 'admin' || profile?.role === 'subscriber');
+    }
+
     const { data: open } = await supabase
       .from('trades')
       .select('*')
@@ -219,7 +226,7 @@ export default function HomePage() {
           const pct = pctChange(trade);
           return (
             <div className="teaser-row" key={trade.id}>
-              <span className="sym blurred">{trade.symbol}</span>
+              <span className={`sym ${!hasFullAccess ? 'blurred' : ''}`}>{trade.symbol}</span>
               <span className="pnl" style={{ color: pct >= 0 ? 'var(--profit)' : 'var(--loss)' }}>{pct >= 0 ? '+' : ''}{pct.toFixed(2)}%</span>
             </div>
           );
