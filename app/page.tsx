@@ -86,7 +86,7 @@ export default function HomePage() {
         <Link href="/" className="brand">מסחר <span>אחראי</span> במניות</Link>
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
           <Link href="/" className="nav-link">בית</Link>
-          <Link href="/portfolio" className="nav-link">תיק</Link>
+          <Link href="/portfolio" className="nav-link">תיק המסחר</Link>
           <Link href="/login" className="nav-link">כניסה לסוחרים</Link>
         </div>
       </header>
