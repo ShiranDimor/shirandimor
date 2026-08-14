@@ -222,10 +222,15 @@ export default function HomePage() {
           );
         })}
         {lastClosed && (
-          <div className="teaser-row">
-            <span className="sym" style={{ color: 'var(--text-secondary)' }}>{lastClosed.symbol} (נסגרה)</span>
-            <span className="pnl" style={{ color: pctChange(lastClosed) >= 0 ? 'var(--profit)' : 'var(--loss)' }}>{pctChange(lastClosed) >= 0 ? '+' : ''}{pctChange(lastClosed).toFixed(2)}%</span>
-          </div>
+          <>
+            {openTrades.length > 0 && (
+              <div style={{ fontSize: '10.5px', color: 'var(--text-tertiary)', paddingTop: '10px', borderTop: '1px solid var(--border-hairline)' }}>תוצאה אחרונה שנסגרה</div>
+            )}
+            <div className="teaser-row">
+              <span className="sym" style={{ color: 'var(--text-secondary)' }}>{lastClosed.symbol} (נסגרה)</span>
+              <span className="pnl" style={{ color: pctChange(lastClosed) >= 0 ? 'var(--profit)' : 'var(--loss)' }}>{pctChange(lastClosed) >= 0 ? '+' : ''}{pctChange(lastClosed).toFixed(2)}%</span>
+            </div>
+          </>
         )}
         <Link className="teaser-cta" href="/portfolio">צפייה בתיק המסחר המלא ←</Link>
       </div>
