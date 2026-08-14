@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
+import ClearableInput from '@/components/ClearableInput';
 
 type Trade = {
   id: string;
@@ -263,10 +264,10 @@ export default function PortfolioPage() {
           <div className="section-label"><h2>מחשבון גודל פוזיציה</h2></div>
           <div className="calc-panel" style={{ padding: '18px 16px' }}>
             <div className="form-row" style={{ marginBottom: '10px' }}>
-              <div className="field" style={{ marginBottom: 0 }}><label>סיכון כספי ($)</label><input type="number" value={risk} onChange={(e) => setRisk(e.target.value)} placeholder="500" /></div>
-              <div className="field" style={{ marginBottom: 0 }}><label>מחיר כניסה ($)</label><input type="number" value={entry} onChange={(e) => setEntry(e.target.value)} placeholder="127.32" /></div>
+              <div className="field" style={{ marginBottom: 0 }}><label>סיכון כספי ($)</label><ClearableInput type="number" value={risk} onChange={(e) => setRisk(e.target.value)} onClear={() => setRisk('')} placeholder="500" /></div>
+              <div className="field" style={{ marginBottom: 0 }}><label>מחיר כניסה ($)</label><ClearableInput type="number" value={entry} onChange={(e) => setEntry(e.target.value)} onClear={() => setEntry('')} placeholder="127.32" /></div>
             </div>
-            <div className="field"><label>מחיר סטופ לוס ($)</label><input type="number" value={stop} onChange={(e) => setStop(e.target.value)} placeholder="121.00" /></div>
+            <div className="field"><label>מחיר סטופ לוס ($)</label><ClearableInput type="number" value={stop} onChange={(e) => setStop(e.target.value)} onClear={() => setStop('')} placeholder="121.00" /></div>
             <div className="calc-result">
               <span className="rlabel">כמות מניות מקסימלית</span>
               <span className="rvalue">{shares !== null && !isNaN(shares) ? shares : '—'}</span>

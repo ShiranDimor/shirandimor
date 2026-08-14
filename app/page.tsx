@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
+import ClearableInput from '@/components/ClearableInput';
 
 type Trade = {
   id: string;
@@ -110,15 +111,15 @@ export default function HomePage() {
             </p>
             <div className="field" style={{ marginBottom: '10px' }}>
               <label>שם</label>
-              <input type="text" value={leadName} onChange={(e) => setLeadName(e.target.value)} placeholder="השם המלא" />
+              <ClearableInput type="text" value={leadName} onChange={(e) => setLeadName(e.target.value)} onClear={() => setLeadName('')} placeholder="השם המלא" />
             </div>
             <div className="field" style={{ marginBottom: '10px' }}>
               <label>נייד</label>
-              <input type="tel" value={leadPhone} onChange={(e) => setLeadPhone(e.target.value)} placeholder="050-0000000" />
+              <ClearableInput type="tel" value={leadPhone} onChange={(e) => setLeadPhone(e.target.value)} onClear={() => setLeadPhone('')} placeholder="050-0000000" />
             </div>
             <div className="field">
               <label>אימייל <span style={{ color: 'var(--text-tertiary)', fontWeight: 400 }}>(לא חובה)</span></label>
-              <input type="email" value={leadEmail} onChange={(e) => setLeadEmail(e.target.value)} placeholder="name@example.com" />
+              <ClearableInput type="email" value={leadEmail} onChange={(e) => setLeadEmail(e.target.value)} onClear={() => setLeadEmail('')} placeholder="name@example.com" />
             </div>
             <button className="btn-primary" onClick={handleLeadSubmit} disabled={leadSubmitting}>
               {leadSubmitting ? 'שולחים...' : 'המשך לקבוצת הוואטסאפ ←'}

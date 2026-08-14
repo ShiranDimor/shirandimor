@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
+import ClearableInput from '@/components/ClearableInput';
 
 type Trade = {
   id: string;
@@ -13,12 +14,15 @@ type Trade = {
   shares_calculated: number;
   exit_price: number | null;
   notes: string | null;
+  opened_at: string;
+  parent_trade_id: string | null;
 };
 
 export default function AdminTradesPage() {
   const [checking, setChecking] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [userEmail, setUserEmail] = useState('');
+  const [userId, setUserId] = useState<string | null>(null);
 
   const [openTrades, setOpenTrades] = useState<Trade[]>([]);
   const [closedTrades, setClosedTrades] = useState<Trade[]>([]);
@@ -36,6 +40,17 @@ export default function AdminTradesPage() {
   const [editExitPrice, setEditExitPrice] = useState('');
   const [savingEdit, setSavingEdit] = useState(false);
 
+  const [addQtyId, setAddQtyId] = useState<string | null>(null);
+  const [addQtyPrice, setAddQtyPrice] = useState('');
+  const [addQtyShares, setAddQtyShares] = useState('');
+  const [addingQty, setAddingQty] = useState(false);
+
+  const [sellQtyId, setSellQtyId] = useState<string | null>(null);
+  const [sellQtyPrice, setSellQtyPrice] = useState('');
+  const [sellQtyShares, setSellQtyShares] = useState('');
+  const [sellingQty, setSellingQty] = useState(false);
+  const [sellQtyError, setSellQtyError] = useState('');
+
   const [direction, setDirection] = useState<'long' | 'short'>('long');
   const [symbol, setSymbol] = useState('');
   const [entryPrice, setEntryPrice] = useState('');
@@ -51,45 +66,133 @@ export default function AdminTradesPage() {
   async function loadTrades() {
     const { data: open } = await supabase
       .from('trades')
-      .select('id, direction, symbol, entry_price, stop_loss, shares_calculated, exit_price, notes')
+      .select('id, direction, symbol, entry_price, stop_loss, shares_calculated, exit_price, notes, opened_at, parent_trade_id')
       .eq('status', 'open')
       .order('opened_at', { ascending: false });
     if (open) setOpenTrades(open);
 
     const { data: closed } = await supabase
       .from('trades')
-      .select('id, direction, symbol, entry_price, stop_loss, shares_calculated, exit_price, notes')
+      .select('id, direction, symbol, entry_price, stop_loss, shares_calculated, exit_price, notes, opened_at, parent_trade_id')
       .eq('status', 'closed')
       .order('closed_at', { ascending: false });
     if (closed) setClosedTrades(closed);
+  }
+
+  // ממזג עסקה למניה יחידה: מכירה חלקית יוצרת שבר "סגור" נפרד; כשהיתרה מתאפסת כל השברים מתאחדים לעסקה סגורה אחת עם מחיר יציאה וכניסה ממוצעים
+  async function realizeShares(trade: Trade, sellShares: number, sellPrice: number, closedAtIso: string) {
+    const dirFactor = trade.direction === 'short' ? -1 : 1;
+    const realizedForSlice = (sellPrice - trade.entry_price) * sellShares * dirFactor;
+    const remaining = trade.shares_calculated - sellShares;
+
+    if (remaining > 0) {
+      await supabase.from('trades').insert({
+        created_by: userId,
+        direction: trade.direction,
+        symbol: trade.symbol,
+        entry_price: trade.entry_price,
+        stop_loss: trade.stop_loss,
+        risk_amount_usd: 0,
+        status: 'closed',
+        exit_price: sellPrice,
+        shares_calculated: sellShares,
+        realized_pnl_usd: realizedForSlice,
+        parent_trade_id: trade.parent_trade_id || trade.id,
+        opened_at: trade.opened_at,
+        closed_at: closedAtIso,
+      });
+      await supabase.from('trades').update({ shares_calculated: remaining }).eq('id', trade.id);
+      return;
+    }
+
+    const rootId = trade.parent_trade_id || trade.id;
+    const { data: siblings } = await supabase
+      .from('trades')
+      .select('id, shares_calculated, exit_price, realized_pnl_usd')
+      .eq('parent_trade_id', rootId)
+      .neq('id', trade.id);
+
+    const allSiblings = siblings || [];
+    const totalShares = allSiblings.reduce((s, x) => s + x.shares_calculated, 0) + sellShares;
+    const weightedExit = (allSiblings.reduce((s, x) => s + x.shares_calculated * (x.exit_price ?? 0), 0) + sellShares * sellPrice) / totalShares;
+    const totalPnl = allSiblings.reduce((s, x) => s + (x.realized_pnl_usd ?? 0), 0) + realizedForSlice;
+
+    await supabase.from('trades').update({
+      status: 'closed',
+      shares_calculated: totalShares,
+      exit_price: weightedExit,
+      realized_pnl_usd: totalPnl,
+      closed_at: closedAtIso,
+    }).eq('id', trade.id);
+
+    if (allSiblings.length > 0) {
+      await supabase.from('trades').delete().in('id', allSiblings.map((s) => s.id));
+    }
   }
 
   async function handleCloseTrade(trade: Trade) {
     if (!exitPrice) return;
     setClosing(true);
 
-    const exit = parseFloat(exitPrice);
-    const dirFactor = trade.direction === 'short' ? -1 : 1;
-    const realizedPnl = (exit - trade.entry_price) * trade.shares_calculated * dirFactor;
+    await realizeShares(trade, trade.shares_calculated, parseFloat(exitPrice), exitDate ? new Date(exitDate).toISOString() : new Date().toISOString());
+
+    setClosing(false);
+    setClosingId(null);
+    setExitPrice('');
+    setExitDate('');
+    loadTrades();
+  }
+
+  function startAddQty(trade: Trade) {
+    setAddQtyId(trade.id);
+    setAddQtyPrice('');
+    setAddQtyShares('');
+  }
+
+  async function handleAddQuantity(trade: Trade) {
+    const price = parseFloat(addQtyPrice);
+    const shares = parseFloat(addQtyShares);
+    if (!price || !shares) return;
+    setAddingQty(true);
+
+    const newShares = trade.shares_calculated + shares;
+    const newEntryPrice = (trade.entry_price * trade.shares_calculated + price * shares) / newShares;
 
     const { error } = await supabase
       .from('trades')
-      .update({
-        status: 'closed',
-        exit_price: exit,
-        closed_at: exitDate ? new Date(exitDate).toISOString() : new Date().toISOString(),
-        realized_pnl_usd: realizedPnl,
-      })
+      .update({ entry_price: newEntryPrice, shares_calculated: newShares })
       .eq('id', trade.id);
 
-    setClosing(false);
+    setAddingQty(false);
 
     if (!error) {
-      setClosingId(null);
-      setExitPrice('');
-      setExitDate('');
+      setAddQtyId(null);
       loadTrades();
     }
+  }
+
+  function startSellQty(trade: Trade) {
+    setSellQtyId(trade.id);
+    setSellQtyPrice('');
+    setSellQtyShares('');
+    setSellQtyError('');
+  }
+
+  async function handlePartialSell(trade: Trade) {
+    const price = parseFloat(sellQtyPrice);
+    const shares = parseFloat(sellQtyShares);
+
+    if (!price || !shares) return;
+    if (shares >= trade.shares_calculated) {
+      setSellQtyError('למכירת כל הכמות יש להשתמש בכפתור "סגירת עסקה"');
+      return;
+    }
+
+    setSellingQty(true);
+    await realizeShares(trade, shares, price, new Date().toISOString());
+    setSellingQty(false);
+    setSellQtyId(null);
+    loadTrades();
   }
 
   function startEdit(trade: Trade) {
@@ -151,6 +254,7 @@ export default function AdminTradesPage() {
     }
 
     setUserEmail(user.email || '');
+    setUserId(user.id);
 
     const { data: profile } = await supabase
       .from('profiles')
@@ -243,24 +347,98 @@ export default function AdminTradesPage() {
     );
   }
 
-  function renderEditForm(trade: Trade, isClosed: boolean) {
+  function renderActionsPanel(trade: Trade, isClosed: boolean) {
+    if (editingId === trade.id) {
+      return (
+        <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--border-hairline)' }}>
+          <div className="form-row" style={{ marginBottom: '10px' }}>
+            <div className="field" style={{ marginBottom: 0 }}><label>סימבול</label><ClearableInput type="text" value={editSymbol} onChange={(e) => setEditSymbol(e.target.value)} onClear={() => setEditSymbol('')} /></div>
+            <div className="field" style={{ marginBottom: 0 }}><label>מניות</label><ClearableInput type="number" value={editShares} onChange={(e) => setEditShares(e.target.value)} onClear={() => setEditShares('')} /></div>
+          </div>
+          <div className="form-row" style={{ marginBottom: isClosed ? '10px' : 0 }}>
+            <div className="field" style={{ marginBottom: 0 }}><label>מחיר כניסה</label><ClearableInput type="number" value={editEntry} onChange={(e) => setEditEntry(e.target.value)} onClear={() => setEditEntry('')} /></div>
+            <div className="field" style={{ marginBottom: 0 }}><label>סטופ לוס</label><ClearableInput type="number" value={editStop} onChange={(e) => setEditStop(e.target.value)} onClear={() => setEditStop('')} /></div>
+          </div>
+          {isClosed && (
+            <div className="field"><label>מחיר יציאה</label><ClearableInput type="number" value={editExitPrice} onChange={(e) => setEditExitPrice(e.target.value)} onClear={() => setEditExitPrice('')} /></div>
+          )}
+          <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
+            <button className="btn-primary" style={{ flex: 1 }} onClick={() => saveEdit(trade, isClosed)} disabled={savingEdit}>{savingEdit ? 'שומרים...' : 'שמירת שינויים'}</button>
+            <button className="btn-outline" style={{ flex: 1 }} onClick={cancelEdit}>ביטול</button>
+          </div>
+        </div>
+      );
+    }
+
+    if (!isClosed && closingId === trade.id) {
+      return (
+        <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--border-hairline)' }}>
+          <div className="form-row" style={{ marginBottom: '10px' }}>
+            <div className="field" style={{ marginBottom: 0 }}><label>מחיר סגירה</label><ClearableInput type="number" value={exitPrice} onChange={(e) => setExitPrice(e.target.value)} onClear={() => setExitPrice('')} placeholder="130.50" /></div>
+            <div className="field" style={{ marginBottom: 0 }}><label>תאריך סגירה</label><input type="date" value={exitDate} onChange={(e) => setExitDate(e.target.value)} /></div>
+          </div>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button className="btn-primary" style={{ flex: 1 }} onClick={() => handleCloseTrade(trade)} disabled={closing || !exitPrice}>{closing ? 'סוגרים...' : 'אישור סגירה'}</button>
+            <button className="btn-outline" style={{ flex: 1 }} onClick={() => { setClosingId(null); setExitPrice(''); setExitDate(''); }}>ביטול</button>
+          </div>
+        </div>
+      );
+    }
+
+    if (!isClosed && addQtyId === trade.id) {
+      return (
+        <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--border-hairline)' }}>
+          <div className="form-row" style={{ marginBottom: '10px' }}>
+            <div className="field" style={{ marginBottom: 0 }}><label>מחיר כניסה נוסף</label><ClearableInput type="number" value={addQtyPrice} onChange={(e) => setAddQtyPrice(e.target.value)} onClear={() => setAddQtyPrice('')} placeholder="132.00" /></div>
+            <div className="field" style={{ marginBottom: 0 }}><label>כמות נוספת</label><ClearableInput type="number" value={addQtyShares} onChange={(e) => setAddQtyShares(e.target.value)} onClear={() => setAddQtyShares('')} placeholder="20" /></div>
+          </div>
+          <p style={{ fontSize: '11.5px', color: 'var(--text-tertiary)', marginBottom: '10px' }}>מחיר הכניסה יתעדכן לממוצע המשוקלל, והכמות תתווסף לעסקה הקיימת</p>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button className="btn-primary" style={{ flex: 1 }} onClick={() => handleAddQuantity(trade)} disabled={addingQty || !addQtyPrice || !addQtyShares}>{addingQty ? 'מוסיפים...' : 'אישור הוספה'}</button>
+            <button className="btn-outline" style={{ flex: 1 }} onClick={() => setAddQtyId(null)}>ביטול</button>
+          </div>
+        </div>
+      );
+    }
+
+    if (!isClosed && sellQtyId === trade.id) {
+      return (
+        <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--border-hairline)' }}>
+          <div className="form-row" style={{ marginBottom: '10px' }}>
+            <div className="field" style={{ marginBottom: 0 }}><label>מחיר מכירה</label><ClearableInput type="number" value={sellQtyPrice} onChange={(e) => setSellQtyPrice(e.target.value)} onClear={() => setSellQtyPrice('')} placeholder="135.00" /></div>
+            <div className="field" style={{ marginBottom: 0 }}><label>כמות למכירה (מתוך {trade.shares_calculated})</label><ClearableInput type="number" value={sellQtyShares} onChange={(e) => setSellQtyShares(e.target.value)} onClear={() => setSellQtyShares('')} placeholder="10" /></div>
+          </div>
+          <p style={{ fontSize: '11.5px', color: 'var(--text-tertiary)', marginBottom: '10px' }}>החלק שנמכר יעבור לעסקאות סגורות, והיתרה תישאר פתוחה באותו מחיר כניסה</p>
+          {sellQtyError && <p style={{ color: 'var(--loss)', fontSize: '12px', marginBottom: '10px' }}>{sellQtyError}</p>}
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button className="btn-primary" style={{ flex: 1 }} onClick={() => handlePartialSell(trade)} disabled={sellingQty || !sellQtyPrice || !sellQtyShares}>{sellingQty ? 'מוכרים...' : 'אישור מכירה'}</button>
+            <button className="btn-outline" style={{ flex: 1 }} onClick={() => setSellQtyId(null)}>ביטול</button>
+          </div>
+        </div>
+      );
+    }
+
     return (
-      <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--border-hairline)' }}>
-        <div className="form-row" style={{ marginBottom: '10px' }}>
-          <div className="field" style={{ marginBottom: 0 }}><label>סימבול</label><input type="text" value={editSymbol} onChange={(e) => setEditSymbol(e.target.value)} /></div>
-          <div className="field" style={{ marginBottom: 0 }}><label>מניות</label><input type="number" value={editShares} onChange={(e) => setEditShares(e.target.value)} /></div>
-        </div>
-        <div className="form-row" style={{ marginBottom: isClosed ? '10px' : 0 }}>
-          <div className="field" style={{ marginBottom: 0 }}><label>מחיר כניסה</label><input type="number" value={editEntry} onChange={(e) => setEditEntry(e.target.value)} /></div>
-          <div className="field" style={{ marginBottom: 0 }}><label>סטופ לוס</label><input type="number" value={editStop} onChange={(e) => setEditStop(e.target.value)} /></div>
-        </div>
-        {isClosed && (
-          <div className="field"><label>מחיר יציאה</label><input type="number" value={editExitPrice} onChange={(e) => setEditExitPrice(e.target.value)} /></div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '10px' }}>
+        {!isClosed && (
+          <>
+            <button className="btn-outline" style={{ flex: 1, padding: '8px', fontSize: '13px' }} onClick={() => { setClosingId(trade.id); setExitPrice(''); setExitDate(''); }}>
+              סגירת עסקה
+            </button>
+            <button className="btn-outline" style={{ flex: 1, padding: '8px', fontSize: '13px' }} onClick={() => startAddQty(trade)}>
+              הוספת כמות
+            </button>
+            <button className="btn-outline" style={{ flex: 1, padding: '8px', fontSize: '13px' }} onClick={() => startSellQty(trade)}>
+              מכירה חלקית
+            </button>
+          </>
         )}
-        <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
-          <button className="btn-primary" style={{ flex: 1 }} onClick={() => saveEdit(trade, isClosed)} disabled={savingEdit}>{savingEdit ? 'שומרים...' : 'שמירת שינויים'}</button>
-          <button className="btn-outline" style={{ flex: 1 }} onClick={cancelEdit}>ביטול</button>
-        </div>
+        <button className="btn-outline" style={{ flex: 1, padding: '8px', fontSize: '13px' }} onClick={() => startEdit(trade)}>
+          עריכה
+        </button>
+        <button className="btn-outline" style={{ padding: '8px 14px', fontSize: '13px', color: 'var(--loss)', borderColor: 'var(--loss)' }} onClick={() => handleDeleteTrade(trade)}>
+          מחיקה
+        </button>
       </div>
     );
   }
@@ -287,37 +465,11 @@ export default function AdminTradesPage() {
             </div>
           </div>
           <div className="trade-details">
-            <div className="detail-item"><div className="label">כניסה</div><div className="value">${trade.entry_price}</div></div>
+            <div className="detail-item"><div className="label">כניסה</div><div className="value">${trade.entry_price.toFixed(2)}</div></div>
             <div className="detail-item"><div className="label">סטופ</div><div className="value">${trade.stop_loss}</div></div>
             <div className="detail-item"><div className="label">מניות</div><div className="value">{trade.shares_calculated}</div></div>
           </div>
-
-          {editingId === trade.id ? (
-            renderEditForm(trade, false)
-          ) : closingId === trade.id ? (
-            <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--border-hairline)' }}>
-              <div className="form-row" style={{ marginBottom: '10px' }}>
-                <div className="field" style={{ marginBottom: 0 }}><label>מחיר סגירה</label><input type="number" value={exitPrice} onChange={(e) => setExitPrice(e.target.value)} placeholder="130.50" /></div>
-                <div className="field" style={{ marginBottom: 0 }}><label>תאריך סגירה</label><input type="date" value={exitDate} onChange={(e) => setExitDate(e.target.value)} /></div>
-              </div>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <button className="btn-primary" style={{ flex: 1 }} onClick={() => handleCloseTrade(trade)} disabled={closing || !exitPrice}>{closing ? 'סוגרים...' : 'אישור סגירה'}</button>
-                <button className="btn-outline" style={{ flex: 1 }} onClick={() => { setClosingId(null); setExitPrice(''); setExitDate(''); }}>ביטול</button>
-              </div>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
-              <button className="btn-outline" style={{ flex: 1, padding: '8px', fontSize: '13px' }} onClick={() => { setClosingId(trade.id); setExitPrice(''); setExitDate(''); }}>
-                סגירת עסקה
-              </button>
-              <button className="btn-outline" style={{ flex: 1, padding: '8px', fontSize: '13px' }} onClick={() => startEdit(trade)}>
-                עריכה
-              </button>
-              <button className="btn-outline" style={{ padding: '8px 14px', fontSize: '13px', color: 'var(--loss)', borderColor: 'var(--loss)' }} onClick={() => handleDeleteTrade(trade)}>
-                מחיקה
-              </button>
-            </div>
-          )}
+          {renderActionsPanel(trade, false)}
         </div>
       ))}
 
@@ -332,23 +484,11 @@ export default function AdminTradesPage() {
             </div>
           </div>
           <div className="trade-details">
-            <div className="detail-item"><div className="label">כניסה</div><div className="value">${trade.entry_price}</div></div>
-            <div className="detail-item"><div className="label">יציאה</div><div className="value">${trade.exit_price}</div></div>
+            <div className="detail-item"><div className="label">כניסה</div><div className="value">${trade.entry_price.toFixed(2)}</div></div>
+            <div className="detail-item"><div className="label">יציאה</div><div className="value">${trade.exit_price?.toFixed(2)}</div></div>
             <div className="detail-item"><div className="label">מניות</div><div className="value">{trade.shares_calculated}</div></div>
           </div>
-
-          {editingId === trade.id ? (
-            renderEditForm(trade, true)
-          ) : (
-            <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
-              <button className="btn-outline" style={{ flex: 1, padding: '8px', fontSize: '13px' }} onClick={() => startEdit(trade)}>
-                עריכה
-              </button>
-              <button className="btn-outline" style={{ padding: '8px 14px', fontSize: '13px', color: 'var(--loss)', borderColor: 'var(--loss)' }} onClick={() => handleDeleteTrade(trade)}>
-                מחיקה
-              </button>
-            </div>
-          )}
+          {renderActionsPanel(trade, true)}
         </div>
       ))}
 
@@ -358,12 +498,12 @@ export default function AdminTradesPage() {
           <div className={`toggle-opt ${direction === 'long' ? 'long-active' : ''}`} onClick={() => setDirection('long')} style={{ cursor: 'pointer' }}>לונג</div>
           <div className={`toggle-opt ${direction === 'short' ? 'short-active' : ''}`} onClick={() => setDirection('short')} style={{ cursor: 'pointer' }}>שורט</div>
         </div>
-        <div className="field"><label>סימבול</label><input type="text" value={symbol} onChange={(e) => setSymbol(e.target.value)} placeholder="MSFT" /></div>
+        <div className="field"><label>סימבול</label><ClearableInput type="text" value={symbol} onChange={(e) => setSymbol(e.target.value)} onClear={() => setSymbol('')} placeholder="MSFT" /></div>
         <div className="form-row">
-          <div className="field"><label>מחיר כניסה</label><input type="number" value={entryPrice} onChange={(e) => setEntryPrice(e.target.value)} placeholder="410.00" /></div>
-          <div className="field"><label>סטופ לוס</label><input type="number" value={stopLoss} onChange={(e) => setStopLoss(e.target.value)} placeholder="398.00" /></div>
+          <div className="field"><label>מחיר כניסה</label><ClearableInput type="number" value={entryPrice} onChange={(e) => setEntryPrice(e.target.value)} onClear={() => setEntryPrice('')} placeholder="410.00" /></div>
+          <div className="field"><label>סטופ לוס</label><ClearableInput type="number" value={stopLoss} onChange={(e) => setStopLoss(e.target.value)} onClear={() => setStopLoss('')} placeholder="398.00" /></div>
         </div>
-        <div className="field"><label>סיכון כספי ($)</label><input type="number" value={riskAmount} onChange={(e) => setRiskAmount(e.target.value)} placeholder="500" /></div>
+        <div className="field"><label>סיכון כספי ($)</label><ClearableInput type="number" value={riskAmount} onChange={(e) => setRiskAmount(e.target.value)} onClear={() => setRiskAmount('')} placeholder="500" /></div>
         <button className="btn-primary" onClick={handleAddTrade} disabled={saving}>{saving ? 'שומרים...' : 'פרסום לתיק'}</button>
         {message && <p style={{ marginTop: '10px', fontSize: '13px', color: message.includes('שגיאה') ? 'var(--loss)' : 'var(--profit)' }}>{message}</p>}
       </div>
