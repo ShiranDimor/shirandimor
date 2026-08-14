@@ -15,21 +15,6 @@ export default function SubscribePage() {
       </div>
       <div className="form-sub">מנוי חודשי · ללא התחייבות</div>
 
-      <div className="section-label"><h2>מה מקבלים בקבוצה</h2></div>
-      <div className="group-card paid" style={{ marginBottom: '24px' }}>
-        <div className="gc-tag">גישה מלאה</div>
-        <h3>קבוצת הסוחרים <span style={{ fontSize: '12px', color: 'var(--text-tertiary)', fontWeight: 400 }}>· "מדברים עסקאות"</span></h3>
-        <div className="gc-price">₪400 לחודש <span style={{ color: 'var(--profit)', fontWeight: 600 }}>· חודש ראשון ב-₪200</span></div>
-        <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '-10px', marginBottom: '14px' }}>מנוי חודשי · ללא התחייבות</div>
-        <div className="gc-perks">
-          <div><strong>בניית תיק השקעות</strong> - תוך יומי, סווינג, טווח ארוך</div>
-          <div>וובינרים לייב - שאלות, ניתוחים ולמידה בזמן אמת</div>
-          <div><strong>ליווי אישי</strong> - לצד קהילה סגורה לדיון מעמיק</div>
-          <div><strong>יומן מסחר שקוף</strong> - כולל עסקאות מפסידות</div>
-          <div>תיק מסחר אישי וניתוח העסקאות ע"י שירן</div>
-        </div>
-      </div>
-
       <div className="price-card">
         <div style={{ display: 'inline-block', background: 'var(--profit-bg)', color: 'var(--profit)', fontSize: '11.5px', fontWeight: 700, padding: '4px 12px', borderRadius: '20px', marginBottom: '14px' }}>
           חודש ראשון ב-50% הנחה
