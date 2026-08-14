@@ -16,12 +16,23 @@ type JournalEntry = {
   stop_loss: number;
   status: string;
   exit_price: number | null;
+  current_price: number | null;
   shares: number;
   realized_pnl_usd: number | null;
   opened_at: string;
   closed_at: string | null;
   parent_entry_id: string | null;
 };
+
+function unrealizedUsd(e: JournalEntry) {
+  if (!e.current_price) return null;
+  return (e.current_price - e.entry_price) * e.shares * (e.direction === 'short' ? -1 : 1);
+}
+
+function unrealizedPct(e: JournalEntry) {
+  if (!e.current_price) return null;
+  return ((e.current_price - e.entry_price) / e.entry_price) * 100 * (e.direction === 'short' ? -1 : 1);
+}
 
 function formatDate(iso: string | null) {
   if (!iso) return '';
@@ -46,6 +57,8 @@ export default function JournalPage() {
   }, []);
 
   async function load() {
+    fetch('/api/refresh-prices').catch(() => {});
+
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setLoading(false); return; }
     setUserId(user.id);
@@ -500,8 +513,12 @@ export default function JournalPage() {
                         <td>${e.entry_price.toFixed(2)}</td>
                         <td>{e.status === 'closed' ? `$${e.exit_price?.toFixed(2)}` : `$${e.stop_loss}`}</td>
                         <td>{e.shares}</td>
-                        <td className="pnl-cell" style={{ color: e.status === 'open' ? 'var(--text-secondary)' : (e.realized_pnl_usd ?? 0) >= 0 ? 'var(--profit)' : 'var(--loss)' }}>
-                          {e.status === 'open' ? 'פתוחה' : `${(e.realized_pnl_usd ?? 0) >= 0 ? '+' : ''}$${(e.realized_pnl_usd ?? 0).toFixed(2)}`}
+                        <td className="pnl-cell" style={{ color: e.status === 'open' ? (unrealizedUsd(e) !== null ? (unrealizedUsd(e)! >= 0 ? 'var(--profit)' : 'var(--loss)') : 'var(--text-secondary)') : (e.realized_pnl_usd ?? 0) >= 0 ? 'var(--profit)' : 'var(--loss)' }}>
+                          {e.status === 'open'
+                            ? unrealizedUsd(e) !== null
+                              ? <>{unrealizedPct(e)! >= 0 ? '+' : ''}{unrealizedPct(e)!.toFixed(2)}%<span className="usd-sub">{unrealizedUsd(e)! >= 0 ? '+' : '-'}${Math.abs(unrealizedUsd(e)!).toFixed(0)}</span></>
+                              : 'פתוחה'
+                            : `${(e.realized_pnl_usd ?? 0) >= 0 ? '+' : ''}$${(e.realized_pnl_usd ?? 0).toFixed(2)}`}
                         </td>
                         {showDelete && (
                           <td>

@@ -6,46 +6,58 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// רענון מחירים יזום מהדפדפן (בנוסף ל-cron היומי) - כדי שהמחיר יתעדכן במהלך היום כשמישהו פותח את התיק
+// רענון מחירים יזום מהדפדפן (בנוסף ל-cron היומי) - כדי שהמחיר יתעדכן במהלך היום כשמישהו פותח
+// את התיק הציבורי או את היומן האישי שלו. מרענן גם עסקאות פתוחות בתיק וגם ביומנים של כל המנויים,
+// ומושך כל סימבול מ-Finnhub פעם אחת בלבד כדי לא לשלוח בקשות כפולות
 const MIN_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 
 export async function GET() {
-  const { data: openTrades, error } = await supabaseAdmin
-    .from('trades')
-    .select('id, symbol, current_price_updated_at')
-    .eq('status', 'open');
+  const [{ data: openTrades, error: tradesError }, { data: openEntries, error: entriesError }] = await Promise.all([
+    supabaseAdmin.from('trades').select('id, symbol, current_price_updated_at').eq('status', 'open'),
+    supabaseAdmin.from('journal_entries').select('id, symbol, current_price_updated_at').eq('status', 'open'),
+  ]);
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  if (tradesError || entriesError) {
+    return NextResponse.json({ error: (tradesError || entriesError)?.message }, { status: 500 });
   }
 
   const now = Date.now();
-  const stale = (openTrades || []).filter((t) => {
-    if (!t.current_price_updated_at) return true;
-    return now - new Date(t.current_price_updated_at).getTime() > MIN_REFRESH_INTERVAL_MS;
-  });
+  const isStale = (updatedAt: string | null) => !updatedAt || now - new Date(updatedAt).getTime() > MIN_REFRESH_INTERVAL_MS;
 
-  const results: { symbol: string; price: number | null }[] = [];
+  const staleTrades = (openTrades || []).filter((t) => isStale(t.current_price_updated_at));
+  const staleEntries = (openEntries || []).filter((e) => isStale(e.current_price_updated_at));
 
-  for (const trade of stale) {
+  const symbols = Array.from(new Set([...staleTrades, ...staleEntries].map((t) => t.symbol)));
+  const prices: Record<string, number> = {};
+
+  for (const symbol of symbols) {
     try {
-      const res = await fetch(
-        `https://finnhub.io/api/v1/quote?symbol=${trade.symbol}&token=${process.env.FINNHUB_API_KEY}`
-      );
+      const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${process.env.FINNHUB_API_KEY}`);
       const data = await res.json();
-      const currentPrice = data.c;
-
-      if (currentPrice && currentPrice > 0) {
-        await supabaseAdmin
-          .from('trades')
-          .update({ current_price: currentPrice, current_price_updated_at: new Date().toISOString() })
-          .eq('id', trade.id);
-        results.push({ symbol: trade.symbol, price: currentPrice });
-      }
+      if (data.c && data.c > 0) prices[symbol] = data.c;
     } catch (e) {
-      results.push({ symbol: trade.symbol, price: null });
+      // מתעלמים מסימבול שנכשל וממשיכים לשאר
     }
   }
 
-  return NextResponse.json({ updated: results.length, results });
+  const nowIso = new Date().toISOString();
+
+  const [tradeResults] = await Promise.all([
+    Promise.all(
+      staleTrades
+        .filter((t) => prices[t.symbol])
+        .map((t) =>
+          supabaseAdmin.from('trades').update({ current_price: prices[t.symbol], current_price_updated_at: nowIso }).eq('id', t.id)
+        )
+    ),
+    Promise.all(
+      staleEntries
+        .filter((e) => prices[e.symbol])
+        .map((e) =>
+          supabaseAdmin.from('journal_entries').update({ current_price: prices[e.symbol], current_price_updated_at: nowIso }).eq('id', e.id)
+        )
+    ),
+  ]);
+
+  return NextResponse.json({ updated: tradeResults.length, symbolsFetched: Object.keys(prices).length });
 }
