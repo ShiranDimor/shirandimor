@@ -475,7 +475,7 @@
     text-align: center; text-decoration: none; box-sizing: border-box;
   }
   /* מרווח תחתון לתוכן כדי שהסרגל הדביק לא יסתיר את הכפתורים/פוטר */
-  .wrap { padding-bottom: 76px; }
+  .wrap { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
 .wa-float-btn {
   position: fixed;
   bottom: 20px;
