@@ -27,6 +27,7 @@ export default function HomePage() {
   const [openTrades, setOpenTrades] = useState<Trade[]>([]);
   const [lastClosed, setLastClosed] = useState<Trade | null>(null);
   const [openCount, setOpenCount] = useState(0);
+  const [showStickyCta, setShowStickyCta] = useState(false);
 
   function handlePhoneChange(value: string) {
     setLeadPhone(value.replace(/\D/g, '').slice(0, 10));
@@ -60,6 +61,14 @@ export default function HomePage() {
 
   useEffect(() => {
     loadTrades();
+  }, []);
+
+  useEffect(() => {
+    function onScroll() {
+      setShowStickyCta(window.scrollY > 500);
+    }
+    window.addEventListener('scroll', onScroll);
+    return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
   async function loadTrades() {
@@ -227,9 +236,9 @@ export default function HomePage() {
         <div className="group-card free">
           <h3>קבוצת עדכונים</h3>
           <div className="gc-price">ללא עלות</div>
-          <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '-10px', marginBottom: '14px' }}>בלי חובת רכישה, בלי לחץ</div>
+          <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '-10px', marginBottom: '14px' }}>בלי התחייבות, בלי לחץ</div>
           <div className="gc-perks">
-            <div>עדכונים בלי רעש - מה שבאמת קורה בשוק, בלי הצפה של הודעות</div>
+            <div>עדכונים בלי רעש - רק מה שבאמת קורה בשוק</div>
             <div>הצצה לעולם שוק ההון, בלי לשלם עליה אלפי שקלים</div>
             <div>מושג אחד בשבוע - פשוט, ברור, ואפשר להשתמש בו מיד</div>
             <div>הצטרפות בלחיצה אחת, בלי התחייבות ובלי מכירות</div>
@@ -290,6 +299,14 @@ export default function HomePage() {
         מסחר בשוק ההון כרוך בסיכון. אין באמור המלצה לפעולה כלשהי.<br />
         <Link href="/terms" style={{ color: 'var(--text-tertiary)', textDecoration: 'underline' }}>תקנון</Link> · <Link href="/privacy" style={{ color: 'var(--text-tertiary)', textDecoration: 'underline' }}>מדיניות פרטיות</Link>
       </footer>
+
+      {showStickyCta && !showLeadForm && (
+        <div className="sticky-cta">
+          <button onClick={() => { window.scrollTo(0, 0); setShowLeadForm(true); }}>
+            הצטרפות לקבוצת העדכונים - ללא עלות
+          </button>
+        </div>
+      )}
     </div>
   );
 }

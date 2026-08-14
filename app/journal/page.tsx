@@ -360,39 +360,10 @@ export default function JournalPage() {
           .map((e) => (new Date(e.closed_at as string).getTime() - new Date(e.opened_at).getTime()) / 86400000);
         const avgDaysToClose = daysToClose.length > 0 ? daysToClose.reduce((s, x) => s + x, 0) / daysToClose.length : null;
 
-        function renderCard(e: JournalEntry) {
+        function renderActionPanel(e: JournalEntry) {
           return (
-          <div className="trade-card" key={e.id}>
-            <div className="trade-top">
-              <div className="trade-symbol-group">
-                <div className={`direction-mark ${e.direction}`}>{e.direction === 'long' ? 'L' : 'S'}</div>
-                <div className="trade-symbol">{e.symbol}</div>
-              </div>
-              <div className="trade-pnl">
-                {e.status === 'open' ? (
-                  <div className="pct" style={{ color: 'var(--text-secondary)' }}>פתוחה</div>
-                ) : (
-                  <div className="pct" style={{ color: (e.realized_pnl_usd ?? 0) >= 0 ? 'var(--profit)' : 'var(--loss)' }}>
-                    {(e.realized_pnl_usd ?? 0) >= 0 ? '+' : ''}${(e.realized_pnl_usd ?? 0).toFixed(2)}
-                  </div>
-                )}
-              </div>
-            </div>
-            <div className="trade-date-row">
-              נפתחה ב-{formatDate(e.opened_at)}
-              {e.status === 'closed' && <> · נסגרה ב-{formatDate(e.closed_at)}</>}
-            </div>
-            <div className="trade-details">
-              <div className="detail-item"><div className="label">כניסה</div><div className="value">${e.entry_price.toFixed(2)}</div></div>
-              {e.status === 'open' ? (
-                <div className="detail-item"><div className="label">סטופ</div><div className="value">${e.stop_loss}</div></div>
-              ) : (
-                <div className="detail-item"><div className="label">יציאה</div><div className="value">${e.exit_price?.toFixed(2)}</div></div>
-              )}
-              <div className="detail-item"><div className="label">מניות</div><div className="value">{e.shares}</div></div>
-            </div>
-
-            {editingId === e.id ? (
+            <>
+              {editingId === e.id ? (
               <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--border-hairline)' }}>
                 <div className="form-row" style={{ marginBottom: '10px' }}>
                   <div className="field" style={{ marginBottom: 0 }}><label>סימבול</label><ClearableInput type="text" value={editSymbol} onChange={(ev) => setEditSymbol(ev.target.value)} onClear={() => setEditSymbol('')} /></div>
@@ -469,7 +440,64 @@ export default function JournalPage() {
                 </button>
               </div>
             )}
-          </div>
+            </>
+          );
+        }
+
+        function renderTable(list: JournalEntry[], emptyText: string) {
+          if (list.length === 0) return <p className="trade-table-empty">{emptyText}</p>;
+          return (
+            <>
+              <div className="trade-table-wrap">
+                <table className="trade-table">
+                  <thead>
+                    <tr>
+                      <th>סימבול</th>
+                      <th>נפתחה ב-</th>
+                      <th>נסגרה ב-</th>
+                      <th>כניסה</th>
+                      <th>סטופ/יציאה</th>
+                      <th>מניות</th>
+                      <th>תוצאה</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {list.map((e) => (
+                      <tr key={e.id}>
+                        <td className="sym-cell">
+                          <span className="sym-cell-inner">
+                            <span className={`direction-mark ${e.direction}`}>{e.direction === 'long' ? 'L' : 'S'}</span>
+                            <span>{e.symbol}</span>
+                          </span>
+                        </td>
+                        <td>{formatDate(e.opened_at)}</td>
+                        <td>{e.status === 'closed' ? formatDate(e.closed_at) : '—'}</td>
+                        <td>${e.entry_price.toFixed(2)}</td>
+                        <td>{e.status === 'closed' ? `$${e.exit_price?.toFixed(2)}` : `$${e.stop_loss}`}</td>
+                        <td>{e.shares}</td>
+                        <td className="pnl-cell" style={{ color: e.status === 'open' ? 'var(--text-secondary)' : (e.realized_pnl_usd ?? 0) >= 0 ? 'var(--profit)' : 'var(--loss)' }}>
+                          {e.status === 'open' ? 'פתוחה' : `${(e.realized_pnl_usd ?? 0) >= 0 ? '+' : ''}$${(e.realized_pnl_usd ?? 0).toFixed(2)}`}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="entry-actions-list">
+                {list.map((e) => {
+                  const hasOpenPanel = editingId === e.id || closingId === e.id || addQtyId === e.id || sellQtyId === e.id;
+                  return (
+                    <div className="entry-actions-row" key={e.id} style={{ background: hasOpenPanel ? 'var(--bg-surface)' : undefined }}>
+                      <div className="ea-label">
+                        <span className={`direction-mark ${e.direction}`}>{e.direction === 'long' ? 'L' : 'S'}</span>
+                        <span>{e.symbol}</span>
+                      </div>
+                      {renderActionPanel(e)}
+                    </div>
+                  );
+                })}
+              </div>
+            </>
           );
         }
 
@@ -480,10 +508,7 @@ export default function JournalPage() {
                 <h2>עסקאות פתוחות</h2>
                 <div className="summary-right"><span className="count">{openEntries.length}</span><span className="collapse-chevron">▾</span></div>
               </summary>
-              <div className="trades-list">
-                {openEntries.length === 0 && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>אין כרגע עסקאות פתוחות</p>}
-                {openEntries.map(renderCard)}
-              </div>
+              {renderTable(openEntries, 'אין כרגע עסקאות פתוחות')}
             </details>
 
             <details className="section-collapse">
@@ -491,10 +516,7 @@ export default function JournalPage() {
                 <h2>נסגרו ברווח</h2>
                 <div className="summary-right"><span className="count">{closedProfit.length}</span><span className="collapse-chevron">▾</span></div>
               </summary>
-              <div className="trades-list">
-                {closedProfit.length === 0 && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>אין עדיין עסקאות שנסגרו ברווח</p>}
-                {closedProfit.map(renderCard)}
-              </div>
+              {renderTable(closedProfit, 'אין עדיין עסקאות שנסגרו ברווח')}
             </details>
 
             <details className="section-collapse">
@@ -502,10 +524,7 @@ export default function JournalPage() {
                 <h2>נסגרו בהפסד</h2>
                 <div className="summary-right"><span className="count">{closedLoss.length}</span><span className="collapse-chevron">▾</span></div>
               </summary>
-              <div className="trades-list">
-                {closedLoss.length === 0 && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>אין עדיין עסקאות שנסגרו בהפסד</p>}
-                {closedLoss.map(renderCard)}
-              </div>
+              {renderTable(closedLoss, 'אין עדיין עסקאות שנסגרו בהפסד')}
             </details>
 
             <div className="section-label" style={{ marginTop: '28px' }}><h2>תובנות היומן</h2></div>
