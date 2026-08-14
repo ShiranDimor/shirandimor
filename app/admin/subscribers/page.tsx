@@ -19,6 +19,16 @@ export default function AdminSubscribersPage() {
 
   const [approvedSubs, setApprovedSubs] = useState<ApprovedSub[]>([]);
   const [sortBy, setSortBy] = useState<'date' | 'name'>('date');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+
+  function toggleSort(col: 'date' | 'name') {
+    if (sortBy === col) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortBy(col);
+      setSortDir(col === 'name' ? 'asc' : 'desc');
+    }
+  }
 
   useEffect(() => {
     checkAdmin();
@@ -62,10 +72,11 @@ export default function AdminSubscribersPage() {
   }
 
   const sortedSubs = [...approvedSubs].sort((a, b) => {
+    const dir = sortDir === 'asc' ? 1 : -1;
     if (sortBy === 'name') {
-      return (a.full_name || a.email).localeCompare(b.full_name || b.email, 'he');
+      return dir * (a.full_name || a.email).localeCompare(b.full_name || b.email, 'he');
     }
-    return new Date(b.subscription_started_at || 0).getTime() - new Date(a.subscription_started_at || 0).getTime();
+    return dir * (new Date(a.subscription_started_at || 0).getTime() - new Date(b.subscription_started_at || 0).getTime());
   });
 
   if (checking) {
@@ -112,9 +123,13 @@ export default function AdminSubscribersPage() {
 
       <div className="section-label"><h2>מנויים מאושרים</h2><span className="count">{approvedSubs.length}</span></div>
 
-      <div className="filter-row" style={{ marginBottom: '14px' }}>
-        <div className={`filter-chip ${sortBy === 'date' ? 'active' : ''}`} style={{ cursor: 'pointer' }} onClick={() => setSortBy('date')}>לפי תאריך הצטרפות</div>
-        <div className={`filter-chip ${sortBy === 'name' ? 'active' : ''}`} style={{ cursor: 'pointer' }} onClick={() => setSortBy('name')}>לפי א-ב</div>
+      <div className="sort-header">
+        <div className={`sort-col ${sortBy === 'name' ? 'active' : ''}`} onClick={() => toggleSort('name')}>
+          שם <span className="sort-arrow">{sortBy === 'name' ? (sortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+        </div>
+        <div className={`sort-col ${sortBy === 'date' ? 'active' : ''}`} onClick={() => toggleSort('date')}>
+          תאריך הצטרפות <span className="sort-arrow">{sortBy === 'date' ? (sortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+        </div>
       </div>
 
       {approvedSubs.length === 0 && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)', marginBottom: '20px' }}>עדיין אין מנויים מאושרים</p>}

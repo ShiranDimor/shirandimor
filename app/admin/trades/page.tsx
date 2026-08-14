@@ -13,6 +13,7 @@ type Trade = {
   stop_loss: number;
   shares_calculated: number;
   exit_price: number | null;
+  current_price: number | null;
   notes: string | null;
   opened_at: string;
   closed_at: string | null;
@@ -57,6 +58,10 @@ export default function AdminTradesPage() {
   const [sellingQty, setSellingQty] = useState(false);
   const [sellQtyError, setSellQtyError] = useState('');
 
+  const [priceUpdateId, setPriceUpdateId] = useState<string | null>(null);
+  const [newCurrentPrice, setNewCurrentPrice] = useState('');
+  const [updatingPrice, setUpdatingPrice] = useState(false);
+
   const [direction, setDirection] = useState<'long' | 'short'>('long');
   const [symbol, setSymbol] = useState('');
   const [entryPrice, setEntryPrice] = useState('');
@@ -72,14 +77,14 @@ export default function AdminTradesPage() {
   async function loadTrades() {
     const { data: open } = await supabase
       .from('trades')
-      .select('id, direction, symbol, entry_price, stop_loss, shares_calculated, exit_price, notes, opened_at, closed_at, parent_trade_id')
+      .select('id, direction, symbol, entry_price, stop_loss, shares_calculated, exit_price, current_price, notes, opened_at, closed_at, parent_trade_id')
       .eq('status', 'open')
       .order('opened_at', { ascending: false });
     if (open) setOpenTrades(open);
 
     const { data: closed } = await supabase
       .from('trades')
-      .select('id, direction, symbol, entry_price, stop_loss, shares_calculated, exit_price, notes, opened_at, closed_at, parent_trade_id')
+      .select('id, direction, symbol, entry_price, stop_loss, shares_calculated, exit_price, current_price, notes, opened_at, closed_at, parent_trade_id')
       .eq('status', 'closed')
       .order('closed_at', { ascending: false });
     if (closed) setClosedTrades(closed);
@@ -199,6 +204,29 @@ export default function AdminTradesPage() {
     setSellingQty(false);
     setSellQtyId(null);
     loadTrades();
+  }
+
+  function startPriceUpdate(trade: Trade) {
+    setPriceUpdateId(trade.id);
+    setNewCurrentPrice(trade.current_price !== null ? String(trade.current_price) : '');
+  }
+
+  async function handlePriceUpdate(trade: Trade) {
+    const price = parseFloat(newCurrentPrice);
+    if (!price) return;
+    setUpdatingPrice(true);
+
+    const { error } = await supabase
+      .from('trades')
+      .update({ current_price: price, current_price_updated_at: new Date().toISOString() })
+      .eq('id', trade.id);
+
+    setUpdatingPrice(false);
+
+    if (!error) {
+      setPriceUpdateId(null);
+      loadTrades();
+    }
   }
 
   function startEdit(trade: Trade) {
@@ -424,6 +452,21 @@ export default function AdminTradesPage() {
       );
     }
 
+    if (!isClosed && priceUpdateId === trade.id) {
+      return (
+        <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--border-hairline)' }}>
+          <div className="field">
+            <label>מחיר נוכחי</label>
+            <ClearableInput type="number" value={newCurrentPrice} onChange={(e) => setNewCurrentPrice(e.target.value)} onClear={() => setNewCurrentPrice('')} placeholder="132.50" />
+          </div>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button className="btn-primary" style={{ flex: 1 }} onClick={() => handlePriceUpdate(trade)} disabled={updatingPrice || !newCurrentPrice}>{updatingPrice ? 'מעדכנים...' : 'עדכון מחיר'}</button>
+            <button className="btn-outline" style={{ flex: 1 }} onClick={() => setPriceUpdateId(null)}>ביטול</button>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '10px' }}>
         {!isClosed && (
@@ -436,6 +479,9 @@ export default function AdminTradesPage() {
             </button>
             <button className="btn-outline" style={{ flex: 1, padding: '8px', fontSize: '13px' }} onClick={() => startSellQty(trade)}>
               מכירה חלקית
+            </button>
+            <button className="btn-outline" style={{ flex: 1, padding: '8px', fontSize: '13px' }} onClick={() => startPriceUpdate(trade)}>
+              עדכון מחיר נוכחי
             </button>
           </>
         )}

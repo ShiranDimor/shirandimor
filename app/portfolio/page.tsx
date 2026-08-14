@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import ClearableInput from '@/components/ClearableInput';
+import StatsRing from '@/components/StatsRing';
 
 type Trade = {
   id: string;
@@ -16,6 +17,8 @@ type Trade = {
   status: string;
   opened_at: string;
   closed_at: string | null;
+  shares_calculated: number | null;
+  realized_pnl_usd: number | null;
 };
 
 const MONTH_LABELS = ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני', 'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר'];
@@ -114,6 +117,22 @@ export default function PortfolioPage() {
   const allClosedProfit = closedTrades.filter((t) => pct(t) >= 0).length;
   const winRate = closedTrades.length > 0 ? (allClosedProfit / closedTrades.length) * 100 : null;
 
+  const closedPcts = closedTrades.map((t) => pct(t));
+  const avgPnlPct = closedPcts.length > 0 ? closedPcts.reduce((s, x) => s + x, 0) / closedPcts.length : null;
+
+  const winPcts = closedPcts.filter((p) => p >= 0);
+  const lossPcts = closedPcts.filter((p) => p < 0);
+  const avgWinPct = winPcts.length > 0 ? winPcts.reduce((s, x) => s + x, 0) / winPcts.length : 0;
+  const avgLossPct = lossPcts.length > 0 ? Math.abs(lossPcts.reduce((s, x) => s + x, 0) / lossPcts.length) : 0;
+  const riskReward = avgLossPct > 0 ? avgWinPct / avgLossPct : null;
+
+  const daysToClose = closedTrades
+    .filter((t) => t.closed_at)
+    .map((t) => (new Date(t.closed_at as string).getTime() - new Date(t.opened_at).getTime()) / 86400000);
+  const avgDaysToClose = daysToClose.length > 0 ? daysToClose.reduce((s, x) => s + x, 0) / daysToClose.length : null;
+
+  const tradesThisMonth = [...openTrades, ...closedTrades].filter((t) => monthKey(t.opened_at) === currentMonthKey()).length;
+
   const shares = risk && entry && stop
     ? Math.floor(parseFloat(risk) / Math.abs(parseFloat(entry) - parseFloat(stop)))
     : null;
@@ -154,6 +173,23 @@ export default function PortfolioPage() {
           </div>
           <Link href="/subscribe" className="lb-cta">לגישה מלאה ←</Link>
         </div>
+      )}
+
+      {hasFullAccess && (
+        <>
+          <div className="section-label"><h2>מחשבון גודל פוזיציה</h2></div>
+          <div className="calc-panel" style={{ padding: '18px 16px', marginBottom: '28px' }}>
+            <div className="form-row" style={{ marginBottom: '10px' }}>
+              <div className="field" style={{ marginBottom: 0 }}><label>סיכון כספי ($)</label><ClearableInput type="number" value={risk} onChange={(e) => setRisk(e.target.value)} onClear={() => setRisk('')} placeholder="500" /></div>
+              <div className="field" style={{ marginBottom: 0 }}><label>מחיר כניסה ($)</label><ClearableInput type="number" value={entry} onChange={(e) => setEntry(e.target.value)} onClear={() => setEntry('')} placeholder="127.32" /></div>
+            </div>
+            <div className="field"><label>מחיר סטופ לוס ($)</label><ClearableInput type="number" value={stop} onChange={(e) => setStop(e.target.value)} onClear={() => setStop('')} placeholder="121.00" /></div>
+            <div className="calc-result">
+              <span className="rlabel">כמות מניות מקסימלית</span>
+              <span className="rvalue">{shares !== null && !isNaN(shares) ? shares : '—'}</span>
+            </div>
+          </div>
+        </>
       )}
 
       <details className="section-collapse" open>
@@ -266,34 +302,34 @@ export default function PortfolioPage() {
 
       {hasFullAccess && (
         <>
-          <div className="section-label" style={{ marginTop: '28px' }}><h2>נתוני התיק</h2></div>
-          <div className="calc-panel" style={{ padding: '18px 16px', marginBottom: '20px' }}>
-            <div className="calc-result">
-              <span className="rlabel">גודל תיק התחלתי</span>
-              <span className="rvalue">{initialBalance !== null ? `$${initialBalance.toLocaleString()}` : '—'}</span>
+          <div className="section-label" style={{ marginTop: '28px' }}><h2>תובנות התיק</h2></div>
+          <div className="insights-panel">
+            <div className="insights-ring-row">
+              <StatsRing
+                percent={winRate ?? 0}
+                label={`${closedTrades.length} עסקאות סגורות`}
+                sublabel={`תיק התחלתי $${initialBalance !== null ? initialBalance.toLocaleString() : '—'}`}
+              />
             </div>
-            <div className="calc-result" style={{ marginTop: '8px' }}>
-              <span className="rlabel">אחוז הצלחה</span>
-              <span className="rvalue" style={{ color: winRate !== null ? (winRate >= 50 ? 'var(--profit)' : 'var(--loss)') : undefined }}>
-                {winRate !== null ? `${winRate.toFixed(1)}%` : '—'}
-              </span>
-            </div>
-            <div className="calc-result" style={{ marginTop: '8px' }}>
-              <span className="rlabel">עסקאות סגורות סה"כ</span>
-              <span className="rvalue">{closedTrades.length}</span>
-            </div>
-          </div>
-
-          <div className="section-label"><h2>מחשבון גודל פוזיציה</h2></div>
-          <div className="calc-panel" style={{ padding: '18px 16px' }}>
-            <div className="form-row" style={{ marginBottom: '10px' }}>
-              <div className="field" style={{ marginBottom: 0 }}><label>סיכון כספי ($)</label><ClearableInput type="number" value={risk} onChange={(e) => setRisk(e.target.value)} onClear={() => setRisk('')} placeholder="500" /></div>
-              <div className="field" style={{ marginBottom: 0 }}><label>מחיר כניסה ($)</label><ClearableInput type="number" value={entry} onChange={(e) => setEntry(e.target.value)} onClear={() => setEntry('')} placeholder="127.32" /></div>
-            </div>
-            <div className="field"><label>מחיר סטופ לוס ($)</label><ClearableInput type="number" value={stop} onChange={(e) => setStop(e.target.value)} onClear={() => setStop('')} placeholder="121.00" /></div>
-            <div className="calc-result">
-              <span className="rlabel">כמות מניות מקסימלית</span>
-              <span className="rvalue">{shares !== null && !isNaN(shares) ? shares : '—'}</span>
+            <div className="insight-grid">
+              <div className="insight-tile">
+                <div className="iv">{avgDaysToClose !== null ? avgDaysToClose.toFixed(1) : '—'}</div>
+                <div className="il">ימי החזקה בממוצע</div>
+              </div>
+              <div className="insight-tile">
+                <div className="iv" style={{ color: avgPnlPct !== null ? (avgPnlPct >= 0 ? 'var(--profit)' : 'var(--loss)') : undefined }}>
+                  {avgPnlPct !== null ? `${avgPnlPct >= 0 ? '+' : ''}${avgPnlPct.toFixed(2)}%` : '—'}
+                </div>
+                <div className="il">רווח/הפסד ממוצע לעסקה</div>
+              </div>
+              <div className="insight-tile">
+                <div className="iv">{riskReward !== null ? `1:${riskReward.toFixed(1)}` : '—'}</div>
+                <div className="il">יחס סיכון-סיכוי</div>
+              </div>
+              <div className="insight-tile">
+                <div className="iv">{tradesThisMonth}</div>
+                <div className="il">עסקאות החודש</div>
+              </div>
             </div>
           </div>
         </>

@@ -19,6 +19,16 @@ export default function AdminPendingPage() {
   const [pendingLeads, setPendingLeads] = useState<PendingLead[]>([]);
   const [approving, setApproving] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<'date' | 'name'>('date');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+
+  function toggleSort(col: 'date' | 'name') {
+    if (sortBy === col) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortBy(col);
+      setSortDir(col === 'name' ? 'asc' : 'desc');
+    }
+  }
 
   useEffect(() => {
     checkAdmin();
@@ -74,10 +84,11 @@ export default function AdminPendingPage() {
   }
 
   const sortedLeads = [...pendingLeads].sort((a, b) => {
+    const dir = sortDir === 'asc' ? 1 : -1;
     if (sortBy === 'name') {
-      return (a.full_name || a.email).localeCompare(b.full_name || b.email, 'he');
+      return dir * (a.full_name || a.email).localeCompare(b.full_name || b.email, 'he');
     }
-    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    return dir * (new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
   });
 
   if (checking) {
@@ -124,9 +135,13 @@ export default function AdminPendingPage() {
 
       <div className="section-label"><h2>מנויים לאישור</h2><span className="count">{pendingLeads.length}</span></div>
 
-      <div className="filter-row" style={{ marginBottom: '14px' }}>
-        <div className={`filter-chip ${sortBy === 'date' ? 'active' : ''}`} style={{ cursor: 'pointer' }} onClick={() => setSortBy('date')}>לפי תאריך הצטרפות</div>
-        <div className={`filter-chip ${sortBy === 'name' ? 'active' : ''}`} style={{ cursor: 'pointer' }} onClick={() => setSortBy('name')}>לפי א-ב</div>
+      <div className="sort-header">
+        <div className={`sort-col ${sortBy === 'name' ? 'active' : ''}`} onClick={() => toggleSort('name')}>
+          שם <span className="sort-arrow">{sortBy === 'name' ? (sortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+        </div>
+        <div className={`sort-col ${sortBy === 'date' ? 'active' : ''}`} onClick={() => toggleSort('date')}>
+          תאריך הצטרפות <span className="sort-arrow">{sortBy === 'date' ? (sortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+        </div>
       </div>
 
       {pendingLeads.length === 0 && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)', marginBottom: '20px' }}>אין כרגע ממתינים</p>}

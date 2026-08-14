@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import ClearableInput from '@/components/ClearableInput';
+import StatsRing from '@/components/StatsRing';
 
 type JournalEntry = {
   id: string;
@@ -339,8 +340,25 @@ export default function JournalPage() {
 
       {(() => {
         const openEntries = entries.filter((e) => e.status === 'open');
-        const closedProfit = entries.filter((e) => e.status === 'closed' && (e.realized_pnl_usd ?? 0) >= 0);
-        const closedLoss = entries.filter((e) => e.status === 'closed' && (e.realized_pnl_usd ?? 0) < 0);
+        const closedEntries = entries.filter((e) => e.status === 'closed');
+        const closedProfit = closedEntries.filter((e) => (e.realized_pnl_usd ?? 0) >= 0);
+        const closedLoss = closedEntries.filter((e) => (e.realized_pnl_usd ?? 0) < 0);
+
+        const winRate = closedEntries.length > 0 ? (closedProfit.length / closedEntries.length) * 100 : null;
+        const avgPnl = closedEntries.length > 0
+          ? closedEntries.reduce((s, e) => s + (e.realized_pnl_usd ?? 0), 0) / closedEntries.length
+          : null;
+        const avgWin = closedProfit.length > 0
+          ? closedProfit.reduce((s, e) => s + (e.realized_pnl_usd ?? 0), 0) / closedProfit.length
+          : 0;
+        const avgLoss = closedLoss.length > 0
+          ? Math.abs(closedLoss.reduce((s, e) => s + (e.realized_pnl_usd ?? 0), 0) / closedLoss.length)
+          : 0;
+        const riskReward = avgLoss > 0 ? avgWin / avgLoss : null;
+        const daysToClose = closedEntries
+          .filter((e) => e.closed_at)
+          .map((e) => (new Date(e.closed_at as string).getTime() - new Date(e.opened_at).getTime()) / 86400000);
+        const avgDaysToClose = daysToClose.length > 0 ? daysToClose.reduce((s, x) => s + x, 0) / daysToClose.length : null;
 
         function renderCard(e: JournalEntry) {
           return (
@@ -489,6 +507,37 @@ export default function JournalPage() {
                 {closedLoss.map(renderCard)}
               </div>
             </details>
+
+            <div className="section-label" style={{ marginTop: '28px' }}><h2>תובנות היומן</h2></div>
+            <div className="insights-panel">
+              <div className="insights-ring-row">
+                <StatsRing
+                  percent={winRate ?? 0}
+                  label={`${closedEntries.length} עסקאות סגורות`}
+                  sublabel="ביומן האישי"
+                />
+              </div>
+              <div className="insight-grid">
+                <div className="insight-tile">
+                  <div className="iv">{avgDaysToClose !== null ? avgDaysToClose.toFixed(1) : '—'}</div>
+                  <div className="il">ימי החזקה בממוצע</div>
+                </div>
+                <div className="insight-tile">
+                  <div className="iv" style={{ color: avgPnl !== null ? (avgPnl >= 0 ? 'var(--profit)' : 'var(--loss)') : undefined }}>
+                    {avgPnl !== null ? `${avgPnl >= 0 ? '+' : ''}$${avgPnl.toFixed(0)}` : '—'}
+                  </div>
+                  <div className="il">רווח/הפסד ממוצע לעסקה</div>
+                </div>
+                <div className="insight-tile">
+                  <div className="iv">{riskReward !== null ? `1:${riskReward.toFixed(1)}` : '—'}</div>
+                  <div className="il">יחס סיכון-סיכוי</div>
+                </div>
+                <div className="insight-tile">
+                  <div className="iv">{openEntries.length}</div>
+                  <div className="il">עסקאות פתוחות</div>
+                </div>
+              </div>
+            </div>
           </>
         );
       })()}
