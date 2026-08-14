@@ -4,8 +4,8 @@ export default function PrivacyPage() {
   return (
     <div className="wrap">
       <header>
-        <div className="brand">מסחר <span>אחראי</span> במניות</div>
-        <Link href="/" className="nav-link">← חזרה</Link>
+        <Link href="/" className="brand">מסחר <span>אחראי</span> במניות</Link>
+        <Link href="/" className="nav-link">בית</Link>
       </header>
       <div className="legal-doc">
         <h1>מדיניות פרטיות</h1>

@@ -54,6 +54,44 @@ export default function JournalPage() {
     ? Math.floor(parseFloat(riskAmount) / Math.abs(parseFloat(entryPrice) - parseFloat(stopLoss)))
     : 0;
 
+  async function handleLogout() {
+    await supabase.auth.signOut();
+    window.location.href = '/';
+  }
+
+  const [closingId, setClosingId] = useState<string | null>(null);
+  const [exitPrice, setExitPrice] = useState('');
+  const [exitDate, setExitDate] = useState('');
+  const [closing, setClosing] = useState(false);
+
+  async function handleClose(entry: JournalEntry) {
+    if (!exitPrice) return;
+    setClosing(true);
+
+    const exit = parseFloat(exitPrice);
+    const dirFactor = entry.direction === 'short' ? -1 : 1;
+    const realizedPnl = (exit - entry.entry_price) * entry.shares * dirFactor;
+
+    const { error } = await supabase
+      .from('journal_entries')
+      .update({
+        status: 'closed',
+        exit_price: exit,
+        closed_at: exitDate ? new Date(exitDate).toISOString() : new Date().toISOString(),
+        realized_pnl_usd: realizedPnl,
+      })
+      .eq('id', entry.id);
+
+    setClosing(false);
+
+    if (!error) {
+      setClosingId(null);
+      setExitPrice('');
+      setExitDate('');
+      load();
+    }
+  }
+
   async function handleAdd() {
     if (!userId || !symbol || !entryPrice || !stopLoss || !riskAmount) return;
     setSaving(true);
@@ -95,8 +133,11 @@ export default function JournalPage() {
   return (
     <div className="wrap">
       <header>
-        <div className="brand">מסחר <span>אחראי</span> במניות</div>
-        <Link href="/portfolio" className="nav-link">← חזרה</Link>
+        <Link href="/" className="brand">מסחר <span>אחראי</span> במניות</Link>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <Link href="/portfolio" className="nav-link">← לתיק</Link>
+          <button onClick={handleLogout} className="nav-link" style={{ background: 'none', border: 'none', cursor: 'pointer', font: 'inherit', padding: 0 }}>התנתקות</button>
+        </div>
       </header>
 
       <div className="section-label"><h2>יומן המסחר שלי</h2><span className="count">פרטי - רק את/ה ואני</span></div>
@@ -136,14 +177,47 @@ export default function JournalPage() {
                 <div className="trade-symbol">{e.symbol}</div>
               </div>
               <div className="trade-pnl">
-                <div className="pct" style={{ color: 'var(--text-secondary)' }}>{e.status === 'open' ? 'פתוחה' : 'סגורה'}</div>
+                {e.status === 'open' ? (
+                  <div className="pct" style={{ color: 'var(--text-secondary)' }}>פתוחה</div>
+                ) : (
+                  <div className="pct" style={{ color: (e.realized_pnl_usd ?? 0) >= 0 ? 'var(--profit)' : 'var(--loss)' }}>
+                    {(e.realized_pnl_usd ?? 0) >= 0 ? '+' : ''}${(e.realized_pnl_usd ?? 0).toFixed(2)}
+                  </div>
+                )}
               </div>
             </div>
             <div className="trade-details">
               <div className="detail-item"><div className="label">כניסה</div><div className="value">${e.entry_price}</div></div>
-              <div className="detail-item"><div className="label">סטופ</div><div className="value">${e.stop_loss}</div></div>
+              {e.status === 'open' ? (
+                <div className="detail-item"><div className="label">סטופ</div><div className="value">${e.stop_loss}</div></div>
+              ) : (
+                <div className="detail-item"><div className="label">יציאה</div><div className="value">${e.exit_price}</div></div>
+              )}
               <div className="detail-item"><div className="label">מניות</div><div className="value">{e.shares}</div></div>
             </div>
+
+            {e.status === 'open' && (
+              closingId === e.id ? (
+                <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--border-hairline)' }}>
+                  <div className="form-row" style={{ marginBottom: '10px' }}>
+                    <div className="field" style={{ marginBottom: 0 }}><label>מחיר סגירה</label><input type="number" value={exitPrice} onChange={(ev) => setExitPrice(ev.target.value)} placeholder="130.50" /></div>
+                    <div className="field" style={{ marginBottom: 0 }}><label>תאריך סגירה</label><input type="date" value={exitDate} onChange={(ev) => setExitDate(ev.target.value)} /></div>
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button className="btn-primary" style={{ flex: 1 }} onClick={() => handleClose(e)} disabled={closing || !exitPrice}>{closing ? 'סוגרת...' : 'אישור סגירה'}</button>
+                    <button className="btn-outline" style={{ flex: 1 }} onClick={() => { setClosingId(null); setExitPrice(''); setExitDate(''); }}>ביטול</button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  className="btn-outline"
+                  style={{ marginTop: '10px', padding: '8px', fontSize: '13px' }}
+                  onClick={() => { setClosingId(e.id); setExitPrice(''); setExitDate(''); }}
+                >
+                  סגירת עסקה
+                </button>
+              )
+            )}
           </div>
         ))}
       </div>

@@ -11,8 +11,8 @@
     --text-primary: #E9ECF2;
     --text-secondary: #8E96A8;
     --text-tertiary: #5A6178;
-    --profit: #4FAE7E;
-    --profit-bg: rgba(79, 174, 126, 0.08);
+    --profit: #E8944D;
+    --profit-bg: rgba(232, 148, 77, 0.08);
     --loss: #C9635E;
     --loss-bg: rgba(201, 99, 94, 0.08);
     --font-display: 'Rubik', sans-serif;
@@ -50,7 +50,7 @@
     display: flex; align-items: center; justify-content: space-between;
     padding-bottom: 20px; border-bottom: 1px solid var(--border-hairline); margin-bottom: 28px;
   }
-  .brand { font-family: var(--font-display); font-size: 20px; font-weight: 700; }
+  .brand { font-family: var(--font-display); font-size: 20px; font-weight: 700; text-decoration: none; color: inherit; }
   .brand span { color: var(--teal); }
   .nav-link { font-size: 13px; color: var(--text-secondary); text-decoration: none; }
 
@@ -122,12 +122,23 @@
   .detail-item .label { font-size: 10px; color: var(--text-tertiary); margin-bottom: 2px; }
   .detail-item .value { font-family: var(--font-mono); font-size: 12.5px; color: var(--text-secondary); }
 
-  .banner-lock {
-    background: rgba(156,143,217,0.06); border: 1px dashed rgba(156,143,217,0.3); border-radius: 10px;
-    padding: 14px 16px; margin-bottom: 20px; text-align: center;
+  .lock-banner {
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    background: linear-gradient(135deg, rgba(156,143,217,0.12), rgba(79,201,196,0.05));
+    border: 1px solid var(--lavender); border-radius: 14px;
+    padding: 16px 18px; margin-bottom: 20px;
   }
-  .banner-lock p { font-size: 13px; color: var(--text-secondary); margin-bottom: 10px; }
-  .banner-lock a { display: inline-block; background: var(--lavender); color: var(--bg-void); font-size: 13px; font-weight: 700; padding: 9px 20px; border-radius: 8px; text-decoration: none; }
+  .lock-banner .lb-icon {
+    flex-shrink: 0; width: 40px; height: 40px; border-radius: 50%;
+    background: rgba(156,143,217,0.18); display: flex; align-items: center; justify-content: center; font-size: 18px;
+  }
+  .lock-banner .lb-text { flex: 1; min-width: 0; }
+  .lock-banner .lb-title { font-size: 13.5px; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; }
+  .lock-banner .lb-sub { font-size: 12px; color: var(--text-secondary); line-height: 1.5; }
+  .lock-banner .lb-cta {
+    flex-shrink: 0; background: var(--lavender); color: var(--bg-void); font-size: 12.5px; font-weight: 700;
+    padding: 9px 16px; border-radius: 8px; text-decoration: none; white-space: nowrap;
+  }
 
   footer { margin-top: 20px; text-align: center; font-size: 11px; color: var(--text-tertiary); }
 
@@ -328,4 +339,34 @@
   box-shadow: 0 4px 16px rgba(0,0,0,0.35);
   text-decoration: none;
   font-size: 26px;
+}
+
+/* ===== רספונסיבי - טאבלט ומחשב ===== */
+@media (min-width: 768px) {
+  .wrap { max-width: 720px; padding-left: 32px; padding-right: 32px; }
+
+  .wont-find { flex-direction: row; gap: 28px; }
+  .wont-find > div { flex: 1; }
+
+  .groups-compare { flex-direction: row; align-items: stretch; }
+  .groups-compare > .group-card { flex: 1; display: flex; flex-direction: column; }
+
+  .trades-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .trades-list > p { grid-column: 1 / -1; }
+
+  .about-feature { padding: 24px 26px; }
+
+  .trust-strip { padding: 20px 0; }
+}
+
+@media (min-width: 1024px) {
+  .wrap { max-width: 980px; padding-left: 40px; padding-right: 40px; }
+
+  .hero-v2 { padding-top: 20px; }
+  .hero-v2 h1 { font-size: 36px; max-width: 22ch; }
+  .hero-v2 p { max-width: 56ch; }
+
+  .trades-list { grid-template-columns: repeat(3, 1fr); }
+
+  .admin-row, .subscriber-card { max-width: 640px; }
 }

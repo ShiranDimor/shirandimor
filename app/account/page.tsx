@@ -30,11 +30,19 @@ export default function AccountPage() {
     }
   }
 
+  async function handleLogout() {
+    await supabase.auth.signOut();
+    window.location.href = '/';
+  }
+
   return (
     <div className="wrap">
       <header>
-        <div className="brand">מסחר <span>אחראי</span> במניות</div>
-        <Link href="/portfolio" className="nav-link">← חזרה</Link>
+        <Link href="/" className="brand">מסחר <span>אחראי</span> במניות</Link>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <Link href="/portfolio" className="nav-link">← לתיק</Link>
+          <button onClick={handleLogout} className="nav-link" style={{ background: 'none', border: 'none', cursor: 'pointer', font: 'inherit', padding: 0 }}>התנתקות</button>
+        </div>
       </header>
 
       <div className="form-title" style={{ color: 'var(--lavender)' }}>הגדרת סיסמה</div>
