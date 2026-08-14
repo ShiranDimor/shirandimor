@@ -134,7 +134,7 @@ export default function AdminSubscribersPage() {
 
       {approvedSubs.length === 0 && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)', marginBottom: '20px' }}>עדיין אין מנויים מאושרים</p>}
       {sortedSubs.map((sub) => (
-        <div className="admin-row" key={sub.id}>
+        <Link href={`/admin/subscribers/${sub.id}`} className="admin-row" key={sub.id} style={{ textDecoration: 'none', color: 'inherit', cursor: 'pointer' }}>
           <div>
             <div className="name">{sub.full_name || 'ללא שם'}</div>
             <div className="email">{sub.email}</div>
@@ -143,7 +143,7 @@ export default function AdminSubscribersPage() {
             </div>
           </div>
           <span style={{ fontSize: '11px', color: 'var(--profit)', fontWeight: 700 }}>{sub.subscription_status === 'active' ? 'פעיל' : sub.subscription_status}</span>
-        </div>
+        </Link>
       ))}
     </div>
   );
