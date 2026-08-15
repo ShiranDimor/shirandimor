@@ -244,7 +244,7 @@ export default function HomePage() {
       </div>
 
       <div className="section-label" style={{ marginTop: '30px' }}><h2>קבוצת עדכונים או קבוצת הסוחרים?</h2></div>
-      <p style={{ fontSize: '13px', color: 'var(--text-tertiary)', marginBottom: '16px' }}>רוצים רק לעקוב ולהתעדכן, או להתחיל לבנות תיק ולהיכנס לעסקאות?</p>
+      <p style={{ fontSize: '13px', color: 'var(--text-tertiary)', marginBottom: '16px' }}>רק עוקבים ומתעדכנים, או גם בונים תיק ונכנסים לעסקאות?</p>
       <div className="groups-compare">
         <div className="group-card free">
           <h3>קבוצת עדכונים</h3>
