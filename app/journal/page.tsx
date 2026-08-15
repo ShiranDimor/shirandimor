@@ -333,7 +333,10 @@ export default function JournalPage() {
         </div>
       </header>
 
-      <div className="section-label"><h2>יומן המסחר שלי</h2><span className="count">פרטי - נשאר בינינו</span></div>
+      <div className="section-label"><h2>יומן המסחר שלי</h2></div>
+      <p style={{ fontSize: '12.5px', color: 'var(--text-tertiary)', lineHeight: 1.5, marginBottom: '14px' }}>
+        זה יומן אישי שלך למעקב ותרגול, ולא קשור לתיק שבו שירן בפועל סוחרת - את התיק האמיתי שלה אפשר לראות <Link href="/portfolio" style={{ color: 'var(--teal)' }}>כאן</Link>.
+      </p>
 
       <button className="add-btn" onClick={() => setShowForm(!showForm)}>+ עסקה חדשה</button>
 
