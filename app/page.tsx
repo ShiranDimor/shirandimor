@@ -266,12 +266,12 @@ export default function HomePage() {
           <div className="gc-price">₪400 לחודש <span style={{ color: 'var(--profit)', fontWeight: 600 }}>· חודש ראשון ב-₪200</span></div>
           <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '-10px', marginBottom: '14px' }}>מנוי חודשי · ללא התחייבות</div>
           <div className="gc-perks">
+            <div><strong>כל מה שיש בקבוצת העדכונים - ועוד:</strong></div>
             <div><strong>בניית תיק השקעות</strong> - תוך יומי, סווינג, טווח ארוך</div>
             <div>וובינרים לייב - שאלות, ניתוחים ולמידה בזמן אמת</div>
             <div><strong>ליווי אישי</strong> - לצד קהילה סגורה לדיון מעמיק</div>
             <div><strong>יומן מסחר שקוף</strong> - כולל עסקאות מפסידות</div>
             <div>תיק מסחר אישי וניתוח העסקאות ע"י שירן</div>
-            <div>ספרייה מלאה של וובינרים ומצגות, הכל כלול</div>
           </div>
           <Link className="gc-cta" href="/subscribe">לפרטים על קבוצת הסוחרים</Link>
         </div>
