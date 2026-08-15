@@ -40,6 +40,23 @@ function formatDate(iso: string | null) {
   return new Date(iso).toLocaleDateString('he-IL');
 }
 
+const MONTH_LABELS = ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני', 'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר'];
+
+function monthKey(dateStr: string) {
+  const d = new Date(dateStr);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function monthLabel(key: string) {
+  const [year, month] = key.split('-');
+  return `${MONTH_LABELS[parseInt(month, 10) - 1]} ${year}`;
+}
+
+function currentMonthKey() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
 export default function AdminTradesPage() {
   const [checking, setChecking] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -48,6 +65,8 @@ export default function AdminTradesPage() {
 
   const [openTrades, setOpenTrades] = useState<Trade[]>([]);
   const [closedTrades, setClosedTrades] = useState<Trade[]>([]);
+  const [profitMonthFilter, setProfitMonthFilter] = useState(currentMonthKey);
+  const [lossMonthFilter, setLossMonthFilter] = useState(currentMonthKey);
 
   const [closingId, setClosingId] = useState<string | null>(null);
   const [popoverPos, setPopoverPos] = useState<{ top: number; left: number } | null>(null);
@@ -359,6 +378,21 @@ export default function AdminTradesPage() {
     window.location.href = '/';
   }
 
+  const closedProfitTrades_ = closedTrades.filter((t) => (pctPnl(t, true) ?? 0) >= 0);
+  const closedLossTrades_ = closedTrades.filter((t) => (pctPnl(t, true) ?? 0) < 0);
+
+  const availableClosedMonths = Array.from(
+    new Set([currentMonthKey(), ...closedTrades.filter((t) => t.closed_at).map((t) => monthKey(t.closed_at as string))])
+  ).sort().reverse();
+
+  const closedProfitTrades = profitMonthFilter === 'all'
+    ? closedProfitTrades_
+    : closedProfitTrades_.filter((t) => t.closed_at && monthKey(t.closed_at) === profitMonthFilter);
+
+  const closedLossTrades = lossMonthFilter === 'all'
+    ? closedLossTrades_
+    : closedLossTrades_.filter((t) => t.closed_at && monthKey(t.closed_at) === lossMonthFilter);
+
   if (checking) {
     return <div className="wrap"><p style={{ padding: '40px', textAlign: 'center' }}>בודקים הרשאות...</p></div>;
   }
@@ -566,12 +600,42 @@ export default function AdminTradesPage() {
         {renderTradeTable(openTrades, false, 'אין כרגע עסקאות פתוחות')}
       </details>
 
+      <div className="section-label" style={{ marginTop: '28px' }}><h2>עסקאות סגורות</h2></div>
+
       <details className="section-collapse">
         <summary>
-          <h2>עסקאות סגורות בתיק</h2>
-          <div className="summary-right"><span className="count">{closedTrades.length}</span><span className="collapse-chevron">▾</span></div>
+          <h2>נסגרו ברווח</h2>
+          <div className="summary-right"><span className="count">{closedProfitTrades.length}</span><span className="collapse-chevron">▾</span></div>
         </summary>
-        {renderTradeTable(closedTrades, true, 'אין עדיין עסקאות סגורות')}
+        {availableClosedMonths.length > 0 && (
+          <div className="month-select-wrap">
+            <select className="month-select" value={profitMonthFilter} onChange={(e) => setProfitMonthFilter(e.target.value)}>
+              <option value="all">כל החודשים</option>
+              {availableClosedMonths.map((m) => (
+                <option key={m} value={m}>{monthLabel(m)}</option>
+              ))}
+            </select>
+          </div>
+        )}
+        {renderTradeTable(closedProfitTrades, true, 'אין עסקאות שנסגרו ברווח בטווח הזה')}
+      </details>
+
+      <details className="section-collapse">
+        <summary>
+          <h2>נסגרו בהפסד</h2>
+          <div className="summary-right"><span className="count">{closedLossTrades.length}</span><span className="collapse-chevron">▾</span></div>
+        </summary>
+        {availableClosedMonths.length > 0 && (
+          <div className="month-select-wrap">
+            <select className="month-select" value={lossMonthFilter} onChange={(e) => setLossMonthFilter(e.target.value)}>
+              <option value="all">כל החודשים</option>
+              {availableClosedMonths.map((m) => (
+                <option key={m} value={m}>{monthLabel(m)}</option>
+              ))}
+            </select>
+          </div>
+        )}
+        {renderTradeTable(closedLossTrades, true, 'אין עסקאות שנסגרו בהפסד בטווח הזה')}
       </details>
 
       {(closingId || editingId || addQtyId || sellQtyId) && popoverPos && (
