@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import ClearableInput from '@/components/ClearableInput';
+import EquityCurve from '@/components/EquityCurve';
+import StatsRing from '@/components/StatsRing';
 
 type Trade = {
   id: string;
@@ -65,6 +67,7 @@ export default function AdminTradesPage() {
 
   const [openTrades, setOpenTrades] = useState<Trade[]>([]);
   const [closedTrades, setClosedTrades] = useState<Trade[]>([]);
+  const [initialBalance, setInitialBalance] = useState<number | null>(null);
   const [profitMonthFilter, setProfitMonthFilter] = useState(currentMonthKey);
   const [lossMonthFilter, setLossMonthFilter] = useState(currentMonthKey);
 
@@ -138,6 +141,13 @@ export default function AdminTradesPage() {
       .eq('status', 'closed')
       .order('closed_at', { ascending: false });
     if (closed) setClosedTrades(closed);
+
+    const { data: settings } = await supabase
+      .from('portfolio_settings')
+      .select('initial_balance')
+      .eq('id', 1)
+      .single();
+    if (settings) setInitialBalance(Number(settings.initial_balance));
   }
 
   // ממזג עסקה למניה יחידה: מכירה חלקית יוצרת שבר "סגור" נפרד; כשהיתרה מתאפסת כל השברים מתאחדים לעסקה סגורה אחת עם מחיר יציאה וכניסה ממוצעים
@@ -393,6 +403,39 @@ export default function AdminTradesPage() {
     ? closedLossTrades_
     : closedLossTrades_.filter((t) => t.closed_at && monthKey(t.closed_at) === lossMonthFilter);
 
+  const winRate = closedTrades.length > 0 ? (closedProfitTrades_.length / closedTrades.length) * 100 : null;
+
+  const closedPcts = closedTrades.map((t) => pctPnl(t, true) ?? 0);
+  const avgPnlPct = closedPcts.length > 0 ? closedPcts.reduce((s, x) => s + x, 0) / closedPcts.length : null;
+
+  const winPcts = closedPcts.filter((p) => p >= 0);
+  const lossPcts = closedPcts.filter((p) => p < 0);
+  const avgWinPct = winPcts.length > 0 ? winPcts.reduce((s, x) => s + x, 0) / winPcts.length : 0;
+  const avgLossPct = lossPcts.length > 0 ? Math.abs(lossPcts.reduce((s, x) => s + x, 0) / lossPcts.length) : 0;
+  const riskReward = avgLossPct > 0 ? avgWinPct / avgLossPct : null;
+
+  const daysToClose = closedTrades
+    .filter((t) => t.closed_at)
+    .map((t) => (new Date(t.closed_at as string).getTime() - new Date(t.opened_at).getTime()) / 86400000);
+  const avgDaysToClose = daysToClose.length > 0 ? daysToClose.reduce((s, x) => s + x, 0) / daysToClose.length : null;
+
+  const tradesThisMonth = [...openTrades, ...closedTrades].filter((t) => monthKey(t.opened_at) === currentMonthKey()).length;
+
+  const equityPoints = (() => {
+    if (initialBalance === null) return [];
+    const chronological = closedTrades
+      .filter((t) => t.closed_at)
+      .slice()
+      .sort((a, b) => new Date(a.closed_at as string).getTime() - new Date(b.closed_at as string).getTime());
+    let running = initialBalance;
+    const points = [{ date: 'התחלה', value: Math.round(running) }];
+    for (const t of chronological) {
+      running += t.realized_pnl_usd ?? 0;
+      points.push({ date: formatDate(t.closed_at), value: Math.round(running) });
+    }
+    return points;
+  })();
+
   if (checking) {
     return <div className="wrap"><p style={{ padding: '40px', textAlign: 'center' }}>בודקים הרשאות...</p></div>;
   }
@@ -591,6 +634,42 @@ export default function AdminTradesPage() {
           {message && <p style={{ marginTop: '10px', fontSize: '13px', color: message.includes('שגיאה') ? 'var(--loss)' : 'var(--profit)' }}>{message}</p>}
         </div>
       )}
+
+      <div className="section-label"><h2>צמיחת התיק</h2></div>
+      <div className="equity-card">
+        <EquityCurve points={equityPoints} />
+      </div>
+
+      <div className="section-label"><h2>תובנות התיק</h2></div>
+      <div className="insights-panel" style={{ marginBottom: '28px' }}>
+        <div className="insights-ring-row">
+          <StatsRing
+            percent={winRate ?? 0}
+            label={`${closedTrades.length} עסקאות סגורות`}
+            sublabel={`תיק התחלתי $${initialBalance !== null ? initialBalance.toLocaleString() : '—'}`}
+          />
+        </div>
+        <div className="insight-grid">
+          <div className="insight-tile">
+            <div className="iv">{avgDaysToClose !== null ? avgDaysToClose.toFixed(1) : '—'}</div>
+            <div className="il">ימי החזקה בממוצע</div>
+          </div>
+          <div className="insight-tile">
+            <div className="iv" style={{ color: avgPnlPct !== null ? (avgPnlPct >= 0 ? 'var(--profit)' : 'var(--loss)') : undefined }}>
+              {avgPnlPct !== null ? `${avgPnlPct >= 0 ? '+' : ''}${avgPnlPct.toFixed(2)}%` : '—'}
+            </div>
+            <div className="il">רווח/הפסד ממוצע לעסקה</div>
+          </div>
+          <div className="insight-tile">
+            <div className="iv">{riskReward !== null ? `1:${riskReward.toFixed(1)}` : '—'}</div>
+            <div className="il">יחס סיכון-סיכוי</div>
+          </div>
+          <div className="insight-tile">
+            <div className="iv">{tradesThisMonth}</div>
+            <div className="il">עסקאות החודש</div>
+          </div>
+        </div>
+      </div>
 
       <details className="section-collapse" open>
         <summary>
