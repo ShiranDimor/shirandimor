@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { supabaseAdmin, generateInstantLoginToken } from '@/lib/instantLogin';
 
 const SUBSCRIBER_GROUP_NAME = 'קבוצת סוחרים';
 
@@ -16,11 +17,36 @@ async function mondayRequest(token: string, query: string, variables: Record<str
   return res.json();
 }
 
-export async function POST(request: Request) {
-  const { phone } = await request.json();
+// מוודא שיש פרופיל מנוי פעיל לאימייל הזה - יוצר חשבון אם אין, או משדרג ל"מנוי" אם היה "ליד" בלבד
+async function ensureActiveSubscriber(email: string) {
+  const { data: existing } = await supabaseAdmin.from('profiles').select('id, role').eq('email', email).maybeSingle();
 
-  if (!phone) {
-    return NextResponse.json({ error: 'חסר מספר נייד' }, { status: 400 });
+  if (existing) {
+    if (existing.role !== 'admin' && existing.role !== 'subscriber') {
+      await supabaseAdmin
+        .from('profiles')
+        .update({ role: 'subscriber', subscription_status: 'active', subscription_started_at: new Date().toISOString() })
+        .eq('id', existing.id);
+    }
+    return;
+  }
+
+  const { data: created, error } = await supabaseAdmin.auth.admin.createUser({ email, email_confirm: true });
+  if (error || !created.user) {
+    throw new Error(error?.message || 'שגיאה ביצירת חשבון');
+  }
+
+  await supabaseAdmin
+    .from('profiles')
+    .update({ role: 'subscriber', subscription_status: 'active', subscription_started_at: new Date().toISOString() })
+    .eq('id', created.user.id);
+}
+
+export async function POST(request: Request) {
+  const { phone, email } = await request.json();
+
+  if (!phone || !email) {
+    return NextResponse.json({ error: 'חסרים פרטים' }, { status: 400 });
   }
 
   const token = process.env.MONDAY_API_TOKEN;
@@ -86,7 +112,14 @@ export async function POST(request: Request) {
       cursor = found ? null : page?.cursor || null;
     } while (cursor);
 
-    return NextResponse.json({ verified: found, configured: true });
+    if (!found) {
+      return NextResponse.json({ verified: false, configured: true });
+    }
+
+    await ensureActiveSubscriber(email);
+    const loginToken = await generateInstantLoginToken(email);
+
+    return NextResponse.json({ verified: true, configured: true, token: loginToken });
   } catch (e) {
     console.error('שגיאה באימות מול Monday.com', e);
     return NextResponse.json({ verified: false, configured: false });

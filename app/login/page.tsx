@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import ClearableInput from '@/components/ClearableInput';
 
-type Step = 'email' | 'phone' | 'sent' | 'rejected' | 'password';
+type Step = 'email' | 'phone' | 'rejected' | 'password';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -47,20 +47,27 @@ export default function LoginPage() {
     }
   }
 
-  async function sendMagicLink() {
-    const { error: authError } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
-      },
-    });
+  async function redeemInstantLogin(token: string) {
+    const { data, error: authError } = await supabase.auth.verifyOtp({ email, token, type: 'magiclink' });
 
-    if (authError) {
-      setError('משהו השתבש. כדאי לנסות שוב בעוד רגע.');
+    if (authError || !data.user) {
+      setError('משהו השתבש בכניסה. כדאי לנסות שוב בעוד רגע.');
       return;
     }
 
-    setStep('sent');
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', data.user.id)
+      .single();
+
+    if (profile?.role === 'admin') {
+      router.push('/admin');
+    } else if (profile?.role === 'subscriber') {
+      router.push('/portfolio');
+    } else {
+      router.push('/subscribe');
+    }
   }
 
   async function handleEmailSubmit() {
@@ -76,8 +83,8 @@ export default function LoginPage() {
       });
       const data = await res.json();
 
-      if (data.isKnown) {
-        await sendMagicLink();
+      if (data.granted && data.token) {
+        await redeemInstantLogin(data.token);
       } else {
         setStep('phone');
       }
@@ -101,12 +108,12 @@ export default function LoginPage() {
       const res = await fetch('/api/verify-membership', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone }),
+        body: JSON.stringify({ phone, email }),
       });
       const data = await res.json();
 
-      if (data.verified) {
-        await sendMagicLink();
+      if (data.verified && data.token) {
+        await redeemInstantLogin(data.token);
       } else {
         setStep('rejected');
       }
@@ -125,7 +132,7 @@ export default function LoginPage() {
       </header>
 
       <div className="form-title" style={{ color: 'var(--lavender)' }}>כניסה לסוחרים</div>
-      <div className="form-sub">מקלידים אימייל, מקבלים קישור כניסה - בלי סיסמאות</div>
+      <div className="form-sub">מקלידים אימייל ונכנסים ישר - בלי סיסמה ובלי לחכות למייל</div>
 
       {step === 'email' && (
         <>
@@ -142,10 +149,10 @@ export default function LoginPage() {
           </div>
 
           <button className="btn-primary" style={{ background: 'var(--lavender)' }} onClick={handleEmailSubmit} disabled={loading || !email}>
-            {loading ? 'בודקים...' : 'שליחת קישור כניסה'}
+            {loading ? 'בודקים...' : 'כניסה'}
           </button>
           <p style={{ marginTop: '10px', fontSize: '11px', color: 'var(--text-tertiary)', textAlign: 'center' }}>
-            מי שעדיין לא מנוי מאושר - נבקש אימות נייד לפני שליחת הקישור
+            מי שעדיין לא מזוהה כמנוי מאושר - נבקש אימות נייד
           </p>
           <p style={{ marginTop: '12px', fontSize: '12px', color: 'var(--text-tertiary)', textAlign: 'center' }}>
             <a href="#" onClick={(e) => { e.preventDefault(); setStep('password'); setError(''); }} style={{ color: 'var(--lavender)' }}>
@@ -238,16 +245,6 @@ export default function LoginPage() {
 
           {error && <p style={{ color: 'var(--loss)', fontSize: '12px', textAlign: 'center', marginTop: '10px' }}>{error}</p>}
         </>
-      )}
-
-      {step === 'sent' && (
-        <div style={{ background: 'rgba(156,143,217,0.1)', border: '1px solid var(--lavender)', borderRadius: '10px', padding: '16px', textAlign: 'center' }}>
-          <div style={{ fontSize: '20px', marginBottom: '8px' }}>✉️</div>
-          <div style={{ fontSize: '14px', fontWeight: 600, marginBottom: '4px' }}>כדאי לבדוק את תיבת המייל</div>
-          <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-            שלחנו קישור כניסה מאובטח - לחיצה עליו תכניס ישירות לאזור האישי
-          </div>
-        </div>
       )}
 
       {step === 'rejected' && (
