@@ -12,7 +12,7 @@ export async function sendLoginEmail(email: string) {
     email,
     options: {
       shouldCreateUser: false,
-      emailRedirectTo: 'https://www.shirandimor.com/login/callback',
+      emailRedirectTo: 'https://shirandimor.com/auth/callback',
     },
   });
 
