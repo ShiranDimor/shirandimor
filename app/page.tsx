@@ -251,12 +251,12 @@ export default function HomePage() {
           <div className="gc-price">ללא עלות</div>
           <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '-10px', marginBottom: '14px' }}>בלי התחייבות, בלי לחץ</div>
           <div className="gc-perks">
-            <div>עדכונים בלי רעש - רק מה שבאמת קורה בשוק</div>
-            <div>הצצה לעולם שוק ההון, בלי לשלם עליה אלפי שקלים</div>
-            <div>מושג אחד בשבוע - פשוט, ברור, ואפשר להשתמש בו מיד</div>
-            <div>ספרייה מלאה של וובינרים ומצגות, בלי עלות נוספת</div>
-            <div>הצטרפות בלחיצה אחת - ללא התחייבות וללא עלות</div>
-            <div>אפשר לשדרג לקבוצת הסוחרים בכל שלב, בקצב האישי</div>
+            <div><strong>בלי רעש</strong> - רק מה שבאמת קורה בשוק</div>
+            <div>הצצה לעולם שוק ההון, בלי לשלם עליה <strong>אלפי שקלים</strong></div>
+            <div><strong>מושג אחד</strong> בשבוע - פשוט, ברור, ואפשר להשתמש בו מיד</div>
+            <div><strong>ספרייה מלאה</strong> של וובינרים ומצגות, בלי עלות נוספת</div>
+            <div>הצטרפות בלחיצה אחת - <strong>ללא התחייבות</strong> וללא עלות</div>
+            <div>אפשר לשדרג לקבוצת הסוחרים בכל שלב, <strong>בקצב האישי</strong></div>
           </div>
           <a className="gc-cta" href="#" onClick={(e) => { e.preventDefault(); window.scrollTo(0, 0); setShowLeadForm(true); }}>הצטרפות ללא עלות</a>
         </div>
@@ -266,12 +266,12 @@ export default function HomePage() {
           <div className="gc-price">₪400 לחודש <span style={{ color: 'var(--profit)', fontWeight: 600 }}>· חודש ראשון ב-₪200</span></div>
           <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '-10px', marginBottom: '14px' }}>מנוי חודשי · ללא התחייבות</div>
           <div className="gc-perks">
-            <div><strong>כל מה שיש בקבוצת העדכונים - ועוד:</strong></div>
-            <div><strong>בניית תיק השקעות</strong> - תוך יומי, סווינג, טווח ארוך</div>
-            <div>וובינרים לייב - שאלות, ניתוחים ולמידה בזמן אמת</div>
+            <div>כל מה שיש בקבוצת העדכונים - <strong>ועוד</strong>:</div>
+            <div>בניית <strong>תיק השקעות</strong> - תוך יומי, סווינג, טווח ארוך</div>
+            <div><strong>וובינרים לייב</strong> - שאלות, ניתוחים ולמידה בזמן אמת</div>
             <div><strong>ליווי אישי</strong> - לצד קהילה סגורה לדיון מעמיק</div>
-            <div><strong>יומן מסחר שקוף</strong> - כולל עסקאות מפסידות</div>
-            <div>תיק מסחר אישי וניתוח העסקאות ע"י שירן</div>
+            <div>יומן <strong>מסחר שקוף</strong> - כולל עסקאות מפסידות</div>
+            <div><strong>תיק מסחר</strong> אישי וניתוח העסקאות ע"י שירן</div>
           </div>
           <Link className="gc-cta" href="/subscribe">לפרטים על קבוצת הסוחרים</Link>
         </div>
