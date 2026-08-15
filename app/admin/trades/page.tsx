@@ -467,6 +467,11 @@ export default function AdminTradesPage() {
             <button className="qp-confirm" onClick={() => saveEdit(trade, isClosed)} disabled={savingEdit}>{savingEdit ? 'שומרים...' : 'שמירת שינויים'}</button>
             <button className="qp-cancel" onClick={cancelEdit}>ביטול</button>
           </div>
+          <div className="qp-secondary">
+            {!isClosed && <button onClick={() => startAddQty(trade)}>הוספת כמות</button>}
+            {!isClosed && <button onClick={() => startSellQty(trade)}>מכירה חלקית</button>}
+            <button className="qp-danger" onClick={() => { handleDeleteTrade(trade); closeAllPopovers(); }}>מחיקת עסקה</button>
+          </div>
         </>
       );
     }
@@ -480,7 +485,7 @@ export default function AdminTradesPage() {
           <p style={{ fontSize: '11.5px', color: 'var(--text-tertiary)', margin: '4px 0 10px' }}>מחיר הכניסה יתעדכן לממוצע המשוקלל, והכמות תתווסף לעסקה הקיימת</p>
           <div className="qp-row">
             <button className="qp-confirm" onClick={() => handleAddQuantity(trade)} disabled={addingQty || !addQtyPrice || !addQtyShares}>{addingQty ? 'מוסיפים...' : 'אישור הוספה'}</button>
-            <button className="qp-cancel" onClick={() => setAddQtyId(null)}>ביטול</button>
+            <button className="qp-cancel" onClick={() => startEdit(trade)}>← חזרה</button>
           </div>
         </>
       );
@@ -495,7 +500,7 @@ export default function AdminTradesPage() {
           {sellQtyError && <p style={{ color: 'var(--loss)', fontSize: '12px', margin: '4px 0 10px' }}>{sellQtyError}</p>}
           <div className="qp-row">
             <button className="qp-confirm" onClick={() => handlePartialSell(trade)} disabled={sellingQty || !sellQtyPrice || !sellQtyShares}>{sellingQty ? 'מוכרים...' : 'אישור מכירה'}</button>
-            <button className="qp-cancel" onClick={() => setSellQtyId(null)}>ביטול</button>
+            <button className="qp-cancel" onClick={() => startEdit(trade)}>← חזרה</button>
           </div>
         </>
       );
@@ -566,16 +571,8 @@ export default function AdminTradesPage() {
                   <td>{trade.shares_calculated}</td>
                   <td>
                     <div style={{ display: 'flex', gap: '4px', justifyContent: 'center' }}>
-                      <button className="row-delete-btn" onClick={(e) => openPopover('edit', trade, e)} title="עריכה">✎</button>
+                      <button className="qa-btn edit" onClick={(e) => openPopover('edit', trade, e)}>✎ עריכה</button>
                       {!isClosed && (
-                        <>
-                          <button className="row-delete-btn" onClick={(e) => openPopover('addqty', trade, e)} title="הוספת כמות">+</button>
-                          <button className="row-delete-btn" onClick={(e) => openPopover('sellqty', trade, e)} title="מכירה חלקית">−</button>
-                        </>
-                      )}
-                      {isClosed ? (
-                        <button className="row-delete-btn" onClick={() => handleDeleteTrade(trade)} title="מחיקת עסקה">🗑</button>
-                      ) : (
                         <button className="qa-btn" onClick={(e) => openPopover('close', trade, e)}>⚡ סגירה</button>
                       )}
                     </div>
