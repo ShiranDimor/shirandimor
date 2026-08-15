@@ -243,7 +243,7 @@ export default function HomePage() {
         <Link className="teaser-cta" href="/portfolio">צפייה בתיק המסחר המלא ←</Link>
       </div>
 
-      <div className="section-label" style={{ marginTop: '30px' }}><h2>אז מה תכלס מתאים לכם?</h2></div>
+      <div className="section-label" style={{ marginTop: '30px' }}><h2>אז מה באמת מתאים לכם?</h2></div>
       <p style={{ fontSize: '13px', color: 'var(--text-tertiary)', marginBottom: '16px' }}>רוצים רק לעקוב ולהתעדכן, או שאתם רוצים להתחיל לבנות תיק ולהיכנס לעסקאות?</p>
       <div className="groups-compare">
         <div className="group-card free">
