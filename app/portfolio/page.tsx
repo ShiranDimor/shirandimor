@@ -190,10 +190,15 @@ export default function PortfolioPage() {
     })
     .reduce((map, t) => {
       const day = new Date(t.closed_at as string).getDate();
-      map.set(day, (map.get(day) ?? 0) + (t.realized_pnl_usd ?? 0));
+      const cur = map.get(day) ?? { pnl: 0, cost: 0 };
+      cur.pnl += t.realized_pnl_usd ?? 0;
+      cur.cost += t.entry_price * (t.shares_calculated ?? 0);
+      map.set(day, cur);
       return map;
-    }, new Map<number, number>());
-  const calDayResults = Array.from(calResults.entries()).map(([day, pnl]) => ({ day, pnl }));
+    }, new Map<number, { pnl: number; cost: number }>());
+  const calDayResults = Array.from(calResults.entries()).map(([day, v]) => ({
+    day, pnl: v.pnl, pct: v.cost > 0 ? (v.pnl / v.cost) * 100 : 0,
+  }));
 
   function goPrevMonth() {
     if (calMonthIdx === 0) { setCalYear((y) => y - 1); setCalMonthIdx(11); }

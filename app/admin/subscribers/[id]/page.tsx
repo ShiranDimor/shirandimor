@@ -188,10 +188,15 @@ export default function AdminViewSubscriberJournal() {
     })
     .reduce((map, e) => {
       const day = new Date(e.closed_at as string).getDate();
-      map.set(day, (map.get(day) ?? 0) + (e.realized_pnl_usd ?? 0));
+      const cur = map.get(day) ?? { pnl: 0, cost: 0 };
+      cur.pnl += e.realized_pnl_usd ?? 0;
+      cur.cost += e.entry_price * e.shares;
+      map.set(day, cur);
       return map;
-    }, new Map<number, number>());
-  const calDayResults = Array.from(calResults.entries()).map(([day, pnl]) => ({ day, pnl }));
+    }, new Map<number, { pnl: number; cost: number }>());
+  const calDayResults = Array.from(calResults.entries()).map(([day, v]) => ({
+    day, pnl: v.pnl, pct: v.cost > 0 ? (v.pnl / v.cost) * 100 : 0,
+  }));
 
   function renderTable(list: JournalEntry[], emptyText: string) {
     if (list.length === 0) return <p className="trade-table-empty">{emptyText}</p>;

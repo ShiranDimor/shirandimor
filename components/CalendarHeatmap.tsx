@@ -1,6 +1,6 @@
 'use client';
 
-type DayResult = { day: number; pnl: number };
+type DayResult = { day: number; pnl: number; pct: number };
 
 type Props = {
   year: number;
@@ -16,7 +16,7 @@ const MONTH_LABELS = ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מ�
 export default function CalendarHeatmap({ year, month, results, onPrevMonth, onNextMonth }: Props) {
   const firstDow = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const byDay = new Map(results.map((r) => [r.day, r.pnl]));
+  const byDay = new Map(results.map((r) => [r.day, r]));
   const maxAbs = Math.max(1, ...results.map((r) => Math.abs(r.pnl)));
   const monthTotal = results.reduce((s, r) => s + r.pnl, 0);
 
@@ -25,24 +25,29 @@ export default function CalendarHeatmap({ year, month, results, onPrevMonth, onN
     cells.push(<div key={`pad-${i}`} style={{ visibility: 'hidden' }} />);
   }
   for (let day = 1; day <= daysInMonth; day++) {
-    const pnl = byDay.get(day);
+    const r = byDay.get(day);
     let bg = 'var(--bg-surface-raised)';
     let color = 'var(--text-tertiary)';
-    if (pnl !== undefined) {
-      const intensity = 0.18 + (Math.abs(pnl) / maxAbs) * 0.5;
-      bg = pnl >= 0 ? `rgba(79,184,118,${intensity})` : `rgba(201,99,94,${intensity})`;
-      color = intensity > 0.55 ? (pnl >= 0 ? '#0a1f14' : '#2a0f0d') : pnl >= 0 ? 'var(--profit)' : 'var(--loss)';
+    if (r) {
+      const intensity = 0.18 + (Math.abs(r.pnl) / maxAbs) * 0.5;
+      bg = r.pnl >= 0 ? `rgba(79,184,118,${intensity})` : `rgba(201,99,94,${intensity})`;
+      color = intensity > 0.55 ? (r.pnl >= 0 ? '#0a1f14' : '#2a0f0d') : r.pnl >= 0 ? 'var(--profit)' : 'var(--loss)';
     }
     cells.push(
       <div
         key={day}
-        title={pnl !== undefined ? `${pnl >= 0 ? '+' : ''}$${pnl.toFixed(0)}` : undefined}
         style={{
-          aspectRatio: '1', borderRadius: '7px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontFamily: 'var(--font-mono)', fontSize: '10.5px', fontWeight: 600, background: bg, color,
+          minHeight: '48px', borderRadius: '7px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1px',
+          fontFamily: 'var(--font-mono)', background: bg, color, padding: '2px 0',
         }}
       >
-        {day}
+        <span style={{ fontSize: '9px', fontWeight: 700, opacity: 0.8 }}>{day}</span>
+        {r && (
+          <>
+            <span style={{ fontSize: '8.5px', fontWeight: 700, lineHeight: 1 }}>{r.pct >= 0 ? '+' : ''}{r.pct.toFixed(1)}%</span>
+            <span style={{ fontSize: '7.5px', lineHeight: 1, opacity: 0.85 }}>{r.pnl >= 0 ? '+' : '-'}${Math.abs(r.pnl).toFixed(0)}</span>
+          </>
+        )}
       </div>
     );
   }
