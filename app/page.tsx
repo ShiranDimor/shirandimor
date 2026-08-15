@@ -200,7 +200,7 @@ export default function HomePage() {
         <div>– מי שמחפש רווח מובטח או כסף מהיר</div>
         <div>– מי שרוצה שמישהי אחרת תקבל עבורו את כל ההחלטות</div>
         <div>– מי שמתכוון לסחור בכסף שהוא צריך למחיה, או בהלוואה</div>
-        <div>– מי שלא מוכן לקבל שיהיו גם הפסדים</div>
+        <div>– מי שלא מבין שהפסדים הם חלק מהמסחר</div>
       </div>
 
       <div className="section-label" style={{ marginTop: '20px' }}><h2 style={{ color: 'var(--profit)' }}>למי זה כן מתאים</h2></div>
