@@ -161,6 +161,7 @@
     position: fixed; z-index: 100;
     background: var(--bg-surface-raised); border: 1px solid var(--lavender); border-radius: 12px; padding: 14px;
     box-shadow: 0 12px 32px rgba(0,0,0,0.5); width: 260px; text-align: right; white-space: normal;
+    max-height: calc(100vh - 24px); overflow-y: auto; -webkit-overflow-scrolling: touch;
   }
   .qa-popover-backdrop { position: fixed; inset: 0; z-index: 99; }
   .qa-popover .qp-title { font-size: 12px; font-weight: 700; margin-bottom: 10px; }

@@ -66,7 +66,9 @@ export default function AdminTradesPage() {
     const rect = e.currentTarget.getBoundingClientRect();
     const popW = 260;
     const left = Math.min(Math.max(8, rect.left), window.innerWidth - popW - 8);
-    setPopoverPos({ top: rect.bottom + 8, left });
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const top = spaceBelow < 320 ? Math.max(8, rect.top - 8 - 320) : rect.bottom + 8;
+    setPopoverPos({ top, left });
     closeAllPopovers();
     startEdit(trade);
   }
