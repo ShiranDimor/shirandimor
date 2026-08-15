@@ -482,7 +482,7 @@ export default function AdminTradesPage() {
             <tr>
               <th>סימבול</th>
               <th>נפתחה ב-</th>
-              <th>נסגרה ב-</th>
+              {isClosed && <th>נסגרה ב-</th>}
               <th>כניסה</th>
               <th>סטופ/יציאה</th>
               {!isClosed && <th>נוכחי</th>}
@@ -505,7 +505,7 @@ export default function AdminTradesPage() {
                     </span>
                   </td>
                   <td>{formatDate(trade.opened_at)}</td>
-                  <td>{isClosed ? formatDate(trade.closed_at) : '—'}</td>
+                  {isClosed && <td>{formatDate(trade.closed_at)}</td>}
                   <td>${trade.entry_price.toFixed(2)}</td>
                   <td>{isClosed ? `$${trade.exit_price?.toFixed(2)}` : `$${trade.stop_loss}`}</td>
                   {!isClosed && <td>${trade.current_price ?? trade.entry_price}</td>}
