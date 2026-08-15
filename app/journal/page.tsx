@@ -83,19 +83,27 @@ export default function JournalPage() {
   }
 
   const [closingId, setClosingId] = useState<string | null>(null);
-  const [closingPopoverPos, setClosingPopoverPos] = useState<{ top: number; left: number } | null>(null);
+  const [popoverPos, setPopoverPos] = useState<{ top: number; left: number } | null>(null);
   const [exitPrice, setExitPrice] = useState('');
   const [exitDate, setExitDate] = useState('');
   const [closing, setClosing] = useState(false);
 
-  function startQuickClose(entry: JournalEntry, e: React.MouseEvent<HTMLButtonElement>) {
+  function closeAllPopovers() {
+    setClosingId(null);
+    setEditingId(null);
+    setAddQtyId(null);
+    setSellQtyId(null);
+  }
+
+  function openEditPopover(entry: JournalEntry, e: React.MouseEvent<HTMLButtonElement>) {
     const rect = e.currentTarget.getBoundingClientRect();
-    const popW = 230;
+    const popW = 260;
     const left = Math.min(Math.max(8, rect.left), window.innerWidth - popW - 8);
-    setClosingPopoverPos({ top: rect.bottom + 8, left });
-    setClosingId(entry.id);
-    setExitPrice('');
-    setExitDate('');
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const top = spaceBelow < 320 ? Math.max(8, rect.top - 8 - 320) : rect.bottom + 8;
+    setPopoverPos({ top, left });
+    closeAllPopovers();
+    startEdit(entry);
   }
 
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -412,147 +420,132 @@ export default function JournalPage() {
           }, new Map<number, number>());
         const calDayResults = Array.from(calResults.entries()).map(([day, pnl]) => ({ day, pnl }));
 
-        function renderActionPanel(e: JournalEntry) {
-          return (
-            <>
-              {editingId === e.id ? (
-              <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--border-hairline)' }}>
+        function renderPopoverContent() {
+          const entry = entries.find((en) => en.id === closingId || en.id === editingId || en.id === addQtyId || en.id === sellQtyId);
+          if (!entry) return null;
+
+          if (closingId === entry.id) {
+            return (
+              <>
+                <div className="qp-title">⚡ סגירה מהירה · {entry.symbol}</div>
+                <div className="qp-field"><label>מחיר סגירה</label><ClearableInput type="number" value={exitPrice} onChange={(ev) => setExitPrice(ev.target.value)} onClear={() => setExitPrice('')} placeholder="130.50" /></div>
+                <div className="qp-field"><label>תאריך סגירה</label><input type="date" value={exitDate} onChange={(ev) => setExitDate(ev.target.value)} /></div>
+                <div className="qp-row">
+                  <button className="qp-confirm" onClick={() => handleClose(entry)} disabled={closing || !exitPrice}>{closing ? 'סוגרים...' : 'אישור סגירה'}</button>
+                  <button className="qp-cancel" onClick={() => startEdit(entry)}>← חזרה</button>
+                </div>
+              </>
+            );
+          }
+
+          if (editingId === entry.id) {
+            return (
+              <>
+                <div className="qp-title">✎ עריכה · {entry.symbol}</div>
                 <div className="form-row" style={{ marginBottom: '10px' }}>
                   <div className="field" style={{ marginBottom: 0 }}><label>סימבול</label><ClearableInput type="text" value={editSymbol} onChange={(ev) => setEditSymbol(ev.target.value)} onClear={() => setEditSymbol('')} /></div>
                   <div className="field" style={{ marginBottom: 0 }}><label>מניות</label><ClearableInput type="number" value={editShares} onChange={(ev) => setEditShares(ev.target.value)} onClear={() => setEditShares('')} /></div>
                 </div>
-                <div className="form-row" style={{ marginBottom: e.status === 'closed' ? '10px' : 0 }}>
+                <div className="form-row" style={{ marginBottom: entry.status === 'closed' ? '10px' : 0 }}>
                   <div className="field" style={{ marginBottom: 0 }}><label>מחיר כניסה</label><ClearableInput type="number" value={editEntry} onChange={(ev) => setEditEntry(ev.target.value)} onClear={() => setEditEntry('')} /></div>
                   <div className="field" style={{ marginBottom: 0 }}><label>סטופ לוס</label><ClearableInput type="number" value={editStop} onChange={(ev) => setEditStop(ev.target.value)} onClear={() => setEditStop('')} /></div>
                 </div>
-                {e.status === 'closed' && (
+                {entry.status === 'closed' && (
                   <div className="field"><label>מחיר יציאה</label><ClearableInput type="number" value={editExitPrice} onChange={(ev) => setEditExitPrice(ev.target.value)} onClear={() => setEditExitPrice('')} /></div>
                 )}
                 <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
-                  <button className="btn-primary" style={{ flex: 1 }} onClick={() => saveEdit(e)} disabled={savingEdit}>{savingEdit ? 'שומרים...' : 'שמירת שינויים'}</button>
-                  <button className="btn-outline" style={{ flex: 1 }} onClick={cancelEdit}>ביטול</button>
+                  <button className="qp-confirm" onClick={() => saveEdit(entry)} disabled={savingEdit}>{savingEdit ? 'שומרים...' : 'שמירת שינויים'}</button>
+                  <button className="qp-cancel" onClick={cancelEdit}>ביטול</button>
                 </div>
-              </div>
-            ) : addQtyId === e.id ? (
-              <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--border-hairline)' }}>
-                <div className="form-row" style={{ marginBottom: '10px' }}>
-                  <div className="field" style={{ marginBottom: 0 }}><label>מחיר כניסה נוסף</label><ClearableInput type="number" value={addQtyPrice} onChange={(ev) => setAddQtyPrice(ev.target.value)} onClear={() => setAddQtyPrice('')} placeholder="132.00" /></div>
-                  <div className="field" style={{ marginBottom: 0 }}><label>כמות נוספת</label><ClearableInput type="number" value={addQtyShares} onChange={(ev) => setAddQtyShares(ev.target.value)} onClear={() => setAddQtyShares('')} placeholder="20" /></div>
+                <div className="qp-secondary">
+                  {entry.status === 'open' && <button onClick={() => { setEditingId(null); setClosingId(entry.id); setExitPrice(''); setExitDate(''); }}>⚡ סגירה</button>}
+                  {entry.status === 'open' && <button onClick={() => startAddQty(entry)}>הוספת כמות</button>}
+                  {entry.status === 'open' && <button onClick={() => startSellQty(entry)}>מכירה חלקית</button>}
+                  <button className="qp-danger" onClick={() => { handleDelete(entry); closeAllPopovers(); }}>מחיקת עסקה</button>
                 </div>
-                <p style={{ fontSize: '11.5px', color: 'var(--text-tertiary)', marginBottom: '10px' }}>מחיר הכניסה יתעדכן לממוצע המשוקלל, והכמות תתווסף לעסקה הקיימת</p>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <button className="btn-primary" style={{ flex: 1 }} onClick={() => handleAddQuantity(e)} disabled={addingQty || !addQtyPrice || !addQtyShares}>{addingQty ? 'מוסיפים...' : 'אישור הוספה'}</button>
-                  <button className="btn-outline" style={{ flex: 1 }} onClick={() => setAddQtyId(null)}>ביטול</button>
+              </>
+            );
+          }
+
+          if (addQtyId === entry.id) {
+            return (
+              <>
+                <div className="qp-title">+ הוספת כמות · {entry.symbol}</div>
+                <div className="qp-field"><label>מחיר כניסה נוסף</label><ClearableInput type="number" value={addQtyPrice} onChange={(ev) => setAddQtyPrice(ev.target.value)} onClear={() => setAddQtyPrice('')} placeholder="132.00" /></div>
+                <div className="qp-field"><label>כמות נוספת</label><ClearableInput type="number" value={addQtyShares} onChange={(ev) => setAddQtyShares(ev.target.value)} onClear={() => setAddQtyShares('')} placeholder="20" /></div>
+                <p style={{ fontSize: '11.5px', color: 'var(--text-tertiary)', margin: '4px 0 10px' }}>מחיר הכניסה יתעדכן לממוצע המשוקלל, והכמות תתווסף לעסקה הקיימת</p>
+                <div className="qp-row">
+                  <button className="qp-confirm" onClick={() => handleAddQuantity(entry)} disabled={addingQty || !addQtyPrice || !addQtyShares}>{addingQty ? 'מוסיפים...' : 'אישור הוספה'}</button>
+                  <button className="qp-cancel" onClick={() => startEdit(entry)}>← חזרה</button>
                 </div>
-              </div>
-            ) : sellQtyId === e.id ? (
-              <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--border-hairline)' }}>
-                <div className="form-row" style={{ marginBottom: '10px' }}>
-                  <div className="field" style={{ marginBottom: 0 }}><label>מחיר מכירה</label><ClearableInput type="number" value={sellQtyPrice} onChange={(ev) => setSellQtyPrice(ev.target.value)} onClear={() => setSellQtyPrice('')} placeholder="135.00" /></div>
-                  <div className="field" style={{ marginBottom: 0 }}><label>כמות למכירה (מתוך {e.shares})</label><ClearableInput type="number" value={sellQtyShares} onChange={(ev) => setSellQtyShares(ev.target.value)} onClear={() => setSellQtyShares('')} placeholder="10" /></div>
+              </>
+            );
+          }
+
+          if (sellQtyId === entry.id) {
+            return (
+              <>
+                <div className="qp-title">− מכירה חלקית · {entry.symbol}</div>
+                <div className="qp-field"><label>מחיר מכירה</label><ClearableInput type="number" value={sellQtyPrice} onChange={(ev) => setSellQtyPrice(ev.target.value)} onClear={() => setSellQtyPrice('')} placeholder="135.00" /></div>
+                <div className="qp-field"><label>כמות למכירה (מתוך {entry.shares})</label><ClearableInput type="number" value={sellQtyShares} onChange={(ev) => setSellQtyShares(ev.target.value)} onClear={() => setSellQtyShares('')} placeholder="10" /></div>
+                {sellQtyError && <p style={{ color: 'var(--loss)', fontSize: '12px', margin: '4px 0 10px' }}>{sellQtyError}</p>}
+                <div className="qp-row">
+                  <button className="qp-confirm" onClick={() => handlePartialSell(entry)} disabled={sellingQty || !sellQtyPrice || !sellQtyShares}>{sellingQty ? 'מוכרים...' : 'אישור מכירה'}</button>
+                  <button className="qp-cancel" onClick={() => startEdit(entry)}>← חזרה</button>
                 </div>
-                <p style={{ fontSize: '11.5px', color: 'var(--text-tertiary)', marginBottom: '10px' }}>החלק שנמכר יעבור לעסקאות סגורות, והיתרה תישאר פתוחה באותו מחיר כניסה</p>
-                {sellQtyError && <p style={{ color: 'var(--loss)', fontSize: '12px', marginBottom: '10px' }}>{sellQtyError}</p>}
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <button className="btn-primary" style={{ flex: 1 }} onClick={() => handlePartialSell(e)} disabled={sellingQty || !sellQtyPrice || !sellQtyShares}>{sellingQty ? 'מוכרים...' : 'אישור מכירה'}</button>
-                  <button className="btn-outline" style={{ flex: 1 }} onClick={() => setSellQtyId(null)}>ביטול</button>
-                </div>
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '10px' }}>
-                {e.status === 'open' && (
-                  <>
-                    <button className="btn-outline" style={{ flex: 1, padding: '8px', fontSize: '13px' }} onClick={() => startAddQty(e)}>
-                      הוספת כמות
-                    </button>
-                    <button className="btn-outline" style={{ flex: 1, padding: '8px', fontSize: '13px' }} onClick={() => startSellQty(e)}>
-                      מכירה חלקית
-                    </button>
-                  </>
-                )}
-                <button className="btn-outline" style={{ flex: 1, padding: '8px', fontSize: '13px' }} onClick={() => startEdit(e)}>
-                  עריכה
-                </button>
-                <button className="btn-outline" style={{ padding: '8px 14px', fontSize: '13px', color: 'var(--loss)', borderColor: 'var(--loss)' }} onClick={() => handleDelete(e)}>
-                  מחיקה
-                </button>
-              </div>
-            )}
-            </>
-          );
+              </>
+            );
+          }
+
+          return null;
         }
 
         function renderTable(list: JournalEntry[], emptyText: string) {
           if (list.length === 0) return <p className="trade-table-empty">{emptyText}</p>;
-          const showDelete = list.length > 0 && list[0].status === 'closed';
-          const showQuickClose = !showDelete;
           return (
-            <>
-              <div className="trade-table-wrap">
-                <table className="trade-table">
-                  <thead>
-                    <tr>
-                      <th>סימבול</th>
-                      <th>נפתחה ב-</th>
-                      <th>נסגרה ב-</th>
-                      <th>כניסה</th>
-                      <th>סטופ/יציאה</th>
-                      <th>מניות</th>
-                      <th>תוצאה</th>
-                      {(showDelete || showQuickClose) && <th></th>}
+            <div className="trade-table-wrap">
+              <table className="trade-table">
+                <thead>
+                  <tr>
+                    <th>סימבול</th>
+                    <th>נפתחה ב-</th>
+                    {list.length > 0 && list[0].status === 'closed' && <th>נסגרה ב-</th>}
+                    <th>כניסה</th>
+                    <th>סטופ/יציאה</th>
+                    <th>מניות</th>
+                    <th>תוצאה</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {list.map((e) => (
+                    <tr key={e.id}>
+                      <td className="sym-cell">
+                        <span className="sym-cell-inner">
+                          <span className={`direction-mark ${e.direction}`}>{e.direction === 'long' ? 'L' : 'S'}</span>
+                          <span>{e.symbol}</span>
+                        </span>
+                      </td>
+                      <td>{formatDate(e.opened_at)}</td>
+                      {e.status === 'closed' && <td>{formatDate(e.closed_at)}</td>}
+                      <td>${e.entry_price.toFixed(2)}</td>
+                      <td>{e.status === 'closed' ? `$${e.exit_price?.toFixed(2)}` : `$${e.stop_loss}`}</td>
+                      <td>{e.shares}</td>
+                      <td className="pnl-cell" style={{ color: e.status === 'open' ? (unrealizedUsd(e) !== null ? (unrealizedUsd(e)! >= 0 ? 'var(--profit)' : 'var(--loss)') : 'var(--text-secondary)') : (e.realized_pnl_usd ?? 0) >= 0 ? 'var(--profit)' : 'var(--loss)' }}>
+                        {e.status === 'open'
+                          ? unrealizedUsd(e) !== null
+                            ? <>{unrealizedPct(e)! >= 0 ? '+' : ''}{unrealizedPct(e)!.toFixed(2)}%<span className="usd-sub">{unrealizedUsd(e)! >= 0 ? '+' : '-'}${Math.abs(unrealizedUsd(e)!).toFixed(0)}</span></>
+                            : 'פתוחה'
+                          : `${(e.realized_pnl_usd ?? 0) >= 0 ? '+' : ''}$${(e.realized_pnl_usd ?? 0).toFixed(2)}`}
+                      </td>
+                      <td>
+                        <button className="qa-btn edit" onClick={(ev) => openEditPopover(e, ev)}>✎ עריכה</button>
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {list.map((e) => (
-                      <tr key={e.id}>
-                        <td className="sym-cell">
-                          <span className="sym-cell-inner">
-                            <span className={`direction-mark ${e.direction}`}>{e.direction === 'long' ? 'L' : 'S'}</span>
-                            <span>{e.symbol}</span>
-                          </span>
-                        </td>
-                        <td>{formatDate(e.opened_at)}</td>
-                        <td>{e.status === 'closed' ? formatDate(e.closed_at) : '—'}</td>
-                        <td>${e.entry_price.toFixed(2)}</td>
-                        <td>{e.status === 'closed' ? `$${e.exit_price?.toFixed(2)}` : `$${e.stop_loss}`}</td>
-                        <td>{e.shares}</td>
-                        <td className="pnl-cell" style={{ color: e.status === 'open' ? (unrealizedUsd(e) !== null ? (unrealizedUsd(e)! >= 0 ? 'var(--profit)' : 'var(--loss)') : 'var(--text-secondary)') : (e.realized_pnl_usd ?? 0) >= 0 ? 'var(--profit)' : 'var(--loss)' }}>
-                          {e.status === 'open'
-                            ? unrealizedUsd(e) !== null
-                              ? <>{unrealizedPct(e)! >= 0 ? '+' : ''}{unrealizedPct(e)!.toFixed(2)}%<span className="usd-sub">{unrealizedUsd(e)! >= 0 ? '+' : '-'}${Math.abs(unrealizedUsd(e)!).toFixed(0)}</span></>
-                              : 'פתוחה'
-                            : `${(e.realized_pnl_usd ?? 0) >= 0 ? '+' : ''}$${(e.realized_pnl_usd ?? 0).toFixed(2)}`}
-                        </td>
-                        {showDelete && (
-                          <td>
-                            <button className="row-delete-btn" onClick={() => handleDelete(e)} title="מחיקת עסקה">🗑</button>
-                          </td>
-                        )}
-                        {showQuickClose && (
-                          <td>
-                            <button className="qa-btn" onClick={(ev) => startQuickClose(e, ev)}>⚡ סגירה</button>
-                          </td>
-                        )}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              <div className="entry-actions-list">
-                {list.map((e) => {
-                  const hasOpenPanel = editingId === e.id || closingId === e.id || addQtyId === e.id || sellQtyId === e.id;
-                  return (
-                    <div className="entry-actions-row" key={e.id} style={{ background: hasOpenPanel ? 'var(--bg-surface)' : undefined }}>
-                      <div className="ea-label">
-                        <span className={`direction-mark ${e.direction}`}>{e.direction === 'long' ? 'L' : 'S'}</span>
-                        <span>{e.symbol}</span>
-                      </div>
-                      {renderActionPanel(e)}
-                    </div>
-                  );
-                })}
-              </div>
-            </>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           );
         }
 
@@ -623,24 +616,14 @@ export default function JournalPage() {
               </div>
             </div>
 
-            {closingId && closingPopoverPos && (() => {
-              const entry = openEntries.find((en) => en.id === closingId);
-              if (!entry) return null;
-              return (
-                <>
-                  <div className="qa-popover-backdrop" onClick={() => setClosingId(null)} />
-                  <div className="qa-popover" style={{ top: closingPopoverPos.top, left: closingPopoverPos.left }}>
-                    <div className="qp-title">⚡ סגירה מהירה · {entry.symbol}</div>
-                    <div className="qp-field"><label>מחיר סגירה</label><ClearableInput type="number" value={exitPrice} onChange={(e) => setExitPrice(e.target.value)} onClear={() => setExitPrice('')} placeholder="130.50" /></div>
-                    <div className="qp-field"><label>תאריך סגירה</label><input type="date" value={exitDate} onChange={(e) => setExitDate(e.target.value)} /></div>
-                    <div className="qp-row">
-                      <button className="qp-confirm" onClick={() => handleClose(entry)} disabled={closing || !exitPrice}>{closing ? 'סוגרים...' : 'אישור סגירה'}</button>
-                      <button className="qp-cancel" onClick={() => setClosingId(null)}>ביטול</button>
-                    </div>
-                  </div>
-                </>
-              );
-            })()}
+            {(closingId || editingId || addQtyId || sellQtyId) && popoverPos && (
+              <>
+                <div className="qa-popover-backdrop" onClick={closeAllPopovers} />
+                <div className="qa-popover" style={{ top: popoverPos.top, left: popoverPos.left }}>
+                  {renderPopoverContent()}
+                </div>
+              </>
+            )}
           </>
         );
       })()}
