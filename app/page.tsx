@@ -205,7 +205,7 @@ export default function HomePage() {
 
       <div className="section-label" style={{ marginTop: '20px' }}><h2 style={{ color: 'var(--profit)' }}>למי זה כן מתאים</h2></div>
       <div className="not-fit">
-        <div>– מי שרוצה תיק מסחר אמיתי ושקוף, כולל גם הפסדים</div>
+        <div>– מי שרוצה תיק מסחר אמיתי ושקוף, כולל רווחים והפסדים</div>
         <div>– מי שרוצה ליווי אישי וקהילה תומכת לאורך הדרך</div>
         <div>– מי שרוצה להבין גם את הצד הפסיכולוגי, לא רק הטכני</div>
         <div>– מי שרוצה גם תוך-יומי, גם סווינג וגם טווח ארוך</div>
