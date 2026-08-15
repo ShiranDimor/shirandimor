@@ -158,7 +158,7 @@ export default function HomePage() {
         {showLeadForm && leadSubmitted && (
           <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-hairline-strong)', borderRight: '3px solid var(--profit)', borderRadius: '10px', padding: '16px', marginBottom: '10px', textAlign: 'center' }}>
             <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '14px' }}>
-              מעולה! לחיצה על הכפתור פותחת את קבוצת הוואטסאפ - ההצטרפות שם היא בלחיצה אחת.
+              מעולה! הכפתור פותח את קבוצת הוואטסאפ, וההצטרפות משם היא כבר עניין של רגע.
             </p>
             <a href="https://chat.whatsapp.com/GEf9Y4vFRDSEWKixrETWcg" target="_blank" rel="noopener noreferrer" className="btn-primary" style={{ display: 'block', textDecoration: 'none' }}>
               פתיחת קבוצת הוואטסאפ ←
@@ -185,7 +185,7 @@ export default function HomePage() {
 
       <div className="section-label"><h2>אז למי הקבוצה מתאימה?</h2></div>
       <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.65, marginBottom: '12px' }}>
-        <strong style={{ color: 'var(--text-primary)' }}>אנשים רגילים, לא סוחרים במשרה מלאה.</strong> אנשים שרוצים לגרום לכסף שלהם לעבוד בשבילם, בלי לשבת כל היום מול מסכים ובלי לעזוב את מה שהם כבר עושים.
+        <strong style={{ color: 'var(--text-primary)' }}>אנשים רגילים, לא סוחרים במשרה מלאה</strong> - שרוצים לגרום לכסף שלהם לעבוד בשבילם, בלי לשבת כל היום מול מסכים ובלי לעזוב את מה שהם כבר עושים.
       </p>
       <div className="tag-row">
         <span className="tag-chip">שכירים</span><span className="tag-chip">הורים</span><span className="tag-chip">עצמאיים</span><span className="tag-chip">סטודנטים</span><span className="tag-chip">עם ניסיון לא מוצלח</span><span className="tag-chip">בלי שום ניסיון</span>
@@ -243,8 +243,8 @@ export default function HomePage() {
         <Link className="teaser-cta" href="/portfolio">צפייה בתיק המסחר המלא ←</Link>
       </div>
 
-      <div className="section-label" style={{ marginTop: '30px' }}><h2>אז מה באמת מתאים לכם?</h2></div>
-      <p style={{ fontSize: '13px', color: 'var(--text-tertiary)', marginBottom: '16px' }}>רוצים רק לעקוב ולהתעדכן, או שאתם רוצים להתחיל לבנות תיק ולהיכנס לעסקאות?</p>
+      <div className="section-label" style={{ marginTop: '30px' }}><h2>קבוצת עדכונים או קבוצת הסוחרים?</h2></div>
+      <p style={{ fontSize: '13px', color: 'var(--text-tertiary)', marginBottom: '16px' }}>רוצים רק לעקוב ולהתעדכן, או להתחיל לבנות תיק ולהיכנס לעסקאות?</p>
       <div className="groups-compare">
         <div className="group-card free">
           <h3>קבוצת עדכונים</h3>
