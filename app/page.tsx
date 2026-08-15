@@ -122,7 +122,7 @@ export default function HomePage() {
       <div className="hero-v2">
         <div className="eyebrow">שירן דימור</div>
         <h1>שוק ההון הרבה יותר <em>פשוט</em><br />ממה שעושים ממנו.</h1>
-        <p>לא צריך לדעת הכול. צריך לדעת מה לעשות. קהילת סוחרים אקטיביים שמלמדת עקרונות בסיסיים, ניהול סיכון ותוכנית עבודה מסודרת - בלי הבטחות תשואה, בלי "שיטת פלא", ובלי שזה יהפוך למשרה שנייה.</p>
+        <p>לא צריך לדעת הכול. צריך לדעת מה לעשות. קהילה שמלמדת עקרונות בסיסיים, ניהול סיכון ותוכנית עבודה מסודרת - בלי הבטחות תשואה, בלי "שיטת פלא", ובלי שזה יהפוך למשרה שנייה.</p>
 
         {!showLeadForm && (
           <button className="cta-main" style={{ border: 'none', cursor: 'pointer', width: '100%' }} onClick={() => setShowLeadForm(true)}>
@@ -195,22 +195,20 @@ export default function HomePage() {
         <p>הסיבה האמיתית לכך שרוב האנשים לא מתחילים להשקיע, או נושרים אחרי כמה חודשים - זה לא חוסר ידע. זה <strong>הפן המנטלי</strong>: הפחד להפסיד, הקושי לקבל הפסד, וחוסר הסבלנות להישאר בתהליך. אבל בעיקר - הבהלה מהתחום עצמו, וההרגשה של "צריך לדעת המון" ו"מה אני בכלל קשור לזה".</p>
       </div>
 
-      <div className="section-label" style={{ marginTop: '30px' }}><h2>בלי הפתעות</h2></div>
-      <div className="wont-find">
-        <div className="wf-col">
-          <div className="wf-title no">✕ מה שלא תקבלו ממני</div>
-          <div className="wf-item">הבטחות ל"עצמאות כלכלית תוך חודש"</div>
-          <div className="wf-item">תמונות של רכבי יוקרה וכרטיסי טיסה</div>
-          <div className="wf-item">"פיצחתי את הקוד, ורק אני אגלה לך"</div>
-          <div className="wf-item">להראות לכם רק רווחים מפוצצים</div>
-        </div>
-        <div className="wf-col">
-          <div className="wf-title yes">✓ מה שכן תקבלו ממני</div>
-          <div className="wf-item">מסחר תוך-יומי, סווינג והשקעות לטווח ארוך - הכל במקום אחד</div>
-          <div className="wf-item">וובינרים חיים וליווי אישי לאורך הדרך</div>
-          <div className="wf-item">יומן מסחר אמיתי - כולל עסקאות שהפסידו</div>
-          <div className="wf-item">קהילה שמדברת גם על הצד הפסיכולוגי</div>
-        </div>
+      <div className="section-label" style={{ marginTop: '30px' }}><h2 style={{ color: 'var(--loss)' }}>למי זה לא מתאים</h2></div>
+      <div className="not-fit">
+        <div>– מי שמחפש רווח מובטח או כסף מהיר</div>
+        <div>– מי שרוצה שמישהי אחרת תקבל עבורו את כל ההחלטות</div>
+        <div>– מי שמתכוון לסחור בכסף שהוא צריך למחיה, או בהלוואה</div>
+        <div>– מי שלא מוכן לקבל שיהיו גם הפסדים</div>
+      </div>
+
+      <div className="section-label" style={{ marginTop: '20px' }}><h2 style={{ color: 'var(--profit)' }}>למי זה כן מתאים</h2></div>
+      <div className="not-fit">
+        <div>– מי שרוצה תיק מסחר אמיתי ושקוף, כולל עסקאות שהפסידו - לא רק סיפורי הצלחה</div>
+        <div>– מי שמעדיף/ה ללמוד בקצב אישי, עם ליווי אמיתי וקהילה שאפשר לשאול בה שאלות</div>
+        <div>– מי שרוצה גם להבין את הצד הפסיכולוגי של המסחר, לא רק את הטכני</div>
+        <div>– מי שמתעניין/ת גם בתוך-יומי, גם בסווינג וגם בהשקעות לטווח ארוך - ורוצה לבחור מה מתאים לו/ה</div>
       </div>
 
       <div className="section-label" style={{ marginTop: '30px' }}><h2>אז איך זה נראה, תכלס?</h2></div>
@@ -256,6 +254,7 @@ export default function HomePage() {
             <div>עדכונים בלי רעש - רק מה שבאמת קורה בשוק</div>
             <div>הצצה לעולם שוק ההון, בלי לשלם עליה אלפי שקלים</div>
             <div>מושג אחד בשבוע - פשוט, ברור, ואפשר להשתמש בו מיד</div>
+            <div>גישה לספרייה המלאה - כל הוובינרים, המצגות והחומרים המקצועיים, בלי לשלם עליהם אלפי שקלים במקום אחר</div>
             <div>הצטרפות בלחיצה אחת, בלי התחייבות ובלי מכירות</div>
             <div>אפשר לשדרג לקבוצת הסוחרים בכל שלב, בקצב האישי</div>
           </div>
@@ -272,6 +271,7 @@ export default function HomePage() {
             <div><strong>ליווי אישי</strong> - לצד קהילה סגורה לדיון מעמיק</div>
             <div><strong>יומן מסחר שקוף</strong> - כולל עסקאות מפסידות</div>
             <div>תיק מסחר אישי וניתוח העסקאות ע"י שירן</div>
+            <div>ספרייה מלאה של וובינרים, מצגות וחומר מקצועי - הכל כלול, בלי תשלום נוסף</div>
           </div>
           <Link className="gc-cta" href="/subscribe">לפרטים על קבוצת הסוחרים</Link>
         </div>
@@ -289,25 +289,22 @@ export default function HomePage() {
         </details>
         <details className="faq-item" style={{ borderRightColor: 'var(--profit)' }}>
           <summary>מה קורה אם אני רוצה לבטל?</summary>
-          <p>אפשר לבטל בכל רגע נתון. בלי קנס ובלי שאלות - לא צריך להמציא סיפור קורע לב, פשוט שולחים הודעת וואטסאפ.</p>
+          <p>המנוי מתחדש אוטומטית כל חודש, בתאריך ההצטרפות. אפשר לבטל בכל שלב עד יום לפני מועד החידוש - בלי קנס ובלי שאלות, פשוט שולחים הודעת וואטסאפ.</p>
         </details>
         <details className="faq-item" style={{ borderRightColor: 'var(--teal)' }}>
           <summary>זה בטוח? יש סיכון להפסיד כסף?</summary>
           <p>כן, יש סיכון - זה שוק ההון, לא הבטחה. המטרה של הקבוצה היא ללמד ניהול סיכון נכון, לא להבטיח רווחים.</p>
         </details>
-      </div>
-
-      <div className="section-label" style={{ marginTop: '30px' }}><h2>בכנות - למי זה כנראה לא מתאים</h2></div>
-      <div className="not-fit">
-        <div>– מי שמחפש רווח מובטח או כסף מהיר</div>
-        <div>– מי שרוצה שמישהי אחרת תקבל עבורו את כל ההחלטות</div>
-        <div>– מי שמתכוון לסחור בכסף שהוא צריך למחיה, או בהלוואה</div>
-        <div>– מי שלא מוכן לקבל שיהיו גם הפסדים</div>
+        <details className="faq-item" style={{ borderRightColor: 'var(--lavender)' }}>
+          <summary>כמה כסף צריך כדי להתחיל?</summary>
+          <p>זה משתנה מאדם לאדם. יש מי שמתחילים עם תיק מסחר גדול, ויש מי שמתחילים עם תיק קטן מאוד. ויש גם כאלה שמתחילים בכלל בלי תיק מסחר משלהם, וסוחרים דרך תיקים ממומנים (Funded Accounts).</p>
+        </details>
       </div>
 
       <div className="quote-block">
-        <p>"השוק לא תמיד פשוט. הדרך שבה סוחרים בו יכולה להיות."</p>
-        <span>- שירן דימור -</span>
+        <span className="qmark" aria-hidden="true">"</span>
+        <p>השוק לא תמיד פשוט. הדרך לסחור בו יכולה להיות.</p>
+        <span className="qauthor">שירן דימור</span>
       </div>
 
       <footer>
