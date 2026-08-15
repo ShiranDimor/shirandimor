@@ -14,11 +14,26 @@ type Trade = {
   shares_calculated: number;
   exit_price: number | null;
   current_price: number | null;
+  realized_pnl_usd: number | null;
   notes: string | null;
   opened_at: string;
   closed_at: string | null;
   parent_trade_id: string | null;
 };
+
+function pctPnl(trade: Trade, isClosed: boolean) {
+  const dirFactor = trade.direction === 'short' ? -1 : 1;
+  const refPrice = isClosed ? trade.exit_price : (trade.current_price ?? trade.entry_price);
+  if (refPrice == null) return null;
+  return ((refPrice - trade.entry_price) / trade.entry_price) * 100 * dirFactor;
+}
+
+function usdPnl(trade: Trade, isClosed: boolean) {
+  if (isClosed) return trade.realized_pnl_usd ?? null;
+  const dirFactor = trade.direction === 'short' ? -1 : 1;
+  const refPrice = trade.current_price ?? trade.entry_price;
+  return (refPrice - trade.entry_price) * trade.shares_calculated * dirFactor;
+}
 
 function formatDate(iso: string | null) {
   if (!iso) return '';
@@ -35,19 +50,36 @@ export default function AdminTradesPage() {
   const [closedTrades, setClosedTrades] = useState<Trade[]>([]);
 
   const [closingId, setClosingId] = useState<string | null>(null);
-  const [closingPopoverPos, setClosingPopoverPos] = useState<{ top: number; left: number } | null>(null);
+  const [popoverPos, setPopoverPos] = useState<{ top: number; left: number } | null>(null);
   const [exitPrice, setExitPrice] = useState('');
   const [exitDate, setExitDate] = useState('');
   const [closing, setClosing] = useState(false);
 
-  function startQuickClose(trade: Trade, e: React.MouseEvent<HTMLButtonElement>) {
+  function closeAllPopovers() {
+    setClosingId(null);
+    setEditingId(null);
+    setAddQtyId(null);
+    setSellQtyId(null);
+  }
+
+  function openPopover(kind: 'close' | 'edit' | 'addqty' | 'sellqty', trade: Trade, e: React.MouseEvent<HTMLButtonElement>) {
     const rect = e.currentTarget.getBoundingClientRect();
-    const popW = 230;
+    const popW = 260;
     const left = Math.min(Math.max(8, rect.left), window.innerWidth - popW - 8);
-    setClosingPopoverPos({ top: rect.bottom + 8, left });
-    setClosingId(trade.id);
-    setExitPrice('');
-    setExitDate('');
+    setPopoverPos({ top: rect.bottom + 8, left });
+    closeAllPopovers();
+
+    if (kind === 'close') {
+      setClosingId(trade.id);
+      setExitPrice('');
+      setExitDate('');
+    } else if (kind === 'edit') {
+      startEdit(trade);
+    } else if (kind === 'addqty') {
+      startAddQty(trade);
+    } else if (kind === 'sellqty') {
+      startSellQty(trade);
+    }
   }
 
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -89,14 +121,14 @@ export default function AdminTradesPage() {
   async function loadTrades() {
     const { data: open } = await supabase
       .from('trades')
-      .select('id, direction, symbol, entry_price, stop_loss, shares_calculated, exit_price, current_price, notes, opened_at, closed_at, parent_trade_id')
+      .select('id, direction, symbol, entry_price, stop_loss, shares_calculated, exit_price, current_price, realized_pnl_usd, notes, opened_at, closed_at, parent_trade_id')
       .eq('status', 'open')
       .order('opened_at', { ascending: false });
     if (open) setOpenTrades(open);
 
     const { data: closed } = await supabase
       .from('trades')
-      .select('id, direction, symbol, entry_price, stop_loss, shares_calculated, exit_price, current_price, notes, opened_at, closed_at, parent_trade_id')
+      .select('id, direction, symbol, entry_price, stop_loss, shares_calculated, exit_price, current_price, realized_pnl_usd, notes, opened_at, closed_at, parent_trade_id')
       .eq('status', 'closed')
       .order('closed_at', { ascending: false });
     if (closed) setClosedTrades(closed);
@@ -395,10 +427,31 @@ export default function AdminTradesPage() {
     );
   }
 
-  function renderActionsPanel(trade: Trade, isClosed: boolean) {
+  function renderPopoverContent() {
+    const trade = [...openTrades, ...closedTrades].find(
+      (t) => t.id === closingId || t.id === editingId || t.id === addQtyId || t.id === sellQtyId
+    );
+    if (!trade) return null;
+    const isClosed = trade.closed_at !== null;
+
+    if (closingId === trade.id) {
+      return (
+        <>
+          <div className="qp-title">⚡ סגירה מהירה · {trade.symbol}</div>
+          <div className="qp-field"><label>מחיר סגירה</label><ClearableInput type="number" value={exitPrice} onChange={(e) => setExitPrice(e.target.value)} onClear={() => setExitPrice('')} placeholder="130.50" /></div>
+          <div className="qp-field"><label>תאריך סגירה</label><input type="date" value={exitDate} onChange={(e) => setExitDate(e.target.value)} /></div>
+          <div className="qp-row">
+            <button className="qp-confirm" onClick={() => handleCloseTrade(trade)} disabled={closing || !exitPrice}>{closing ? 'סוגרים...' : 'אישור סגירה'}</button>
+            <button className="qp-cancel" onClick={() => setClosingId(null)}>ביטול</button>
+          </div>
+        </>
+      );
+    }
+
     if (editingId === trade.id) {
       return (
-        <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--border-hairline)' }}>
+        <>
+          <div className="qp-title">✎ עריכה · {trade.symbol}</div>
           <div className="form-row" style={{ marginBottom: '10px' }}>
             <div className="field" style={{ marginBottom: 0 }}><label>סימבול</label><ClearableInput type="text" value={editSymbol} onChange={(e) => setEditSymbol(e.target.value)} onClear={() => setEditSymbol('')} /></div>
             <div className="field" style={{ marginBottom: 0 }}><label>מניות</label><ClearableInput type="number" value={editShares} onChange={(e) => setEditShares(e.target.value)} onClear={() => setEditShares('')} /></div>
@@ -411,88 +464,70 @@ export default function AdminTradesPage() {
             <div className="field"><label>מחיר יציאה</label><ClearableInput type="number" value={editExitPrice} onChange={(e) => setEditExitPrice(e.target.value)} onClear={() => setEditExitPrice('')} /></div>
           )}
           <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
-            <button className="btn-primary" style={{ flex: 1 }} onClick={() => saveEdit(trade, isClosed)} disabled={savingEdit}>{savingEdit ? 'שומרים...' : 'שמירת שינויים'}</button>
-            <button className="btn-outline" style={{ flex: 1 }} onClick={cancelEdit}>ביטול</button>
+            <button className="qp-confirm" onClick={() => saveEdit(trade, isClosed)} disabled={savingEdit}>{savingEdit ? 'שומרים...' : 'שמירת שינויים'}</button>
+            <button className="qp-cancel" onClick={cancelEdit}>ביטול</button>
           </div>
-        </div>
+        </>
       );
     }
 
-    if (!isClosed && addQtyId === trade.id) {
+    if (addQtyId === trade.id) {
       return (
-        <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--border-hairline)' }}>
-          <div className="form-row" style={{ marginBottom: '10px' }}>
-            <div className="field" style={{ marginBottom: 0 }}><label>מחיר כניסה נוסף</label><ClearableInput type="number" value={addQtyPrice} onChange={(e) => setAddQtyPrice(e.target.value)} onClear={() => setAddQtyPrice('')} placeholder="132.00" /></div>
-            <div className="field" style={{ marginBottom: 0 }}><label>כמות נוספת</label><ClearableInput type="number" value={addQtyShares} onChange={(e) => setAddQtyShares(e.target.value)} onClear={() => setAddQtyShares('')} placeholder="20" /></div>
+        <>
+          <div className="qp-title">+ הוספת כמות · {trade.symbol}</div>
+          <div className="qp-field"><label>מחיר כניסה נוסף</label><ClearableInput type="number" value={addQtyPrice} onChange={(e) => setAddQtyPrice(e.target.value)} onClear={() => setAddQtyPrice('')} placeholder="132.00" /></div>
+          <div className="qp-field"><label>כמות נוספת</label><ClearableInput type="number" value={addQtyShares} onChange={(e) => setAddQtyShares(e.target.value)} onClear={() => setAddQtyShares('')} placeholder="20" /></div>
+          <p style={{ fontSize: '11.5px', color: 'var(--text-tertiary)', margin: '4px 0 10px' }}>מחיר הכניסה יתעדכן לממוצע המשוקלל, והכמות תתווסף לעסקה הקיימת</p>
+          <div className="qp-row">
+            <button className="qp-confirm" onClick={() => handleAddQuantity(trade)} disabled={addingQty || !addQtyPrice || !addQtyShares}>{addingQty ? 'מוסיפים...' : 'אישור הוספה'}</button>
+            <button className="qp-cancel" onClick={() => setAddQtyId(null)}>ביטול</button>
           </div>
-          <p style={{ fontSize: '11.5px', color: 'var(--text-tertiary)', marginBottom: '10px' }}>מחיר הכניסה יתעדכן לממוצע המשוקלל, והכמות תתווסף לעסקה הקיימת</p>
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <button className="btn-primary" style={{ flex: 1 }} onClick={() => handleAddQuantity(trade)} disabled={addingQty || !addQtyPrice || !addQtyShares}>{addingQty ? 'מוסיפים...' : 'אישור הוספה'}</button>
-            <button className="btn-outline" style={{ flex: 1 }} onClick={() => setAddQtyId(null)}>ביטול</button>
-          </div>
-        </div>
+        </>
       );
     }
 
-    if (!isClosed && sellQtyId === trade.id) {
+    if (sellQtyId === trade.id) {
       return (
-        <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--border-hairline)' }}>
-          <div className="form-row" style={{ marginBottom: '10px' }}>
-            <div className="field" style={{ marginBottom: 0 }}><label>מחיר מכירה</label><ClearableInput type="number" value={sellQtyPrice} onChange={(e) => setSellQtyPrice(e.target.value)} onClear={() => setSellQtyPrice('')} placeholder="135.00" /></div>
-            <div className="field" style={{ marginBottom: 0 }}><label>כמות למכירה (מתוך {trade.shares_calculated})</label><ClearableInput type="number" value={sellQtyShares} onChange={(e) => setSellQtyShares(e.target.value)} onClear={() => setSellQtyShares('')} placeholder="10" /></div>
+        <>
+          <div className="qp-title">− מכירה חלקית · {trade.symbol}</div>
+          <div className="qp-field"><label>מחיר מכירה</label><ClearableInput type="number" value={sellQtyPrice} onChange={(e) => setSellQtyPrice(e.target.value)} onClear={() => setSellQtyPrice('')} placeholder="135.00" /></div>
+          <div className="qp-field"><label>כמות למכירה (מתוך {trade.shares_calculated})</label><ClearableInput type="number" value={sellQtyShares} onChange={(e) => setSellQtyShares(e.target.value)} onClear={() => setSellQtyShares('')} placeholder="10" /></div>
+          {sellQtyError && <p style={{ color: 'var(--loss)', fontSize: '12px', margin: '4px 0 10px' }}>{sellQtyError}</p>}
+          <div className="qp-row">
+            <button className="qp-confirm" onClick={() => handlePartialSell(trade)} disabled={sellingQty || !sellQtyPrice || !sellQtyShares}>{sellingQty ? 'מוכרים...' : 'אישור מכירה'}</button>
+            <button className="qp-cancel" onClick={() => setSellQtyId(null)}>ביטול</button>
           </div>
-          <p style={{ fontSize: '11.5px', color: 'var(--text-tertiary)', marginBottom: '10px' }}>החלק שנמכר יעבור לעסקאות סגורות, והיתרה תישאר פתוחה באותו מחיר כניסה</p>
-          {sellQtyError && <p style={{ color: 'var(--loss)', fontSize: '12px', marginBottom: '10px' }}>{sellQtyError}</p>}
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <button className="btn-primary" style={{ flex: 1 }} onClick={() => handlePartialSell(trade)} disabled={sellingQty || !sellQtyPrice || !sellQtyShares}>{sellingQty ? 'מוכרים...' : 'אישור מכירה'}</button>
-            <button className="btn-outline" style={{ flex: 1 }} onClick={() => setSellQtyId(null)}>ביטול</button>
-          </div>
-        </div>
+        </>
       );
     }
 
-    return (
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '10px' }}>
-        {!isClosed && (
-          <>
-            <button className="btn-outline" style={{ flex: 1, padding: '8px', fontSize: '13px' }} onClick={() => startAddQty(trade)}>
-              הוספת כמות
-            </button>
-            <button className="btn-outline" style={{ flex: 1, padding: '8px', fontSize: '13px' }} onClick={() => startSellQty(trade)}>
-              מכירה חלקית
-            </button>
-          </>
-        )}
-        <button className="btn-outline" style={{ flex: 1, padding: '8px', fontSize: '13px' }} onClick={() => startEdit(trade)}>
-          עריכה
-        </button>
-        <button className="btn-outline" style={{ padding: '8px 14px', fontSize: '13px', color: 'var(--loss)', borderColor: 'var(--loss)' }} onClick={() => handleDeleteTrade(trade)}>
-          מחיקה
-        </button>
-      </div>
-    );
+    return null;
   }
 
   function renderTradeTable(list: Trade[], isClosed: boolean, emptyText: string) {
     if (list.length === 0) return <p className="trade-table-empty">{emptyText}</p>;
     return (
-      <>
-        <div className="trade-table-wrap">
-          <table className="trade-table">
-            <thead>
-              <tr>
-                <th>סימבול</th>
-                <th>נפתחה ב-</th>
-                <th>נסגרה ב-</th>
-                <th>כניסה</th>
-                <th>סטופ/יציאה</th>
-                {!isClosed && <th>נוכחי</th>}
-                <th>מניות</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {list.map((trade) => (
+      <div className="trade-table-wrap">
+        <table className="trade-table">
+          <thead>
+            <tr>
+              <th>סימבול</th>
+              <th>נפתחה ב-</th>
+              <th>נסגרה ב-</th>
+              <th>כניסה</th>
+              <th>סטופ/יציאה</th>
+              {!isClosed && <th>נוכחי</th>}
+              <th>אחוז</th>
+              <th>דולר</th>
+              <th>מניות</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {list.map((trade) => {
+              const pct = pctPnl(trade, isClosed);
+              const usd = usdPnl(trade, isClosed);
+              return (
                 <tr key={trade.id}>
                   <td className="sym-cell">
                     <span className="sym-cell-inner">
@@ -522,34 +557,35 @@ export default function AdminTradesPage() {
                       )}
                     </td>
                   )}
+                  <td style={{ color: pct === null ? undefined : pct >= 0 ? 'var(--profit)' : 'var(--loss)' }}>
+                    {pct === null ? '—' : `${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%`}
+                  </td>
+                  <td style={{ color: usd === null ? undefined : usd >= 0 ? 'var(--profit)' : 'var(--loss)' }}>
+                    {usd === null ? '—' : `${usd >= 0 ? '+' : '-'}$${Math.abs(usd).toFixed(0)}`}
+                  </td>
                   <td>{trade.shares_calculated}</td>
                   <td>
-                    {isClosed ? (
-                      <button className="row-delete-btn" onClick={() => handleDeleteTrade(trade)} title="מחיקת עסקה">🗑</button>
-                    ) : (
-                      <button className="qa-btn" onClick={(e) => startQuickClose(trade, e)}>⚡ סגירה</button>
-                    )}
+                    <div style={{ display: 'flex', gap: '4px', justifyContent: 'center' }}>
+                      <button className="row-delete-btn" onClick={(e) => openPopover('edit', trade, e)} title="עריכה">✎</button>
+                      {!isClosed && (
+                        <>
+                          <button className="row-delete-btn" onClick={(e) => openPopover('addqty', trade, e)} title="הוספת כמות">+</button>
+                          <button className="row-delete-btn" onClick={(e) => openPopover('sellqty', trade, e)} title="מכירה חלקית">−</button>
+                        </>
+                      )}
+                      {isClosed ? (
+                        <button className="row-delete-btn" onClick={() => handleDeleteTrade(trade)} title="מחיקת עסקה">🗑</button>
+                      ) : (
+                        <button className="qa-btn" onClick={(e) => openPopover('close', trade, e)}>⚡ סגירה</button>
+                      )}
+                    </div>
                   </td>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <div className="entry-actions-list">
-          {list.map((trade) => {
-            const hasOpenPanel = editingId === trade.id || closingId === trade.id || addQtyId === trade.id || sellQtyId === trade.id || priceUpdateId === trade.id;
-            return (
-              <div className="entry-actions-row" key={trade.id} style={{ background: hasOpenPanel ? 'var(--bg-surface)' : undefined }}>
-                <div className="ea-label">
-                  <span className={`direction-mark ${trade.direction}`}>{trade.direction === 'long' ? 'L' : 'S'}</span>
-                  <span>{trade.symbol}</span>
-                </div>
-                {renderActionsPanel(trade, isClosed)}
-              </div>
-            );
-          })}
-        </div>
-      </>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     );
   }
 
@@ -599,24 +635,14 @@ export default function AdminTradesPage() {
         {renderTradeTable(closedTrades, true, 'אין עדיין עסקאות סגורות')}
       </details>
 
-      {closingId && closingPopoverPos && (() => {
-        const trade = openTrades.find((t) => t.id === closingId);
-        if (!trade) return null;
-        return (
-          <>
-            <div className="qa-popover-backdrop" onClick={() => setClosingId(null)} />
-            <div className="qa-popover" style={{ top: closingPopoverPos.top, left: closingPopoverPos.left }}>
-              <div className="qp-title">⚡ סגירה מהירה · {trade.symbol}</div>
-              <div className="qp-field"><label>מחיר סגירה</label><ClearableInput type="number" value={exitPrice} onChange={(e) => setExitPrice(e.target.value)} onClear={() => setExitPrice('')} placeholder="130.50" /></div>
-              <div className="qp-field"><label>תאריך סגירה</label><input type="date" value={exitDate} onChange={(e) => setExitDate(e.target.value)} /></div>
-              <div className="qp-row">
-                <button className="qp-confirm" onClick={() => handleCloseTrade(trade)} disabled={closing || !exitPrice}>{closing ? 'סוגרים...' : 'אישור סגירה'}</button>
-                <button className="qp-cancel" onClick={() => setClosingId(null)}>ביטול</button>
-              </div>
-            </div>
-          </>
-        );
-      })()}
+      {(closingId || editingId || addQtyId || sellQtyId) && popoverPos && (
+        <>
+          <div className="qa-popover-backdrop" onClick={closeAllPopovers} />
+          <div className="qa-popover" style={{ top: popoverPos.top, left: popoverPos.left }}>
+            {renderPopoverContent()}
+          </div>
+        </>
+      )}
     </div>
   );
 }
