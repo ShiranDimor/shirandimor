@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin, generateInstantLoginToken } from '@/lib/instantLogin';
+import { supabaseAdmin, sendLoginEmail } from '@/lib/instantLogin';
 
 const SUBSCRIBER_GROUP_NAME = 'קבוצת סוחרים';
 
@@ -119,9 +119,9 @@ export async function POST(request: Request) {
     }
 
     await ensureActiveSubscriber(email, phone);
-    const loginToken = await generateInstantLoginToken(email);
+    await sendLoginEmail(email);
 
-    return NextResponse.json({ verified: true, configured: true, token: loginToken });
+    return NextResponse.json({ verified: true, configured: true });
   } catch (e) {
     console.error('שגיאה באימות מול Monday.com', e);
     return NextResponse.json({ verified: false, configured: false });

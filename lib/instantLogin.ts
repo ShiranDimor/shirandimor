@@ -5,17 +5,18 @@ export const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// יוצר טוקן כניסה שנפדה מיידית בצד הלקוח (supabase.auth.verifyOtp) - בלי לשלוח מייל בפועל.
-// משמש למנויים מאושרים שכבר עברו אימות (אישור ידני או אימות טלפון מול מאנדיי) ולא צריכים לחכות למייל בכל כניסה.
-export async function generateInstantLoginToken(email: string) {
-  const { data, error } = await supabaseAdmin.auth.admin.generateLink({
-    type: 'magiclink',
+// שולח מייל כניסה אמיתי (קישור קסם) לכתובת שכבר אושרה כמנוי/אדמין -
+// הכניסה בפועל מותנית בלחיצה על הקישור מתוך תיבת המייל, לא רק בידיעת הכתובת
+export async function sendLoginEmail(email: string) {
+  const { error } = await supabaseAdmin.auth.signInWithOtp({
     email,
+    options: {
+      shouldCreateUser: false,
+      emailRedirectTo: 'https://www.shirandimor.com/login/callback',
+    },
   });
 
-  if (error || !data?.properties?.hashed_token) {
-    throw new Error(error?.message || 'לא ניתן היה ליצור טוקן כניסה');
+  if (error) {
+    throw new Error(error.message || 'לא ניתן היה לשלוח מייל כניסה');
   }
-
-  return data.properties.hashed_token;
 }

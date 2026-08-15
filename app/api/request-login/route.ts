@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin, generateInstantLoginToken } from '@/lib/instantLogin';
+import { supabaseAdmin, sendLoginEmail } from '@/lib/instantLogin';
 
 export async function POST(request: Request) {
   const { email } = await request.json();
@@ -19,9 +19,9 @@ export async function POST(request: Request) {
   }
 
   try {
-    const token = await generateInstantLoginToken(email);
-    return NextResponse.json({ granted: true, token });
+    await sendLoginEmail(email);
+    return NextResponse.json({ granted: true });
   } catch (e) {
-    return NextResponse.json({ granted: false, error: 'שגיאה ביצירת כניסה' });
+    return NextResponse.json({ granted: false, error: 'שגיאה בשליחת מייל כניסה' });
   }
 }

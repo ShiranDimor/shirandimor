@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import ClearableInput from '@/components/ClearableInput';
 
-type Step = 'email' | 'phone' | 'rejected' | 'password';
+type Step = 'email' | 'sent' | 'phone' | 'rejected' | 'password';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -47,29 +47,6 @@ export default function LoginPage() {
     }
   }
 
-  async function redeemInstantLogin(token: string) {
-    const { data, error: authError } = await supabase.auth.verifyOtp({ email, token, type: 'magiclink' });
-
-    if (authError || !data.user) {
-      setError('משהו השתבש בכניסה. כדאי לנסות שוב בעוד רגע.');
-      return;
-    }
-
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', data.user.id)
-      .single();
-
-    if (profile?.role === 'admin') {
-      router.push('/admin');
-    } else if (profile?.role === 'subscriber') {
-      router.push('/portfolio');
-    } else {
-      router.push('/subscribe');
-    }
-  }
-
   async function handleEmailSubmit() {
     if (!email) return;
     setLoading(true);
@@ -83,8 +60,8 @@ export default function LoginPage() {
       });
       const data = await res.json();
 
-      if (data.granted && data.token) {
-        await redeemInstantLogin(data.token);
+      if (data.granted) {
+        setStep('sent');
       } else {
         setStep('phone');
       }
@@ -112,8 +89,8 @@ export default function LoginPage() {
       });
       const data = await res.json();
 
-      if (data.verified && data.token) {
-        await redeemInstantLogin(data.token);
+      if (data.verified) {
+        setStep('sent');
       } else {
         setStep('rejected');
       }
@@ -132,7 +109,7 @@ export default function LoginPage() {
       </header>
 
       <div className="form-title" style={{ color: 'var(--lavender)' }}>כניסה לסוחרים</div>
-      <div className="form-sub">מקלידים אימייל ונכנסים ישר - בלי סיסמה ובלי לחכות למייל</div>
+      <div className="form-sub">מקלידים אימייל ומקבלים קישור כניסה - בלי סיסמה</div>
 
       {step === 'email' && (
         <>
@@ -149,7 +126,7 @@ export default function LoginPage() {
           </div>
 
           <button className="btn-primary" style={{ background: 'var(--lavender)' }} onClick={handleEmailSubmit} disabled={loading || !email}>
-            {loading ? 'בודקים...' : 'כניסה'}
+            {loading ? 'בודקים...' : 'שליחת קישור כניסה'}
           </button>
           <p style={{ marginTop: '10px', fontSize: '11px', color: 'var(--text-tertiary)', textAlign: 'center' }}>
             מי שעדיין לא מזוהה כמנוי מאושר - נבקש אימות נייד
@@ -162,6 +139,18 @@ export default function LoginPage() {
 
           {error && <p style={{ color: 'var(--loss)', fontSize: '12px', textAlign: 'center', marginTop: '10px' }}>{error}</p>}
         </>
+      )}
+
+      {step === 'sent' && (
+        <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-hairline-strong)', borderRight: '3px solid var(--lavender)', borderRadius: '10px', padding: '16px', textAlign: 'center' }}>
+          <div style={{ fontSize: '14px', fontWeight: 600, marginBottom: '6px' }}>שלחנו קישור כניסה למייל</div>
+          <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '14px' }}>
+            נשלח קישור לכתובת {email} - לחיצה עליו תכניס אתכם ישר, בלי סיסמה. אם אין סימן תוך כמה דקות, כדאי לבדוק גם בספאם.
+          </div>
+          <a href="#" onClick={(e) => { e.preventDefault(); setStep('email'); setError(''); }} style={{ color: 'var(--lavender)', fontSize: '12px' }}>
+            ← חזרה
+          </a>
+        </div>
       )}
 
       {step === 'password' && (
