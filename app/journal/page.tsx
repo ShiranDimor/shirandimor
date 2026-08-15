@@ -44,6 +44,18 @@ export default function JournalPage() {
   const [userId, setUserId] = useState<string | null>(null);
   const [entries, setEntries] = useState<JournalEntry[]>([]);
   const [showForm, setShowForm] = useState(false);
+  const [calYear, setCalYear] = useState(() => new Date().getFullYear());
+  const [calMonthIdx, setCalMonthIdx] = useState(() => new Date().getMonth());
+
+  function goPrevMonth() {
+    if (calMonthIdx === 0) { setCalYear((y) => y - 1); setCalMonthIdx(11); }
+    else setCalMonthIdx((m) => m - 1);
+  }
+
+  function goNextMonth() {
+    if (calMonthIdx === 11) { setCalYear((y) => y + 1); setCalMonthIdx(0); }
+    else setCalMonthIdx((m) => m + 1);
+  }
 
   const [direction, setDirection] = useState<'long' | 'short'>('long');
   const [symbol, setSymbol] = useState('');
@@ -406,12 +418,11 @@ export default function JournalPage() {
           return points;
         })();
 
-        const now = new Date();
         const calResults = closedEntries
           .filter((e) => {
             if (!e.closed_at) return false;
             const d = new Date(e.closed_at);
-            return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+            return d.getFullYear() === calYear && d.getMonth() === calMonthIdx;
           })
           .reduce((map, e) => {
             const day = new Date(e.closed_at as string).getDate();
@@ -556,37 +567,13 @@ export default function JournalPage() {
               <EquityCurve points={equityPoints} />
             </div>
 
-            <div className="section-label"><h2>{now.toLocaleDateString('he-IL', { month: 'long', year: 'numeric' })}</h2></div>
+            <div className="section-label"><h2>לוח שנה</h2></div>
             <div className="equity-card" style={{ marginBottom: '28px' }}>
-              <CalendarHeatmap year={now.getFullYear()} month={now.getMonth()} results={calDayResults} />
+              <CalendarHeatmap year={calYear} month={calMonthIdx} results={calDayResults} onPrevMonth={goPrevMonth} onNextMonth={goNextMonth} />
             </div>
 
-            <details className="section-collapse" open>
-              <summary>
-                <h2>עסקאות פתוחות</h2>
-                <div className="summary-right"><span className="count">{openEntries.length}</span><span className="collapse-chevron">▾</span></div>
-              </summary>
-              {renderTable(openEntries, 'אין כרגע עסקאות פתוחות')}
-            </details>
-
-            <details className="section-collapse">
-              <summary>
-                <h2>נסגרו ברווח</h2>
-                <div className="summary-right"><span className="count">{closedProfit.length}</span><span className="collapse-chevron">▾</span></div>
-              </summary>
-              {renderTable(closedProfit, 'אין עדיין עסקאות שנסגרו ברווח')}
-            </details>
-
-            <details className="section-collapse">
-              <summary>
-                <h2>נסגרו בהפסד</h2>
-                <div className="summary-right"><span className="count">{closedLoss.length}</span><span className="collapse-chevron">▾</span></div>
-              </summary>
-              {renderTable(closedLoss, 'אין עדיין עסקאות שנסגרו בהפסד')}
-            </details>
-
-            <div className="section-label" style={{ marginTop: '28px' }}><h2>תובנות היומן</h2></div>
-            <div className="insights-panel">
+            <div className="section-label"><h2>תובנות היומן</h2></div>
+            <div className="insights-panel" style={{ marginBottom: '28px' }}>
               <div className="insights-ring-row">
                 <StatsRing
                   percent={winRate ?? 0}
@@ -615,6 +602,30 @@ export default function JournalPage() {
                 </div>
               </div>
             </div>
+
+            <details className="section-collapse" open>
+              <summary>
+                <h2>עסקאות פתוחות</h2>
+                <div className="summary-right"><span className="count">{openEntries.length}</span><span className="collapse-chevron">▾</span></div>
+              </summary>
+              {renderTable(openEntries, 'אין כרגע עסקאות פתוחות')}
+            </details>
+
+            <details className="section-collapse">
+              <summary>
+                <h2>נסגרו ברווח</h2>
+                <div className="summary-right"><span className="count">{closedProfit.length}</span><span className="collapse-chevron">▾</span></div>
+              </summary>
+              {renderTable(closedProfit, 'אין עדיין עסקאות שנסגרו ברווח')}
+            </details>
+
+            <details className="section-collapse">
+              <summary>
+                <h2>נסגרו בהפסד</h2>
+                <div className="summary-right"><span className="count">{closedLoss.length}</span><span className="collapse-chevron">▾</span></div>
+              </summary>
+              {renderTable(closedLoss, 'אין עדיין עסקאות שנסגרו בהפסד')}
+            </details>
 
             {(closingId || editingId || addQtyId || sellQtyId) && popoverPos && (
               <>

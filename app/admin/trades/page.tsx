@@ -69,6 +69,8 @@ export default function AdminTradesPage() {
   const [openTrades, setOpenTrades] = useState<Trade[]>([]);
   const [closedTrades, setClosedTrades] = useState<Trade[]>([]);
   const [initialBalance, setInitialBalance] = useState<number | null>(null);
+  const [calYear, setCalYear] = useState(() => new Date().getFullYear());
+  const [calMonthIdx, setCalMonthIdx] = useState(() => new Date().getMonth());
   const [profitMonthFilter, setProfitMonthFilter] = useState(currentMonthKey);
   const [lossMonthFilter, setLossMonthFilter] = useState(currentMonthKey);
 
@@ -437,12 +439,11 @@ export default function AdminTradesPage() {
     return points;
   })();
 
-  const now = new Date();
   const calResults = closedTrades
     .filter((t) => {
       if (!t.closed_at) return false;
       const d = new Date(t.closed_at);
-      return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+      return d.getFullYear() === calYear && d.getMonth() === calMonthIdx;
     })
     .reduce((map, t) => {
       const day = new Date(t.closed_at as string).getDate();
@@ -450,6 +451,16 @@ export default function AdminTradesPage() {
       return map;
     }, new Map<number, number>());
   const calDayResults = Array.from(calResults.entries()).map(([day, pnl]) => ({ day, pnl }));
+
+  function goPrevMonth() {
+    if (calMonthIdx === 0) { setCalYear((y) => y - 1); setCalMonthIdx(11); }
+    else setCalMonthIdx((m) => m - 1);
+  }
+
+  function goNextMonth() {
+    if (calMonthIdx === 11) { setCalYear((y) => y + 1); setCalMonthIdx(0); }
+    else setCalMonthIdx((m) => m + 1);
+  }
 
   if (checking) {
     return <div className="wrap"><p style={{ padding: '40px', textAlign: 'center' }}>בודקים הרשאות...</p></div>;
@@ -655,9 +666,9 @@ export default function AdminTradesPage() {
         <EquityCurve points={equityPoints} />
       </div>
 
-      <div className="section-label"><h2>{now.toLocaleDateString('he-IL', { month: 'long', year: 'numeric' })}</h2></div>
+      <div className="section-label"><h2>לוח שנה</h2></div>
       <div className="equity-card" style={{ marginBottom: '28px' }}>
-        <CalendarHeatmap year={now.getFullYear()} month={now.getMonth()} results={calDayResults} />
+        <CalendarHeatmap year={calYear} month={calMonthIdx} results={calDayResults} onPrevMonth={goPrevMonth} onNextMonth={goNextMonth} />
       </div>
 
       <div className="section-label"><h2>תובנות התיק</h2></div>

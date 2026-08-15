@@ -54,6 +54,18 @@ export default function AdminViewSubscriberJournal() {
   const [subscriber, setSubscriber] = useState<Profile | null>(null);
   const [entries, setEntries] = useState<JournalEntry[]>([]);
   const [loadingData, setLoadingData] = useState(true);
+  const [calYear, setCalYear] = useState(() => new Date().getFullYear());
+  const [calMonthIdx, setCalMonthIdx] = useState(() => new Date().getMonth());
+
+  function goPrevMonth() {
+    if (calMonthIdx === 0) { setCalYear((y) => y - 1); setCalMonthIdx(11); }
+    else setCalMonthIdx((m) => m - 1);
+  }
+
+  function goNextMonth() {
+    if (calMonthIdx === 11) { setCalYear((y) => y + 1); setCalMonthIdx(0); }
+    else setCalMonthIdx((m) => m + 1);
+  }
 
   useEffect(() => {
     checkAdmin();
@@ -168,12 +180,11 @@ export default function AdminViewSubscriberJournal() {
     return points;
   })();
 
-  const now = new Date();
   const calResults = closedEntries
     .filter((e) => {
       if (!e.closed_at) return false;
       const d = new Date(e.closed_at);
-      return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+      return d.getFullYear() === calYear && d.getMonth() === calMonthIdx;
     })
     .reduce((map, e) => {
       const day = new Date(e.closed_at as string).getDate();
@@ -252,9 +263,9 @@ export default function AdminViewSubscriberJournal() {
             <EquityCurve points={equityPoints} />
           </div>
 
-          <div className="section-label"><h2>{now.toLocaleDateString('he-IL', { month: 'long', year: 'numeric' })}</h2></div>
+          <div className="section-label"><h2>לוח שנה</h2></div>
           <div className="equity-card" style={{ marginBottom: '28px' }}>
-            <CalendarHeatmap year={now.getFullYear()} month={now.getMonth()} results={calDayResults} />
+            <CalendarHeatmap year={calYear} month={calMonthIdx} results={calDayResults} onPrevMonth={goPrevMonth} onNextMonth={goNextMonth} />
           </div>
 
           <details className="section-collapse" open>

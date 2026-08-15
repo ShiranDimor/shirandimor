@@ -6,11 +6,14 @@ type Props = {
   year: number;
   month: number; // 0-indexed
   results: DayResult[];
+  onPrevMonth: () => void;
+  onNextMonth: () => void;
 };
 
 const DOW = ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ש'];
+const MONTH_LABELS = ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני', 'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר'];
 
-export default function CalendarHeatmap({ year, month, results }: Props) {
+export default function CalendarHeatmap({ year, month, results, onPrevMonth, onNextMonth }: Props) {
   const firstDow = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const byDay = new Map(results.map((r) => [r.day, r.pnl]));
@@ -45,6 +48,19 @@ export default function CalendarHeatmap({ year, month, results }: Props) {
 
   return (
     <div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+        <button
+          onClick={onPrevMonth}
+          aria-label="חודש קודם"
+          style={{ background: 'none', border: '1px solid var(--border-hairline-strong)', borderRadius: '7px', width: '28px', height: '28px', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '14px' }}
+        >→</button>
+        <div style={{ fontWeight: 700, fontSize: '13px' }}>{MONTH_LABELS[month]} {year}</div>
+        <button
+          onClick={onNextMonth}
+          aria-label="חודש הבא"
+          style={{ background: 'none', border: '1px solid var(--border-hairline-strong)', borderRadius: '7px', width: '28px', height: '28px', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '14px' }}
+        >←</button>
+      </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '5px' }}>
         {DOW.map((d) => (
           <div key={d} style={{ fontSize: '10px', color: 'var(--text-tertiary)', textAlign: 'center', paddingBottom: '4px' }}>{d}</div>
