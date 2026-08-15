@@ -255,7 +255,7 @@ export default function HomePage() {
             <div>הצצה לעולם שוק ההון, בלי לשלם עליה אלפי שקלים</div>
             <div>מושג אחד בשבוע - פשוט, ברור, ואפשר להשתמש בו מיד</div>
             <div>ספרייה מלאה של וובינרים ומצגות, בלי עלות נוספת</div>
-            <div>הצטרפות בלחיצה אחת, בלי התחייבות ובלי מכירות</div>
+            <div>הצטרפות בלחיצה אחת - ללא התחייבות וללא עלות</div>
             <div>אפשר לשדרג לקבוצת הסוחרים בכל שלב, בקצב האישי</div>
           </div>
           <a className="gc-cta" href="#" onClick={(e) => { e.preventDefault(); window.scrollTo(0, 0); setShowLeadForm(true); }}>הצטרפות ללא עלות</a>
