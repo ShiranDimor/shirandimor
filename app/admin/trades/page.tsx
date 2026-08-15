@@ -62,24 +62,13 @@ export default function AdminTradesPage() {
     setSellQtyId(null);
   }
 
-  function openPopover(kind: 'close' | 'edit' | 'addqty' | 'sellqty', trade: Trade, e: React.MouseEvent<HTMLButtonElement>) {
+  function openEditPopover(trade: Trade, e: React.MouseEvent<HTMLButtonElement>) {
     const rect = e.currentTarget.getBoundingClientRect();
     const popW = 260;
     const left = Math.min(Math.max(8, rect.left), window.innerWidth - popW - 8);
     setPopoverPos({ top: rect.bottom + 8, left });
     closeAllPopovers();
-
-    if (kind === 'close') {
-      setClosingId(trade.id);
-      setExitPrice('');
-      setExitDate('');
-    } else if (kind === 'edit') {
-      startEdit(trade);
-    } else if (kind === 'addqty') {
-      startAddQty(trade);
-    } else if (kind === 'sellqty') {
-      startSellQty(trade);
-    }
+    startEdit(trade);
   }
 
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -442,7 +431,7 @@ export default function AdminTradesPage() {
           <div className="qp-field"><label>תאריך סגירה</label><input type="date" value={exitDate} onChange={(e) => setExitDate(e.target.value)} /></div>
           <div className="qp-row">
             <button className="qp-confirm" onClick={() => handleCloseTrade(trade)} disabled={closing || !exitPrice}>{closing ? 'סוגרים...' : 'אישור סגירה'}</button>
-            <button className="qp-cancel" onClick={() => setClosingId(null)}>ביטול</button>
+            <button className="qp-cancel" onClick={() => startEdit(trade)}>← חזרה</button>
           </div>
         </>
       );
@@ -468,6 +457,7 @@ export default function AdminTradesPage() {
             <button className="qp-cancel" onClick={cancelEdit}>ביטול</button>
           </div>
           <div className="qp-secondary">
+            {!isClosed && <button onClick={() => { setEditingId(null); setClosingId(trade.id); setExitPrice(''); setExitDate(''); }}>⚡ סגירה</button>}
             {!isClosed && <button onClick={() => startAddQty(trade)}>הוספת כמות</button>}
             {!isClosed && <button onClick={() => startSellQty(trade)}>מכירה חלקית</button>}
             <button className="qp-danger" onClick={() => { handleDeleteTrade(trade); closeAllPopovers(); }}>מחיקת עסקה</button>
@@ -570,12 +560,7 @@ export default function AdminTradesPage() {
                   </td>
                   <td>{trade.shares_calculated}</td>
                   <td>
-                    <div style={{ display: 'flex', gap: '4px', justifyContent: 'center' }}>
-                      <button className="qa-btn edit" onClick={(e) => openPopover('edit', trade, e)}>✎ עריכה</button>
-                      {!isClosed && (
-                        <button className="qa-btn" onClick={(e) => openPopover('close', trade, e)}>⚡ סגירה</button>
-                      )}
-                    </div>
+                    <button className="qa-btn edit" onClick={(e) => openEditPopover(trade, e)}>✎ עריכה</button>
                   </td>
                 </tr>
               );
