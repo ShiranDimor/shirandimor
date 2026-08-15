@@ -195,7 +195,7 @@ export default function HomePage() {
         <p>הסיבה האמיתית לכך שרוב האנשים לא מתחילים להשקיע, או נושרים אחרי כמה חודשים - זה לא חוסר ידע. זה <strong>הפן המנטלי</strong>: הפחד להפסיד, הקושי לקבל הפסד, וחוסר הסבלנות להישאר בתהליך. אבל בעיקר - הבהלה מהתחום עצמו, וההרגשה של "צריך לדעת המון" ו"מה אני בכלל קשור לזה".</p>
       </div>
 
-      <div className="section-label" style={{ marginTop: '30px' }}><h2 style={{ color: 'var(--loss)' }}>למי זה לא מתאים</h2></div>
+      <div className="section-label" style={{ marginTop: '30px' }}><h2 style={{ color: 'var(--loss)' }}>למי זה פחות מתאים</h2></div>
       <div className="not-fit">
         <div>– מי שמחפש רווח מובטח או כסף מהיר</div>
         <div>– מי שרוצה שמישהי אחרת תקבל עבורו את כל ההחלטות</div>
