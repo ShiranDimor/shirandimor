@@ -183,7 +183,7 @@ export default function HomePage() {
         </div>
       </div>
 
-      <div className="section-label"><h2>בשביל מי זה נבנה</h2></div>
+      <div className="section-label"><h2>אז למי הקבוצה מתאימה?</h2></div>
       <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.65, marginBottom: '12px' }}>
         <strong style={{ color: 'var(--text-primary)' }}>אנשים רגילים, לא סוחרים במשרה מלאה.</strong> אנשים שרוצים לגרום לכסף שלהם לעבוד בשבילם, בלי לשבת כל היום מול מסכים ובלי לעזוב את מה שהם כבר עושים.
       </p>
