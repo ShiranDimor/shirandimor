@@ -21,6 +21,39 @@ export default function AdminSubscribersPage() {
   const [sortBy, setSortBy] = useState<'date' | 'name'>('date');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
 
+  const [syncing, setSyncing] = useState(false);
+  const [syncMessage, setSyncMessage] = useState('');
+
+  async function handleSyncSubscribers() {
+    setSyncing(true);
+    setSyncMessage('');
+
+    const { data: { session } } = await supabase.auth.getSession();
+
+    try {
+      const res = await fetch('/api/sync-subscribers', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session?.access_token}` },
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        setSyncMessage('שגיאה: ' + (data.error || 'לא הצלחנו לבדוק'));
+      } else {
+        const removedText = data.removed > 0 ? ` (${data.removedNames.join(', ')})` : '';
+        setSyncMessage(
+          `נבדקו ${data.checked} מנויים · ${data.removed} הוסרו${removedText}` +
+          (data.skippedNoPhone > 0 ? ` · ${data.skippedNoPhone} לא נבדקו (אין טלפון בכרטיס)` : '')
+        );
+        loadApprovedSubs();
+      }
+    } catch (e) {
+      setSyncMessage('שגיאה בבדיקה מול מאנדיי');
+    }
+
+    setSyncing(false);
+  }
+
   function toggleSort(col: 'date' | 'name') {
     if (sortBy === col) {
       setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
@@ -122,6 +155,15 @@ export default function AdminSubscribersPage() {
       </header>
 
       <div className="section-label"><h2>מנויים מאושרים</h2><span className="count">{approvedSubs.length}</span></div>
+
+      <button className="btn-outline" style={{ width: '100%', marginBottom: '14px' }} onClick={handleSyncSubscribers} disabled={syncing}>
+        {syncing ? 'בודקים מול מאנדיי...' : '🔄 בדיקת מנויים מול קבוצת הסוחרים במאנדיי'}
+      </button>
+      {syncMessage && (
+        <p style={{ fontSize: '12px', color: syncMessage.startsWith('שגיאה') ? 'var(--loss)' : 'var(--text-secondary)', marginBottom: '14px', textAlign: 'center' }}>
+          {syncMessage}
+        </p>
+      )}
 
       <div className="sort-header">
         <div className={`sort-col ${sortBy === 'name' ? 'active' : ''}`} onClick={() => toggleSort('name')}>

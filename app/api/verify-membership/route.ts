@@ -18,16 +18,18 @@ async function mondayRequest(token: string, query: string, variables: Record<str
 }
 
 // מוודא שיש פרופיל מנוי פעיל לאימייל הזה - יוצר חשבון אם אין, או משדרג ל"מנוי" אם היה "ליד" בלבד
-async function ensureActiveSubscriber(email: string) {
+// שומר גם את הטלפון על הפרופיל, כדי שאפשר יהיה בעתיד לבדוק שוב מול מאנדיי אם המנוי עדיין בקבוצה
+async function ensureActiveSubscriber(email: string, phone: string) {
   const { data: existing } = await supabaseAdmin.from('profiles').select('id, role').eq('email', email).maybeSingle();
 
   if (existing) {
+    const updates: Record<string, unknown> = { phone };
     if (existing.role !== 'admin' && existing.role !== 'subscriber') {
-      await supabaseAdmin
-        .from('profiles')
-        .update({ role: 'subscriber', subscription_status: 'active', subscription_started_at: new Date().toISOString() })
-        .eq('id', existing.id);
+      updates.role = 'subscriber';
+      updates.subscription_status = 'active';
+      updates.subscription_started_at = new Date().toISOString();
     }
+    await supabaseAdmin.from('profiles').update(updates).eq('id', existing.id);
     return;
   }
 
@@ -38,7 +40,7 @@ async function ensureActiveSubscriber(email: string) {
 
   await supabaseAdmin
     .from('profiles')
-    .update({ role: 'subscriber', subscription_status: 'active', subscription_started_at: new Date().toISOString() })
+    .update({ role: 'subscriber', subscription_status: 'active', subscription_started_at: new Date().toISOString(), phone })
     .eq('id', created.user.id);
 }
 
@@ -116,7 +118,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ verified: false, configured: true });
     }
 
-    await ensureActiveSubscriber(email);
+    await ensureActiveSubscriber(email, phone);
     const loginToken = await generateInstantLoginToken(email);
 
     return NextResponse.json({ verified: true, configured: true, token: loginToken });
