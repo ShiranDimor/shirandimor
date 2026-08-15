@@ -303,7 +303,7 @@ export default function HomePage() {
 
       <div className="quote-block">
         <span className="qmark" aria-hidden="true">"</span>
-        <p>השוק לא תמיד פשוט. הדרך לסחור בו יכולה להיות.</p>
+        <p>השוק לא תמיד פשוט.<br />הדרך לסחור בו יכולה להיות.</p>
         <span className="qauthor">שירן דימור</span>
       </div>
 
