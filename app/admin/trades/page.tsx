@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase';
 import ClearableInput from '@/components/ClearableInput';
 import EquityCurve from '@/components/EquityCurve';
 import StatsRing from '@/components/StatsRing';
+import CalendarHeatmap from '@/components/CalendarHeatmap';
 
 type Trade = {
   id: string;
@@ -436,6 +437,20 @@ export default function AdminTradesPage() {
     return points;
   })();
 
+  const now = new Date();
+  const calResults = closedTrades
+    .filter((t) => {
+      if (!t.closed_at) return false;
+      const d = new Date(t.closed_at);
+      return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+    })
+    .reduce((map, t) => {
+      const day = new Date(t.closed_at as string).getDate();
+      map.set(day, (map.get(day) ?? 0) + (t.realized_pnl_usd ?? 0));
+      return map;
+    }, new Map<number, number>());
+  const calDayResults = Array.from(calResults.entries()).map(([day, pnl]) => ({ day, pnl }));
+
   if (checking) {
     return <div className="wrap"><p style={{ padding: '40px', textAlign: 'center' }}>בודקים הרשאות...</p></div>;
   }
@@ -638,6 +653,11 @@ export default function AdminTradesPage() {
       <div className="section-label"><h2>צמיחת התיק</h2></div>
       <div className="equity-card">
         <EquityCurve points={equityPoints} />
+      </div>
+
+      <div className="section-label"><h2>{now.toLocaleDateString('he-IL', { month: 'long', year: 'numeric' })}</h2></div>
+      <div className="equity-card" style={{ marginBottom: '28px' }}>
+        <CalendarHeatmap year={now.getFullYear()} month={now.getMonth()} results={calDayResults} />
       </div>
 
       <div className="section-label"><h2>תובנות התיק</h2></div>
