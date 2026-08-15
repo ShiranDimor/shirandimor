@@ -92,10 +92,6 @@ export default function AdminTradesPage() {
   const [sellingQty, setSellingQty] = useState(false);
   const [sellQtyError, setSellQtyError] = useState('');
 
-  const [priceUpdateId, setPriceUpdateId] = useState<string | null>(null);
-  const [newCurrentPrice, setNewCurrentPrice] = useState('');
-  const [updatingPrice, setUpdatingPrice] = useState(false);
-
   const [showAddForm, setShowAddForm] = useState(false);
   const [direction, setDirection] = useState<'long' | 'short'>('long');
   const [symbol, setSymbol] = useState('');
@@ -239,30 +235,6 @@ export default function AdminTradesPage() {
     setSellingQty(false);
     setSellQtyId(null);
     loadTrades();
-  }
-
-  function startPriceUpdate(trade: Trade) {
-    setPriceUpdateId(trade.id);
-    setNewCurrentPrice(trade.current_price !== null ? String(trade.current_price) : '');
-  }
-
-  async function handlePriceUpdate(trade: Trade) {
-    if (priceUpdateId !== trade.id) return;
-    const price = parseFloat(newCurrentPrice);
-    if (!price) return;
-    setUpdatingPrice(true);
-
-    const { error } = await supabase
-      .from('trades')
-      .update({ current_price: price, current_price_updated_at: new Date().toISOString() })
-      .eq('id', trade.id);
-
-    setUpdatingPrice(false);
-
-    if (!error) {
-      setPriceUpdateId(null);
-      loadTrades();
-    }
   }
 
   function startEdit(trade: Trade) {
@@ -536,24 +508,7 @@ export default function AdminTradesPage() {
                   <td>{isClosed ? formatDate(trade.closed_at) : '—'}</td>
                   <td>${trade.entry_price.toFixed(2)}</td>
                   <td>{isClosed ? `$${trade.exit_price?.toFixed(2)}` : `$${trade.stop_loss}`}</td>
-                  {!isClosed && (
-                    <td className="editable-cell" onClick={() => priceUpdateId !== trade.id && startPriceUpdate(trade)}>
-                      {priceUpdateId === trade.id ? (
-                        <input
-                          autoFocus
-                          type="number"
-                          value={newCurrentPrice}
-                          onChange={(e) => setNewCurrentPrice(e.target.value)}
-                          onClick={(e) => e.stopPropagation()}
-                          onKeyDown={(e) => { if (e.key === 'Enter') handlePriceUpdate(trade); if (e.key === 'Escape') setPriceUpdateId(null); }}
-                          onBlur={() => handlePriceUpdate(trade)}
-                          disabled={updatingPrice}
-                        />
-                      ) : (
-                        <><span className="pencil">✎</span>${trade.current_price ?? trade.entry_price}</>
-                      )}
-                    </td>
-                  )}
+                  {!isClosed && <td>${trade.current_price ?? trade.entry_price}</td>}
                   <td style={{ color: pct === null ? undefined : pct >= 0 ? 'var(--profit)' : 'var(--loss)' }}>
                     {pct === null ? '—' : `${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%`}
                   </td>
