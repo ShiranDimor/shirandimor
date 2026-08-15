@@ -1,11 +1,13 @@
 'use client';
 
-type DayResult = { day: number; pnl: number; pct: number };
+import { useState } from 'react';
+
+type ClosedItem = { day: number; symbol: string; direction: string; pct: number; usd: number };
 
 type Props = {
   year: number;
   month: number; // 0-indexed
-  results: DayResult[];
+  items: ClosedItem[];
   onPrevMonth: () => void;
   onNextMonth: () => void;
 };
@@ -13,44 +15,59 @@ type Props = {
 const DOW = ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ש'];
 const MONTH_LABELS = ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני', 'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר'];
 
-export default function CalendarHeatmap({ year, month, results, onPrevMonth, onNextMonth }: Props) {
+function pad2(n: number) {
+  return String(n).padStart(2, '0');
+}
+
+export default function CalendarHeatmap({ year, month, items, onPrevMonth, onNextMonth }: Props) {
+  const [selectedDay, setSelectedDay] = useState<number | null>(null);
+
   const firstDow = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const byDay = new Map(results.map((r) => [r.day, r]));
-  const maxAbs = Math.max(1, ...results.map((r) => Math.abs(r.pnl)));
-  const monthTotal = results.reduce((s, r) => s + r.pnl, 0);
+
+  const byDay = new Map<number, ClosedItem[]>();
+  for (const it of items) {
+    const arr = byDay.get(it.day) ?? [];
+    arr.push(it);
+    byDay.set(it.day, arr);
+  }
+
+  const dayTotals = new Map<number, number>();
+  byDay.forEach((arr, day) => dayTotals.set(day, arr.reduce((s, it) => s + it.usd, 0)));
+  const maxAbs = Math.max(1, ...Array.from(dayTotals.values()).map((v) => Math.abs(v)));
+  const monthTotal = items.reduce((s, it) => s + it.usd, 0);
 
   const cells: React.ReactNode[] = [];
   for (let i = 0; i < firstDow; i++) {
     cells.push(<div key={`pad-${i}`} style={{ visibility: 'hidden' }} />);
   }
   for (let day = 1; day <= daysInMonth; day++) {
-    const r = byDay.get(day);
+    const dayItems = byDay.get(day);
+    const dayPnl = dayTotals.get(day);
     let bg = 'var(--bg-surface-raised)';
     let color = 'var(--text-tertiary)';
-    if (r) {
-      const intensity = 0.18 + (Math.abs(r.pnl) / maxAbs) * 0.5;
-      bg = r.pnl >= 0 ? `rgba(79,184,118,${intensity})` : `rgba(201,99,94,${intensity})`;
-      color = intensity > 0.55 ? (r.pnl >= 0 ? '#0a1f14' : '#2a0f0d') : r.pnl >= 0 ? 'var(--profit)' : 'var(--loss)';
+    if (dayPnl !== undefined) {
+      const intensity = 0.18 + (Math.abs(dayPnl) / maxAbs) * 0.5;
+      bg = dayPnl >= 0 ? `rgba(79,184,118,${intensity})` : `rgba(201,99,94,${intensity})`;
+      color = intensity > 0.55 ? (dayPnl >= 0 ? '#0a1f14' : '#2a0f0d') : dayPnl >= 0 ? 'var(--profit)' : 'var(--loss)';
     }
     cells.push(
       <div
         key={day}
+        onClick={() => dayItems && setSelectedDay(selectedDay === day ? null : day)}
         style={{
-          minHeight: '48px', borderRadius: '7px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1px',
-          fontFamily: 'var(--font-mono)', background: bg, color, padding: '2px 0',
+          minHeight: '40px', borderRadius: '7px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontFamily: 'var(--font-mono)', fontSize: '9px', fontWeight: 700, background: bg, color,
+          cursor: dayItems ? 'pointer' : 'default',
+          boxShadow: selectedDay === day ? 'inset 0 0 0 2px var(--lavender)' : 'none',
         }}
       >
-        <span style={{ fontSize: '9px', fontWeight: 700, opacity: 0.8 }}>{day}</span>
-        {r && (
-          <>
-            <span style={{ fontSize: '8.5px', fontWeight: 700, lineHeight: 1 }}>{r.pct >= 0 ? '+' : ''}{r.pct.toFixed(1)}%</span>
-            <span style={{ fontSize: '7.5px', lineHeight: 1, opacity: 0.85 }}>{r.pnl >= 0 ? '+' : '-'}${Math.abs(r.pnl).toFixed(0)}</span>
-          </>
-        )}
+        {pad2(day)}/{pad2(month + 1)}
       </div>
     );
   }
+
+  const selectedItems = selectedDay !== null ? byDay.get(selectedDay) : undefined;
 
   return (
     <div>
@@ -64,9 +81,9 @@ export default function CalendarHeatmap({ year, month, results, onPrevMonth, onN
           <div style={{ fontWeight: 700, fontSize: '13px' }}>{MONTH_LABELS[month]} {year}</div>
           <div style={{
             fontFamily: 'var(--font-mono)', fontSize: '11.5px', fontWeight: 600, marginTop: '2px',
-            color: results.length === 0 ? 'var(--text-tertiary)' : monthTotal >= 0 ? 'var(--profit)' : 'var(--loss)',
+            color: items.length === 0 ? 'var(--text-tertiary)' : monthTotal >= 0 ? 'var(--profit)' : 'var(--loss)',
           }}>
-            {results.length === 0 ? 'אין עסקאות סגורות' : `סה"כ ${monthTotal >= 0 ? '+' : '-'}$${Math.abs(monthTotal).toFixed(0)}`}
+            {items.length === 0 ? 'אין עסקאות סגורות' : `סה"כ ${monthTotal >= 0 ? '+' : '-'}$${Math.abs(monthTotal).toFixed(0)}`}
           </div>
         </div>
         <button
@@ -82,8 +99,41 @@ export default function CalendarHeatmap({ year, month, results, onPrevMonth, onN
         {cells}
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '12px', fontSize: '10.5px', color: 'var(--text-tertiary)' }}>
-        <span>עוצמת הצבע = גודל הרווח או ההפסד באותו יום</span>
+        <span>עוצמת הצבע = גודל הרווח או ההפסד באותו יום · לחיצה על יום מציגה פירוט</span>
       </div>
+
+      {selectedItems && selectedDay !== null && (
+        <div style={{ marginTop: '14px', paddingTop: '14px', borderTop: '1px solid var(--border-hairline)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+            <div style={{ fontWeight: 700, fontSize: '12.5px' }}>
+              {pad2(selectedDay)}/{pad2(month + 1)}/{year} · {selectedItems.length} עסקאות
+            </div>
+            <button
+              onClick={() => setSelectedDay(null)}
+              aria-label="סגירה"
+              style={{ background: 'none', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer', fontSize: '16px', lineHeight: 1 }}
+            >×</button>
+          </div>
+          {selectedItems.map((it, idx) => (
+            <div
+              key={idx}
+              style={{
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 0',
+                borderBottom: idx < selectedItems.length - 1 ? '1px solid var(--border-hairline)' : 'none', fontSize: '12.5px',
+              }}
+            >
+              <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span className={`direction-mark ${it.direction}`}>{it.direction === 'long' ? 'L' : 'S'}</span>
+                <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}>{it.symbol}</span>
+              </span>
+              <span style={{ display: 'flex', gap: '10px', fontFamily: 'var(--font-mono)' }}>
+                <span style={{ color: it.pct >= 0 ? 'var(--profit)' : 'var(--loss)' }}>{it.pct >= 0 ? '+' : ''}{it.pct.toFixed(2)}%</span>
+                <span style={{ color: it.usd >= 0 ? 'var(--profit)' : 'var(--loss)' }}>{it.usd >= 0 ? '+' : '-'}${Math.abs(it.usd).toFixed(0)}</span>
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

@@ -418,23 +418,23 @@ export default function JournalPage() {
           return points;
         })();
 
-        const calResults = closedEntries
+        const calItems = closedEntries
           .filter((e) => {
             if (!e.closed_at) return false;
             const d = new Date(e.closed_at);
             return d.getFullYear() === calYear && d.getMonth() === calMonthIdx;
           })
-          .reduce((map, e) => {
-            const day = new Date(e.closed_at as string).getDate();
-            const cur = map.get(day) ?? { pnl: 0, cost: 0 };
-            cur.pnl += e.realized_pnl_usd ?? 0;
-            cur.cost += e.entry_price * e.shares;
-            map.set(day, cur);
-            return map;
-          }, new Map<number, { pnl: number; cost: number }>());
-        const calDayResults = Array.from(calResults.entries()).map(([day, v]) => ({
-          day, pnl: v.pnl, pct: v.cost > 0 ? (v.pnl / v.cost) * 100 : 0,
-        }));
+          .map((e) => {
+            const cost = e.entry_price * e.shares;
+            const usd = e.realized_pnl_usd ?? 0;
+            return {
+              day: new Date(e.closed_at as string).getDate(),
+              symbol: e.symbol,
+              direction: e.direction,
+              usd,
+              pct: cost > 0 ? (usd / cost) * 100 : 0,
+            };
+          });
 
         function renderPopoverContent() {
           const entry = entries.find((en) => en.id === closingId || en.id === editingId || en.id === addQtyId || en.id === sellQtyId);
@@ -574,7 +574,7 @@ export default function JournalPage() {
 
             <div className="section-label"><h2>לוח שנה</h2></div>
             <div className="equity-card" style={{ marginBottom: '28px' }}>
-              <CalendarHeatmap year={calYear} month={calMonthIdx} results={calDayResults} onPrevMonth={goPrevMonth} onNextMonth={goNextMonth} />
+              <CalendarHeatmap year={calYear} month={calMonthIdx} items={calItems} onPrevMonth={goPrevMonth} onNextMonth={goNextMonth} />
             </div>
 
             <div className="section-label"><h2>תובנות היומן</h2></div>

@@ -182,23 +182,23 @@ export default function PortfolioPage() {
     return points;
   })();
 
-  const calResults = closedTrades
+  const calItems = closedTrades
     .filter((t) => {
       if (!t.closed_at) return false;
       const d = new Date(t.closed_at);
       return d.getFullYear() === calYear && d.getMonth() === calMonthIdx;
     })
-    .reduce((map, t) => {
-      const day = new Date(t.closed_at as string).getDate();
-      const cur = map.get(day) ?? { pnl: 0, cost: 0 };
-      cur.pnl += t.realized_pnl_usd ?? 0;
-      cur.cost += t.entry_price * (t.shares_calculated ?? 0);
-      map.set(day, cur);
-      return map;
-    }, new Map<number, { pnl: number; cost: number }>());
-  const calDayResults = Array.from(calResults.entries()).map(([day, v]) => ({
-    day, pnl: v.pnl, pct: v.cost > 0 ? (v.pnl / v.cost) * 100 : 0,
-  }));
+    .map((t) => {
+      const cost = t.entry_price * (t.shares_calculated ?? 0);
+      const usd = t.realized_pnl_usd ?? 0;
+      return {
+        day: new Date(t.closed_at as string).getDate(),
+        symbol: t.symbol,
+        direction: t.direction,
+        usd,
+        pct: cost > 0 ? (usd / cost) * 100 : 0,
+      };
+    });
 
   function goPrevMonth() {
     if (calMonthIdx === 0) { setCalYear((y) => y - 1); setCalMonthIdx(11); }
@@ -279,7 +279,7 @@ export default function PortfolioPage() {
 
       <div className="section-label"><h2>לוח שנה</h2></div>
       <div className="equity-card" style={{ marginBottom: '28px' }}>
-        <CalendarHeatmap year={calYear} month={calMonthIdx} results={calDayResults} onPrevMonth={goPrevMonth} onNextMonth={goNextMonth} />
+        <CalendarHeatmap year={calYear} month={calMonthIdx} items={calItems} onPrevMonth={goPrevMonth} onNextMonth={goNextMonth} />
       </div>
 
       <div className="section-label"><h2>תובנות התיק</h2></div>
