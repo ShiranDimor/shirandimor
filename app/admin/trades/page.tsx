@@ -117,6 +117,7 @@ export default function AdminTradesPage() {
   const [sellingQty, setSellingQty] = useState(false);
   const [sellQtyError, setSellQtyError] = useState('');
 
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showAddForm, setShowAddForm] = useState(false);
   const [direction, setDirection] = useState<'long' | 'short'>('long');
   const [symbol, setSymbol] = useState('');
@@ -317,6 +318,39 @@ export default function AdminTradesPage() {
     if (!window.confirm(`למחוק לצמיתות את העסקה ${trade.symbol}?`)) return;
     const { error } = await supabase.from('trades').delete().eq('id', trade.id);
     if (!error) loadTrades();
+  }
+
+  function toggleSelect(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleSelectAllInList(list: Trade[]) {
+    setSelectedIds((prev) => {
+      const allSelected = list.length > 0 && list.every((t) => prev.has(t.id));
+      const next = new Set(prev);
+      if (allSelected) {
+        list.forEach((t) => next.delete(t.id));
+      } else {
+        list.forEach((t) => next.add(t.id));
+      }
+      return next;
+    });
+  }
+
+  async function handleBulkDelete() {
+    const count = selectedIds.size;
+    if (count === 0) return;
+    if (!window.confirm(`למחוק לצמיתות ${count} עסקאות נבחרות?`)) return;
+    const { error } = await supabase.from('trades').delete().in('id', Array.from(selectedIds));
+    if (!error) {
+      setSelectedIds(new Set());
+      loadTrades();
+    }
   }
 
   async function checkAdmin() {
@@ -585,9 +619,17 @@ export default function AdminTradesPage() {
     if (list.length === 0) return <p className="trade-table-empty">{emptyText}</p>;
     return (
       <div className="trade-table-wrap">
-        <table className="trade-table">
+        <table className="trade-table has-checkbox">
           <thead>
             <tr>
+              <th>
+                <input
+                  type="checkbox"
+                  checked={list.length > 0 && list.every((t) => selectedIds.has(t.id))}
+                  onChange={() => toggleSelectAllInList(list)}
+                  style={{ width: '15px', height: '15px', cursor: 'pointer' }}
+                />
+              </th>
               <th>סימבול</th>
               <th>נפתחה ב-</th>
               {isClosed && <th>נסגרה ב-</th>}
@@ -606,6 +648,14 @@ export default function AdminTradesPage() {
               const usd = usdPnl(trade, isClosed);
               return (
                 <tr key={trade.id}>
+                  <td>
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(trade.id)}
+                      onChange={() => toggleSelect(trade.id)}
+                      style={{ width: '15px', height: '15px', cursor: 'pointer' }}
+                    />
+                  </td>
                   <td className="sym-cell">
                     <span className="sym-cell-inner">
                       <span className={`direction-mark ${trade.direction}`}>{trade.direction === 'long' ? 'L' : 'S'}</span>
@@ -760,6 +810,26 @@ export default function AdminTradesPage() {
             {renderPopoverContent()}
           </div>
         </>
+      )}
+
+      {selectedIds.size > 0 && (
+        <div style={{
+          position: 'fixed', bottom: 0, right: 0, left: 0, zIndex: 90,
+          background: 'var(--bg-void)', borderTop: '1px solid var(--border-hairline-strong)',
+          padding: '10px 16px calc(10px + env(safe-area-inset-bottom))', boxShadow: '0 -4px 16px rgba(0,0,0,0.25)',
+        }}>
+          <div style={{ display: 'flex', gap: '8px', maxWidth: '480px', margin: '0 auto' }}>
+            <button
+              onClick={handleBulkDelete}
+              style={{ flex: 1, background: 'var(--loss)', color: '#fff', border: 'none', borderRadius: '10px', padding: '13px', fontSize: '14.5px', fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}
+            >
+              מחיקת {selectedIds.size} עסקאות נבחרות
+            </button>
+            <button className="btn-outline" style={{ padding: '13px 18px' }} onClick={() => setSelectedIds(new Set())}>
+              ביטול
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );

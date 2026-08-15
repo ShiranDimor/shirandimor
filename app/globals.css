@@ -133,6 +133,11 @@
   .trade-table th:first-child, .trade-table th:last-child { background: var(--bg-surface); }
   .trade-table td:first-child, .trade-table td:last-child { background: var(--bg-surface-raised); }
   .trade-table tbody tr:hover td:first-child, .trade-table tbody tr:hover td:last-child { background: var(--bg-surface); }
+  .trade-table.has-checkbox th:first-child, .trade-table.has-checkbox td:first-child { width: 34px; padding: 10px 8px; }
+  .trade-table.has-checkbox th:nth-child(2), .trade-table.has-checkbox td:nth-child(2) { position: sticky; right: 34px; z-index: 2; }
+  .trade-table.has-checkbox th:nth-child(2) { background: var(--bg-surface); }
+  .trade-table.has-checkbox td:nth-child(2) { background: var(--bg-surface-raised); }
+  .trade-table.has-checkbox tbody tr:hover td:nth-child(2) { background: var(--bg-surface); }
   .trade-table-empty { padding: 16px; font-size: 13px; color: var(--text-tertiary); text-align: center; }
   .row-delete-btn { background: none; border: none; cursor: pointer; font-size: 14px; padding: 4px 6px; border-radius: 6px; opacity: 0.75; transition: opacity 0.15s ease, background 0.15s ease; }
   .row-delete-btn:hover { opacity: 1; background: var(--loss-bg); }
