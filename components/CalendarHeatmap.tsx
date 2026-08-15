@@ -18,6 +18,7 @@ export default function CalendarHeatmap({ year, month, results, onPrevMonth, onN
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const byDay = new Map(results.map((r) => [r.day, r.pnl]));
   const maxAbs = Math.max(1, ...results.map((r) => Math.abs(r.pnl)));
+  const monthTotal = results.reduce((s, r) => s + r.pnl, 0);
 
   const cells: React.ReactNode[] = [];
   for (let i = 0; i < firstDow; i++) {
@@ -54,7 +55,15 @@ export default function CalendarHeatmap({ year, month, results, onPrevMonth, onN
           aria-label="חודש קודם"
           style={{ background: 'none', border: '1px solid var(--border-hairline-strong)', borderRadius: '7px', width: '28px', height: '28px', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '14px' }}
         >→</button>
-        <div style={{ fontWeight: 700, fontSize: '13px' }}>{MONTH_LABELS[month]} {year}</div>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontWeight: 700, fontSize: '13px' }}>{MONTH_LABELS[month]} {year}</div>
+          <div style={{
+            fontFamily: 'var(--font-mono)', fontSize: '11.5px', fontWeight: 600, marginTop: '2px',
+            color: results.length === 0 ? 'var(--text-tertiary)' : monthTotal >= 0 ? 'var(--profit)' : 'var(--loss)',
+          }}>
+            {results.length === 0 ? 'אין עסקאות סגורות' : `סה"כ ${monthTotal >= 0 ? '+' : '-'}$${Math.abs(monthTotal).toFixed(0)}`}
+          </div>
+        </div>
         <button
           onClick={onNextMonth}
           aria-label="חודש הבא"
