@@ -214,7 +214,7 @@ export default function HomePage() {
       <div className="section-label" style={{ marginTop: '30px' }}><h2>אז איך זה נראה, תכלס?</h2></div>
       <div className="portfolio-teaser">
         <div className="pt-head">
-          <div className="pt-title">התיק בקבוצת הסוחרים</div>
+          <div className="pt-title">התיק של שירן</div>
           <div className="pt-badge">{openCount} עסקאות פתוחות</div>
         </div>
         {openTrades.length === 0 && !lastClosed && (

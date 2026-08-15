@@ -49,6 +49,7 @@ export default function PortfolioPage() {
   const [loading, setLoading] = useState(true);
   const [loggedIn, setLoggedIn] = useState(false);
   const [hasFullAccess, setHasFullAccess] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [openTrades, setOpenTrades] = useState<Trade[]>([]);
   const [closedTrades, setClosedTrades] = useState<Trade[]>([]);
   const [openMonthFilter, setOpenMonthFilter] = useState('all');
@@ -88,6 +89,7 @@ export default function PortfolioPage() {
         .eq('id', user.id)
         .single();
       setHasFullAccess(profile?.role === 'admin' || profile?.role === 'subscriber');
+      setIsAdmin(profile?.role === 'admin');
     }
 
     const { data: open } = await supabase
@@ -230,7 +232,7 @@ export default function PortfolioPage() {
         {loggedIn ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
             <Link href="/" className="nav-link">בית</Link>
-            {hasFullAccess && <Link href="/journal" className="nav-link">יומן שלי</Link>}
+            {hasFullAccess && !isAdmin && <Link href="/journal" className="nav-link">היומן האישי שלי</Link>}
             <button onClick={handleLogout} className="nav-link" style={{ background: 'none', border: 'none', cursor: 'pointer', font: 'inherit', padding: 0 }}>התנתקות</button>
           </div>
         ) : (
@@ -240,6 +242,8 @@ export default function PortfolioPage() {
           </div>
         )}
       </header>
+
+      <div className="section-label"><h2>התיק של שירן</h2></div>
 
       {!hasFullAccess && (
         <div className="lock-banner">
@@ -272,7 +276,7 @@ export default function PortfolioPage() {
         </>
       )}
 
-      <div className="section-label"><h2>צמיחת התיק</h2></div>
+      <div className="section-label"><h2>צמיחת התיק של שירן</h2></div>
       <div className="equity-card">
         <EquityCurve points={equityPoints} />
       </div>
@@ -282,7 +286,7 @@ export default function PortfolioPage() {
         <CalendarHeatmap year={calYear} month={calMonthIdx} items={calItems} onPrevMonth={goPrevMonth} onNextMonth={goNextMonth} />
       </div>
 
-      <div className="section-label"><h2>תובנות התיק</h2></div>
+      <div className="section-label"><h2>תובנות התיק של שירן</h2></div>
       <div className="insights-panel" style={{ marginBottom: '28px' }}>
         <div className="insights-ring-row">
           <StatsRing
