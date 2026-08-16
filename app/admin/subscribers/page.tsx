@@ -207,12 +207,16 @@ export default function AdminSubscribersPage() {
           </Link>
           <button
             className="row-delete-btn"
-            style={{ fontSize: '17px', flexShrink: 0 }}
+            style={{ flexShrink: 0 }}
             onClick={() => removeSubscriber(sub.id, sub.full_name || sub.email)}
             disabled={removing === sub.id}
             title="מחיקת מנוי"
           >
-            {removing === sub.id ? '…' : '🗑'}
+            {removing === sub.id ? '…' : (
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--loss)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 6h18" /><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /><line x1="10" y1="11" x2="10" y2="17" /><line x1="14" y1="11" x2="14" y2="17" />
+              </svg>
+            )}
           </button>
         </div>
       ))}
