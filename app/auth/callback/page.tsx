@@ -31,7 +31,7 @@ export default function AuthCallbackPage() {
     if (profile?.role === 'admin') {
       router.push('/admin');
     } else if (profile?.role === 'subscriber') {
-      router.push('/portfolio');
+      router.push('/journal');
     } else {
       setStatus('החשבון עדיין לא מאושר כמנוי.');
       setTimeout(() => router.push('/subscribe'), 2000);
