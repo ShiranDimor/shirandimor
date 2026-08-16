@@ -38,14 +38,23 @@ async function ensureActiveSubscriber(email: string, phone: string) {
     email_confirm: true,
     user_metadata: { phone },
   });
-  if (error || !created.user) {
-    throw new Error(error?.message || 'שגיאה ביצירת חשבון');
+
+  let userId = created.user?.id;
+
+  if (error || !userId) {
+    // חשבון התחברות כבר קיים באימייל הזה בלי פרופיל (למשל מחיקת מנוי שנעצרה באמצע) - נשלים את הפרופיל החסר על אותו חשבון קיים במקום להיכשל
+    if (error?.code === 'email_exists' || /already.*registered/i.test(error?.message || '')) {
+      const { data: existingUserId } = await supabaseAdmin.rpc('find_auth_user_id_by_email', { p_email: email });
+      if (!existingUserId) throw new Error(error?.message || 'שגיאה ביצירת חשבון');
+      userId = existingUserId;
+    } else {
+      throw new Error(error?.message || 'שגיאה ביצירת חשבון');
+    }
   }
 
   await supabaseAdmin
     .from('profiles')
-    .update({ role: 'subscriber', subscription_status: 'active', subscription_started_at: new Date().toISOString(), phone })
-    .eq('id', created.user.id);
+    .upsert({ id: userId, email, role: 'subscriber', subscription_status: 'active', subscription_started_at: new Date().toISOString(), phone });
 }
 
 export async function POST(request: Request) {
@@ -60,7 +69,7 @@ export async function POST(request: Request) {
 
   if (!token || !boardId) {
     console.error('Monday.com לא מוגדר - לא ניתן לאמת מנוי');
-    return NextResponse.json({ verified: false, configured: false, debug: 'missing_env' });
+    return NextResponse.json({ verified: false, configured: false });
   }
 
   try {
@@ -83,12 +92,7 @@ export async function POST(request: Request) {
 
     if (phoneColumns.length === 0 || groups.length === 0) {
       console.error('Monday.com: לא נמצאה עמודת טלפון או קבוצת "קבוצת סוחרים"', { hasPhoneColumn: phoneColumns.length > 0, hasGroup: groups.length > 0 });
-      return NextResponse.json({
-        verified: false,
-        configured: false,
-        debug: 'no_group_or_column',
-        raw: boardData,
-      });
+      return NextResponse.json({ verified: false, configured: false });
     }
 
     const phoneColumnIds = phoneColumns.map((c: { id: string }) => c.id);
@@ -138,6 +142,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ verified: true, configured: true });
   } catch (e) {
     console.error('שגיאה באימות מול Monday.com', e);
-    return NextResponse.json({ verified: false, configured: false, debug: 'exception', message: e instanceof Error ? e.message : String(e) });
+    return NextResponse.json({ verified: false, configured: false });
   }
 }
