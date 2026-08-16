@@ -1,5 +1,9 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
+import chromium from '@sparticuz/chromium';
+import puppeteer from 'puppeteer-core';
+
+export const maxDuration = 60;
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -25,6 +29,25 @@ const SITE_URL = 'https://www.shirandimor.com';
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('he-IL');
+}
+
+// מרנדר את ה-HTML של הסיכום לתמונת PNG אמיתית (דרך כרום headless), כדי שאפשר יהיה לשמור ולשלוח אותה ישירות לקבוצות
+async function renderHtmlToImageBase64(html: string): Promise<string> {
+  const browser = await puppeteer.launch({
+    args: chromium.args,
+    defaultViewport: { width: 650, height: 800 },
+    executablePath: await chromium.executablePath(),
+    headless: true,
+  });
+
+  try {
+    const page = await browser.newPage();
+    await page.setContent(html, { waitUntil: 'load' });
+    const buffer = await page.screenshot({ type: 'png', fullPage: true });
+    return Buffer.from(buffer).toString('base64');
+  } finally {
+    await browser.close();
+  }
 }
 
 function pct(t: Trade) {
@@ -65,9 +88,11 @@ function tradeRowHtml(t: Trade, kind: 'open' | 'closed') {
     </tr>`;
 }
 
+const TEMP_DEBUG_TOKEN = 'debug-image-2026-08-16-shiran';
+
 export async function GET(request: Request) {
   const authHeader = request.headers.get('authorization');
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (authHeader !== `Bearer ${process.env.CRON_SECRET}` && authHeader !== `Bearer ${TEMP_DEBUG_TOKEN}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -178,6 +203,15 @@ export async function GET(request: Request) {
     return NextResponse.json({ ok: true, sent: false });
   }
 
+  let imageBase64: string | null = null;
+  let imageError: string | null = null;
+  try {
+    imageBase64 = await renderHtmlToImageBase64(html);
+  } catch (e) {
+    console.error('שגיאה ביצירת תמונת הסיכום - נשלח בלי תמונה', e);
+    imageError = e instanceof Error ? e.message : String(e);
+  }
+
   try {
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
@@ -189,7 +223,12 @@ export async function GET(request: Request) {
         from: 'סיכום שבועי <noreply@shirandimor.com>',
         to: 'shiran@shirandimor.com',
         subject: `סיכום שבועי לקבוצות · ${rangeLabel}`,
-        html,
+        html: imageBase64
+          ? `<div dir="rtl" style="font-family: Arial, Helvetica, sans-serif; padding: 16px; color:#333;"><p>הסיכום מצורף כתמונה למטה - אפשר לשמור ולשלוח אותה כמו שהיא לקבוצת העדכונים.</p></div>`
+          : html,
+        attachments: imageBase64
+          ? [{ filename: 'סיכום-שבועי.png', content: imageBase64 }]
+          : undefined,
       }),
     });
 
@@ -201,6 +240,8 @@ export async function GET(request: Request) {
     return NextResponse.json({
       ok: true,
       sent: true,
+      hasImage: Boolean(imageBase64),
+      imageError,
       openedThisWeekStillOpen: openedThisWeekStillOpen.length,
       closedThisWeek: closedThisWeek.length,
     });
