@@ -60,7 +60,7 @@ export async function POST(request: Request) {
 
   if (!token || !boardId) {
     console.error('Monday.com לא מוגדר - לא ניתן לאמת מנוי');
-    return NextResponse.json({ verified: false, configured: false });
+    return NextResponse.json({ verified: false, configured: false, debug: 'missing_env' });
   }
 
   try {
@@ -83,7 +83,12 @@ export async function POST(request: Request) {
 
     if (phoneColumns.length === 0 || groups.length === 0) {
       console.error('Monday.com: לא נמצאה עמודת טלפון או קבוצת "קבוצת סוחרים"', { hasPhoneColumn: phoneColumns.length > 0, hasGroup: groups.length > 0 });
-      return NextResponse.json({ verified: false, configured: false });
+      return NextResponse.json({
+        verified: false,
+        configured: false,
+        debug: 'no_group_or_column',
+        raw: boardData,
+      });
     }
 
     const phoneColumnIds = phoneColumns.map((c: { id: string }) => c.id);
@@ -133,6 +138,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ verified: true, configured: true });
   } catch (e) {
     console.error('שגיאה באימות מול Monday.com', e);
-    return NextResponse.json({ verified: false, configured: false });
+    return NextResponse.json({ verified: false, configured: false, debug: 'exception', message: e instanceof Error ? e.message : String(e) });
   }
 }
