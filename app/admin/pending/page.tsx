@@ -177,17 +177,18 @@ export default function AdminPendingPage() {
             <div className="email">{lead.email}</div>
             <div className="email" style={{ marginTop: '2px' }}>תאריך הצטרפות: {new Date(lead.created_at).toLocaleDateString('he-IL')}</div>
           </div>
-          <div style={{ display: 'flex', gap: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
             <button className="approve-btn" onClick={() => approveSubscriber(lead.id)} disabled={approving === lead.id || deleting === lead.id}>
               {approving === lead.id ? 'מאשרים...' : 'אישור כמנוי'}
             </button>
             <button
-              className="btn-outline"
-              style={{ padding: '8px 14px', fontSize: '13px', color: 'var(--loss)', borderColor: 'var(--loss)' }}
+              className="row-delete-btn"
+              style={{ fontSize: '17px' }}
               onClick={() => rejectLead(lead.id, lead.full_name || lead.email)}
               disabled={approving === lead.id || deleting === lead.id}
+              title="מחיקת בקשה"
             >
-              {deleting === lead.id ? 'מוחקים...' : 'מחיקה'}
+              {deleting === lead.id ? '…' : '🗑'}
             </button>
           </div>
         </div>

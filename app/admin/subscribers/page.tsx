@@ -206,12 +206,13 @@ export default function AdminSubscribersPage() {
             <span style={{ fontSize: '11px', color: 'var(--profit)', fontWeight: 700 }}>{sub.subscription_status === 'active' ? 'פעיל' : sub.subscription_status}</span>
           </Link>
           <button
-            className="btn-outline"
-            style={{ padding: '8px 12px', fontSize: '12px', color: 'var(--loss)', borderColor: 'var(--loss)', flexShrink: 0 }}
+            className="row-delete-btn"
+            style={{ fontSize: '17px', flexShrink: 0 }}
             onClick={() => removeSubscriber(sub.id, sub.full_name || sub.email)}
             disabled={removing === sub.id}
+            title="מחיקת מנוי"
           >
-            {removing === sub.id ? '...' : 'מחיקה'}
+            {removing === sub.id ? '…' : '🗑'}
           </button>
         </div>
       ))}
