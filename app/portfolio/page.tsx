@@ -356,7 +356,7 @@ export default function PortfolioPage() {
                       <td className="sym-cell">
                         <span className="sym-cell-inner">
                           <span className={`direction-mark ${trade.direction}`}>{trade.direction === 'long' ? 'L' : 'S'}</span>
-                          <span className={!hasFullAccess ? 'blurred' : ''}>{trade.symbol}</span>
+                          <span className={!hasFullAccess ? 'trade-symbol blurred' : ''}>{trade.symbol}</span>
                           {!hasFullAccess && <span className="locked-tag">למנויים</span>}
                         </span>
                       </td>
