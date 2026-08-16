@@ -78,6 +78,10 @@ export default function LoginPage() {
     setPhone(value.replace(/\D/g, '').slice(0, 10));
   }
 
+  function filterHebrew(value: string) {
+    return value.replace(/[^א-ת\s'-]/g, '');
+  }
+
   async function handlePhoneSubmit() {
     if (!firstName || !lastName || !phone) return;
     setLoading(true);
@@ -217,7 +221,7 @@ export default function LoginPage() {
               <ClearableInput
                 type="text"
                 value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
+                onChange={(e) => setFirstName(filterHebrew(e.target.value))}
                 onClear={() => setFirstName('')}
                 placeholder="ישראל"
                 style={{ borderColor: 'var(--lavender-dim)' }}
@@ -228,7 +232,7 @@ export default function LoginPage() {
               <ClearableInput
                 type="text"
                 value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
+                onChange={(e) => setLastName(filterHebrew(e.target.value))}
                 onClear={() => setLastName('')}
                 placeholder="ישראלי"
                 style={{ borderColor: 'var(--lavender-dim)' }}

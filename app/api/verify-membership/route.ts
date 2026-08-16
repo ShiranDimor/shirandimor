@@ -64,6 +64,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'חסרים פרטים' }, { status: 400 });
   }
 
+  const hebrewNamePattern = /^[א-ת\s'-]+$/;
+  if (!hebrewNamePattern.test(firstName) || !hebrewNamePattern.test(lastName)) {
+    return NextResponse.json({ error: 'שם פרטי ושם משפחה חייבים להיות בעברית' }, { status: 400 });
+  }
+
   const fullName = `${firstName} ${lastName}`.trim();
 
   const token = process.env.MONDAY_API_TOKEN;
