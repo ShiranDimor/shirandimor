@@ -2,8 +2,8 @@ import type { MetadataRoute } from 'next';
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'שירן דימור | מסחר אחראי במניות',
-    short_name: 'שירן דימור',
+    name: 'שירן דימור מסחר אחראי במניות',
+    short_name: 'שירן דימור מסחר אחראי במניות',
     description: 'קהילת המסחר של שירן דימור, בלי הבטחות ובלי גורואים. בניית תיק אמיתית, שיטתית וישרה.',
     start_url: '/',
     display: 'standalone',
