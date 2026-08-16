@@ -127,9 +127,33 @@ export default function AdminTradesPage() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
 
+  const [editingBalance, setEditingBalance] = useState(false);
+  const [balanceInput, setBalanceInput] = useState('');
+  const [savingBalance, setSavingBalance] = useState(false);
+
   useEffect(() => {
     checkAdmin();
   }, []);
+
+  function startEditBalance() {
+    setBalanceInput(initialBalance !== null ? String(initialBalance) : '');
+    setEditingBalance(true);
+  }
+
+  async function saveBalance() {
+    const value = parseFloat(balanceInput);
+    if (!value || value <= 0) return;
+    setSavingBalance(true);
+
+    const { error } = await supabase.from('portfolio_settings').update({ initial_balance: value }).eq('id', 1);
+
+    setSavingBalance(false);
+
+    if (!error) {
+      setInitialBalance(value);
+      setEditingBalance(false);
+    }
+  }
 
   async function loadTrades() {
     const { data: open } = await supabase
@@ -716,7 +740,27 @@ export default function AdminTradesPage() {
         </div>
       )}
 
-      <div className="section-label"><h2>צמיחת התיק</h2></div>
+      <div className="section-label">
+        <h2>צמיחת התיק</h2>
+        {editingBalance ? (
+          <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+            <ClearableInput
+              type="number"
+              value={balanceInput}
+              onChange={(e) => setBalanceInput(e.target.value)}
+              onClear={() => setBalanceInput('')}
+              placeholder="200000"
+              style={{ width: '110px', padding: '6px 8px', fontSize: '12.5px' }}
+            />
+            <button className="qp-confirm" style={{ padding: '6px 10px', fontSize: '12px' }} onClick={saveBalance} disabled={savingBalance}>{savingBalance ? '...' : 'שמירה'}</button>
+            <button className="qp-cancel" style={{ padding: '6px 10px', fontSize: '12px' }} onClick={() => setEditingBalance(false)}>ביטול</button>
+          </div>
+        ) : (
+          <button onClick={startEditBalance} className="count" style={{ background: 'none', border: 'none', cursor: 'pointer', font: 'inherit', display: 'flex', alignItems: 'center', gap: '4px' }} title="שינוי גודל התיק ההתחלתי">
+            תיק התחלתי ${initialBalance !== null ? initialBalance.toLocaleString() : '—'} ✎
+          </button>
+        )}
+      </div>
       <div className="equity-card">
         <EquityCurve points={equityPoints} />
       </div>
