@@ -167,7 +167,6 @@ export async function GET(request: Request) {
           <div style="font-size:14.5px;font-weight:700;color:#111;margin-bottom:10px;">🚀 מצטרפים לקבוצת הסוחרים &quot;${GROUP_NAME}&quot;</div>
           <a href="${GROW_LINK}" target="_blank" style="display:inline-block;background:#111318;color:#4fc9c4;font-weight:700;font-size:14px;text-decoration:none;padding:12px 28px;border-radius:8px;">הצטרפות עכשיו</a>
         </div>
-        <div style="font-size:11px;color:#aaa;margin-top:14px;">הסיכום הזה נועד לעזור לך לנסח פוסט שבועי לקבוצות - העתיקי את מה שרלוונטי.</div>
       </div>
 
     </div>
