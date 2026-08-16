@@ -23,6 +23,7 @@ export default function AdminSubscribersPage() {
 
   const [syncing, setSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState('');
+  const [removing, setRemoving] = useState<string | null>(null);
 
   async function handleSyncSubscribers() {
     setSyncing(true);
@@ -52,6 +53,23 @@ export default function AdminSubscribersPage() {
     }
 
     setSyncing(false);
+  }
+
+  async function removeSubscriber(id: string, name: string) {
+    if (!window.confirm(`למחוק לצמיתות את המנוי ${name}? הפעולה תסיר את הגישה שלו ואת כל נתוני היומן שלו.`)) return;
+    setRemoving(id);
+
+    const { data: { session } } = await supabase.auth.getSession();
+    const res = await fetch('/api/admin/delete-account', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
+      body: JSON.stringify({ userId: id }),
+    });
+
+    setRemoving(null);
+    if (res.ok) {
+      loadApprovedSubs();
+    }
   }
 
   function toggleSort(col: 'date' | 'name') {
@@ -176,16 +194,26 @@ export default function AdminSubscribersPage() {
 
       {approvedSubs.length === 0 && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)', marginBottom: '20px' }}>עדיין אין מנויים מאושרים</p>}
       {sortedSubs.map((sub) => (
-        <Link href={`/admin/subscribers/${sub.id}`} className="admin-row" key={sub.id} style={{ textDecoration: 'none', color: 'inherit', cursor: 'pointer' }}>
-          <div>
-            <div className="name">{sub.full_name || 'ללא שם'}</div>
-            <div className="email">{sub.email}</div>
-            <div className="email" style={{ marginTop: '2px' }}>
-              תאריך הצטרפות: {sub.subscription_started_at ? new Date(sub.subscription_started_at).toLocaleDateString('he-IL') : '—'}
+        <div className="admin-row" key={sub.id} style={{ gap: '10px' }}>
+          <Link href={`/admin/subscribers/${sub.id}`} style={{ textDecoration: 'none', color: 'inherit', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flex: 1, minWidth: 0 }}>
+            <div>
+              <div className="name">{sub.full_name || 'ללא שם'}</div>
+              <div className="email">{sub.email}</div>
+              <div className="email" style={{ marginTop: '2px' }}>
+                תאריך הצטרפות: {sub.subscription_started_at ? new Date(sub.subscription_started_at).toLocaleDateString('he-IL') : '—'}
+              </div>
             </div>
-          </div>
-          <span style={{ fontSize: '11px', color: 'var(--profit)', fontWeight: 700 }}>{sub.subscription_status === 'active' ? 'פעיל' : sub.subscription_status}</span>
-        </Link>
+            <span style={{ fontSize: '11px', color: 'var(--profit)', fontWeight: 700 }}>{sub.subscription_status === 'active' ? 'פעיל' : sub.subscription_status}</span>
+          </Link>
+          <button
+            className="btn-outline"
+            style={{ padding: '8px 12px', fontSize: '12px', color: 'var(--loss)', borderColor: 'var(--loss)', flexShrink: 0 }}
+            onClick={() => removeSubscriber(sub.id, sub.full_name || sub.email)}
+            disabled={removing === sub.id}
+          >
+            {removing === sub.id ? '...' : 'מחיקה'}
+          </button>
+        </div>
       ))}
     </div>
   );

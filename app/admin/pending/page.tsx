@@ -18,6 +18,7 @@ export default function AdminPendingPage() {
 
   const [pendingLeads, setPendingLeads] = useState<PendingLead[]>([]);
   const [approving, setApproving] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<'date' | 'name'>('date');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
 
@@ -49,8 +50,32 @@ export default function AdminPendingPage() {
       .from('profiles')
       .update({ role: 'subscriber', subscription_status: 'active', subscription_started_at: new Date().toISOString() })
       .eq('id', id);
-    setApproving(null);
+
     if (!error) {
+      const { data: { session } } = await supabase.auth.getSession();
+      fetch('/api/admin/notify-approved', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
+        body: JSON.stringify({ userId: id }),
+      }).catch(() => {});
+      loadPendingLeads();
+    }
+    setApproving(null);
+  }
+
+  async function rejectLead(id: string, name: string) {
+    if (!window.confirm(`למחוק לצמיתות את הבקשה של ${name}?`)) return;
+    setDeleting(id);
+
+    const { data: { session } } = await supabase.auth.getSession();
+    const res = await fetch('/api/admin/delete-account', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
+      body: JSON.stringify({ userId: id }),
+    });
+
+    setDeleting(null);
+    if (res.ok) {
       loadPendingLeads();
     }
   }
@@ -152,9 +177,19 @@ export default function AdminPendingPage() {
             <div className="email">{lead.email}</div>
             <div className="email" style={{ marginTop: '2px' }}>תאריך הצטרפות: {new Date(lead.created_at).toLocaleDateString('he-IL')}</div>
           </div>
-          <button className="approve-btn" onClick={() => approveSubscriber(lead.id)} disabled={approving === lead.id}>
-            {approving === lead.id ? 'מאשרים...' : 'אישור כמנוי'}
-          </button>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button className="approve-btn" onClick={() => approveSubscriber(lead.id)} disabled={approving === lead.id || deleting === lead.id}>
+              {approving === lead.id ? 'מאשרים...' : 'אישור כמנוי'}
+            </button>
+            <button
+              className="btn-outline"
+              style={{ padding: '8px 14px', fontSize: '13px', color: 'var(--loss)', borderColor: 'var(--loss)' }}
+              onClick={() => rejectLead(lead.id, lead.full_name || lead.email)}
+              disabled={approving === lead.id || deleting === lead.id}
+            >
+              {deleting === lead.id ? 'מוחקים...' : 'מחיקה'}
+            </button>
+          </div>
         </div>
       ))}
     </div>
