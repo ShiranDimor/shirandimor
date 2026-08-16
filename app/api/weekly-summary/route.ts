@@ -61,18 +61,9 @@ function tradeRowHtml(t: Trade, kind: 'open' | 'closed') {
     </tr>`;
 }
 
-const TEMP_DEBUG_TOKEN = 'debug-check-2026-08-16-shiran';
-
 export async function GET(request: Request) {
   const authHeader = request.headers.get('authorization');
-  const url = new URL(request.url);
-  const isDebugToken = authHeader === `Bearer ${TEMP_DEBUG_TOKEN}`;
-
-  if (isDebugToken && url.searchParams.get('send') !== '1') {
-    return NextResponse.json({ hasCronSecret: Boolean(process.env.CRON_SECRET), hasResendKey: Boolean(process.env.RESEND_API_KEY) });
-  }
-
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}` && !isDebugToken) {
+  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
