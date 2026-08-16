@@ -75,45 +75,49 @@ export async function POST(request: Request) {
 
     const board = boardData?.data?.boards?.[0];
     const phoneColumns = board?.columns?.filter((c: { type: string }) => c.type === 'phone') || [];
-    const group = board?.groups?.find((g: { title: string }) => g.title === SUBSCRIBER_GROUP_NAME);
+    const groups = board?.groups?.filter((g: { title: string }) => g.title === SUBSCRIBER_GROUP_NAME) || [];
 
-    if (phoneColumns.length === 0 || !group) {
-      console.error('Monday.com: לא נמצאה עמודת טלפון או קבוצת "קבוצת סוחרים"', { hasPhoneColumn: phoneColumns.length > 0, hasGroup: Boolean(group) });
+    if (phoneColumns.length === 0 || groups.length === 0) {
+      console.error('Monday.com: לא נמצאה עמודת טלפון או קבוצת "קבוצת סוחרים"', { hasPhoneColumn: phoneColumns.length > 0, hasGroup: groups.length > 0 });
       return NextResponse.json({ verified: false, configured: false });
     }
 
     const phoneColumnIds = phoneColumns.map((c: { id: string }) => c.id);
 
-    let cursor: string | null = null;
     let found = false;
 
-    do {
-      const itemsData: any = await mondayRequest(
-        token,
-        `query ($boardId: ID!, $groupId: [String], $cursor: String, $columnIds: [String!]) {
-          boards (ids: [$boardId]) {
-            groups (ids: $groupId) {
-              items_page (limit: 100, cursor: $cursor) {
-                cursor
-                items {
-                  column_values (ids: $columnIds) { text }
+    for (const g of groups) {
+      if (found) break;
+      let cursor: string | null = null;
+
+      do {
+        const itemsData: any = await mondayRequest(
+          token,
+          `query ($boardId: ID!, $groupId: [String], $cursor: String, $columnIds: [String!]) {
+            boards (ids: [$boardId]) {
+              groups (ids: $groupId) {
+                items_page (limit: 100, cursor: $cursor) {
+                  cursor
+                  items {
+                    column_values (ids: $columnIds) { text }
+                  }
                 }
               }
             }
-          }
-        }`,
-        { boardId, groupId: [group.id], cursor, columnIds: phoneColumnIds }
-      );
+          }`,
+          { boardId, groupId: [g.id], cursor, columnIds: phoneColumnIds }
+        );
 
-      const page = itemsData?.data?.boards?.[0]?.groups?.[0]?.items_page;
-      const items = page?.items || [];
+        const page = itemsData?.data?.boards?.[0]?.groups?.[0]?.items_page;
+        const items = page?.items || [];
 
-      found = items.some((item: { column_values: { text: string | null }[] }) => {
-        return item.column_values?.some((cv) => cv.text && normalizePhone(cv.text) === target);
-      });
+        found = items.some((item: { column_values: { text: string | null }[] }) => {
+          return item.column_values?.some((cv) => cv.text && normalizePhone(cv.text) === target);
+        });
 
-      cursor = found ? null : page?.cursor || null;
-    } while (cursor);
+        cursor = found ? null : page?.cursor || null;
+      } while (cursor);
+    }
 
     if (!found) {
       return NextResponse.json({ verified: false, configured: true });
