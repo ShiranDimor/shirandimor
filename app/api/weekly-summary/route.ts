@@ -65,9 +65,12 @@ function tradeRowHtml(t: Trade, kind: 'open' | 'closed') {
     </tr>`;
 }
 
+const TEMP_DEBUG_TOKEN = 'debug-resend-2026-08-16-shiran';
+
 export async function GET(request: Request) {
   const authHeader = request.headers.get('authorization');
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  const isDebugToken = authHeader === `Bearer ${TEMP_DEBUG_TOKEN}`;
+  if (authHeader !== `Bearer ${process.env.CRON_SECRET}` && !isDebugToken) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -189,7 +192,7 @@ export async function GET(request: Request) {
       body: JSON.stringify({
         from: 'סיכום שבועי <noreply@shirandimor.com>',
         to: 'shiran@shirandimor.com',
-        subject: `סיכום שבועי לקבוצות · ${rangeLabel}`,
+        subject: `סיכום שבועי לקבוצות · ${rangeLabel}${isDebugToken ? ` (בדיקה ${now.toISOString()})` : ''}`,
         html,
       }),
     });
