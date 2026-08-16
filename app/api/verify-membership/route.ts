@@ -18,12 +18,12 @@ async function mondayRequest(token: string, query: string, variables: Record<str
 }
 
 // מוודא שיש פרופיל מנוי פעיל לאימייל הזה - יוצר חשבון אם אין, או משדרג ל"מנוי" אם היה "ליד" בלבד
-// שומר גם את הטלפון על הפרופיל, כדי שאפשר יהיה בעתיד לבדוק שוב מול מאנדיי אם המנוי עדיין בקבוצה
-async function ensureActiveSubscriber(email: string, phone: string) {
+// שומר גם את הטלפון והשם המלא על הפרופיל, כדי שאפשר יהיה בעתיד לבדוק שוב מול מאנדיי אם המנוי עדיין בקבוצה
+async function ensureActiveSubscriber(email: string, phone: string, fullName: string) {
   const { data: existing } = await supabaseAdmin.from('profiles').select('id, role').eq('email', email).maybeSingle();
 
   if (existing) {
-    const updates: Record<string, unknown> = { phone };
+    const updates: Record<string, unknown> = { phone, full_name: fullName };
     if (existing.role !== 'admin' && existing.role !== 'subscriber') {
       updates.role = 'subscriber';
       updates.subscription_status = 'active';
@@ -36,7 +36,7 @@ async function ensureActiveSubscriber(email: string, phone: string) {
   const { data: created, error } = await supabaseAdmin.auth.admin.createUser({
     email,
     email_confirm: true,
-    user_metadata: { phone },
+    user_metadata: { phone, full_name: fullName },
   });
 
   let userId = created.user?.id;
@@ -54,15 +54,17 @@ async function ensureActiveSubscriber(email: string, phone: string) {
 
   await supabaseAdmin
     .from('profiles')
-    .upsert({ id: userId, email, role: 'subscriber', subscription_status: 'active', subscription_started_at: new Date().toISOString(), phone });
+    .upsert({ id: userId, email, full_name: fullName, role: 'subscriber', subscription_status: 'active', subscription_started_at: new Date().toISOString(), phone });
 }
 
 export async function POST(request: Request) {
-  const { phone, email } = await request.json();
+  const { phone, email, firstName, lastName } = await request.json();
 
-  if (!phone || !email) {
+  if (!phone || !email || !firstName || !lastName) {
     return NextResponse.json({ error: 'חסרים פרטים' }, { status: 400 });
   }
+
+  const fullName = `${firstName} ${lastName}`.trim();
 
   const token = process.env.MONDAY_API_TOKEN;
   const boardId = process.env.MONDAY_BOARD_ID;
@@ -136,7 +138,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ verified: false, configured: true });
     }
 
-    await ensureActiveSubscriber(email, phone);
+    await ensureActiveSubscriber(email, phone, fullName);
     await sendLoginEmail(email);
 
     return NextResponse.json({ verified: true, configured: true });

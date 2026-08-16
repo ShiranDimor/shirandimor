@@ -12,6 +12,8 @@ export default function LoginPage() {
   const router = useRouter();
   const [step, setStep] = useState<Step>('email');
   const [email, setEmail] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -77,7 +79,7 @@ export default function LoginPage() {
   }
 
   async function handlePhoneSubmit() {
-    if (!phone) return;
+    if (!firstName || !lastName || !phone) return;
     setLoading(true);
     setError('');
 
@@ -85,7 +87,7 @@ export default function LoginPage() {
       const res = await fetch('/api/verify-membership', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone, email }),
+        body: JSON.stringify({ phone, email, firstName, lastName }),
       });
       const data = await res.json();
 
@@ -207,8 +209,32 @@ export default function LoginPage() {
       {step === 'phone' && (
         <>
           <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '16px', textAlign: 'center' }}>
-            לא זיהינו את המייל הזה אצלנו - כדי לוודא שמדובר במנוי/ה פעיל/ה, אפשר להזין את מספר הנייד הרשום
+            לא זיהינו את המייל הזה אצלנו - כדי לוודא שמדובר במנוי/ה פעיל/ה, אפשר למלא את הפרטים
           </p>
+          <div className="form-row">
+            <div className="field" style={{ marginBottom: 0 }}>
+              <label>שם פרטי</label>
+              <ClearableInput
+                type="text"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                onClear={() => setFirstName('')}
+                placeholder="ישראל"
+                style={{ borderColor: 'var(--lavender-dim)' }}
+              />
+            </div>
+            <div className="field" style={{ marginBottom: 0 }}>
+              <label>שם משפחה</label>
+              <ClearableInput
+                type="text"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                onClear={() => setLastName('')}
+                placeholder="ישראלי"
+                style={{ borderColor: 'var(--lavender-dim)' }}
+              />
+            </div>
+          </div>
           <div className="field">
             <label>נייד</label>
             <ClearableInput
@@ -223,7 +249,7 @@ export default function LoginPage() {
             />
           </div>
 
-          <button className="btn-primary" style={{ background: 'var(--lavender)' }} onClick={handlePhoneSubmit} disabled={loading || !phone}>
+          <button className="btn-primary" style={{ background: 'var(--lavender)' }} onClick={handlePhoneSubmit} disabled={loading || !firstName || !lastName || !phone}>
             {loading ? 'בודקים...' : 'אימות והמשך'}
           </button>
           <p style={{ marginTop: '12px', fontSize: '12px', color: 'var(--text-tertiary)', textAlign: 'center' }}>

@@ -54,6 +54,9 @@ export default function AdminViewSubscriberJournal() {
   const [userEmail, setUserEmail] = useState('');
 
   const [subscriber, setSubscriber] = useState<Profile | null>(null);
+  const [editingName, setEditingName] = useState(false);
+  const [nameInput, setNameInput] = useState('');
+  const [savingName, setSavingName] = useState(false);
   const [entries, setEntries] = useState<JournalEntry[]>([]);
   const [loadingData, setLoadingData] = useState(true);
   const [calYear, setCalYear] = useState(() => new Date().getFullYear());
@@ -351,6 +354,21 @@ export default function AdminViewSubscriberJournal() {
     if (!error) loadData();
   }
 
+  function startEditName() {
+    setNameInput(subscriber?.full_name || '');
+    setEditingName(true);
+  }
+
+  async function saveName() {
+    setSavingName(true);
+    const { error } = await supabase.from('profiles').update({ full_name: nameInput.trim() || null }).eq('id', subscriberId);
+    setSavingName(false);
+    if (!error) {
+      setSubscriber((prev) => (prev ? { ...prev, full_name: nameInput.trim() || null } : prev));
+      setEditingName(false);
+    }
+  }
+
   async function handleLogout() {
     await supabase.auth.signOut();
     window.location.href = '/';
@@ -584,8 +602,32 @@ export default function AdminViewSubscriberJournal() {
       </header>
 
       <div className="section-label">
-        <h2>{subscriber?.full_name || 'ללא שם'}</h2>
-        <span className="count">עריכה כאדמין</span>
+        {editingName ? (
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flex: 1 }}>
+            <ClearableInput
+              type="text"
+              value={nameInput}
+              onChange={(e) => setNameInput(e.target.value)}
+              onClear={() => setNameInput('')}
+              placeholder="שם מלא"
+              style={{ flex: 1 }}
+            />
+            <button className="qp-confirm" style={{ padding: '8px 14px' }} onClick={saveName} disabled={savingName}>{savingName ? 'שומרים...' : 'שמירה'}</button>
+            <button className="qp-cancel" style={{ padding: '8px 14px' }} onClick={() => setEditingName(false)}>ביטול</button>
+          </div>
+        ) : (
+          <>
+            <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              {subscriber?.full_name || 'ללא שם'}
+              <button onClick={startEditName} title="עריכת שם" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'inline-flex' }}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5Z" />
+                </svg>
+              </button>
+            </h2>
+            <span className="count">עריכה כאדמין</span>
+          </>
+        )}
       </div>
       <p style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginBottom: '20px', fontFamily: 'var(--font-mono)' }}>{subscriber?.email}</p>
 
