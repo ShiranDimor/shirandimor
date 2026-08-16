@@ -6,7 +6,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { email, full_name } = await request.json();
+  const { email, full_name, phone } = await request.json();
 
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
@@ -25,7 +25,7 @@ export async function POST(request: Request) {
         from: 'התראות האתר <onboarding@resend.dev>',
         to: 'shiran@shirandimor.com',
         subject: 'בקשת הצטרפות חדשה לאתר',
-        text: `התקבלה בקשת הצטרפות חדשה.\n\nשם: ${full_name || 'ללא שם'}\nאימייל: ${email}\n\nלאישור: https://www.shirandimor.com/admin/pending`,
+        text: `התקבלה בקשת הצטרפות חדשה.\n\nשם: ${full_name || 'ללא שם'}\nאימייל: ${email}\nנייד: ${phone || 'לא נמסר'}\n\nלאישור: https://www.shirandimor.com/admin/pending`,
       }),
     });
 

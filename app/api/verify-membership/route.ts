@@ -33,7 +33,11 @@ async function ensureActiveSubscriber(email: string, phone: string) {
     return;
   }
 
-  const { data: created, error } = await supabaseAdmin.auth.admin.createUser({ email, email_confirm: true });
+  const { data: created, error } = await supabaseAdmin.auth.admin.createUser({
+    email,
+    email_confirm: true,
+    user_metadata: { phone },
+  });
   if (error || !created.user) {
     throw new Error(error?.message || 'שגיאה ביצירת חשבון');
   }
