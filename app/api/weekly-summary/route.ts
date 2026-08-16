@@ -65,11 +65,9 @@ function tradeRowHtml(t: Trade, kind: 'open' | 'closed') {
     </tr>`;
 }
 
-const TEMP_DEBUG_TOKEN = 'debug-verify-branding-2026-08-16';
-
 export async function GET(request: Request) {
   const authHeader = request.headers.get('authorization');
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}` && authHeader !== `Bearer ${TEMP_DEBUG_TOKEN}`) {
+  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
