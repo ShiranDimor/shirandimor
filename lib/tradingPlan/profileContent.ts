@@ -16,8 +16,15 @@ export interface ProfileContent {
 
 function label(answers: Record<string, unknown>, questionId: string): string | null {
   const v = answers[questionId];
-  if (typeof v !== 'string' || !v) return null;
-  return findOption(questionId, v)?.label || null;
+  const first = Array.isArray(v) ? v[0] : v;
+  if (typeof first !== 'string' || !first) return null;
+  return findOption(questionId, first)?.label || null;
+}
+
+function hasValue(answers: Record<string, unknown>, questionId: string, value: string): boolean {
+  const v = answers[questionId];
+  if (Array.isArray(v)) return (v as string[]).includes(value);
+  return v === value;
 }
 
 const PROFILES: Record<ProfileId, ProfileContent> = {
@@ -64,8 +71,8 @@ const PROFILES: Record<ProfileId, ProfileContent> = {
     strengths: (a) => {
       const items = ['כבר יש היכרות מעשית עם השוק, לא רק תיאוריה'];
       items.push('הניסיון הקודם מלמד משהו אמיתי - גם אם זה בעיקר מה לא לעשות');
-      const fear = a.money_fear;
-      if (fear === 'tried_before_hard_to_believe') items.push('המודעות לכך שקשה להאמין שוב היא עצמה נקודת מוצא כנה לעבוד ממנה');
+      const fear = Array.isArray(a.money_fear) ? (a.money_fear as string[]) : [];
+      if (fear.includes('tried_before_hard_to_believe')) items.push('המודעות לכך שקשה להאמין שוב היא עצמה נקודת מוצא כנה לעבוד ממנה');
       return items;
     },
     blockers: [
@@ -153,7 +160,7 @@ const PROFILES: Record<ProfileId, ProfileContent> = {
     title: 'כבר סוחר/ת, רוצה עקביות ומסגרת',
     diagnosis: (a) => {
       const winning = label(a, 'winning_trade_behavior');
-      return `יש כבר בסיס אמיתי - ניסיון, שיטה, והבנה של איך זה עובד. השלב הזה פחות עוסק בלמידה מהתחלה, ויותר בחידוד: ניהול טוב יותר, בחירת עסקאות מדויקת יותר, ועקביות לאורך זמן.${winning === 'follow_plan' ? ' כבר יש משמעת סבירה בניהול עסקאות - זה בסיס טוב להמשיך ולבנות עליו.' : ''}`;
+      return `יש כבר בסיס אמיתי - ניסיון, שיטה, והבנה של איך זה עובד. השלב הזה פחות עוסק בלמידה מהתחלה, ויותר בחידוד: ניהול טוב יותר, בחירת עסקאות מדויקת יותר, ועקביות לאורך זמן.${hasValue(a, 'winning_trade_behavior', 'follow_plan') ? ' כבר יש משמעת סבירה בניהול עסקאות - זה בסיס טוב להמשיך ולבנות עליו.' : ''}`;
     },
     strengths: (a) => [
       'ניסיון מעשי ובסיס אסטרטגי קיים',

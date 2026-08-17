@@ -11,6 +11,7 @@ export function classifyProfile(answers: Record<string, unknown>): ProfileId {
   };
 
   const add = (id: ProfileId, points: number) => { scores[id] += points; };
+  const arr = (v: unknown): string[] => (Array.isArray(v) ? v as string[] : []);
 
   switch (answers.trading_experience) {
     case 'not_started': add('not_started', 10); break;
@@ -19,21 +20,25 @@ export function classifyProfile(answers: Record<string, unknown>): ProfileId {
     case 'trading_improve': add('wants_consistency', 8); break;
   }
 
-  switch (answers.self_talk) {
-    case 'tried_didnt_work': add('burned_before', 5); break;
-    case 'hard_to_believe': add('burned_before', 3); break;
-    case 'keep_searching_method': add('no_structure', 5); break;
-    case 'know_but_dont_execute': add('emotion_driven', 5); break;
-    case 'rush_to_succeed': add('emotion_driven', 3); break;
-    case 'want_but_not_ready': add('not_started', 3); break;
-    case 'no_time': add('not_started', 2); break;
+  for (const v of arr(answers.self_talk)) {
+    switch (v) {
+      case 'tried_didnt_work': add('burned_before', 5); break;
+      case 'hard_to_believe': add('burned_before', 3); break;
+      case 'keep_searching_method': add('no_structure', 5); break;
+      case 'know_but_dont_execute': add('emotion_driven', 5); break;
+      case 'rush_to_succeed': add('emotion_driven', 3); break;
+      case 'want_but_not_ready': add('not_started', 3); break;
+      case 'no_time': add('not_started', 2); break;
+    }
   }
 
-  switch (answers.money_fear) {
-    case 'tried_before_hard_to_believe': add('burned_before', 4); break;
-    case 'emotions_take_over': add('emotion_driven', 4); break;
-    case 'dont_understand_enough': add('no_structure', 3); break;
-    case 'not_enough_capital': add('not_started', 2); break;
+  for (const v of arr(answers.money_fear)) {
+    switch (v) {
+      case 'tried_before_hard_to_believe': add('burned_before', 4); break;
+      case 'emotions_take_over': add('emotion_driven', 4); break;
+      case 'dont_understand_enough': add('no_structure', 3); break;
+      case 'not_enough_capital': add('not_started', 2); break;
+    }
   }
 
   if (answers.strategy_clarity === 'not_really' || answers.strategy_clarity === 'mixed') {
@@ -43,27 +48,31 @@ export function classifyProfile(answers: Record<string, unknown>): ProfileId {
     add('emotion_driven', 2); add('wants_consistency', 2);
   }
 
-  switch (answers.losing_trade_behavior) {
-    case 'want_revenge':
-    case 'hard_to_close':
-    case 'give_more_room':
-      add('emotion_driven', 4); break;
-    case 'search_other_method':
-      add('no_structure', 4); break;
-    case 'follow_plan':
-      add('wants_consistency', 5); break;
+  for (const v of arr(answers.losing_trade_behavior)) {
+    switch (v) {
+      case 'want_revenge':
+      case 'hard_to_close':
+      case 'give_more_room':
+        add('emotion_driven', 4); break;
+      case 'search_other_method':
+        add('no_structure', 4); break;
+      case 'follow_plan':
+        add('wants_consistency', 5); break;
+    }
   }
 
-  switch (answers.winning_trade_behavior) {
-    case 'take_profit_early_fear':
-    case 'change_target':
-    case 'turns_to_loss':
-      add('emotion_driven', 3); break;
-    case 'follow_plan':
-      add('wants_consistency', 4); break;
+  for (const v of arr(answers.winning_trade_behavior)) {
+    switch (v) {
+      case 'take_profit_early_fear':
+      case 'change_target':
+      case 'turns_to_loss':
+        add('emotion_driven', 3); break;
+      case 'follow_plan':
+        add('wants_consistency', 4); break;
+    }
   }
 
-  const stopMeFrom = Array.isArray(answers.stop_me_from) ? (answers.stop_me_from as string[]) : [];
+  const stopMeFrom = arr(answers.stop_me_from);
   const emotionalHabits = ['move_stop', 'revenge_trade_immediately', 'trade_while_upset', 'fomo_entry'];
   add('emotion_driven', stopMeFrom.filter((v) => emotionalHabits.includes(v)).length * 2);
 

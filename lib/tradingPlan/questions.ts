@@ -103,8 +103,10 @@ export const STEPS: StepDef[] = [
       },
       {
         id: 'self_talk',
-        type: 'single',
+        type: 'multi',
         title: 'איזה משפט הכי דומה למה שאתם אומרים לעצמכם היום לגבי מסחר?',
+        helper: 'אפשר לבחור עד 2',
+        maxSelect: 2,
         options: [
           { value: 'want_but_not_ready', label: 'רוצה להתחיל אבל מרגיש/ה שעדיין לא יודע/ת מספיק' },
           { value: 'tried_didnt_work', label: 'כבר ניסיתי בעבר וזה לא באמת עבד לי' },
@@ -125,8 +127,10 @@ export const STEPS: StepDef[] = [
     questions: [
       {
         id: 'money_fear',
-        type: 'single',
+        type: 'multi',
         title: 'כשאתם חושבים על מסחר עם כסף אמיתי, מה הכי מטריד אתכם?',
+        helper: 'אפשר לבחור עד 2',
+        maxSelect: 2,
         options: [
           { value: 'lose_money', label: 'להפסיד כסף' },
           { value: 'mistake_no_exit', label: 'לעשות טעות ולא לדעת איך לצאת ממנה' },
@@ -242,8 +246,10 @@ export const STEPS: StepDef[] = [
     questions: [
       {
         id: 'losing_trade_behavior',
-        type: 'single',
+        type: 'multi',
         title: 'כשעסקה לא מתנהגת כמו שציפיתם, מה בדרך כלל קורה אצלכם?',
+        helper: 'אפשר לבחור עד 2',
+        maxSelect: 2,
         options: [
           { value: 'follow_plan', label: 'עובדים לפי התוכנית ומקבלים את התוצאה' },
           { value: 'doubt_analysis', label: 'מתחילים לפקפק בניתוח' },
@@ -258,8 +264,10 @@ export const STEPS: StepDef[] = [
       },
       {
         id: 'winning_trade_behavior',
-        type: 'single',
+        type: 'multi',
         title: 'ומה בדרך כלל קורה כשהעסקה שלכם דווקא ברווח?',
+        helper: 'אפשר לבחור עד 2',
+        maxSelect: 2,
         options: [
           { value: 'take_profit_early_fear', label: 'לוקחים רווח מוקדם כי מפחדים שהוא ייעלם' },
           { value: 'want_more', label: 'מתחילים לרצות עוד ועוד' },

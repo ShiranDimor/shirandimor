@@ -225,7 +225,7 @@ export default function TradingPlanPage() {
 
       {phase === 'quiz' && currentStep && (
         <>
-          <ProgressBar stepIndex={stepIndex} totalSteps={effectiveSteps.length} />
+          <ProgressBar stepIndex={stepIndex} totalSteps={effectiveSteps.length} onBack={handleBack} />
           <div className="tp-step-title">{currentStep.title}</div>
           {currentStep.intro && <div className="tp-step-intro">{currentStep.intro}</div>}
 

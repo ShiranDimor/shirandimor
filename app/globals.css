@@ -541,7 +541,14 @@
 .tp-intro-text strong { color: var(--text-primary); }
 
 .tp-progress-wrap { position: sticky; top: 0; z-index: 10; background: var(--bg-void); padding: 16px 0 10px; margin-bottom: 8px; }
-.tp-progress-label { display: flex; justify-content: space-between; font-size: 11.5px; color: var(--text-tertiary); font-family: var(--font-mono); margin-bottom: 8px; }
+.tp-progress-top-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.tp-progress-back {
+  flex-shrink: 0; width: 30px; height: 30px; border-radius: 50%; background: var(--bg-surface-raised);
+  border: 1px solid var(--border-hairline-strong); color: var(--text-secondary); font-size: 15px;
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
+}
+.tp-progress-back:hover { border-color: var(--teal); color: var(--teal); }
+.tp-progress-label { flex: 1; display: flex; justify-content: space-between; font-size: 11.5px; color: var(--text-tertiary); font-family: var(--font-mono); }
 .tp-progress-track { height: 5px; background: var(--bg-surface-raised); border-radius: 4px; overflow: hidden; }
 .tp-progress-fill { height: 100%; background: linear-gradient(90deg, var(--teal), var(--lavender)); border-radius: 4px; transition: width 0.35s ease; }
 

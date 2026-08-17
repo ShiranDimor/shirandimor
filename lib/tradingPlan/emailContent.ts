@@ -13,8 +13,8 @@ interface PlanRow {
   markets?: string[] | null;
   trading_style?: string | null;
   trading_motivation?: string[] | null;
-  self_talk?: string | null;
-  money_fear?: string | null;
+  self_talk?: string[] | null;
+  money_fear?: string[] | null;
   available_time?: string | null;
   strategy_clarity?: string | null;
   entry_tools?: string[] | null;
@@ -22,8 +22,8 @@ interface PlanRow {
   risk_per_trade?: string | null;
   risk_per_trade_amount?: string | null;
   daily_max_loss?: string | null;
-  losing_trade_behavior?: string | null;
-  winning_trade_behavior?: string | null;
+  losing_trade_behavior?: string[] | null;
+  winning_trade_behavior?: string[] | null;
   stop_me_from?: string[] | null;
   environment_influence?: string | null;
   progress_markers?: string[] | null;
@@ -135,10 +135,10 @@ export function buildAdminNotifyEmailHtml(r: PlanRow): string {
           ${row('איפה נמצא/ת מול מסחר', labelSingle(r.trading_experience, 'trading_experience'))}
           ${row('שווקים', labelsJoined(r.markets, 'markets'))}
           ${row('מה רוצה מהמסחר', labelsJoined(r.trading_motivation, 'trading_motivation'))}
-          ${row('משפט מוכר לעצמו', labelSingle(r.self_talk, 'self_talk'))}
-          ${row('מה מטריד בקשר לכסף', labelSingle(r.money_fear, 'money_fear'))}
-          ${row('מה קורה בהפסד', labelSingle(r.losing_trade_behavior, 'losing_trade_behavior'))}
-          ${row('מה קורה ברווח', labelSingle(r.winning_trade_behavior, 'winning_trade_behavior'))}
+          ${row('משפט מוכר לעצמו', labelsJoined(r.self_talk, 'self_talk'))}
+          ${row('מה מטריד בקשר לכסף', labelsJoined(r.money_fear, 'money_fear'))}
+          ${row('מה קורה בהפסד', labelsJoined(r.losing_trade_behavior, 'losing_trade_behavior'))}
+          ${row('מה קורה ברווח', labelsJoined(r.winning_trade_behavior, 'winning_trade_behavior'))}
           ${row('הסביבה', labelSingle(r.environment_influence, 'environment_influence'))}
           ${row('מה ירגיש כהתקדמות', labelsJoined(r.progress_markers, 'progress_markers'))}
           ${row('הכלל האישי', r.personal_rule || '—')}
