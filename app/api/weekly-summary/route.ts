@@ -192,8 +192,8 @@ export async function GET(request: Request) {
 
       <div style="padding:6px 16px 24px;text-align:center;">
         <div style="background:#f0faf9;border:1px solid #cdeeeb;border-radius:12px;padding:18px 16px;">
-          <div style="font-size:14.5px;font-weight:700;color:#111;margin-bottom:10px;">🚀 מצטרפים לקבוצת הסוחרים &quot;${GROUP_NAME}&quot;</div>
-          <a href="${GROW_LINK}" target="_blank" style="display:inline-block;background:#111318;color:#4fc9c4;font-weight:700;font-size:14px;text-decoration:none;padding:12px 28px;border-radius:8px;">הצטרפות עכשיו</a>
+          <div style="font-size:14.5px;font-weight:700;color:#111;margin-bottom:6px;">🚀 קבוצת הסוחרים &quot;${GROUP_NAME}&quot;</div>
+          <div style="font-size:13px;color:#666;">להצטרפות לחודש ניסיון (ללא התחייבות) כנסו ללינק</div>
         </div>
       </div>
 
@@ -227,7 +227,13 @@ export async function GET(request: Request) {
         to: 'shiran@shirandimor.com',
         subject: `סיכום שבועי לקבוצות · ${rangeLabel}`,
         html: imageBase64
-          ? `<div dir="rtl" style="font-family: Arial, Helvetica, sans-serif; padding: 16px; color:#333;"><p>הסיכום מצורף כתמונה למטה - אפשר לשמור ולשלוח אותה כמו שהיא לקבוצת העדכונים.</p></div>`
+          ? `<div dir="rtl" style="font-family: Arial, Helvetica, sans-serif; padding: 16px; color:#333;">
+              <p>הסיכום מצורף כתמונה למטה - אפשר לשמור ולשלוח אותה כמו שהיא לקבוצת העדכונים.</p>
+              <p style="font-weight:700;margin-top:16px;">⚠️ שימו לב: בתוך התמונה עצמה הכפתור "הצטרפות עכשיו" אינו לחיץ - זו מגבלה של כל תמונה בוואטסאפ.</p>
+              <p>מומלץ לצרף את הטקסט הבא כהודעה נפרדת מתחת לתמונה, כדי שהקישור יהיה לחיץ:</p>
+              <div style="background:#f4f4f5;border:1px solid #ddd;border-radius:8px;padding:14px;margin-top:8px;white-space:pre-line;">🚀 להצטרפות לקבוצת הסוחרים "${GROUP_NAME}" לחודש ניסיון (ללא התחייבות):
+${GROW_LINK}</div>
+            </div>`
           : html,
         attachments: imageBase64
           ? [{ filename: 'סיכום-שבועי.png', content: imageBase64 }]
