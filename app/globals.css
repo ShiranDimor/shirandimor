@@ -519,4 +519,87 @@
   .trades-list { grid-template-columns: repeat(3, 1fr); }
 
   .admin-row, .subscriber-card { max-width: 640px; }
+
+  .tp-question-card { padding: 32px; }
+  .tp-option-btn { padding: 16px 18px; font-size: 15px; }
 }
+
+/* ===== תוכנית המסחר שלי - שאלון 30 יום ===== */
+.tp-intro-badge {
+  display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-family: var(--font-mono);
+  color: var(--lavender); background: rgba(156,143,217,0.1); border: 1px solid rgba(156,143,217,0.25);
+  border-radius: 20px; padding: 4px 10px; margin-bottom: 16px;
+}
+.tp-intro-text { color: var(--text-secondary); font-size: 14.5px; line-height: 1.7; margin-bottom: 24px; white-space: pre-line; }
+.tp-intro-text strong { color: var(--text-primary); }
+
+.tp-progress-wrap { position: sticky; top: 0; z-index: 10; background: var(--bg-void); padding: 16px 0 10px; margin-bottom: 8px; }
+.tp-progress-label { display: flex; justify-content: space-between; font-size: 11.5px; color: var(--text-tertiary); font-family: var(--font-mono); margin-bottom: 8px; }
+.tp-progress-track { height: 5px; background: var(--bg-surface-raised); border-radius: 4px; overflow: hidden; }
+.tp-progress-fill { height: 100%; background: linear-gradient(90deg, var(--teal), var(--lavender)); border-radius: 4px; transition: width 0.35s ease; }
+
+.tp-step-title { font-family: var(--font-display); font-size: 21px; font-weight: 500; margin-bottom: 4px; }
+.tp-step-intro { font-size: 13.5px; color: var(--text-tertiary); margin-bottom: 20px; line-height: 1.6; }
+
+.tp-question-card { background: var(--bg-surface); border: 1px solid var(--border-hairline); border-radius: 14px; padding: 20px; margin-bottom: 16px; }
+.tp-question-title { font-size: 15.5px; font-weight: 600; margin-bottom: 4px; line-height: 1.5; }
+.tp-question-helper { font-size: 12.5px; color: var(--text-tertiary); margin-bottom: 14px; line-height: 1.6; }
+.tp-question-title + .tp-options { margin-top: 14px; }
+
+.tp-options { display: flex; flex-direction: column; gap: 8px; }
+.tp-option-btn {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  width: 100%; text-align: right; background: var(--bg-surface-raised); border: 1px solid var(--border-hairline-strong);
+  border-radius: 10px; padding: 14px 16px; font-size: 14px; font-weight: 500; color: var(--text-primary);
+  font-family: var(--font-body); cursor: pointer; transition: border-color 0.15s ease, background 0.15s ease;
+}
+.tp-option-btn:hover { border-color: var(--teal); }
+.tp-option-btn.selected { border-color: var(--teal); background: rgba(79,201,196,0.08); color: var(--teal); font-weight: 600; }
+.tp-option-check {
+  flex-shrink: 0; width: 18px; height: 18px; border-radius: 5px; border: 1.5px solid var(--border-hairline-strong);
+  display: flex; align-items: center; justify-content: center; font-size: 11px; color: var(--bg-void);
+}
+.tp-option-btn.selected .tp-option-check { background: var(--teal); border-color: var(--teal); }
+
+.tp-text-input {
+  width: 100%; background: var(--bg-surface-raised); border: 1px solid var(--border-hairline-strong);
+  border-radius: 10px; padding: 13px 14px; color: var(--text-primary); font-family: var(--font-body);
+  font-size: 14px; resize: vertical; min-height: 80px;
+}
+.tp-text-input:focus { outline: none; border-color: var(--teal); }
+.tp-text-input::placeholder { color: var(--text-tertiary); }
+
+.tp-nav-row { display: flex; gap: 10px; margin-top: 24px; margin-bottom: 20px; }
+.tp-btn-back {
+  flex-shrink: 0; background: transparent; border: 1px solid var(--border-hairline-strong); color: var(--text-secondary);
+  border-radius: 10px; padding: 13px 20px; font-size: 14px; font-weight: 600; font-family: var(--font-body); cursor: pointer;
+}
+.tp-btn-next {
+  flex: 1; background: var(--teal); color: var(--bg-void); border: none; border-radius: 10px; padding: 13px;
+  font-size: 15px; font-weight: 700; font-family: var(--font-body); cursor: pointer;
+}
+.tp-btn-next:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ===== מסך סיכום - תוכנית המסחר ===== */
+.tp-summary-card {
+  background: linear-gradient(160deg, var(--bg-surface-raised) 0%, var(--bg-surface) 100%);
+  border: 1px solid var(--border-hairline-strong); border-radius: 16px; padding: 24px 20px; margin-bottom: 20px;
+}
+.tp-summary-row { padding: 14px 0; border-bottom: 1px solid var(--border-hairline); }
+.tp-summary-row:last-child { border-bottom: none; }
+.tp-summary-label { font-size: 11.5px; color: var(--text-tertiary); font-family: var(--font-mono); margin-bottom: 4px; }
+.tp-summary-value { font-size: 14.5px; color: var(--text-primary); font-weight: 500; line-height: 1.6; }
+
+.tp-personal-note {
+  background: rgba(156,143,217,0.08); border: 1px solid rgba(156,143,217,0.25); border-radius: 12px;
+  padding: 16px; margin-bottom: 20px; font-size: 13.5px; color: var(--text-secondary); line-height: 1.7;
+}
+
+.tp-checklist-card { background: var(--bg-surface); border: 1px solid var(--border-hairline); border-radius: 14px; padding: 20px; margin-bottom: 16px; }
+.tp-checklist-title { font-family: var(--font-display); font-size: 15.5px; font-weight: 600; margin-bottom: 14px; }
+.tp-checklist-item { display: flex; gap: 10px; align-items: flex-start; font-size: 13.5px; color: var(--text-secondary); padding: 8px 0; border-bottom: 1px solid var(--border-hairline); line-height: 1.6; }
+.tp-checklist-item:last-child { border-bottom: none; }
+.tp-checklist-item::before { content: '□'; color: var(--lavender); flex-shrink: 0; font-size: 15px; }
+.tp-checklist-footer { font-size: 12.5px; color: var(--text-tertiary); margin-top: 12px; font-style: italic; }
+
+.tp-cta-transition { font-size: 14.5px; color: var(--text-secondary); line-height: 1.7; margin-bottom: 18px; text-align: center; }
