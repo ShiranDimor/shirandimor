@@ -1,8 +1,11 @@
 // מבנה נתונים אחד לכל השאלון - קל לערוך/להוסיף שאלה בלי לחפש בתוך קוד ה-UI
 //
-// הערת ניסוח: כל השאלות/אפשרויות מנוסחות בלי "את/ה" או "נכנס/ת" - במקום זה שימוש
-// בשם פועל (״להיכנס״), בניסוח סתמי-רבים (״נכנסים לעסקה״) או בניסוח שמני (״שגרת מסחר קבועה״).
-// כך הטקסט עובד באופן טבעי לכל מגדר בלי לוכסנים.
+// מבנה השאלון (מאושר): שלב 1 שואל איפה נמצאים מול מסחר - התשובה קובעת אם שלבים
+// 4-6 (המותנים, על ניהול סיכון והתנהגות בזמן אמת) מוצגים בכלל. מי שעדיין לא התחיל
+// לא נשאל שאלות שמתאימות למי שכבר מבצע עסקאות בפועל.
+//
+// הערת ניסוח: כל השאלות/אפשרויות מנוסחות בלי "את/ה" או "נכנס/ת" - שימוש בשם פועל,
+// ניסוח סתמי-רבים, או ניסוח שמני. כך הטקסט עובד באופן טבעי לכל מגדר בלי לוכסנים.
 
 export type QuestionType = 'single' | 'multi' | 'text';
 
@@ -15,21 +18,25 @@ export interface Question {
   id: string; // תואם לשם העמודה ב-Supabase
   type: QuestionType;
   title: string;
-  helper?: string; // טקסט עזר קטן מתחת לכותרת
+  helper?: string;
   options?: QuestionOption[];
-  maxSelect?: number; // ל-multi בלבד - מקסימום בחירות (למשל "עד 3")
-  placeholder?: string; // ל-text בלבד
+  maxSelect?: number;
+  placeholder?: string;
   optional?: boolean;
-  suggestions?: string[]; // ל-text בלבד - הצעות מוכנות שלוחצים עליהן וממלאות/מוסיפות לשדה
-  showIf?: (answers: Record<string, unknown>) => boolean; // הצגה מותנית (למשל שדה סכום שמופיע רק אם נענה "כן")
+  suggestions?: string[];
+  showIf?: (answers: Record<string, unknown>) => boolean;
 }
 
 export interface StepDef {
   id: string;
-  title: string; // כותרת השלב (מוצגת מעל השאלות)
-  intro?: string; // טקסט קצר אופציונלי מעל השלב
+  title: string;
+  intro?: string;
   questions: Question[];
+  showIf?: (answers: Record<string, unknown>) => boolean; // הצגה מותנית של השלב כולו
 }
+
+// מי שכבר יש לו ניסיון כלשהו במסחר (לא "עוד לא התחלתי בכלל")
+const hasSomeExperience = (answers: Record<string, unknown>) => answers.trading_experience !== 'not_started';
 
 export const STEPS: StepDef[] = [
   {
@@ -39,13 +46,12 @@ export const STEPS: StepDef[] = [
       {
         id: 'trading_experience',
         type: 'single',
-        title: 'מה הכי מתאר את הניסיון במסחר כרגע?',
+        title: 'איפה נמצאים היום מול מסחר?',
         options: [
-          { value: 'not_started', label: 'עדיין לא התחלתי' },
-          { value: 'beginner', label: 'בתחילת הדרך' },
-          { value: 'inconsistent', label: 'כבר יש ניסיון, אבל בלי עקביות' },
-          { value: 'regular', label: 'יש שגרת מסחר קבועה' },
-          { value: 'experienced', label: 'יש ניסיון משמעותי' },
+          { value: 'not_started', label: 'עוד לא התחלתי, אבל התחום מאוד מסקרן' },
+          { value: 'tried_stopped', label: 'למדתי / ניסיתי בעבר אבל עצרתי' },
+          { value: 'trading_inconsistent', label: 'כבר סוחר/ת היום אבל עדיין לא עקבי/ת' },
+          { value: 'trading_improve', label: 'כבר סוחר/ת, ומחפש/ת לשפר את הדרך' },
         ],
       },
       {
@@ -76,7 +82,68 @@ export const STEPS: StepDef[] = [
   },
   {
     id: 'step-2',
-    title: 'הזמן שלי',
+    title: 'מה אני רוצה מזה',
+    questions: [
+      {
+        id: 'trading_motivation',
+        type: 'multi',
+        title: 'אם המסחר היה משתלב בחיים בצורה שמתאימה, מה היה הכי חשוב שהוא ייתן?',
+        helper: 'אפשר לבחור עד 2',
+        maxSelect: 2,
+        options: [
+          { value: 'extra_income', label: 'הכנסה נוספת לצד מה שכבר יש' },
+          { value: 'future_full_income', label: 'אפשרות שבעתיד להתפרנס ממסחר' },
+          { value: 'independence', label: 'יותר עצמאות ושליטה על ההכנסה' },
+          { value: 'flexible_hours', label: 'משהו שאפשר לעשות בשעות שמתאימות לחיים' },
+          { value: 'money_management', label: 'להרגיש שיודעים לנהל כסף טוב יותר' },
+          { value: 'prove_to_myself', label: 'להוכיח לעצמי שאני מסוגל/ת' },
+          { value: 'future_freedom', label: 'ליצור בעתיד יותר חופש - לי ולמשפחה' },
+          { value: 'just_checking', label: 'עדיין לא יודע/ת, פשוט רוצה לבדוק אם זה מתאים' },
+        ],
+      },
+      {
+        id: 'self_talk',
+        type: 'single',
+        title: 'איזה משפט הכי דומה למה שאומרים לעצמכם היום לגבי מסחר?',
+        options: [
+          { value: 'want_but_not_ready', label: 'רוצה להתחיל אבל מרגיש/ה שעדיין לא יודע/ת מספיק' },
+          { value: 'tried_didnt_work', label: 'כבר ניסיתי בעבר וזה לא באמת עבד לי' },
+          { value: 'know_but_dont_execute', label: 'יודע/ת לא מעט, אבל בזמן אמת לא עושה מה שתכננתי' },
+          { value: 'afraid_lose_money', label: 'מפחד/ת להפסיד כסף' },
+          { value: 'keep_searching_method', label: 'כל הזמן מחפש/ת עוד שיטה כי לא בטוח/ה במה שעושה' },
+          { value: 'not_for_me', label: 'לפעמים חושב/ת שמסחר פשוט לא בשבילי' },
+          { value: 'hard_to_believe', label: 'רואה אחרים מצליחים אבל קשה להאמין שגם אני יכול/ה' },
+          { value: 'no_time', label: 'אין מספיק זמן להתעסק עם זה' },
+          { value: 'rush_to_succeed', label: 'רוצה כל כך להצליח שלפעמים עושה דברים שלא הייתי צריך/ה' },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'step-3',
+    title: 'כסף ורגש',
+    questions: [
+      {
+        id: 'money_fear',
+        type: 'single',
+        title: 'כשחושבים על מסחר עם כסף אמיתי, מה הכי מטריד?',
+        options: [
+          { value: 'lose_money', label: 'להפסיד כסף' },
+          { value: 'mistake_no_exit', label: 'לעשות טעות ולא לדעת איך לצאת ממנה' },
+          { value: 'not_enough_capital', label: 'שאין מספיק כסף כדי שזה בכלל יהיה רלוונטי' },
+          { value: 'give_back_profit', label: 'להרוויח ואז להחזיר את הרווח לשוק' },
+          { value: 'emotions_take_over', label: 'שהרגש ישתלט בזמן אמת' },
+          { value: 'dont_understand_enough', label: 'שפשוט לא מבינים מספיק' },
+          { value: 'tried_before_hard_to_believe', label: 'כבר ניסיתי פעם ולא הצלחתי, קשה להאמין שזה יעבוד' },
+          { value: 'not_about_money', label: 'לא מפחד/ת במיוחד מהכסף - האתגר במקום אחר' },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'step-4',
+    title: 'הזמן והדרך שלי',
+    showIf: hasSomeExperience,
     questions: [
       {
         id: 'available_time',
@@ -90,24 +157,6 @@ export const STEPS: StepDef[] = [
           { value: 'varies', label: 'משתנה מאוד משבוע לשבוע' },
         ],
       },
-      {
-        id: 'trading_hours',
-        type: 'single',
-        title: 'מתי בדרך כלל נוח לשבת מול השוק ולעקוב אחרי פוזיציות?',
-        options: [
-          { value: 'morning_israel', label: 'בבוקר, לפני פתיחת השוק (שעון ישראל)' },
-          { value: 'us_open_evening', label: 'בערב, בזמן פתיחת המסחר בארה"ב' },
-          { value: 'late_night', label: 'בלילה, אחרי הסגירה' },
-          { value: 'weekends', label: 'בעיקר בסופי שבוע' },
-          { value: 'no_fixed', label: 'אין שעה קבועה' },
-        ],
-      },
-    ],
-  },
-  {
-    id: 'step-3',
-    title: 'איך אני בוחר עסקה?',
-    questions: [
       {
         id: 'strategy_clarity',
         type: 'single',
@@ -140,8 +189,9 @@ export const STEPS: StepDef[] = [
     ],
   },
   {
-    id: 'step-4',
+    id: 'step-5',
     title: 'ניהול סיכון',
+    showIf: hasSomeExperience,
     questions: [
       {
         id: 'stop_discipline',
@@ -186,64 +236,57 @@ export const STEPS: StepDef[] = [
     ],
   },
   {
-    id: 'step-5',
-    title: 'ניהול העסקה',
-    questions: [
-      {
-        id: 'management_difficulty',
-        type: 'multi',
-        title: 'מה הכי מאתגר אחרי שכבר נכנסים לעסקה?',
-        helper: 'אפשר לבחור כמה שרוצים',
-        options: [
-          { value: 'when_to_take_profit', label: 'לדעת מתי לממש רווח' },
-          { value: 'when_to_move_stop', label: 'לדעת מתי לקדם סטופ' },
-          { value: 'give_time', label: 'לתת לעסקה מספיק זמן לעבוד' },
-          { value: 'not_exit_early', label: 'לא לצאת מוקדם מדי' },
-          { value: 'not_move_stop', label: 'לא להזיז את הסטופ' },
-          { value: 'losing_trade', label: 'להתמודד עם עסקה שנכנסת להפסד' },
-          { value: 'winning_trade', label: 'להתמודד עם עסקה שכבר ברווח' },
-          { value: 'change_plan', label: 'לשנות את התוכנית תוך כדי' },
-          { value: 'no_real_plan', label: 'לא לנהל את העסקה לפי תוכנית מסודרת' },
-        ],
-      },
-    ],
-  },
-  {
     id: 'step-6',
-    title: 'המנטלי',
-    intro: 'זה השלב שבו כולנו מגלים שאנחנו סוחרים מצוין עד שיש כסף אמיתי על המסך :)',
+    title: 'בזמן אמת',
+    showIf: hasSomeExperience,
     questions: [
       {
-        id: 'mental_difficulty',
-        type: 'multi',
-        title: 'אילו משפטים הכי מוכרים?',
-        helper: 'אפשר לבחור כמה שרוצים',
+        id: 'losing_trade_behavior',
+        type: 'single',
+        title: 'כשעסקה לא מתנהגת כמו שציפו, מה בדרך כלל קורה?',
         options: [
-          { value: 'fomo', label: 'פחד לפספס עסקאות (FOMO)' },
-          { value: 'revenge_trading', label: 'רצון להחזיר הפסד מהר, מיד אחרי שהוא קרה' },
-          { value: 'exit_early', label: 'יציאה מוקדמת מדי מעסקאות טובות' },
-          { value: 'hard_to_pull_trigger', label: 'קושי ללחוץ על הכפתור כשמגיעה עסקה טובה' },
-          { value: 'too_many_trades', label: 'כניסה ליותר מדי עסקאות' },
-          { value: 'move_stop_midway', label: 'שינוי סטופ באמצע העסקה' },
-          { value: 'know_but_dont_do', label: 'לדעת מה נכון לעשות, אבל לא תמיד לבצע את זה' },
-          { value: 'disciplined', label: 'משמעת יחסית גבוהה' },
+          { value: 'follow_plan', label: 'עובדים לפי התוכנית ומקבלים את התוצאה' },
+          { value: 'doubt_analysis', label: 'מתחילים לפקפק בניתוח' },
+          { value: 'hard_to_close', label: 'קשה לסגור בהפסד' },
+          { value: 'give_more_room', label: 'נותנים לעסקה "עוד קצת מקום"' },
+          { value: 'want_revenge', label: 'רוצים להחזיר את ההפסד בעסקה הבאה' },
+          { value: 'more_afraid_next', label: 'נהיים הרבה יותר מפוחדים בעסקה הבאה' },
+          { value: 'search_other_method', label: 'מתחילים לחפש שיטה אחרת' },
+          { value: 'angry_at_self', label: 'כועסים על עצמנו' },
+          { value: 'not_enough_experience', label: 'עוד לא סחרתי מספיק כדי לדעת' },
         ],
       },
       {
-        id: 'main_fear',
-        type: 'multi',
-        title: 'מה הכי מפחיד בקשר למסחר?',
-        helper: 'אפשר לבחור כמה תשובות - זה נשאר בינינו',
+        id: 'winning_trade_behavior',
+        type: 'single',
+        title: 'ומה בדרך כלל קורה כשהעסקה דווקא ברווח?',
         options: [
-          { value: 'lose_money', label: 'לאבד כסף שחשוב' },
-          { value: 'tried_before_failed', label: 'כבר ניסיתי בעבר ולא הצלחתי' },
-          { value: 'lost_belief', label: 'כבר לא ממש מאמין/ה שזה יכול לעבוד בשבילי' },
-          { value: 'not_good_enough', label: 'לגלות שזה פשוט לא בשבילי' },
-          { value: 'miss_opportunity', label: 'לפספס הזדמנות טובה' },
-          { value: 'embarrassment', label: 'לעשות טעות מביכה' },
-          { value: 'no_idea_if_right', label: 'לא לדעת אם בכלל עושים את זה נכון' },
-          { value: 'losing_control', label: 'לאבד שליטה על הרגש כשיש כסף על הכף' },
-          { value: 'other', label: 'משהו אחר' },
+          { value: 'take_profit_early_fear', label: 'לוקחים רווח מוקדם כי מפחדים שהוא ייעלם' },
+          { value: 'want_more', label: 'מתחילים לרצות עוד ועוד' },
+          { value: 'dont_know_when_move_stop', label: 'לא יודעים מתי לקדם סטופ' },
+          { value: 'change_target', label: 'משנים את היעד תוך כדי' },
+          { value: 'follow_plan', label: 'מנהלים את העסקה לפי התוכנית' },
+          { value: 'turns_to_loss', label: 'לפעמים עסקה טובה הופכת בחזרה למפסידה' },
+          { value: 'not_enough_experience', label: 'עדיין אין מספיק ניסיון כדי לדעת' },
+        ],
+      },
+      {
+        id: 'stop_me_from',
+        type: 'multi',
+        title: 'אם היינו יושבים ביחד בזמן המסחר, מה הכי היה כדאי לעצור?',
+        helper: 'אפשר לבחור עד 2',
+        maxSelect: 2,
+        options: [
+          { value: 'chase_runaway', label: 'לרדוף אחרי מניה שכבר ברחה' },
+          { value: 'enter_no_stop', label: 'להיכנס בלי סטופ' },
+          { value: 'move_stop', label: 'להזיז את הסטופ' },
+          { value: 'exit_early', label: 'לצאת מוקדם מדי' },
+          { value: 'add_to_loser', label: 'להוסיף לעסקה מפסידה' },
+          { value: 'revenge_trade_immediately', label: 'לקחת עוד עסקה מיד אחרי הפסד רק כדי להחזיר' },
+          { value: 'fomo_entry', label: 'להיכנס כי "נראה שזה עולה"' },
+          { value: 'too_many_positions', label: 'לפתוח יותר מדי עסקאות' },
+          { value: 'freeze_fear', label: 'לא לעשות כלום כי מפחדים לטעות' },
+          { value: 'trade_while_upset', label: 'להמשיך לסחור כשכבר עצבניים או לא מרוכזים' },
         ],
       },
     ],
@@ -253,51 +296,38 @@ export const STEPS: StepDef[] = [
     title: 'היעד שלי',
     questions: [
       {
-        id: 'main_goal',
-        type: 'multi',
-        title: 'מה הדבר האחד שהכי היה כדאי לשפר במסחר ב-30 הימים הקרובים?',
-        helper: 'אפשר לבחור כמה שרוצים',
+        id: 'environment_influence',
+        type: 'single',
+        title: 'עד כמה הסביבה משפיעה על הדרך במסחר?',
         options: [
-          { value: 'better_setups', label: 'למצוא עסקאות איכותיות יותר' },
-          { value: 'entry_timing', label: 'לדעת מתי להיכנס' },
-          { value: 'risk_management', label: 'ניהול סיכון' },
-          { value: 'trade_management', label: 'ניהול עסקה' },
-          { value: 'discipline', label: 'משמעת' },
-          { value: 'mentality', label: 'מנטליות' },
-          { value: 'consistency', label: 'עקביות' },
-          { value: 'chart_reading', label: 'להבין טוב יותר גרפים' },
-          { value: 'build_strategy', label: 'לבנות אסטרטגיה ברורה' },
-          { value: 'start_trading', label: 'להתחיל בכלל לסחור' },
+          { value: 'supportive', label: 'יש סביבה שתומכת' },
+          { value: 'skeptical', label: 'הסביבה די סקפטית לגבי התחום' },
+          { value: 'dont_talk_about_it', label: 'כמעט לא מדברים עם אף אחד על זה' },
+          { value: 'others_doubt_me', label: 'לפעמים דעות של אחרים גורמות לפקפק בעצמי' },
+          { value: 'want_more_support', label: 'הייתי רוצה שיהיה עם מי לדבר על זה' },
+          { value: 'doesnt_affect', label: 'זה כמעט לא משפיע' },
         ],
       },
       {
-        id: 'trading_motivation',
+        id: 'progress_markers',
         type: 'multi',
-        title: 'מה היית רוצה להשיג ממסחר?',
-        helper: 'אפשר לבחור כמה שרוצים',
+        title: 'אם בעוד 30 יום לא נמדוד לפי כמה כסף הרווחתם - מה כן ירגיש כהתקדמות?',
+        helper: 'אפשר לבחור עד 3',
+        maxSelect: 3,
         options: [
-          { value: 'extra_income', label: 'הכנסה נוספת, לצד מה שכבר יש' },
-          { value: 'full_income', label: 'להתפרנס מהמסחר באופן מלא' },
-          { value: 'financial_security', label: 'לבנות ביטחון כלכלי לעתיד' },
-          { value: 'prove_to_myself', label: 'להוכיח לעצמי שאני מסוגל/ת' },
-          { value: 'learn_understand', label: 'סתם ללמוד ולהבין את השוק' },
-          { value: 'other', label: 'משהו אחר' },
+          { value: 'clear_method', label: 'יש סוף סוף שיטה ברורה' },
+          { value: 'know_when_enter', label: 'יודעים מתי להיכנס ומתי לא' },
+          { value: 'know_risk_per_trade', label: 'יודעים כמה מסתכנים בכל עסקה' },
+          { value: 'respect_stop', label: 'מכבדים את הסטופ' },
+          { value: 'give_time_to_work', label: 'מצליחים לתת לעסקאות זמן לעבוד' },
+          { value: 'lock_profit', label: 'יודעים לנעול רווח' },
+          { value: 'less_fear_fomo', label: 'פועלים פחות מתוך פחד או FOMO' },
+          { value: 'fewer_better_trades', label: 'לוקחים פחות עסקאות אבל טובות יותר' },
+          { value: 'stop_method_hopping', label: 'פחות מחפשים כל הזמן שיטה חדשה' },
+          { value: 'have_support', label: 'מרגישים שיש עם מי להתייעץ' },
+          { value: 'less_complicated', label: 'מבינים שמסחר הרבה פחות מסובך ממה שחשבו' },
+          { value: 'first_step', label: 'פשוט עשו סוף סוף את הצעד הראשון' },
         ],
-      },
-      {
-        id: 'trading_dream',
-        type: 'text',
-        title: 'עוד שנה מהיום, אם המסחר יעבוד בדיוק כמו שרוצים - איך זה נראה?',
-        helper: 'אין תשובה נכונה - זה יכול להיות משהו כספי, על ביטחון עצמי, על זמן חופשי, או משהו אחר לגמרי',
-        placeholder: 'התשובה...',
-        optional: true,
-      },
-      {
-        id: 'definition_of_success',
-        type: 'text',
-        title: 'מה יהיה סימן לכך שהחודש הזה היה מוצלח?',
-        helper: 'לא חייבים לענות ב"כמה כסף הרווחתי" - זה יכול להיות גם: עמדתי בסטופ שלי, לקחתי פחות עסקאות, פעלתי לפי תוכנית, הצלחתי לזהות Setup וכו\'',
-        placeholder: 'התשובה...',
       },
     ],
   },
@@ -311,6 +341,7 @@ export const STEPS: StepDef[] = [
         title: 'איזה כלל אחד כדאי להתחייב אליו ולא להפר בחודש הקרוב?',
         helper: 'אפשר להקליד כלל אישי, או ללחוץ על אחת ההצעות למטה כנקודת התחלה ולערוך אותה',
         placeholder: 'התשובה...',
+        optional: true,
         suggestions: [
           'לא להזיז סטופ',
           'לא להיכנס לעסקה בלי תוכנית',
@@ -324,12 +355,15 @@ export const STEPS: StepDef[] = [
   },
 ];
 
+export function visibleSteps(answers: Record<string, unknown>): StepDef[] {
+  return STEPS.filter((s) => !s.showIf || s.showIf(answers));
+}
+
 export function visibleQuestions(step: StepDef, answers: Record<string, unknown>): Question[] {
   return step.questions.filter((q) => !q.showIf || q.showIf(answers));
 }
 
 export const ALL_QUESTIONS: Question[] = STEPS.flatMap((s) => s.questions);
-export const TOTAL_STEPS = STEPS.length;
 
 export function findOption(questionId: string, value: string): QuestionOption | undefined {
   const q = ALL_QUESTIONS.find((q) => q.id === questionId);

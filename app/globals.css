@@ -618,6 +618,38 @@
 
 .tp-cta-transition { font-size: 14.5px; color: var(--text-secondary); line-height: 1.7; margin-bottom: 18px; text-align: center; }
 
+/* ===== מסך אבחון אישי (5 פרופילים) ===== */
+.tp-diagnosis-eyebrow { font-size: 11.5px; color: var(--text-tertiary); font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 4px; }
+.tp-diagnosis-section { margin-bottom: 22px; }
+.tp-diagnosis-label { font-family: var(--font-display); font-size: 14.5px; font-weight: 600; color: var(--teal); margin-bottom: 10px; }
+.tp-diagnosis-para { font-size: 14.5px; color: var(--text-primary); line-height: 1.75; }
+
+.tp-strength-list, .tp-blocker-list, .tp-donot-list { display: flex; flex-direction: column; gap: 8px; }
+.tp-strength-item, .tp-blocker-item, .tp-donot-item {
+  font-size: 13.5px; color: var(--text-secondary); line-height: 1.6; padding-right: 22px; position: relative;
+}
+.tp-strength-item::before { content: '✓'; position: absolute; right: 0; color: var(--profit); font-weight: 700; }
+.tp-blocker-item::before { content: '•'; position: absolute; right: 4px; color: var(--lavender); font-weight: 700; }
+.tp-donot-item::before { content: '✗'; position: absolute; right: 0; color: var(--loss); font-weight: 700; }
+
+.tp-tasks-list { display: flex; flex-direction: column; gap: 10px; }
+.tp-tasks-item { display: flex; gap: 12px; align-items: flex-start; font-size: 13.5px; color: var(--text-secondary); line-height: 1.6; }
+.tp-tasks-num {
+  flex-shrink: 0; width: 22px; height: 22px; border-radius: 50%; background: var(--bg-surface-raised);
+  border: 1px solid var(--border-hairline-strong); color: var(--teal); font-family: var(--font-mono); font-size: 12px;
+  font-weight: 700; display: flex; align-items: center; justify-content: center;
+}
+
+.tp-mission-box {
+  background: rgba(79,201,196,0.08); border: 1px solid rgba(79,201,196,0.25); border-radius: 12px;
+  padding: 16px; margin-bottom: 14px;
+}
+.tp-rule-box { background: rgba(156,143,217,0.08); border-color: rgba(156,143,217,0.25); }
+.tp-mission-label { font-size: 11px; font-family: var(--font-mono); color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 6px; }
+.tp-mission-text { font-size: 14px; color: var(--text-primary); font-weight: 500; line-height: 1.6; }
+
+.tp-closing-message { font-size: 13.5px; color: var(--text-secondary); line-height: 1.75; margin: 20px 0; font-style: italic; text-align: center; }
+
 /* ===== כרטיס טיזר בעמוד הבית לכלי תוכנית המסחר ===== */
 .tp-home-teaser {
   display: block; text-decoration: none;

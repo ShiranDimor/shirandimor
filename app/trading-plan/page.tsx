@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { STEPS, TOTAL_STEPS, visibleQuestions } from '@/lib/tradingPlan/questions';
+import { visibleSteps, visibleQuestions } from '@/lib/tradingPlan/questions';
+import { classifyProfile } from '@/lib/tradingPlan/profile';
 import QuestionCard from '@/components/tradingPlan/QuestionCard';
 import ProgressBar from '@/components/tradingPlan/ProgressBar';
 import SummaryScreen from '@/components/tradingPlan/SummaryScreen';
@@ -92,7 +93,8 @@ export default function TradingPlanPage() {
     });
   }
 
-  const currentStep = STEPS[stepIndex];
+  const effectiveSteps = visibleSteps(answers);
+  const currentStep = effectiveSteps[stepIndex];
   const currentVisibleQuestions = currentStep ? visibleQuestions(currentStep, answers) : [];
 
   const canProceed = currentVisibleQuestions.every((q) => {
@@ -105,7 +107,7 @@ export default function TradingPlanPage() {
 
   async function handleNext() {
     setLoadingNext(true);
-    const isLastStep = stepIndex === TOTAL_STEPS - 1;
+    const isLastStep = stepIndex === effectiveSteps.length - 1;
     const nextStepIndex = stepIndex + 1;
 
     const id = await autosave(responseId, { current_step: nextStepIndex + 1, ...answers });
@@ -144,6 +146,7 @@ export default function TradingPlanPage() {
       name: answers.name || null,
       phone: answers.phone,
       email: answers.email,
+      computed_profile: classifyProfile(answers),
     });
 
     if (id) {
@@ -222,7 +225,7 @@ export default function TradingPlanPage() {
 
       {phase === 'quiz' && currentStep && (
         <>
-          <ProgressBar stepIndex={stepIndex} totalSteps={TOTAL_STEPS} />
+          <ProgressBar stepIndex={stepIndex} totalSteps={effectiveSteps.length} />
           <div className="tp-step-title">{currentStep.title}</div>
           {currentStep.intro && <div className="tp-step-intro">{currentStep.intro}</div>}
 
@@ -238,7 +241,7 @@ export default function TradingPlanPage() {
           <div className="tp-nav-row">
             <button type="button" className="tp-btn-back" onClick={handleBack}>חזרה</button>
             <button type="button" className="tp-btn-next" onClick={handleNext} disabled={!canProceed || loadingNext}>
-              {stepIndex === TOTAL_STEPS - 1 ? 'לסיכום התוכנית שלי' : 'המשך'}
+              {stepIndex === effectiveSteps.length - 1 ? 'לסיכום התוכנית שלי' : 'המשך'}
             </button>
           </div>
         </>

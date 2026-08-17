@@ -76,10 +76,12 @@ function buildInsightsNote(row: Record<string, any>) {
   const lines = [
     'השלים/ה את "תוכנית המסחר ל-30 יום" באתר.',
     row.source ? `מקור: ${row.source}` : null,
-    Array.isArray(row.main_goal) && row.main_goal.length ? `מטרה מרכזית: ${row.main_goal.join(', ')}` : null,
-    Array.isArray(row.trading_motivation) && row.trading_motivation.length ? `מניע: ${row.trading_motivation.join(', ')}` : null,
-    Array.isArray(row.main_fear) && row.main_fear.length ? `פחד מרכזי: ${row.main_fear.join(', ')}` : null,
-    row.trading_dream ? `החלום לשנה קדימה: ${row.trading_dream}` : null,
+    row.computed_profile ? `פרופיל: ${row.computed_profile}` : null,
+    Array.isArray(row.trading_motivation) && row.trading_motivation.length ? `מה רוצה מהמסחר: ${row.trading_motivation.join(', ')}` : null,
+    row.self_talk ? `משפט מוכר: ${row.self_talk}` : null,
+    row.money_fear ? `מה מטריד בקשר לכסף: ${row.money_fear}` : null,
+    row.environment_influence ? `הסביבה: ${row.environment_influence}` : null,
+    Array.isArray(row.progress_markers) && row.progress_markers.length ? `מה ירגיש כהתקדמות: ${row.progress_markers.join(', ')}` : null,
     row.definition_of_success ? `סימן להצלחה: ${row.definition_of_success}` : null,
     row.personal_rule ? `הכלל האישי: ${row.personal_rule}` : null,
   ].filter(Boolean);
