@@ -46,7 +46,7 @@ export const STEPS: StepDef[] = [
       {
         id: 'trading_experience',
         type: 'single',
-        title: 'איפה נמצאים היום מול מסחר?',
+        title: 'איפה אתם נמצאים היום מול מסחר?',
         options: [
           { value: 'not_started', label: 'עוד לא התחלתי, אבל התחום מאוד מסקרן' },
           { value: 'tried_stopped', label: 'למדתי / ניסיתי בעבר אבל עצרתי' },
@@ -57,7 +57,7 @@ export const STEPS: StepDef[] = [
       {
         id: 'markets',
         type: 'multi',
-        title: 'באילו שווקים המסחר מתמקד (או צפוי להתמקד)?',
+        title: 'באילו שווקים אתם סוחרים, או שוקלים לסחור?',
         helper: 'אפשר לבחור יותר מאחת',
         options: [
           { value: 'stocks', label: 'מניות' },
@@ -70,7 +70,7 @@ export const STEPS: StepDef[] = [
       {
         id: 'trading_style',
         type: 'single',
-        title: 'איזה סוג מסחר הכי רלוונטי?',
+        title: 'איזה סוג מסחר הכי מדבר אליכם?',
         options: [
           { value: 'intraday', label: 'תוך יומי' },
           { value: 'swing', label: 'סווינג' },
@@ -87,7 +87,7 @@ export const STEPS: StepDef[] = [
       {
         id: 'trading_motivation',
         type: 'multi',
-        title: 'אם המסחר היה משתלב בחיים בצורה שמתאימה, מה היה הכי חשוב שהוא ייתן?',
+        title: 'אם המסחר היה משתלב בחיים שלכם בדיוק כמו שמתאים לכם, מה הכי היה חשוב שהוא ייתן לכם?',
         helper: 'אפשר לבחור עד 2',
         maxSelect: 2,
         options: [
@@ -104,7 +104,7 @@ export const STEPS: StepDef[] = [
       {
         id: 'self_talk',
         type: 'single',
-        title: 'איזה משפט הכי דומה למה שאומרים לעצמכם היום לגבי מסחר?',
+        title: 'איזה משפט הכי דומה למה שאתם אומרים לעצמכם היום לגבי מסחר?',
         options: [
           { value: 'want_but_not_ready', label: 'רוצה להתחיל אבל מרגיש/ה שעדיין לא יודע/ת מספיק' },
           { value: 'tried_didnt_work', label: 'כבר ניסיתי בעבר וזה לא באמת עבד לי' },
@@ -126,7 +126,7 @@ export const STEPS: StepDef[] = [
       {
         id: 'money_fear',
         type: 'single',
-        title: 'כשחושבים על מסחר עם כסף אמיתי, מה הכי מטריד?',
+        title: 'כשאתם חושבים על מסחר עם כסף אמיתי, מה הכי מטריד אתכם?',
         options: [
           { value: 'lose_money', label: 'להפסיד כסף' },
           { value: 'mistake_no_exit', label: 'לעשות טעות ולא לדעת איך לצאת ממנה' },
@@ -148,7 +148,7 @@ export const STEPS: StepDef[] = [
       {
         id: 'available_time',
         type: 'single',
-        title: 'כמה זמן ריאלי אפשר להקדיש למסחר בשבוע?',
+        title: 'כמה זמן ריאלי אתם יכולים להקדיש למסחר בשבוע?',
         options: [
           { value: 'under_1h', label: 'פחות משעה בשבוע' },
           { value: '1_3h', label: '1-3 שעות בשבוע' },
@@ -160,7 +160,7 @@ export const STEPS: StepDef[] = [
       {
         id: 'strategy_clarity',
         type: 'single',
-        title: 'עד כמה ברור ה-Setup או האסטרטגיה שמחפשים?',
+        title: 'עד כמה ברור לכם ה-Setup או האסטרטגיה שאתם מחפשים?',
         options: [
           { value: 'very_clear', label: 'מאוד ברור מה מחפשים' },
           { value: 'mostly', label: 'פחות או יותר ברור' },
@@ -171,7 +171,7 @@ export const STEPS: StepDef[] = [
       {
         id: 'entry_tools',
         type: 'multi',
-        title: 'מה בדרך כלל מוביל לכניסה לעסקה?',
+        title: 'מה בדרך כלל גורם לכם להיכנס לעסקה?',
         helper: 'אפשר לבחור כמה תשובות',
         options: [
           { value: 'support_resistance', label: 'תמיכה והתנגדות' },
@@ -196,7 +196,7 @@ export const STEPS: StepDef[] = [
       {
         id: 'stop_discipline',
         type: 'single',
-        title: 'לפני כניסה לעסקה - האם מיקום הסטופ כבר ידוע?',
+        title: 'לפני שאתם נכנסים לעסקה - האם אתם כבר יודעים איפה הסטופ?',
         options: [
           { value: 'always', label: 'תמיד' },
           { value: 'usually', label: 'בדרך כלל' },
@@ -207,7 +207,7 @@ export const STEPS: StepDef[] = [
       {
         id: 'risk_per_trade',
         type: 'single',
-        title: 'האם קיים סכום או אחוז קבוע לסיכון בכל עסקה?',
+        title: 'יש לכם סכום או אחוז קבוע שאתם מוכנים לסכן בכל עסקה?',
         options: [
           { value: 'yes', label: 'כן' },
           { value: 'roughly', label: 'בערך' },
@@ -225,7 +225,7 @@ export const STEPS: StepDef[] = [
       {
         id: 'daily_max_loss',
         type: 'single',
-        title: 'האם קיים הפסד מקסימלי יומי שמעבר לו עוצרים?',
+        title: 'יש לכם הפסד מקסימלי יומי שאחריו אתם עוצרים?',
         options: [
           { value: 'yes_follow', label: 'כן, ובדרך כלל עומדים בזה' },
           { value: 'yes_hard', label: 'יש כלל כזה, אבל קשה לעמוד בו בפועל' },
@@ -243,7 +243,7 @@ export const STEPS: StepDef[] = [
       {
         id: 'losing_trade_behavior',
         type: 'single',
-        title: 'כשעסקה לא מתנהגת כמו שציפו, מה בדרך כלל קורה?',
+        title: 'כשעסקה לא מתנהגת כמו שציפיתם, מה בדרך כלל קורה אצלכם?',
         options: [
           { value: 'follow_plan', label: 'עובדים לפי התוכנית ומקבלים את התוצאה' },
           { value: 'doubt_analysis', label: 'מתחילים לפקפק בניתוח' },
@@ -259,7 +259,7 @@ export const STEPS: StepDef[] = [
       {
         id: 'winning_trade_behavior',
         type: 'single',
-        title: 'ומה בדרך כלל קורה כשהעסקה דווקא ברווח?',
+        title: 'ומה בדרך כלל קורה כשהעסקה שלכם דווקא ברווח?',
         options: [
           { value: 'take_profit_early_fear', label: 'לוקחים רווח מוקדם כי מפחדים שהוא ייעלם' },
           { value: 'want_more', label: 'מתחילים לרצות עוד ועוד' },
@@ -273,7 +273,7 @@ export const STEPS: StepDef[] = [
       {
         id: 'stop_me_from',
         type: 'multi',
-        title: 'אם היינו יושבים ביחד בזמן המסחר, מה הכי היה כדאי לעצור?',
+        title: 'אם היינו יושבים ביחד בזמן המסחר שלכם, מה הכי הייתי רוצה לעצור אתכם מלעשות?',
         helper: 'אפשר לבחור עד 2',
         maxSelect: 2,
         options: [
@@ -298,7 +298,7 @@ export const STEPS: StepDef[] = [
       {
         id: 'environment_influence',
         type: 'single',
-        title: 'עד כמה הסביבה משפיעה על הדרך במסחר?',
+        title: 'עד כמה הסביבה שלכם משפיעה על הדרך שלכם במסחר?',
         options: [
           { value: 'supportive', label: 'יש סביבה שתומכת' },
           { value: 'skeptical', label: 'הסביבה די סקפטית לגבי התחום' },
@@ -311,7 +311,7 @@ export const STEPS: StepDef[] = [
       {
         id: 'progress_markers',
         type: 'multi',
-        title: 'אם בעוד 30 יום לא נמדוד לפי כמה כסף הרווחתם - מה כן ירגיש כהתקדמות?',
+        title: 'אם בעוד 30 יום לא היינו מודדים אתכם לפי כמה כסף הרווחתם - מה כן היה גורם לכם להרגיש שהתקדמתם?',
         helper: 'אפשר לבחור עד 3',
         maxSelect: 3,
         options: [
@@ -338,7 +338,7 @@ export const STEPS: StepDef[] = [
       {
         id: 'personal_rule',
         type: 'text',
-        title: 'איזה כלל אחד כדאי להתחייב אליו ולא להפר בחודש הקרוב?',
+        title: 'איזה כלל אחד אתם מתחייבים אליו, ולא מפרים בחודש הקרוב?',
         helper: 'אפשר להקליד כלל אישי, או ללחוץ על אחת ההצעות למטה כנקודת התחלה ולערוך אותה',
         placeholder: 'התשובה...',
         optional: true,

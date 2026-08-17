@@ -550,7 +550,7 @@
 
 .tp-question-card { background: var(--bg-surface); border: 1px solid var(--border-hairline); border-radius: 14px; padding: 20px; margin-bottom: 16px; }
 .tp-question-title { font-size: 15.5px; font-weight: 600; margin-bottom: 4px; line-height: 1.5; }
-.tp-question-helper { font-size: 12.5px; color: var(--text-tertiary); margin-bottom: 14px; line-height: 1.6; }
+.tp-question-helper { font-size: 12.5px; color: var(--orange); font-weight: 700; margin-bottom: 14px; line-height: 1.6; }
 .tp-question-title + .tp-options { margin-top: 14px; }
 
 .tp-options { display: flex; flex-direction: column; gap: 8px; }
