@@ -90,7 +90,11 @@ const TEMP_DEBUG_TOKEN = 'debug-image-2026-08-16-shiran';
 
 export async function GET(request: Request) {
   const authHeader = request.headers.get('authorization');
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}` && authHeader !== `Bearer ${TEMP_DEBUG_TOKEN}`) {
+  const url = new URL(request.url);
+  const queryToken = url.searchParams.get('token');
+  const providedToken = authHeader?.replace('Bearer ', '') || queryToken;
+
+  if (providedToken !== process.env.CRON_SECRET && providedToken !== TEMP_DEBUG_TOKEN) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
