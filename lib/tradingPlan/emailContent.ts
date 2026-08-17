@@ -31,6 +31,11 @@ interface PlanRow {
   personal_rule?: string | null;
 }
 
+interface FollowupRow extends PlanRow {
+  id: string;
+  completed_at?: string | null;
+}
+
 function labelsJoined(values: string[] | null | undefined, questionId: string): string {
   if (!values || !values.length) return '—';
   return findOptions(questionId, values).map((o) => o.label).join(', ');
@@ -151,6 +156,40 @@ export function buildAdminNotifyEmailHtml(r: PlanRow): string {
           ${row('מה ירגיש כהתקדמות', labelsJoined(r.progress_markers, 'progress_markers'))}
           ${row('הכלל האישי', r.personal_rule || '—')}
         </table>
+      </div>
+    </div>
+  </div>`;
+}
+
+// המייל היומי המרוכז לשירן - כל מי שמילא את השאלון לפני שבוע בדיוק, כדי לפנות אליו/ה בפולואפ
+export function buildFollowupDigestEmailHtml(rows: FollowupRow[]): string {
+  const cards = rows.map((r) => {
+    const content = getProfileContent(classifyProfile(r as unknown as Record<string, unknown>));
+    const weekOneWin = labelsJoined(r.week_one_win, 'week_one_win');
+    const waLink = r.phone ? `https://wa.me/972${r.phone.replace(/\D/g, '').replace(/^0/, '')}` : null;
+
+    return `
+      <div style="border:1px solid #eee;border-radius:12px;padding:16px 18px;margin-bottom:14px;">
+        <div style="font-size:15px;font-weight:700;color:#111;margin-bottom:2px;">${r.name || 'ללא שם'}</div>
+        <div style="font-size:12px;color:#888;margin-bottom:10px;">${r.phone || '—'} · ${r.email || '—'} · פרופיל: ${content.title}</div>
+        ${weekOneWin !== '—' ? `<div style="font-size:13px;color:#0f766e;margin-bottom:8px;"><b>ככה הוא/היא אמר/ה שידע/תדע שהתחיל/ה נכון:</b> ${weekOneWin}</div>` : ''}
+        <div style="font-size:13px;color:#444;margin-bottom:8px;"><b>הכלל האישי:</b> ${r.personal_rule || content.defaultRule}</div>
+        <div style="font-size:12.5px;color:#666;">
+          <b>3 הדברים שהתחייב/ה עליהם לשבוע הראשון:</b>
+          ${content.threeThings.map((t) => `<div style="margin-top:2px;">• ${t}</div>`).join('')}
+        </div>
+        ${waLink ? `<a href="${waLink}" style="display:inline-block;margin-top:12px;background:#25D366;color:#fff;text-decoration:none;font-size:12.5px;font-weight:700;padding:8px 14px;border-radius:8px;">שליחת הודעה בוואטסאפ ←</a>` : ''}
+      </div>`;
+  }).join('');
+
+  return `
+  <div dir="rtl" style="font-family: Arial, Helvetica, sans-serif; background:#f4f4f5; padding:24px 12px;">
+    <div style="max-width:600px;margin:0 auto;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #e5e5e5;">
+      <div style="background:#111318;padding:20px 24px;">
+        <div style="color:#fff;font-size:16px;font-weight:700;">תזכורת פולואפ - ${rows.length} ${rows.length === 1 ? 'מי שמילא/ה' : 'שמילאו'} תוכנית מסחר לפני שבוע</div>
+      </div>
+      <div style="padding:20px 24px;">
+        ${cards}
       </div>
     </div>
   </div>`;

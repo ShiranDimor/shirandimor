@@ -5,8 +5,10 @@ import { findOptions } from './questions';
 const LEAD_GROUP_NAME = 'לידים חדשים';
 const CAMPAIGN_COLUMN_TITLE = 'campaign_name';
 const STATUS_COLUMN_TITLE = 'סטטוס טיפול';
+const FOLLOWUP_COLUMN_TITLE = 'תאריך פולואפ';
 const TRADING_PLAN_STATUS_LABEL = 'בנה תוכנית מסחר';
 const CAMPAIGN_VALUE = 'תוכנית מסחר 30 יום';
+const FOLLOWUP_DAYS_AHEAD = 7;
 
 function normalizePhone(raw: string) {
   const digits = raw.replace(/\D/g, '');
@@ -40,7 +42,25 @@ async function getBoardSchema(token: string, boardId: string) {
     emailColumnId: columns.find((c) => c.type === 'email')?.id,
     campaignColumnId: columns.find((c) => c.title === CAMPAIGN_COLUMN_TITLE)?.id,
     statusColumnId: columns.find((c) => c.title === STATUS_COLUMN_TITLE)?.id,
+    followupColumnId: columns.find((c) => c.title === FOLLOWUP_COLUMN_TITLE && c.type === 'date')?.id,
   };
+}
+
+// יוצר את עמודת "תאריך פולואפ" בלוח אם היא עדיין לא קיימת - כדי שלא תצטרכי להוסיף אותה ידנית
+async function ensureFollowupColumn(token: string, boardId: string): Promise<string | null> {
+  const data: any = await mondayRequest(
+    token,
+    `mutation ($boardId: ID!, $title: String!) {
+      create_column (board_id: $boardId, title: $title, column_type: date) { id }
+    }`,
+    { boardId, title: FOLLOWUP_COLUMN_TITLE }
+  );
+  return data?.data?.create_column?.id || null;
+}
+
+function followupDateValue(): string {
+  const d = new Date(Date.now() + FOLLOWUP_DAYS_AHEAD * 24 * 60 * 60 * 1000);
+  return d.toISOString().slice(0, 10);
 }
 
 // מחפש פריט קיים בכל הלוח (לא רק בקבוצת "לידים חדשים") לפי מספר נייד מנורמל - כדי לא ליצור כפילות למי שכבר קיים
@@ -109,9 +129,14 @@ export async function syncTradingPlanLead(row: Record<string, any>): Promise<{ o
   }
 
   try {
-    const { groupId, phoneColumnId, emailColumnId, campaignColumnId, statusColumnId } = await getBoardSchema(token, boardId);
+    const { groupId, phoneColumnId, emailColumnId, campaignColumnId, statusColumnId, followupColumnId: existingFollowupColumnId } = await getBoardSchema(token, boardId);
     const normalized = normalizePhone(row.phone);
     const note = buildInsightsNote(row);
+
+    const followupColumnId = existingFollowupColumnId || await ensureFollowupColumn(token, boardId).catch((e) => {
+      console.error('Monday.com: נכשלה יצירת עמודת תאריך פולואפ', e);
+      return null;
+    });
 
     const existingItemId = phoneColumnId
       ? await findItemIdByPhone(token, boardId, phoneColumnId, normalized).catch(() => null)
@@ -128,6 +153,16 @@ export async function syncTradingPlanLead(row: Record<string, any>): Promise<{ o
         ).catch((e) => console.error('Monday.com: נכשל עדכון סטטוס לליד קיים', e));
       }
 
+      if (followupColumnId) {
+        await mondayRequest(
+          token,
+          `mutation ($boardId: ID!, $itemId: ID!, $columnId: String!, $value: JSON!) {
+            change_column_value (board_id: $boardId, item_id: $itemId, column_id: $columnId, value: $value) { id }
+          }`,
+          { boardId, itemId: existingItemId, columnId: followupColumnId, value: JSON.stringify({ date: followupDateValue() }) }
+        ).catch((e) => console.error('Monday.com: נכשל עדכון תאריך פולואפ לליד קיים', e));
+      }
+
       await mondayRequest(
         token,
         `mutation ($itemId: ID!, $body: String!) { create_update (item_id: $itemId, body: $body) { id } }`,
@@ -142,6 +177,7 @@ export async function syncTradingPlanLead(row: Record<string, any>): Promise<{ o
     if (emailColumnId && row.email) columnValues[emailColumnId] = { email: row.email, text: row.email };
     if (campaignColumnId) columnValues[campaignColumnId] = CAMPAIGN_VALUE;
     if (statusColumnId) columnValues[statusColumnId] = { label: TRADING_PLAN_STATUS_LABEL };
+    if (followupColumnId) columnValues[followupColumnId] = { date: followupDateValue() };
 
     const createData: any = await mondayRequest(
       token,
