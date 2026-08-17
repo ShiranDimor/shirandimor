@@ -178,7 +178,7 @@ export default function HomePage() {
 
       <Link href="/trading-plan" className="tp-home-teaser">
         <div className="tp-home-teaser-badge">10 דקות · בלי התחייבות</div>
-        <div className="tp-home-teaser-title">בואו נבנה יחד תוכנית מסחר אישית ל-30 יום</div>
+        <div className="tp-home-teaser-title">8 שלבים לבניית תוכנית מסחר</div>
         <div className="tp-home-teaser-text">כמה שאלות קצרות, ובסוף יוצאים עם תוכנית עבודה ברורה - לא עוד טופס, ולא עוד הבטחה.</div>
         <div className="tp-home-teaser-cta">בואו נתחיל <span>←</span></div>
       </Link>
