@@ -27,6 +27,7 @@ interface PlanRow {
   stop_me_from?: string[] | null;
   environment_influence?: string | null;
   progress_markers?: string[] | null;
+  week_one_win?: string[] | null;
   personal_rule?: string | null;
 }
 
@@ -83,7 +84,8 @@ export function buildUserPlanEmailHtml(r: PlanRow): string {
         ${section('מה כבר יש לך', listHtml(content.strengths(r as Record<string, unknown>), '✓', '#4FB876'))}
         ${section('מה כנראה מעכב אותך', listHtml(content.blockers, '•', '#9C8FD9'))}
         ${section('מה לא הייתי עושה בחודש הקרוב', listHtml(content.dontDo, '✗', '#C9635E'))}
-        ${section('שלושת הדברים שהייתי עובד עליהם', content.threeThings.map((t, i) => `<div style="font-size:13.5px;color:#444;line-height:1.6;margin-bottom:6px;"><b>${i + 1}.</b> ${t}</div>`).join(''))}
+        ${r.week_one_win && r.week_one_win.length ? section('בעוד שבוע בדיוק, ככה תדעו שהתחלתם נכון', listHtml(findOptions('week_one_win', r.week_one_win).map((o) => o.label), '★', '#4fc9c4')) : ''}
+        ${section('השבוע הראשון שלך: 3 דברים להתחיל איתם', content.threeThings.map((t, i) => `<div style="font-size:13.5px;color:#444;line-height:1.6;margin-bottom:6px;"><b>${i + 1}.</b> ${t}</div>`).join(''))}
 
         <div style="background:#f0fbfa;border:1px solid #cdeeeb;border-radius:10px;padding:14px 16px;margin-bottom:12px;">
           <div style="font-size:10.5px;color:#888;text-transform:uppercase;margin-bottom:4px;">המשימה שלך ל-30 יום</div>
@@ -127,6 +129,12 @@ export function buildAdminNotifyEmailHtml(r: PlanRow): string {
         <div style="color:#4fc9c4;font-size:13px;margin-top:4px;">פרופיל: ${content.title}</div>
       </div>
       <div style="padding:20px 24px;">
+        <div style="background:#fff7ed;border:1px solid #fde3b8;border-radius:10px;padding:14px 16px;margin-bottom:16px;">
+          <div style="font-size:11px;color:#92620c;text-transform:uppercase;margin-bottom:6px;font-weight:700;">לתזכורת - בעוד שבוע, לשאול על:</div>
+          ${r.week_one_win && r.week_one_win.length ? listHtml(findOptions('week_one_win', r.week_one_win).map((o) => o.label), '★', '#b8860b') : '<div style="font-size:13px;color:#999;">לא נבחר</div>'}
+          <div style="font-size:11px;color:#92620c;text-transform:uppercase;margin:12px 0 6px;font-weight:700;">3 הדברים שהתחייב/ה עליהם לשבוע הראשון:</div>
+          ${content.threeThings.map((t, i) => `<div style="font-size:13px;color:#444;line-height:1.6;margin-bottom:4px;"><b>${i + 1}.</b> ${t}</div>`).join('')}
+        </div>
         <table width="100%" style="border-collapse:collapse;">
           ${row('שם', r.name || '—')}
           ${row('נייד', r.phone || '—')}

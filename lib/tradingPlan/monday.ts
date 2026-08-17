@@ -1,3 +1,7 @@
+import { classifyProfile } from './profile';
+import { getProfileContent } from './profileContent';
+import { findOptions } from './questions';
+
 const LEAD_GROUP_NAME = 'לידים חדשים';
 const CAMPAIGN_COLUMN_TITLE = 'campaign_name';
 const STATUS_COLUMN_TITLE = 'סטטוס טיפול';
@@ -73,6 +77,9 @@ async function findItemIdByPhone(token: string, boardId: string, phoneColumnId: 
 }
 
 function buildInsightsNote(row: Record<string, any>) {
+  const content = getProfileContent(classifyProfile(row));
+  const weekOneWinLabels = findOptions('week_one_win', row.week_one_win).map((o) => o.label);
+
   const lines = [
     'השלים/ה את "תוכנית המסחר ל-30 יום" באתר.',
     row.source ? `מקור: ${row.source}` : null,
@@ -84,6 +91,8 @@ function buildInsightsNote(row: Record<string, any>) {
     Array.isArray(row.progress_markers) && row.progress_markers.length ? `מה ירגיש כהתקדמות: ${row.progress_markers.join(', ')}` : null,
     row.definition_of_success ? `סימן להצלחה: ${row.definition_of_success}` : null,
     row.personal_rule ? `הכלל האישי: ${row.personal_rule}` : null,
+    weekOneWinLabels.length ? `לתזכורת בעוד שבוע - איך ידע/תדע שהתחיל/ה נכון: ${weekOneWinLabels.join(', ')}` : null,
+    `3 הדברים לשבוע הראשון: ${content.threeThings.join(' | ')}`,
   ].filter(Boolean);
   return lines.join('\n');
 }

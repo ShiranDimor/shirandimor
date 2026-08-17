@@ -83,6 +83,7 @@ export const STEPS: StepDef[] = [
   {
     id: 'step-2',
     title: 'מה אני רוצה מזה',
+    intro: 'תודה על הפתיחות עד כאן. עכשיו קצת יותר לעומק - למה זה בכלל חשוב לכם.',
     questions: [
       {
         id: 'trading_motivation',
@@ -124,6 +125,7 @@ export const STEPS: StepDef[] = [
   {
     id: 'step-3',
     title: 'כסף ורגש',
+    intro: 'השאלה הזו קצת יותר אישית. אין תשובה "נכונה" - רק כנה.',
     questions: [
       {
         id: 'money_fear',
@@ -147,6 +149,7 @@ export const STEPS: StepDef[] = [
   {
     id: 'step-4',
     title: 'הזמן והדרך שלי',
+    intro: 'כבר חצי מהדרך. עכשיו בואו נבין איך נראה המסחר שלכם בפועל, לא רק בתיאוריה.',
     showIf: hasSomeExperience,
     questions: [
       {
@@ -195,6 +198,7 @@ export const STEPS: StepDef[] = [
   {
     id: 'step-5',
     title: 'ניהול סיכון',
+    intro: 'החלק הכי פחות מרגש במסחר, והכי מכריע. כמה דקות פה שוות הרבה.',
     showIf: hasSomeExperience,
     questions: [
       {
@@ -242,6 +246,7 @@ export const STEPS: StepDef[] = [
   {
     id: 'step-6',
     title: 'בזמן אמת',
+    intro: 'עכשיו לרגע האמת - לא מה שאמורים לעשות, אלא מה שבאמת קורה כשהכסף על המסך.',
     showIf: hasSomeExperience,
     questions: [
       {
@@ -302,6 +307,7 @@ export const STEPS: StepDef[] = [
   {
     id: 'step-7',
     title: 'היעד שלי',
+    intro: 'כמעט סיימנו. השאלות האלה עוזרות לוודא שהתוכנית בסוף תתאים באמת לכם - לא רק למסחר באופן כללי.',
     questions: [
       {
         id: 'environment_influence',
@@ -342,7 +348,24 @@ export const STEPS: StepDef[] = [
   {
     id: 'step-8',
     title: 'ההתחייבות',
+    intro: 'השלב האחרון. מכאן והלאה זה כבר לא שאלון - זו התחייבות קטנה כלפי עצמכם.',
     questions: [
+      {
+        id: 'week_one_win',
+        type: 'multi',
+        title: 'דמיינו שעבר בדיוק שבוע מהיום. מה הכי היה גורם לכם להרגיש שהתחלתם נכון?',
+        helper: 'אפשר לבחור עד 2 - זה מה שנחזור אליו יחד בעוד שבוע',
+        maxSelect: 2,
+        options: [
+          { value: 'just_started', label: 'שפשוט התחלתי, ולא דחיתי את זה עוד שבוע' },
+          { value: 'had_clear_process', label: 'שהיה לי תהליך ברור לפני כל עסקה, לא ניחוש' },
+          { value: 'knew_the_stop', label: 'שידעתי בדיוק איפה הסטופ לפני שנכנסתי' },
+          { value: 'didnt_move_stop', label: 'שלא הזזתי סטופ ולו פעם אחת' },
+          { value: 'kept_the_rule', label: 'שעמדתי בכלל שקבעתי לעצמי, גם כשהיה קשה' },
+          { value: 'documented_everything', label: 'שתיעדתי כל עסקה, ולא רק "זכרתי בראש"' },
+          { value: 'no_emotion_decisions', label: 'שלא נתתי לרגש להחליט בשבילי באמצע עסקה' },
+        ],
+      },
       {
         id: 'personal_rule',
         type: 'text',

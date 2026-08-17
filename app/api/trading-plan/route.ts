@@ -27,6 +27,7 @@ const ALLOWED_FIELDS = [
   'stop_me_from',
   'environment_influence',
   'progress_markers',
+  'week_one_win',
   'personal_rule',
 ] as const;
 

@@ -2,6 +2,7 @@
 
 import { classifyProfile } from '@/lib/tradingPlan/profile';
 import { getProfileContent } from '@/lib/tradingPlan/profileContent';
+import { findOptions } from '@/lib/tradingPlan/questions';
 
 interface Props {
   answers: Record<string, unknown>;
@@ -25,6 +26,8 @@ export default function SummaryScreen({ answers, onCtaClick }: Props) {
   const rule = typeof answers.personal_rule === 'string' && answers.personal_rule.trim()
     ? answers.personal_rule
     : content.defaultRule;
+
+  const weekOneWin = findOptions('week_one_win', answers.week_one_win as string[] | undefined);
 
   return (
     <div>
@@ -63,8 +66,19 @@ export default function SummaryScreen({ answers, onCtaClick }: Props) {
         </div>
       </div>
 
+      {weekOneWin.length > 0 && (
+        <div className="tp-diagnosis-section">
+          <div className="tp-diagnosis-label">בעוד שבוע בדיוק, ככה תדעו שהתחלתם נכון</div>
+          <div className="tp-strength-list">
+            {weekOneWin.map((o) => (
+              <div key={o.value} className="tp-strength-item">{o.label}</div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="tp-diagnosis-section">
-        <div className="tp-diagnosis-label">שלושת הדברים שהייתי עובד עליהם ב-30 הימים הקרובים</div>
+        <div className="tp-diagnosis-label">השבוע הראשון שלך: 3 דברים להתחיל איתם</div>
         <div className="tp-tasks-list">
           {content.threeThings.map((t, i) => (
             <div key={t} className="tp-tasks-item">
