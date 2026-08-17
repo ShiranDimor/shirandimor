@@ -73,8 +73,7 @@ function tradeRowHtml(t: Trade, kind: 'open' | 'closed') {
   }
 
   const p = pct(t);
-  const usd = t.realized_pnl_usd ?? 0;
-  const resultColor = usd >= 0 ? '#4FB876' : '#C9635E';
+  const resultColor = (p ?? 0) >= 0 ? '#4FB876' : '#C9635E';
   return `
     <tr>
       <td style="padding:10px 12px;border-bottom:1px solid #eee;font-weight:700;">${t.symbol}</td>
@@ -82,7 +81,6 @@ function tradeRowHtml(t: Trade, kind: 'open' | 'closed') {
       <td style="padding:10px 12px;border-bottom:1px solid #eee;">$${t.entry_price} ← $${t.exit_price}</td>
       <td style="padding:10px 12px;border-bottom:1px solid #eee;color:${resultColor};font-weight:700;">
         ${p !== null ? `${p >= 0 ? '+' : ''}${p.toFixed(2)}%` : '—'}
-        <span style="color:#888;font-weight:400;font-size:12.5px;">(${usd >= 0 ? '+' : '-'}$${Math.abs(usd).toFixed(0)})</span>
       </td>
       <td style="padding:10px 12px;border-bottom:1px solid #eee;color:#888;font-size:13px;">${formatDate(t.closed_at as string)}</td>
     </tr>`;
@@ -118,7 +116,8 @@ export async function GET(request: Request) {
     .sort((a, b) => new Date(b.closed_at as string).getTime() - new Date(a.closed_at as string).getTime());
 
   const wins = closedThisWeek.filter((t) => (t.realized_pnl_usd ?? 0) >= 0);
-  const totalPnl = closedThisWeek.reduce((s, t) => s + (t.realized_pnl_usd ?? 0), 0);
+  const closedPcts = closedThisWeek.map((t) => pct(t)).filter((v): v is number => v !== null);
+  const avgPct = closedPcts.length > 0 ? closedPcts.reduce((s, v) => s + v, 0) / closedPcts.length : null;
   const winRate = closedThisWeek.length > 0 ? (wins.length / closedThisWeek.length) * 100 : null;
   const totalOpenNow = trades.filter((t) => t.status === 'open').length;
 
@@ -139,8 +138,8 @@ export async function GET(request: Request) {
       <div style="display:flex;padding:20px 16px;gap:8px;border-bottom:1px solid #eee;">
         <table style="width:100%;border-collapse:collapse;"><tr>
           <td style="text-align:center;padding:8px;">
-            <div style="font-size:20px;font-weight:700;color:${totalPnl >= 0 ? '#4FB876' : '#C9635E'};">${totalPnl >= 0 ? '+' : '-'}$${Math.abs(totalPnl).toFixed(0)}</div>
-            <div style="font-size:11.5px;color:#888;margin-top:2px;">תוצאה השבוע</div>
+            <div style="font-size:20px;font-weight:700;color:${(avgPct ?? 0) >= 0 ? '#4FB876' : '#C9635E'};">${avgPct !== null ? `${avgPct >= 0 ? '+' : ''}${avgPct.toFixed(2)}%` : '—'}</div>
+            <div style="font-size:11.5px;color:#888;margin-top:2px;">תשואה ממוצעת השבוע</div>
           </td>
           <td style="text-align:center;padding:8px;">
             <div style="font-size:20px;font-weight:700;color:#111;">${closedThisWeek.length}</div>
