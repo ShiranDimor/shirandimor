@@ -15,6 +15,8 @@
     --profit-bg: rgba(79, 184, 118, 0.08);
     --loss: #C9635E;
     --loss-bg: rgba(201, 99, 94, 0.08);
+    --orange: #E8A33D;
+    --orange-bg: rgba(232, 163, 61, 0.1);
     --font-display: 'Rubik', sans-serif;
     --font-body: 'Rubik', sans-serif;
     --font-mono: 'JetBrains Mono', monospace;
@@ -53,6 +55,11 @@
   .brand { font-family: var(--font-display); font-size: 20px; font-weight: 700; text-decoration: none; color: inherit; }
   .brand span { color: var(--teal); }
   .nav-link { font-size: 13px; color: var(--text-secondary); text-decoration: none; }
+  .nav-cta-orange {
+    font-size: 12px; font-weight: 700; color: var(--orange); background: var(--orange-bg);
+    border: 1px solid rgba(232,163,61,0.3); border-radius: 20px; padding: 5px 10px; text-decoration: none;
+    white-space: nowrap;
+  }
 
   /* ===== Hero ===== */
   .hero {
@@ -569,6 +576,13 @@
 .tp-text-input:focus { outline: none; border-color: var(--teal); }
 .tp-text-input::placeholder { color: var(--text-tertiary); }
 
+.tp-suggestions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.tp-suggestion-chip {
+  background: transparent; border: 1px dashed var(--border-hairline-strong); color: var(--text-tertiary);
+  border-radius: 20px; padding: 6px 12px; font-size: 12px; font-family: var(--font-body); cursor: pointer;
+}
+.tp-suggestion-chip:hover { border-color: var(--lavender); color: var(--lavender); }
+
 .tp-nav-row { display: flex; gap: 10px; margin-top: 24px; margin-bottom: 20px; }
 .tp-btn-back {
   flex-shrink: 0; background: transparent; border: 1px solid var(--border-hairline-strong); color: var(--text-secondary);
@@ -603,3 +617,18 @@
 .tp-checklist-footer { font-size: 12.5px; color: var(--text-tertiary); margin-top: 12px; font-style: italic; }
 
 .tp-cta-transition { font-size: 14.5px; color: var(--text-secondary); line-height: 1.7; margin-bottom: 18px; text-align: center; }
+
+/* ===== כרטיס טיזר בעמוד הבית לכלי תוכנית המסחר ===== */
+.tp-home-teaser {
+  display: block; text-decoration: none;
+  background: linear-gradient(160deg, rgba(156,143,217,0.1) 0%, var(--bg-surface) 100%);
+  border: 1px solid rgba(156,143,217,0.3); border-radius: 14px; padding: 20px; margin-bottom: 28px;
+}
+.tp-home-teaser-badge {
+  display: inline-flex; font-size: 11px; font-family: var(--font-mono); color: var(--lavender);
+  background: rgba(156,143,217,0.12); border: 1px solid rgba(156,143,217,0.3);
+  border-radius: 20px; padding: 4px 10px; margin-bottom: 10px;
+}
+.tp-home-teaser-title { font-family: var(--font-display); font-size: 16.5px; font-weight: 600; color: var(--text-primary); margin-bottom: 6px; line-height: 1.4; }
+.tp-home-teaser-text { font-size: 13px; color: var(--text-secondary); line-height: 1.6; margin-bottom: 12px; }
+.tp-home-teaser-cta { font-size: 14px; font-weight: 700; color: var(--lavender); display: flex; align-items: center; gap: 4px; }

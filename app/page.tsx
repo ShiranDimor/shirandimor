@@ -113,7 +113,8 @@ export default function HomePage() {
     <div className="wrap">
       <header>
         <Link href="/" className="brand">מסחר <span>אחראי</span> במניות</Link>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Link href="/trading-plan" className="nav-cta-orange">תוכנית מסחר</Link>
           <Link href="/portfolio" className="nav-link">תיק מסחר</Link>
           <Link href="/login" className="nav-link">כניסה לסוחרים</Link>
         </div>
@@ -174,6 +175,13 @@ export default function HomePage() {
         <div className="trust-item"><div className="num">100%</div><div className="lbl">שקיפות, כולל הפסדים</div></div>
         <div className="trust-item"><div className="num">3</div><div className="lbl">סגנונות מסחר, קבוצה אחת</div></div>
       </div>
+
+      <Link href="/trading-plan" className="tp-home-teaser">
+        <div className="tp-home-teaser-badge">10 דקות · בלי התחייבות</div>
+        <div className="tp-home-teaser-title">בואו נבנה יחד תוכנית מסחר אישית ל-30 יום</div>
+        <div className="tp-home-teaser-text">כמה שאלות קצרות, ובסוף יוצאים עם תוכנית עבודה ברורה - לא עוד טופס, ולא עוד הבטחה.</div>
+        <div className="tp-home-teaser-cta">בואו נתחיל <span>←</span></div>
+      </Link>
 
       <div className="about-feature">
         <img className="af-photo" src="/shiran-photo.jpg" alt="שירן דימור" />
