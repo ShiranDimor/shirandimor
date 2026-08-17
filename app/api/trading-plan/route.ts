@@ -92,31 +92,6 @@ export async function PATCH(request: Request) {
 
   try {
     if (action === 'complete') {
-      // בודקים אם כבר קיימת רשומה שהושלמה בעבר עם אותו נייד או מייל - כדי לאפשר מילוי פעם אחת בלבד לכל אדם
-      const { data: current } = await supabaseAdmin
-        .from('trading_plan_responses')
-        .select('phone, email')
-        .eq('id', id)
-        .maybeSingle();
-
-      if (current?.phone || current?.email) {
-        let dupQuery = supabaseAdmin
-          .from('trading_plan_responses')
-          .select('id')
-          .eq('status', 'completed')
-          .neq('id', id);
-
-        const orParts: string[] = [];
-        if (current.phone) orParts.push(`phone.eq.${current.phone}`);
-        if (current.email) orParts.push(`email.eq.${current.email}`);
-        dupQuery = dupQuery.or(orParts.join(','));
-
-        const { data: existing } = await dupQuery.limit(1).maybeSingle();
-        if (existing) {
-          return NextResponse.json({ error: 'already_completed' }, { status: 409 });
-        }
-      }
-
       const { error } = await supabaseAdmin
         .from('trading_plan_responses')
         .update({ status: 'completed', completed_at: new Date().toISOString() })

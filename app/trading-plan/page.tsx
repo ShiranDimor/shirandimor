@@ -9,7 +9,7 @@ import ProgressBar from '@/components/tradingPlan/ProgressBar';
 import SummaryScreen from '@/components/tradingPlan/SummaryScreen';
 
 const DRAFT_KEY = 'tp_draft_v1';
-type Phase = 'intro' | 'quiz' | 'contact' | 'summary' | 'duplicate';
+type Phase = 'intro' | 'quiz' | 'contact' | 'summary';
 
 interface Draft {
   id: string;
@@ -150,19 +150,11 @@ export default function TradingPlanPage() {
     });
 
     if (id) {
-      const completeRes = await fetch('/api/trading-plan', {
+      await fetch('/api/trading-plan', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id, action: 'complete' }),
       }).catch(() => null);
-
-      if (completeRes && completeRes.status === 409) {
-        clearDraft();
-        setLoadingNext(false);
-        setPhase('duplicate');
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-        return;
-      }
 
       // שליחת המיילים (למשתמש + לשירן) - לא חוסמים את הצגת התוכנית על המסך אם זה נכשל
       fetch('/api/trading-plan/send-summary', {
@@ -307,21 +299,6 @@ export default function TradingPlanPage() {
               שלחו לי את התוכנית
             </button>
           </div>
-        </>
-      )}
-
-      {phase === 'duplicate' && (
-        <>
-          <div className="tp-step-title">כבר יש לך תוכנית אצלנו :)</div>
-          <div className="tp-personal-note" style={{ textAlign: 'center' }}>
-            נראה שכבר בנית תוכנית מסחר בעבר עם הפרטים האלה - השאלון הזה נועד להתמלא פעם אחת. אם איבדת את המייל עם התוכנית, אפשר לפנות בוואטסאפ ונשלח אותה שוב.
-          </div>
-          <a href="https://wa.me/972547167419" target="_blank" rel="noopener noreferrer" className="btn-primary" style={{ display: 'block', textAlign: 'center', textDecoration: 'none', marginTop: '16px' }}>
-            שליחת הודעה בוואטסאפ ←
-          </a>
-          <Link href="/subscribe" className="cta-sub-link" style={{ display: 'block', textAlign: 'center', marginTop: '16px' }}>
-            להכיר את קבוצת הסוחרים <span>←</span>
-          </Link>
         </>
       )}
 
