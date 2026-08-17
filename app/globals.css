@@ -621,14 +621,14 @@
 /* ===== כרטיס טיזר בעמוד הבית לכלי תוכנית המסחר ===== */
 .tp-home-teaser {
   display: block; text-decoration: none;
-  background: linear-gradient(160deg, rgba(156,143,217,0.1) 0%, var(--bg-surface) 100%);
-  border: 1px solid rgba(156,143,217,0.3); border-radius: 14px; padding: 20px; margin-bottom: 28px;
+  background: linear-gradient(160deg, rgba(232,163,61,0.12) 0%, var(--bg-surface) 100%);
+  border: 1px solid rgba(232,163,61,0.35); border-radius: 14px; padding: 20px; margin-bottom: 28px;
 }
 .tp-home-teaser-badge {
-  display: inline-flex; font-size: 11px; font-family: var(--font-mono); color: var(--lavender);
-  background: rgba(156,143,217,0.12); border: 1px solid rgba(156,143,217,0.3);
+  display: inline-flex; font-size: 11px; font-family: var(--font-mono); color: var(--orange);
+  background: rgba(232,163,61,0.14); border: 1px solid rgba(232,163,61,0.35);
   border-radius: 20px; padding: 4px 10px; margin-bottom: 10px;
 }
 .tp-home-teaser-title { font-family: var(--font-display); font-size: 16.5px; font-weight: 600; color: var(--text-primary); margin-bottom: 6px; line-height: 1.4; }
 .tp-home-teaser-text { font-size: 13px; color: var(--text-secondary); line-height: 1.6; margin-bottom: 12px; }
-.tp-home-teaser-cta { font-size: 14px; font-weight: 700; color: var(--lavender); display: flex; align-items: center; gap: 4px; }
+.tp-home-teaser-cta { font-size: 14px; font-weight: 700; color: var(--orange); display: flex; align-items: center; gap: 4px; }

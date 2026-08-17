@@ -20,7 +20,8 @@ interface PlanRow {
   management_difficulty?: string[] | null;
   mental_difficulty?: string[] | null;
   main_fear?: string[] | null;
-  main_goal?: string | null;
+  trading_motivation?: string[] | null;
+  main_goal?: string[] | null;
   trading_dream?: string | null;
   definition_of_success?: string | null;
   personal_rule?: string | null;
@@ -85,7 +86,7 @@ export function buildUserPlanEmailHtml(r: PlanRow): string {
           ${row('ה-Setup / הכלים', labelsJoined(r.entry_tools, 'entry_tools'))}
           ${row('לפני כל כניסה בודקים', riskLine)}
           ${row('האתגר המרכזי', challenge)}
-          ${row('המטרה לחודש הקרוב', labelSingle(r.main_goal, 'main_goal'))}
+          ${row('המטרה לחודש הקרוב', labelsJoined(r.main_goal, 'main_goal'))}
           ${row('סימן להצלחה', r.definition_of_success || '')}
           ${row('הכלל שמתחייבים לא להפר', r.personal_rule || '')}
         </table>
@@ -125,8 +126,9 @@ export function buildAdminNotifyEmailHtml(r: PlanRow): string {
           ${row('מקור', r.source || 'ישיר (בלי מקור מזוהה)')}
           ${row('ניסיון במסחר', labelSingle(r.trading_experience, 'trading_experience'))}
           ${row('שווקים', labelsJoined(r.markets, 'markets'))}
-          ${row('המטרה המרכזית', labelSingle(r.main_goal, 'main_goal'))}
+          ${row('המטרה המרכזית', labelsJoined(r.main_goal, 'main_goal'))}
           ${row('הפחד המרכזי', labelsJoined(r.main_fear, 'main_fear'))}
+          ${row('מה מניע אותם', labelsJoined(r.trading_motivation, 'trading_motivation'))}
           ${row('החלום ל-שנה קדימה', r.trading_dream || '')}
           ${row('סימן להצלחה', r.definition_of_success || '')}
           ${row('הכלל האישי', r.personal_rule || '')}

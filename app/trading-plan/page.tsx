@@ -23,6 +23,8 @@ export default function TradingPlanPage() {
   const [responseId, setResponseId] = useState<string | null>(null);
   const [source, setSource] = useState<string | null>(null);
   const [loadingNext, setLoadingNext] = useState(false);
+  const [phoneTouched, setPhoneTouched] = useState(false);
+  const [emailTouched, setEmailTouched] = useState(false);
 
   // טעינת מקור (UTM/פרמטר) וטיוטה שמורה, אם קיימת
   useEffect(() => {
@@ -130,9 +132,9 @@ export default function TradingPlanPage() {
     return /^05\d{8}$/.test(v.replace(/\D/g, ''));
   }
 
-  const contactValid =
-    typeof answers.email === 'string' && isValidEmail(answers.email) &&
-    typeof answers.phone === 'string' && isValidPhone(answers.phone);
+  const phoneOk = typeof answers.phone === 'string' && isValidPhone(answers.phone);
+  const emailOk = typeof answers.email === 'string' && isValidEmail(answers.email);
+  const contactValid = emailOk && phoneOk;
 
   async function handleContactSubmit() {
     if (!contactValid) return;
@@ -264,24 +266,36 @@ export default function TradingPlanPage() {
             <div className="tp-question-title">נייד</div>
             <input
               className="tp-text-input"
-              style={{ minHeight: 'auto' }}
+              style={{ minHeight: 'auto', ...(phoneTouched && !phoneOk ? { borderColor: 'var(--loss)' } : {}) }}
               type="tel"
               value={typeof answers.phone === 'string' ? answers.phone : ''}
               onChange={(e) => handleAnswerChange('phone', e.target.value.replace(/\D/g, '').slice(0, 10))}
+              onBlur={() => setPhoneTouched(true)}
               placeholder="050-1234567"
             />
+            {phoneTouched && !phoneOk && (
+              <div style={{ color: 'var(--loss)', fontSize: '12px', marginTop: '6px' }}>
+                מספר נייד לא תקין - לדוגמה 0501234567
+              </div>
+            )}
           </div>
 
           <div className="tp-question-card">
             <div className="tp-question-title">אימייל</div>
             <input
               className="tp-text-input"
-              style={{ minHeight: 'auto' }}
+              style={{ minHeight: 'auto', ...(emailTouched && !emailOk ? { borderColor: 'var(--loss)' } : {}) }}
               type="email"
               value={typeof answers.email === 'string' ? answers.email : ''}
               onChange={(e) => handleAnswerChange('email', e.target.value)}
+              onBlur={() => setEmailTouched(true)}
               placeholder="name@example.com"
             />
+            {emailTouched && !emailOk && (
+              <div style={{ color: 'var(--loss)', fontSize: '12px', marginTop: '6px' }}>
+                כתובת אימייל לא תקינה
+              </div>
+            )}
           </div>
 
           <div className="tp-nav-row">

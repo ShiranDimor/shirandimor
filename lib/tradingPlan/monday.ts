@@ -76,7 +76,8 @@ function buildInsightsNote(row: Record<string, any>) {
   const lines = [
     'השלים/ה את "תוכנית המסחר ל-30 יום" באתר.',
     row.source ? `מקור: ${row.source}` : null,
-    row.main_goal ? `מטרה מרכזית: ${row.main_goal}` : null,
+    Array.isArray(row.main_goal) && row.main_goal.length ? `מטרה מרכזית: ${row.main_goal.join(', ')}` : null,
+    Array.isArray(row.trading_motivation) && row.trading_motivation.length ? `מניע: ${row.trading_motivation.join(', ')}` : null,
     Array.isArray(row.main_fear) && row.main_fear.length ? `פחד מרכזי: ${row.main_fear.join(', ')}` : null,
     row.trading_dream ? `החלום לשנה קדימה: ${row.trading_dream}` : null,
     row.definition_of_success ? `סימן להצלחה: ${row.definition_of_success}` : null,

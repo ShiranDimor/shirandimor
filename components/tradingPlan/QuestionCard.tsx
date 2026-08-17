@@ -63,13 +63,32 @@ export default function QuestionCard({ question, value, onChange }: Props) {
       )}
 
       {question.type === 'text' && (
-        <textarea
-          className="tp-text-input"
-          placeholder={question.placeholder}
-          value={typeof value === 'string' ? value : ''}
-          onChange={(e) => onChange(e.target.value)}
-          rows={3}
-        />
+        <>
+          <textarea
+            className="tp-text-input"
+            placeholder={question.placeholder}
+            value={typeof value === 'string' ? value : ''}
+            onChange={(e) => onChange(e.target.value)}
+            rows={3}
+          />
+          {question.suggestions && question.suggestions.length > 0 && (
+            <div className="tp-suggestions">
+              {question.suggestions.map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  className="tp-suggestion-chip"
+                  onClick={() => {
+                    const current = typeof value === 'string' ? value.trim() : '';
+                    onChange(current ? `${current} · ${s}` : s);
+                  }}
+                >
+                  + {s}
+                </button>
+              ))}
+            </div>
+          )}
+        </>
       )}
     </div>
   );

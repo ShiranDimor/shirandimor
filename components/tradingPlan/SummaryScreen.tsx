@@ -33,7 +33,7 @@ function singleLabel(value: unknown, questionId: string): string {
 }
 
 export default function SummaryScreen({ answers, onCtaClick }: Props) {
-  const note = personalizedNote(answers.main_goal as string | undefined);
+  const note = personalizedNote(answers.main_goal as string[] | undefined);
 
   const stopBefore = (() => {
     const parts: string[] = [];
@@ -77,8 +77,29 @@ export default function SummaryScreen({ answers, onCtaClick }: Props) {
 
         <div className="tp-summary-row">
           <div className="tp-summary-label">המטרה שלי לחודש הקרוב</div>
-          <div className="tp-summary-value">{singleLabel(answers.main_goal, 'main_goal')}</div>
+          <div className="tp-summary-value">{joinLabels(answers.main_goal, 'main_goal')}</div>
         </div>
+
+        {joinLabels(answers.trading_motivation, 'trading_motivation') !== '—' && (
+          <div className="tp-summary-row">
+            <div className="tp-summary-label">מה מניע אותי לנסות</div>
+            <div className="tp-summary-value">{joinLabels(answers.trading_motivation, 'trading_motivation')}</div>
+          </div>
+        )}
+
+        {joinLabels(answers.main_fear, 'main_fear') !== '—' && (
+          <div className="tp-summary-row">
+            <div className="tp-summary-label">מה עומד בדרך, בעיקר מבחינה רגשית</div>
+            <div className="tp-summary-value">{joinLabels(answers.main_fear, 'main_fear')}</div>
+          </div>
+        )}
+
+        {typeof answers.trading_dream === 'string' && answers.trading_dream && (
+          <div className="tp-summary-row">
+            <div className="tp-summary-label">איך זה נראה בעוד שנה</div>
+            <div className="tp-summary-value">{answers.trading_dream}</div>
+          </div>
+        )}
 
         {typeof answers.definition_of_success === 'string' && answers.definition_of_success && (
           <div className="tp-summary-row">

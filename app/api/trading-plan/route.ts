@@ -23,6 +23,7 @@ const ALLOWED_FIELDS = [
   'mental_difficulty',
   'main_fear',
   'main_goal',
+  'trading_motivation',
   'trading_dream',
   'definition_of_success',
   'personal_rule',
