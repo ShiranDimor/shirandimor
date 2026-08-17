@@ -8,7 +8,7 @@ import ProgressBar from '@/components/tradingPlan/ProgressBar';
 import SummaryScreen from '@/components/tradingPlan/SummaryScreen';
 
 const DRAFT_KEY = 'tp_draft_v1';
-type Phase = 'intro' | 'quiz' | 'summary';
+type Phase = 'intro' | 'quiz' | 'contact' | 'summary';
 
 interface Draft {
   id: string;
@@ -110,22 +110,58 @@ export default function TradingPlanPage() {
     if (id && !responseId) setResponseId(id);
 
     if (isLastStep) {
-      if (id) {
-        await fetch('/api/trading-plan', {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id, action: 'complete' }),
-        }).catch(() => {});
-      }
-      clearDraft();
+      if (id) saveDraft(id, answers, stepIndex); // שומרים טיוטה - עדיין לא הושלם עד שיוזנו פרטי קשר
       setLoadingNext(false);
-      setPhase('summary');
+      setPhase('contact');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
 
     if (id) saveDraft(id, answers, nextStepIndex);
     setStepIndex(nextStepIndex);
     setLoadingNext(false);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function isValidEmail(v: string) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
+  }
+  function isValidPhone(v: string) {
+    return v.replace(/\D/g, '').length >= 9;
+  }
+
+  const contactValid =
+    typeof answers.email === 'string' && isValidEmail(answers.email) &&
+    typeof answers.phone === 'string' && isValidPhone(answers.phone);
+
+  async function handleContactSubmit() {
+    if (!contactValid) return;
+    setLoadingNext(true);
+
+    const id = await autosave(responseId, {
+      name: answers.name || null,
+      phone: answers.phone,
+      email: answers.email,
+    });
+
+    if (id) {
+      await fetch('/api/trading-plan', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, action: 'complete' }),
+      }).catch(() => {});
+
+      // שליחת המיילים (למשתמש + לשירן) - לא חוסמים את הצגת התוכנית על המסך אם זה נכשל
+      fetch('/api/trading-plan/send-summary', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      }).catch(() => {});
+    }
+
+    clearDraft();
+    setLoadingNext(false);
+    setPhase('summary');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
@@ -198,8 +234,66 @@ export default function TradingPlanPage() {
         </>
       )}
 
+      {phase === 'contact' && (
+        <>
+          <div className="tp-step-title">לאן לשלוח את התוכנית?</div>
+          <div className="tp-step-intro">
+            התוכנית האישית מוכנה. תשאירו נייד ומייל ונשלח אותה אליכם, כדי שתוכלו לחזור אליה בכל רגע - גם כשתשבו מול המסך עם עסקה פתוחה.
+          </div>
+
+          <div className="tp-question-card">
+            <div className="tp-question-title">שם (לא חובה)</div>
+            <input
+              className="tp-text-input"
+              style={{ minHeight: 'auto' }}
+              value={typeof answers.name === 'string' ? answers.name : ''}
+              onChange={(e) => handleAnswerChange('name', e.target.value)}
+              placeholder="השם שלך"
+            />
+          </div>
+
+          <div className="tp-question-card">
+            <div className="tp-question-title">נייד</div>
+            <input
+              className="tp-text-input"
+              style={{ minHeight: 'auto' }}
+              type="tel"
+              value={typeof answers.phone === 'string' ? answers.phone : ''}
+              onChange={(e) => handleAnswerChange('phone', e.target.value)}
+              placeholder="050-1234567"
+            />
+          </div>
+
+          <div className="tp-question-card">
+            <div className="tp-question-title">אימייל</div>
+            <input
+              className="tp-text-input"
+              style={{ minHeight: 'auto' }}
+              type="email"
+              value={typeof answers.email === 'string' ? answers.email : ''}
+              onChange={(e) => handleAnswerChange('email', e.target.value)}
+              placeholder="name@example.com"
+            />
+          </div>
+
+          <div className="tp-nav-row">
+            <button type="button" className="tp-btn-back" onClick={() => setPhase('quiz')}>חזרה</button>
+            <button type="button" className="tp-btn-next" onClick={handleContactSubmit} disabled={!contactValid || loadingNext}>
+              שלחו לי את התוכנית
+            </button>
+          </div>
+        </>
+      )}
+
       {phase === 'summary' && (
-        <SummaryScreen answers={answers} onCtaClick={handleCtaClick} />
+        <>
+          {typeof answers.email === 'string' && answers.email && (
+            <div className="tp-personal-note" style={{ textAlign: 'center', marginBottom: '20px' }}>
+              📧 שלחנו את התוכנית גם לאימייל {answers.email}
+            </div>
+          )}
+          <SummaryScreen answers={answers} onCtaClick={handleCtaClick} />
+        </>
       )}
 
       <footer>מסחר בשוק ההון כרוך בסיכון. אין באמור המלצה לפעולה כלשהי.</footer>
