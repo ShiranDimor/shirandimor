@@ -8,7 +8,7 @@ import ProgressBar from '@/components/tradingPlan/ProgressBar';
 import SummaryScreen from '@/components/tradingPlan/SummaryScreen';
 
 const DRAFT_KEY = 'tp_draft_v1';
-type Phase = 'intro' | 'quiz' | 'contact' | 'summary';
+type Phase = 'intro' | 'quiz' | 'contact' | 'summary' | 'duplicate';
 
 interface Draft {
   id: string;
@@ -127,7 +127,7 @@ export default function TradingPlanPage() {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
   }
   function isValidPhone(v: string) {
-    return v.replace(/\D/g, '').length >= 9;
+    return /^05\d{8}$/.test(v.replace(/\D/g, ''));
   }
 
   const contactValid =
@@ -145,11 +145,19 @@ export default function TradingPlanPage() {
     });
 
     if (id) {
-      await fetch('/api/trading-plan', {
+      const completeRes = await fetch('/api/trading-plan', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id, action: 'complete' }),
-      }).catch(() => {});
+      }).catch(() => null);
+
+      if (completeRes && completeRes.status === 409) {
+        clearDraft();
+        setLoadingNext(false);
+        setPhase('duplicate');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+      }
 
       // שליחת המיילים (למשתמש + לשירן) - לא חוסמים את הצגת התוכנית על המסך אם זה נכשל
       fetch('/api/trading-plan/send-summary', {
@@ -242,7 +250,7 @@ export default function TradingPlanPage() {
           </div>
 
           <div className="tp-question-card">
-            <div className="tp-question-title">שם (לא חובה)</div>
+            <div className="tp-question-title">שם</div>
             <input
               className="tp-text-input"
               style={{ minHeight: 'auto' }}
@@ -259,7 +267,7 @@ export default function TradingPlanPage() {
               style={{ minHeight: 'auto' }}
               type="tel"
               value={typeof answers.phone === 'string' ? answers.phone : ''}
-              onChange={(e) => handleAnswerChange('phone', e.target.value)}
+              onChange={(e) => handleAnswerChange('phone', e.target.value.replace(/\D/g, '').slice(0, 10))}
               placeholder="050-1234567"
             />
           </div>
@@ -282,6 +290,21 @@ export default function TradingPlanPage() {
               שלחו לי את התוכנית
             </button>
           </div>
+        </>
+      )}
+
+      {phase === 'duplicate' && (
+        <>
+          <div className="tp-step-title">כבר יש לך תוכנית אצלנו :)</div>
+          <div className="tp-personal-note" style={{ textAlign: 'center' }}>
+            נראה שכבר בנית תוכנית מסחר בעבר עם הפרטים האלה - השאלון הזה נועד להתמלא פעם אחת. אם איבדת את המייל עם התוכנית, אפשר לפנות בוואטסאפ ונשלח אותה שוב.
+          </div>
+          <a href="https://wa.me/972547167419" target="_blank" rel="noopener noreferrer" className="btn-primary" style={{ display: 'block', textAlign: 'center', textDecoration: 'none', marginTop: '16px' }}>
+            שליחת הודעה בוואטסאפ ←
+          </a>
+          <Link href="/subscribe" className="cta-sub-link" style={{ display: 'block', textAlign: 'center', marginTop: '16px' }}>
+            להכיר את קבוצת הסוחרים <span>←</span>
+          </Link>
         </>
       )}
 
