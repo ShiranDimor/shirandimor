@@ -45,6 +45,14 @@ interface AbandonedRow {
 interface ProgressReminderRow {
   id: string;
   name?: string | null;
+  trading_motivation?: string[] | null;
+  money_fear?: string[] | null;
+  self_talk?: string[] | null;
+}
+
+function firstLabel(values: string[] | null | undefined, questionId: string): string | null {
+  if (!values || !values.length) return null;
+  return findOptions(questionId, values)[0]?.label || null;
 }
 
 function labelsJoined(values: string[] | null | undefined, questionId: string): string {
@@ -298,10 +306,32 @@ export function buildAbandonedEmailHtml(r: AbandonedRow, reminderNumber: 1 | 2 =
   </div>`;
 }
 
-// המייל היומי (בוקר) שמזכיר לחזור לעמוד "המעקב האישי" ולסמן אם עמדו בכלל היום - נשלח רק ב-30 הימים שאחרי ההשלמה
+// כל שורה כאן היא זווית שיווקית מלאה: מוכרים חלום, נוגעים בפחד הספציפי שהאדם עצמו כתב, ומזמינים
+// לפעולה מיידית ואימפולסיבית - לא רק "עוד מייל תזכורת". מתחלף בין שליחות כדי שלא ירגיש כמו תבנית קבועה.
+function buildGroupPitch(dream: string | null, fear: string | null): string {
+  const pitches: string[] = [];
+
+  if (dream) {
+    pitches.push(`תדמיין/י לרגע שזה כבר קרה: ${dream}. זה בדיוק הכיוון שבנית בעצמך - והקבוצה קיימת בשביל לקצר את הדרך לשם, לא ללכת אותה לבד.`);
+  }
+  if (fear) {
+    pitches.push(`את/ה בעצמך כתבת שמה שהכי מטריד זה "${fear}". זה בדיוק למה שווה להיות בסביבה שבה אפשר לשאול בזמן אמת, במקום להישאר עם זה לבד.`);
+  }
+  pitches.push('מי שכבר בקבוצה אומר/ת דבר אחד בעקביות: הרגע שהכי התחרט/ה עליו הוא לא ההצטרפות - הוא כל החודש שחיכה/תה לפני.');
+  pitches.push('אין כאן הבטחות גדולות - יש תהליך, ואנשים שכבר עברו בדיוק את מה שאת/ה עכשיו. שווה להציץ, גם רק כדי לראות.');
+
+  return pitches[Math.floor(Math.random() * pitches.length)];
+}
+
+// המייל שמזכיר לחזור לעמוד "המעקב האישי" ולסמן אם עמדו בכלל היום - נשלח פעמיים בשבוע (שני וחמישי, לא כל יום),
+// רק ב-30 הימים שאחרי ההשלמה. הפנייה משתמשת בחלום ובפחד שהאדם עצמו כתב בשאלון - לא מסר גנרי -
+// כי בסוף אנשים קונים חלום, מתוך רגש ואינטואיציה, לא מתוך טבלת השוואה.
 export function buildDailyProgressReminderEmailHtml(r: ProgressReminderRow): string {
   const firstName = (r.name || '').trim().split(' ')[0] || '';
   const link = `${SITE_URL}/my-plan/${r.id}`;
+  const dream = firstLabel(r.trading_motivation, 'trading_motivation');
+  const fear = firstLabel(r.money_fear, 'money_fear') || firstLabel(r.self_talk, 'self_talk');
+  const pitch = buildGroupPitch(dream, fear);
 
   return `
   <div dir="rtl" style="font-family: Arial, Helvetica, sans-serif; background:#f4f4f5; padding:24px 12px;">
@@ -312,12 +342,20 @@ export function buildDailyProgressReminderEmailHtml(r: ProgressReminderRow): str
       </div>
 
       <div style="padding:24px;">
-        <p style="font-size:14px;color:#222;line-height:1.7;">שאלה קצרה לפתיחת היום: עמדת היום בכלל האישי שלך?</p>
+        <p style="font-size:14px;color:#222;line-height:1.7;">שאלה קצרה: עמדת בכלל האישי שלך?</p>
         <p style="font-size:14px;color:#222;line-height:1.7;">לחיצה אחת ואפשר לסמן, ולראות את הרצף שלך.</p>
 
-        <a href="${link}" style="display:block;text-align:center;background:#4fc9c4;color:#08131a;text-decoration:none;font-weight:700;padding:13px;border-radius:10px;margin-top:16px;">
-          למעקב היומי שלי ←
+        <a href="${link}" style="display:block;text-align:center;background:#4fc9c4;color:#08131a;text-decoration:none;font-weight:700;padding:13px;border-radius:10px;margin-top:16px;margin-bottom:20px;">
+          למעקב האישי שלי ←
         </a>
+
+        <div style="background:#fff7ed;border:1px solid #fde3b8;border-radius:10px;padding:14px 16px;">
+          <p style="font-size:13px;color:#7a4e0a;line-height:1.65;margin:0;">${pitch}</p>
+        </div>
+
+        <p style="font-size:11px;color:#aaa;line-height:1.6;text-align:center;margin-top:18px;">
+          זו תזכורת חינמית, פעמיים בשבוע (שני וחמישי), לאורך 30 הימים שלך - בלי שום עלות.
+        </p>
       </div>
     </div>
   </div>`;

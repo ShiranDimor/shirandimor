@@ -102,6 +102,7 @@ export async function GET(request: Request) {
 
   return NextResponse.json({
     name: row.name,
+    profileTitle: content.title,
     rule,
     dream,
     fear,

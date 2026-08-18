@@ -21,8 +21,9 @@ function todayIsrael(): string {
   return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Jerusalem' });
 }
 
-// GET - מופעל ע"י Vercel Cron מדי בוקר. שולח לכל מי שהשלים את תוכנית המסחר (וב-30 הימים האחרונים
-// מאז ההשלמה - לא יותר) תזכורת קצרה לחזור לעמוד "המעקב האישי" ולסמן אם עמדו היום בכלל שלהם.
+// GET - מופעל ע"י Vercel Cron בימי שני וחמישי בלבד (לא כל יום, ולא בסופ"ש - כדי לא להציק).
+// שולח לכל מי שהשלים את תוכנית המסחר (וב-30 הימים האחרונים מאז ההשלמה - לא יותר) תזכורת קצרה
+// לחזור לעמוד "המעקב האישי" ולסמן אם עמדו היום בכלל שלהם, עם מסר עדין ומתחלף על הקבוצה.
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const authHeader = request.headers.get('authorization');
@@ -43,7 +44,7 @@ export async function GET(request: Request) {
 
   const { data: rows, error } = await supabaseAdmin
     .from('trading_plan_responses')
-    .select('id, name, email, completed_at, last_daily_reminder_sent_date')
+    .select('id, name, email, completed_at, last_daily_reminder_sent_date, trading_motivation, money_fear, self_talk')
     .eq('status', 'completed')
     .not('email', 'is', null)
     .gte('completed_at', cutoff)
