@@ -36,6 +36,11 @@ interface FollowupRow extends PlanRow {
   completed_at?: string | null;
 }
 
+interface AbandonedRow {
+  id: string;
+  name?: string | null;
+}
+
 function labelsJoined(values: string[] | null | undefined, questionId: string): string {
   if (!values || !values.length) return '—';
   return findOptions(questionId, values).map((o) => o.label).join(', ');
@@ -231,6 +236,34 @@ export function buildFollowupDigestEmailHtml(rows: FollowupRow[]): string {
       </div>
       <div style="padding:20px 24px;">
         ${cards}
+      </div>
+    </div>
+  </div>`;
+}
+
+// המייל האוטומטי שנשלח למי שהתחיל למלא את "תוכנית המסחר" ולא סיים - עם לינק להמשך בדיוק מהנקודה שנעצר בה
+export function buildAbandonedEmailHtml(r: AbandonedRow): string {
+  const firstName = (r.name || '').trim().split(' ')[0] || '';
+  const resumeLink = `${SITE_URL}/trading-plan?resume=${r.id}`;
+
+  return `
+  <div dir="rtl" style="font-family: Arial, Helvetica, sans-serif; background:#f4f4f5; padding:24px 12px;">
+    <div style="max-width:600px;margin:0 auto;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #e5e5e5;">
+      <div style="background:#111318;padding:24px;text-align:center;">
+        <img src="${SITE_URL}/shiran-photo.jpg" width="56" height="56" alt="שירן דימור" style="width:56px;height:56px;border-radius:50%;object-fit:cover;border:2px solid #4fc9c4;margin-bottom:12px;" />
+        <div style="color:#fff;font-size:18px;font-weight:700;">התוכנית שלך מחכה לך</div>
+      </div>
+
+      <div style="padding:24px;">
+        <p style="font-size:14px;color:#222;line-height:1.7;">היי${firstName ? ` ${firstName}` : ''},</p>
+        <p style="font-size:14px;color:#222;line-height:1.7;">שמנו לב שהתחלת לבנות את התוכנית האישית שלך למסחר, ולא הספקת לסיים. חבל - היא כבר כמעט מוכנה 😊</p>
+        <p style="font-size:14px;color:#222;line-height:1.7;">אפשר לחזור בדיוק מהנקודה שבה עצרת, זה לוקח רק כמה דקות:</p>
+
+        <a href="${resumeLink}" style="display:block;text-align:center;background:#4fc9c4;color:#08131a;text-decoration:none;font-weight:700;padding:13px;border-radius:10px;margin-top:16px;">
+          המשך בניית התוכנית שלי ←
+        </a>
+
+        <p style="font-size:12.5px;color:#888;line-height:1.7;margin-top:20px;text-align:center;">אם יש שאלה בדרך - אפשר תמיד לכתוב לי בוואטסאפ.</p>
       </div>
     </div>
   </div>`;

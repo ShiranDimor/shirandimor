@@ -44,12 +44,36 @@ export default function TradingPlanPage() {
     }, 10000);
   }
 
-  // טעינת מקור (UTM/פרמטר) וטיוטה שמורה, אם קיימת
+  // טעינת מקור (UTM/פרמטר), המשך משמור מלינק במייל (?resume=id), או טיוטה שמורה בדפדפן
   useEffect(() => {
+    let params: URLSearchParams;
     try {
-      const params = new URLSearchParams(window.location.search);
+      params = new URLSearchParams(window.location.search);
       setSource(params.get('source'));
-    } catch {}
+    } catch {
+      params = new URLSearchParams();
+    }
+
+    const resumeId = params.get('resume');
+    if (resumeId) {
+      fetch(`/api/trading-plan?id=${encodeURIComponent(resumeId)}`)
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          const row = data?.row;
+          if (!row) return; // לינק לא תקין/כבר הושלם - נשארים במסך הפתיחה הרגיל
+          const restoredAnswers = { ...row } as Record<string, unknown>;
+          const restoredStep: 'contact' | 'quiz' = row.current_step ? 'quiz' : 'contact';
+          const restoredStepIndex = row.current_step ? Math.max(0, Math.min(row.current_step - 1, visibleSteps(restoredAnswers).length - 1)) : 0;
+
+          setResponseId(row.id);
+          setAnswers(restoredAnswers);
+          setStepIndex(restoredStepIndex);
+          setPhase(restoredStep);
+          saveDraft(row.id, restoredAnswers, restoredStepIndex, restoredStep);
+        })
+        .catch(() => {});
+      return;
+    }
 
     try {
       const raw = localStorage.getItem(DRAFT_KEY);

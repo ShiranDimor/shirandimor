@@ -7,6 +7,7 @@ const CAMPAIGN_COLUMN_TITLE = 'campaign_name';
 const STATUS_COLUMN_TITLE = 'סטטוס טיפול';
 const FOLLOWUP_COLUMN_TITLE = 'תאריך פולואפ';
 const TRADING_PLAN_STATUS_LABEL = 'בנה תוכנית מסחר';
+export const TRADING_PLAN_ABANDONED_STATUS_LABEL = 'יצא באמצע התוכנית מסחר';
 const CAMPAIGN_VALUE = 'תוכנית מסחר 30 יום';
 const FOLLOWUP_DAYS_AHEAD = 7;
 
@@ -96,7 +97,18 @@ async function findItemIdByPhone(token: string, boardId: string, phoneColumnId: 
   return null;
 }
 
-function buildInsightsNote(row: Record<string, any>) {
+function buildInsightsNote(row: Record<string, any>, completed: boolean) {
+  if (!completed) {
+    const lines = [
+      'התחיל/ה למלא את "תוכנית המסחר ל-30 יום" באתר, ולא השלים/ה.',
+      row.source ? `מקור: ${row.source}` : null,
+      `עצר/ה בשלב ${row.current_step ?? 0} בשאלון`,
+      Array.isArray(row.trading_motivation) && row.trading_motivation.length ? `מה רוצה מהמסחר: ${row.trading_motivation.join(', ')}` : null,
+      row.trading_experience ? `איפה נמצא/ת מול מסחר: ${row.trading_experience}` : null,
+    ].filter(Boolean);
+    return lines.join('\n');
+  }
+
   const content = getProfileContent(classifyProfile(row));
   const weekOneWinLabels = findOptions('week_one_win', row.week_one_win).map((o) => o.label);
 
@@ -117,9 +129,14 @@ function buildInsightsNote(row: Record<string, any>) {
   return lines.join('\n');
 }
 
-export async function syncTradingPlanLead(row: Record<string, any>): Promise<{ ok: boolean; reason?: string; itemId?: string; created?: boolean }> {
+export async function syncTradingPlanLead(
+  row: Record<string, any>,
+  opts: { statusLabel?: string; completed?: boolean } = {}
+): Promise<{ ok: boolean; reason?: string; itemId?: string; created?: boolean }> {
   const token = process.env.MONDAY_API_TOKEN;
   const boardId = process.env.MONDAY_BOARD_ID;
+  const statusLabel = opts.statusLabel || TRADING_PLAN_STATUS_LABEL;
+  const completed = opts.completed ?? true;
 
   if (!token || !boardId) {
     return { ok: false, reason: 'not_configured' };
@@ -131,9 +148,9 @@ export async function syncTradingPlanLead(row: Record<string, any>): Promise<{ o
   try {
     const { groupId, phoneColumnId, emailColumnId, campaignColumnId, statusColumnId, followupColumnId: existingFollowupColumnId } = await getBoardSchema(token, boardId);
     const normalized = normalizePhone(row.phone);
-    const note = buildInsightsNote(row);
+    const note = buildInsightsNote(row, completed);
 
-    const followupColumnId = existingFollowupColumnId || await ensureFollowupColumn(token, boardId).catch((e) => {
+    const followupColumnId = !completed ? null : existingFollowupColumnId || await ensureFollowupColumn(token, boardId).catch((e) => {
       console.error('Monday.com: נכשלה יצירת עמודת תאריך פולואפ', e);
       return null;
     });
@@ -149,7 +166,7 @@ export async function syncTradingPlanLead(row: Record<string, any>): Promise<{ o
           `mutation ($boardId: ID!, $itemId: ID!, $columnId: String!, $value: String!) {
             change_simple_column_value (board_id: $boardId, item_id: $itemId, column_id: $columnId, value: $value) { id }
           }`,
-          { boardId, itemId: existingItemId, columnId: statusColumnId, value: TRADING_PLAN_STATUS_LABEL }
+          { boardId, itemId: existingItemId, columnId: statusColumnId, value: statusLabel }
         ).catch((e) => console.error('Monday.com: נכשל עדכון סטטוס לליד קיים', e));
       }
 
@@ -176,7 +193,7 @@ export async function syncTradingPlanLead(row: Record<string, any>): Promise<{ o
     if (phoneColumnId) columnValues[phoneColumnId] = { phone: row.phone.startsWith('0') ? `972${row.phone.slice(1)}` : row.phone, countryShortName: 'IL' };
     if (emailColumnId && row.email) columnValues[emailColumnId] = { email: row.email, text: row.email };
     if (campaignColumnId) columnValues[campaignColumnId] = CAMPAIGN_VALUE;
-    if (statusColumnId) columnValues[statusColumnId] = { label: TRADING_PLAN_STATUS_LABEL };
+    if (statusColumnId) columnValues[statusColumnId] = { label: statusLabel };
     if (followupColumnId) columnValues[followupColumnId] = { date: followupDateValue() };
 
     const createData: any = await mondayRequest(

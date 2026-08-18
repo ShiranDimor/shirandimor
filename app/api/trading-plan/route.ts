@@ -39,6 +39,30 @@ function pickAllowedFields(body: Record<string, unknown>) {
   return result;
 }
 
+// GET - שחזור תשובות קיימות לפי מזהה, כדי לאפשר המשך מילוי מלינק במייל (גם ממכשיר אחר)
+// query: ?id=<uuid>
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const id = searchParams.get('id');
+
+  if (!id) {
+    return NextResponse.json({ error: 'חסר מזהה' }, { status: 400 });
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from('trading_plan_responses')
+    .select('*')
+    .eq('id', id)
+    .eq('status', 'in_progress')
+    .maybeSingle();
+
+  if (error || !data) {
+    return NextResponse.json({ error: 'רשומה לא נמצאה' }, { status: 404 });
+  }
+
+  return NextResponse.json({ row: data });
+}
+
 // POST - יצירה/עדכון (autosave) של תשובות השאלון
 // body: { id?: string, ...answers }
 // אם אין id - יוצר רשומה חדשה ומחזיר id. אם יש id - מעדכן את הרשומה הקיימת (upsert-style).
