@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { visibleSteps, visibleQuestions } from '@/lib/tradingPlan/questions';
 import { classifyProfile } from '@/lib/tradingPlan/profile';
@@ -28,6 +28,22 @@ export default function TradingPlanPage() {
   const [phoneTouched, setPhoneTouched] = useState(false);
   const [emailTouched, setEmailTouched] = useState(false);
 
+  const [showNudge, setShowNudge] = useState(false);
+  const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const nudgeShownRef = useRef(false);
+
+  // אחרי קצת חוסר פעילות באמצע הטופס/שאלון - תזכורת עדינה שחבל לנטוש, מוצגת פעם אחת בלבד
+  function armIdleNudge() {
+    if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+    setShowNudge(false);
+    if (nudgeShownRef.current) return;
+    if (phase !== 'contact' && phase !== 'quiz') return;
+    idleTimerRef.current = setTimeout(() => {
+      nudgeShownRef.current = true;
+      setShowNudge(true);
+    }, 25000);
+  }
+
   // טעינת מקור (UTM/פרמטר) וטיוטה שמורה, אם קיימת
   useEffect(() => {
     try {
@@ -49,6 +65,12 @@ export default function TradingPlanPage() {
     } catch {}
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    armIdleNudge();
+    return () => { if (idleTimerRef.current) clearTimeout(idleTimerRef.current); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, stepIndex]);
 
   function saveDraft(id: string, nextAnswers: Record<string, unknown>, nextStepIndex: number, nextPhase: 'contact' | 'quiz') {
     try {
@@ -92,6 +114,7 @@ export default function TradingPlanPage() {
       if (responseId) saveDraft(responseId, next, stepIndex, phase === 'contact' ? 'contact' : 'quiz');
       return next;
     });
+    armIdleNudge();
   }
 
   const effectiveSteps = visibleSteps(answers);
@@ -318,6 +341,39 @@ export default function TradingPlanPage() {
       )}
 
       <footer>מסחר בשוק ההון כרוך בסיכון. אין באמור המלצה לפעולה כלשהי.</footer>
+
+      {showNudge && (phase === 'contact' || phase === 'quiz') && (
+        <div
+          style={{
+            position: 'fixed',
+            insetInlineStart: 0,
+            insetInlineEnd: 0,
+            bottom: 0,
+            zIndex: 50,
+            background: '#111318',
+            borderTop: '1px solid #2a2e37',
+            padding: '14px 16px calc(14px + env(safe-area-inset-bottom))',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '12px',
+            boxShadow: '0 -4px 20px rgba(0,0,0,0.35)',
+          }}
+        >
+          <div style={{ fontSize: '13.5px', color: '#fff', lineHeight: 1.5 }}>
+            עוד קצת ותוכנית המסחר האישית שלך נשלחת אלייך למייל 😊<br />
+            חבל לנטוש באמצע!
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowNudge(false)}
+            aria-label="סגירה"
+            style={{ background: 'none', border: 'none', color: '#888', fontSize: '22px', lineHeight: 1, cursor: 'pointer', padding: '4px 8px', flexShrink: 0 }}
+          >
+            ×
+          </button>
+        </div>
+      )}
     </div>
   );
 }
