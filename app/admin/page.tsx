@@ -148,6 +148,12 @@ export default function AdminDashboard() {
           <div className="at-title">מנויים מאושרים</div>
           <div className="at-count">{approvedCount} פעילים</div>
         </Link>
+
+        <Link href="/admin/trading-plan" className="admin-tile">
+          <div className="at-icon">📝</div>
+          <div className="at-title">ננטשו באמצע שאלון</div>
+          <div className="at-count">תוכנית מסחר 30 יום</div>
+        </Link>
       </div>
 
       <button className="btn-outline" style={{ width: '100%', marginTop: '8px' }} onClick={handleRefreshAllPrices} disabled={refreshing}>

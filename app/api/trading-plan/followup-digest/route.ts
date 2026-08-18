@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/instantLogin';
-import { buildFollowupDigestEmailHtml } from '@/lib/tradingPlan/emailContent';
+import { buildFollowupDigestEmailHtml, buildFollowupUserEmailHtml } from '@/lib/tradingPlan/emailContent';
 
 async function sendEmail(apiKey: string, to: string, subject: string, html: string, from: string) {
   const res = await fetch('https://api.resend.com/emails', {
@@ -16,8 +16,9 @@ async function sendEmail(apiKey: string, to: string, subject: string, html: stri
 }
 
 // GET - מופעל ע"י Vercel Cron מדי בוקר. שולח לשירן מייל מרוכז אחד עם כל מי שמילא
-// את השאלון לפני 7 ימים ומעלה ועדיין לא נשלחה עבורו תזכורת - כדי לא לפספס פולואפ
-// גם אם ה-cron מדלג על יום, ולא לשלוח כפול לאותו אדם.
+// את השאלון לפני 7 ימים ומעלה ועדיין לא נשלחה עבורו תזכורת, ובמקביל שולח לכל אחד מהם
+// מייל אישי אוטומטי בשם שירן. is('followup_notified_at', null) דואג שלא נשלח פעמיים
+// לאותו אדם, גם אם ה-cron מדלג על יום.
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const authHeader = request.headers.get('authorization');
@@ -52,20 +53,34 @@ export async function GET(request: Request) {
     return NextResponse.json({ ok: true, sent: false, count: rows.length });
   }
 
-  const sent = await sendEmail(
-    apiKey,
-    'shiran@shirandimor.com',
-    `תזכורת פולואפ - ${rows.length} ${rows.length === 1 ? 'איש/ה' : 'אנשים'} השבוע`,
-    buildFollowupDigestEmailHtml(rows as any),
-    'תזכורות פולואפ <onboarding@resend.dev>'
-  );
+  const [digestSent, userEmailResults] = await Promise.all([
+    sendEmail(
+      apiKey,
+      'shiran@shirandimor.com',
+      `תזכורת פולואפ - ${rows.length} ${rows.length === 1 ? 'איש/ה' : 'אנשים'} השבוע`,
+      buildFollowupDigestEmailHtml(rows as any),
+      'תזכורות פולואפ <onboarding@resend.dev>'
+    ),
+    Promise.allSettled(
+      rows.map((r) =>
+        r.email
+          ? sendEmail(apiKey, r.email, 'עבר בדיוק שבוע - אז איך הולך?', buildFollowupUserEmailHtml(r as any), 'שירן דימור <onboarding@resend.dev>')
+          : Promise.resolve(false)
+      )
+    ),
+  ]);
 
-  if (sent) {
+  const userEmailsSent = userEmailResults.filter((r) => r.status === 'fulfilled' && r.value === true).length;
+
+  // מסמנים כ"נשלח" רק אם המייל המרוכז לשירן הצליח - אם לא, ה-cron הבא ינסה שוב לכולם
+  if (digestSent) {
     await supabaseAdmin
       .from('trading_plan_responses')
       .update({ followup_notified_at: new Date().toISOString() })
       .in('id', rows.map((r) => r.id));
+  } else {
+    console.error('שגיאה בשליחת מייל התזכורת המרוכז - לא מסמנים כנשלח, ננסה שוב מחר');
   }
 
-  return NextResponse.json({ ok: true, sent, count: rows.length });
+  return NextResponse.json({ ok: true, digestSent, userEmailsSent, count: rows.length });
 }

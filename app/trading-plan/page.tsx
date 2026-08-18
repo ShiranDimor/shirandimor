@@ -253,6 +253,7 @@ export default function TradingPlanPage() {
               style={{ minHeight: 'auto' }}
               value={typeof answers.name === 'string' ? answers.name : ''}
               onChange={(e) => handleAnswerChange('name', e.target.value)}
+              onBlur={() => { if (responseId && answers.name) autosave(responseId, { name: answers.name }); }}
               placeholder="השם שלך"
             />
           </div>
@@ -265,7 +266,7 @@ export default function TradingPlanPage() {
               type="tel"
               value={typeof answers.phone === 'string' ? answers.phone : ''}
               onChange={(e) => handleAnswerChange('phone', e.target.value.replace(/\D/g, '').slice(0, 10))}
-              onBlur={() => setPhoneTouched(true)}
+              onBlur={() => { setPhoneTouched(true); if (responseId && phoneOk) autosave(responseId, { phone: answers.phone }); }}
               placeholder="050-1234567"
             />
             {phoneTouched && !phoneOk && (
@@ -283,7 +284,7 @@ export default function TradingPlanPage() {
               type="email"
               value={typeof answers.email === 'string' ? answers.email : ''}
               onChange={(e) => handleAnswerChange('email', e.target.value)}
-              onBlur={() => setEmailTouched(true)}
+              onBlur={() => { setEmailTouched(true); if (responseId && emailOk) autosave(responseId, { email: answers.email }); }}
               placeholder="name@example.com"
             />
             {emailTouched && !emailOk && (

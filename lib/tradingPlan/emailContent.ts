@@ -161,6 +161,47 @@ export function buildAdminNotifyEmailHtml(r: PlanRow): string {
   </div>`;
 }
 
+// המייל האוטומטי שנשלח ישירות למי שמילא/ה את השאלון, בדיוק שבוע אחרי - פנייה אישית בשם שירן
+export function buildFollowupUserEmailHtml(r: FollowupRow): string {
+  const content = getProfileContent(classifyProfile(r as unknown as Record<string, unknown>));
+  const weekOneWin = labelsJoined(r.week_one_win, 'week_one_win');
+  const rule = r.personal_rule?.trim() ? r.personal_rule : content.defaultRule;
+  const firstName = (r.name || '').trim().split(' ')[0] || '';
+
+  return `
+  <div dir="rtl" style="font-family: Arial, Helvetica, sans-serif; background:#f4f4f5; padding:24px 12px;">
+    <div style="max-width:600px;margin:0 auto;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #e5e5e5;">
+      <div style="background:#111318;padding:24px;text-align:center;">
+        <img src="${SITE_URL}/shiran-photo.jpg" width="56" height="56" alt="שירן דימור" style="width:56px;height:56px;border-radius:50%;object-fit:cover;border:2px solid #4fc9c4;margin-bottom:12px;" />
+        <div style="color:#fff;font-size:18px;font-weight:700;">עבר בדיוק שבוע... אז איך הולך?</div>
+      </div>
+
+      <div style="padding:24px;">
+        <p style="font-size:14px;color:#222;line-height:1.7;">היי${firstName ? ` ${firstName}` : ''},</p>
+        <p style="font-size:14px;color:#222;line-height:1.7;">לפני שבוע בנית איתנו תוכנית מסחר אישית באתר. רציתי לבדוק מה קורה מאז.</p>
+
+        ${weekOneWin !== '—' ? `
+        <div style="background:#f0fbfa;border:1px solid #cdeeeb;border-radius:10px;padding:14px 16px;margin:16px 0;">
+          <div style="font-size:10.5px;color:#888;text-transform:uppercase;margin-bottom:4px;">כתבת שזה מה שהיה גורם לך להרגיש שהתחלת נכון</div>
+          <div style="font-size:14px;color:#0f172a;font-weight:600;">${weekOneWin}</div>
+        </div>` : ''}
+
+        <div style="background:#f6f3fc;border:1px solid #e2dcf5;border-radius:10px;padding:14px 16px;margin-bottom:16px;">
+          <div style="font-size:10.5px;color:#888;text-transform:uppercase;margin-bottom:4px;">והכלל שהתחייבת אליו</div>
+          <div style="font-size:14px;color:#0f172a;font-weight:600;">${rule}</div>
+        </div>
+
+        <p style="font-size:14px;color:#222;line-height:1.7;">אז - איך הלך? עמדת בזה? היה קשה? השתנה משהו בדרך?</p>
+        <p style="font-size:14px;color:#222;line-height:1.7;">אשמח לשמוע - פשוט תשיבו למייל הזה, או תכתבו לי בוואטסאפ.</p>
+
+        <a href="https://wa.me/972547167419" style="display:block;text-align:center;background:#25D366;color:#fff;text-decoration:none;font-weight:700;padding:13px;border-radius:10px;margin-top:20px;">
+          כתיבה לשירן בוואטסאפ ←
+        </a>
+      </div>
+    </div>
+  </div>`;
+}
+
 // המייל היומי המרוכז לשירן - כל מי שמילא את השאלון לפני שבוע בדיוק, כדי לפנות אליו/ה בפולואפ
 export function buildFollowupDigestEmailHtml(rows: FollowupRow[]): string {
   const cards = rows.map((r) => {
