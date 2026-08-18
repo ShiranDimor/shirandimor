@@ -242,21 +242,27 @@ export function buildFollowupDigestEmailHtml(rows: FollowupRow[]): string {
 }
 
 // המייל האוטומטי שנשלח למי שהתחיל למלא את "תוכנית המסחר" ולא סיים - עם לינק להמשך בדיוק מהנקודה שנעצר בה
-export function buildAbandonedEmailHtml(r: AbandonedRow): string {
+// reminderNumber 1 = תזכורת ראשונה (יום אחרי הנטישה), 2 = תזכורת אחרונה (יום אחרי התזכורת הראשונה, ואז מפסיקים)
+export function buildAbandonedEmailHtml(r: AbandonedRow, reminderNumber: 1 | 2 = 1): string {
   const firstName = (r.name || '').trim().split(' ')[0] || '';
   const resumeLink = `${SITE_URL}/trading-plan?resume=${r.id}`;
+  const isLast = reminderNumber === 2;
 
   return `
   <div dir="rtl" style="font-family: Arial, Helvetica, sans-serif; background:#f4f4f5; padding:24px 12px;">
     <div style="max-width:600px;margin:0 auto;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #e5e5e5;">
       <div style="background:#111318;padding:24px;text-align:center;">
         <img src="${SITE_URL}/shiran-photo.jpg" width="56" height="56" alt="שירן דימור" style="width:56px;height:56px;border-radius:50%;object-fit:cover;border:2px solid #4fc9c4;margin-bottom:12px;" />
-        <div style="color:#fff;font-size:18px;font-weight:700;">התוכנית שלך מחכה לך</div>
+        <div style="color:#fff;font-size:18px;font-weight:700;">${isLast ? 'תזכורת אחרונה - התוכנית שלך מחכה לך' : 'התוכנית שלך מחכה לך'}</div>
       </div>
 
       <div style="padding:24px;">
         <p style="font-size:14px;color:#222;line-height:1.7;">היי${firstName ? ` ${firstName}` : ''},</p>
+        ${isLast ? `
+        <p style="font-size:14px;color:#222;line-height:1.7;">זו התזכורת האחרונה שלי - עדיין לא השלמת את התוכנית האישית שלך למסחר. לא אמשיך להזכיר, אבל ממש חבל לוותר כשנשארו רק כמה דקות עד הסוף.</p>
+        ` : `
         <p style="font-size:14px;color:#222;line-height:1.7;">שמנו לב שהתחלת לבנות את התוכנית האישית שלך למסחר, ולא הספקת לסיים. חבל - היא כבר כמעט מוכנה 😊</p>
+        `}
         <p style="font-size:14px;color:#222;line-height:1.7;">אפשר לחזור בדיוק מהנקודה שבה עצרת, זה לוקח רק כמה דקות:</p>
 
         <a href="${resumeLink}" style="display:block;text-align:center;background:#4fc9c4;color:#08131a;text-decoration:none;font-weight:700;padding:13px;border-radius:10px;margin-top:16px;">
