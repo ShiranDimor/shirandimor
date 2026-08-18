@@ -41,7 +41,7 @@ export default function TradingPlanPage() {
     idleTimerRef.current = setTimeout(() => {
       nudgeShownRef.current = true;
       setShowNudge(true);
-    }, 25000);
+    }, 10000);
   }
 
   // טעינת מקור (UTM/פרמטר) וטיוטה שמורה, אם קיימת
