@@ -16,6 +16,8 @@ type AbandonedRow = {
   totalSteps: number;
 };
 
+type DetailAnswer = { id: string; title: string; value: string };
+
 function stepLabel(r: AbandonedRow) {
   if (!r.stepsReached) return 'בטופס הפרטים, עדיין לפני תחילת השאלון';
   return `בשלב ${r.stepsReached} מתוך ${r.totalSteps} בשאלון`;
@@ -38,6 +40,11 @@ export default function AdminTradingPlanAbandonedPage() {
 
   const [rows, setRows] = useState<AbandonedRow[]>([]);
   const [loadingRows, setLoadingRows] = useState(false);
+
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [details, setDetails] = useState<Record<string, DetailAnswer[]>>({});
+  const [loadingDetailsId, setLoadingDetailsId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
     checkAdmin();
@@ -73,6 +80,43 @@ export default function AdminTradingPlanAbandonedPage() {
       setRows(data.rows || []);
     }
     setLoadingRows(false);
+  }
+
+  async function toggleDetails(id: string) {
+    if (expandedId === id) {
+      setExpandedId(null);
+      return;
+    }
+    setExpandedId(id);
+    if (!details[id]) {
+      setLoadingDetailsId(id);
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`/api/admin/trading-plan-abandoned/${id}`, {
+        headers: { Authorization: `Bearer ${session?.access_token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setDetails((prev) => ({ ...prev, [id]: data.answers || [] }));
+      }
+      setLoadingDetailsId(null);
+    }
+  }
+
+  async function handleDelete(id: string, label: string) {
+    if (!window.confirm(`למחוק לצמיתות את הרשומה של ${label}?`)) return;
+    setDeletingId(id);
+
+    const { data: { session } } = await supabase.auth.getSession();
+    const res = await fetch(`/api/admin/trading-plan-abandoned/${id}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${session?.access_token}` },
+    });
+
+    setDeletingId(null);
+    if (res.ok) {
+      setRows((prev) => prev.filter((r) => r.id !== id));
+      if (expandedId === id) setExpandedId(null);
+    }
   }
 
   async function handleLogout() {
@@ -114,6 +158,62 @@ export default function AdminTradingPlanAbandonedPage() {
   const contactable = rows.filter((r) => r.phone || r.email);
   const noContact = rows.filter((r) => !r.phone && !r.email);
 
+  function renderRow(r: AbandonedRow) {
+    const waLink = r.phone ? `https://wa.me/972${r.phone.replace(/\D/g, '').replace(/^0/, '')}` : null;
+    const isExpanded = expandedId === r.id;
+    const rowAnswers = details[r.id];
+
+    return (
+      <div key={r.id} className="admin-row" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+          <div>
+            <div className="name">{r.name || 'ללא שם'}</div>
+            {r.phone && <div className="email">{r.phone}</div>}
+            {r.email && <div className="email">{r.email}</div>}
+            <div className="email" style={{ marginTop: '2px' }}>
+              עצר/ה {stepLabel(r)} · {r.source ? `מקור: ${r.source} · ` : ''}עדכון אחרון: {timeAgo(r.updated_at)}
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <button type="button" className="btn-outline" style={{ padding: '8px 12px', fontSize: '12.5px' }} onClick={() => toggleDetails(r.id)}>
+              {isExpanded ? 'סגירה' : 'פרטים מלאים'}
+            </button>
+            {waLink && (
+              <a href={waLink} target="_blank" rel="noopener noreferrer" className="approve-btn" style={{ textDecoration: 'none', display: 'inline-block' }}>
+                וואטסאפ ←
+              </a>
+            )}
+            <button
+              className="row-delete-btn"
+              onClick={() => handleDelete(r.id, r.name || r.phone || r.email || 'ללא שם')}
+              disabled={deletingId === r.id}
+              title="מחיקת רשומה"
+            >
+              {deletingId === r.id ? '…' : (
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--loss)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 6h18" /><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /><line x1="10" y1="11" x2="10" y2="17" /><line x1="14" y1="11" x2="14" y2="17" />
+                </svg>
+              )}
+            </button>
+          </div>
+        </div>
+
+        {isExpanded && (
+          <div style={{ marginTop: '14px', paddingTop: '14px', borderTop: '1px solid var(--border, #2a2e37)' }}>
+            {loadingDetailsId === r.id && <p style={{ fontSize: '12.5px', color: 'var(--text-tertiary)' }}>טוענים תשובות...</p>}
+            {rowAnswers && rowAnswers.length === 0 && <p style={{ fontSize: '12.5px', color: 'var(--text-tertiary)' }}>עדיין אין תשובות שמורות</p>}
+            {rowAnswers && rowAnswers.map((a) => (
+              <div key={a.id} style={{ marginBottom: '8px' }}>
+                <div style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>{a.title}</div>
+                <div style={{ fontSize: '13.5px', color: 'var(--text-primary, #fff)' }}>{a.value}</div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="wrap">
       <header>
@@ -127,7 +227,7 @@ export default function AdminTradingPlanAbandonedPage() {
 
       <div className="section-label"><h2>ננטשו באמצע תוכנית מסחר</h2><span className="count">{rows.length}</span></div>
       <p style={{ fontSize: '13px', color: 'var(--text-tertiary)', marginBottom: '20px' }}>
-        מי שהתחיל למלא את השאלון ועדיין לא סיים. מי שהשאיר נייד או מייל אפשר ליצור איתו קשר ישירות.
+        מי שהתחיל למלא את השאלון ועדיין לא סיים. "פרטים מלאים" מציג את כל התשובות שהוזנו עד הרגע שבו נעצר.
       </p>
 
       {loadingRows && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>טוענים...</p>}
@@ -136,42 +236,14 @@ export default function AdminTradingPlanAbandonedPage() {
       {contactable.length > 0 && (
         <>
           <div className="section-label" style={{ marginTop: '8px' }}><h2 style={{ fontSize: '15px' }}>יש פרטי קשר</h2></div>
-          {contactable.map((r) => {
-            const waLink = r.phone ? `https://wa.me/972${r.phone.replace(/\D/g, '').replace(/^0/, '')}` : null;
-            return (
-              <div className="admin-row" key={r.id}>
-                <div>
-                  <div className="name">{r.name || 'ללא שם'}</div>
-                  {r.phone && <div className="email">{r.phone}</div>}
-                  {r.email && <div className="email">{r.email}</div>}
-                  <div className="email" style={{ marginTop: '2px' }}>
-                    עצר/ה {stepLabel(r)} · {r.source ? `מקור: ${r.source} · ` : ''}עדכון אחרון: {timeAgo(r.updated_at)}
-                  </div>
-                </div>
-                {waLink && (
-                  <a href={waLink} target="_blank" rel="noopener noreferrer" className="approve-btn" style={{ textDecoration: 'none', display: 'inline-block' }}>
-                    וואטסאפ ←
-                  </a>
-                )}
-              </div>
-            );
-          })}
+          {contactable.map(renderRow)}
         </>
       )}
 
       {noContact.length > 0 && (
         <>
           <div className="section-label" style={{ marginTop: '24px' }}><h2 style={{ fontSize: '15px' }}>בלי פרטי קשר (עצרו בדיוק בטופס הפרטים עצמו)</h2></div>
-          {noContact.map((r) => (
-            <div className="admin-row" key={r.id}>
-              <div>
-                <div className="name">ללא פרטי קשר</div>
-                <div className="email">
-                  עצר/ה {stepLabel(r)} · {r.source ? `מקור: ${r.source} · ` : ''}עדכון אחרון: {timeAgo(r.updated_at)}
-                </div>
-              </div>
-            </div>
-          ))}
+          {noContact.map(renderRow)}
         </>
       )}
     </div>
