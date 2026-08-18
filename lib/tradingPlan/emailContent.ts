@@ -269,6 +269,13 @@ export function buildAbandonedEmailHtml(r: AbandonedRow, reminderNumber: 1 | 2 =
           המשך בניית התוכנית שלי ←
         </a>
 
+        <p style="font-size:13.5px;color:#444;line-height:1.7;margin-top:24px;">להישאר רק בקבוצת העדכונים ולקרוא על שוק ההון זה נחמד להתחלה - אבל מתישהו כדאי לעבור לשלב הבא, ולבנות תוכנית אמיתית שעובדים לפיה.</p>
+        <p style="font-size:13.5px;color:#444;line-height:1.7;">זה הרבה יותר פשוט ממה שזה נראה: כמה דקות כל כמה ימים, לא יותר. עם קצת עקביות, התיק יכול להיראות אחרי כמה חודשים לגמרי אחרת.</p>
+
+        <a href="https://pay.grow.link/200a7cdcb258ee6ffdea0f423a1ace0e-MzE4MDU5OA" style="display:block;text-align:center;background:transparent;color:#0f766e;text-decoration:none;font-weight:700;padding:12px;border-radius:10px;border:2px solid #4fc9c4;margin-top:10px;">
+          הצטרפות לקבוצת הסוחרים ←
+        </a>
+
         <p style="font-size:12.5px;color:#888;line-height:1.7;margin-top:20px;margin-bottom:8px;text-align:center;">אם יש שאלה בדרך - אפשר תמיד לכתוב לי בוואטסאפ:</p>
         <a href="https://wa.me/972547167419" style="display:block;text-align:center;background:#25D366;color:#fff;text-decoration:none;font-weight:700;padding:11px;border-radius:10px;">
           זמינה בשבילך בוואטסאפ ←
