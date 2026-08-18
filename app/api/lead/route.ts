@@ -140,9 +140,14 @@ export async function POST(request: Request) {
       console.error('Monday.com לא החזיר מזהה פריט', createItemData);
     }
 
-    return NextResponse.json({ ok: true, monday: Boolean(itemId) });
+    const response = NextResponse.json({ ok: true, monday: Boolean(itemId) });
+    // מסמן את הדפדפן כמי שהצטרף לקבוצת העדכונים - פותח גישה לשכבת התוכן האמצעית בספריית השיעורים
+    response.cookies.set('sd_registered', '1', { maxAge: 60 * 60 * 24 * 365, path: '/', sameSite: 'lax' });
+    return response;
   } catch (e) {
     console.error('שגיאה בשליחת הליד ל-Monday.com', e);
-    return NextResponse.json({ ok: true, monday: false });
+    const response = NextResponse.json({ ok: true, monday: false });
+    response.cookies.set('sd_registered', '1', { maxAge: 60 * 60 * 24 * 365, path: '/', sameSite: 'lax' });
+    return response;
   }
 }

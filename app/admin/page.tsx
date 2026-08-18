@@ -161,6 +161,12 @@ export default function AdminDashboard() {
           <div className="at-title">ננטשו באמצע שאלון</div>
           <div className="at-count">{abandonedUnread > 0 ? `${abandonedUnread} חדשים · ` : ''}{abandonedTotal} סה״כ</div>
         </Link>
+
+        <Link href="/admin/lessons" className="admin-tile">
+          <div className="at-icon">🎥</div>
+          <div className="at-title">ספריית שיעורים</div>
+          <div className="at-count">ניהול תוכן</div>
+        </Link>
       </div>
 
       <button className="btn-outline" style={{ width: '100%', marginTop: '8px' }} onClick={handleRefreshAllPrices} disabled={refreshing}>
