@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/instantLogin';
+import { LESSONS_LIBRARY_PUBLIC } from '@/lib/lessonsConfig';
 
 const TIER_RANK = { public: 0, registered: 1, subscriber: 2 } as const;
 
@@ -13,6 +14,7 @@ export async function GET(request: Request) {
   const hasRegisteredCookie = /(?:^|;\s*)sd_registered=1(?:;|$)/.test(cookieHeader);
 
   let viewerTier: 'public' | 'registered' | 'subscriber' = hasRegisteredCookie ? 'registered' : 'public';
+  let isAdmin = false;
 
   if (token) {
     const { data: { user } } = await supabaseAdmin.auth.getUser(token);
@@ -22,7 +24,13 @@ export async function GET(request: Request) {
       if (profile?.role === 'subscriber' || profile?.role === 'admin') {
         viewerTier = 'subscriber';
       }
+      isAdmin = profile?.role === 'admin';
     }
+  }
+
+  // כל עוד הספרייה עדיין לא פורסמה - גלויה רק לאדמין, גם דרך ה-API עצמו
+  if (!LESSONS_LIBRARY_PUBLIC && !isAdmin) {
+    return NextResponse.json({ error: 'לא נמצא' }, { status: 404 });
   }
 
   const { searchParams } = new URL(request.url);

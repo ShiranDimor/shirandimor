@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
+import { LESSONS_LIBRARY_PUBLIC } from '@/lib/lessonsConfig';
 
 type LessonSummary = {
   id: string;
@@ -24,10 +25,30 @@ export default function LessonsLibraryPage() {
   const [lessons, setLessons] = useState<LessonSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [checkingAccess, setCheckingAccess] = useState(!LESSONS_LIBRARY_PUBLIC);
 
   useEffect(() => {
-    load();
+    if (LESSONS_LIBRARY_PUBLIC) {
+      load();
+      return;
+    }
+    checkAdminThenLoad();
   }, []);
+
+  async function checkAdminThenLoad() {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+      if (profile?.role === 'admin') {
+        setIsAdmin(true);
+        setCheckingAccess(false);
+        load();
+        return;
+      }
+    }
+    setCheckingAccess(false);
+  }
 
   async function load() {
     setLoading(true);
@@ -45,6 +66,22 @@ export default function LessonsLibraryPage() {
 
   const categories = Array.from(new Set(lessons.map((l) => l.category).filter(Boolean))) as string[];
   const visibleLessons = activeCategory ? lessons.filter((l) => l.category === activeCategory) : lessons;
+
+  if (checkingAccess) {
+    return <div className="wrap"><p style={{ padding: '40px', textAlign: 'center' }}>טוענים...</p></div>;
+  }
+
+  if (!LESSONS_LIBRARY_PUBLIC && !isAdmin) {
+    return (
+      <div className="wrap">
+        <header>
+          <Link href="/" className="brand">מסחר <span>אחראי</span> במניות</Link>
+          <Link href="/" className="nav-link">בית</Link>
+        </header>
+        <p style={{ padding: '60px 0', textAlign: 'center', color: 'var(--text-tertiary)' }}>בקרוב 🎬</p>
+      </div>
+    );
+  }
 
   return (
     <div className="wrap">
