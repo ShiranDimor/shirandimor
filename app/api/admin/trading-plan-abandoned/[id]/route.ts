@@ -30,6 +30,10 @@ export async function GET(request: Request, { params }: { params: { id: string }
     return NextResponse.json({ error: 'רשומה לא נמצאה' }, { status: 404 });
   }
 
+  if (!row.admin_viewed_at) {
+    await supabaseAdmin.from('trading_plan_responses').update({ admin_viewed_at: new Date().toISOString() }).eq('id', params.id);
+  }
+
   const answers = ALL_QUESTIONS
     .filter((q) => {
       const v = (row as Record<string, unknown>)[q.id];

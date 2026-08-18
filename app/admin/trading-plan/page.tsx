@@ -14,6 +14,7 @@ type AbandonedRow = {
   updated_at: string;
   stepsReached: number;
   totalSteps: number;
+  viewed: boolean;
 };
 
 type DetailAnswer = { id: string; title: string; value: string };
@@ -97,6 +98,7 @@ export default function AdminTradingPlanAbandonedPage() {
       if (res.ok) {
         const data = await res.json();
         setDetails((prev) => ({ ...prev, [id]: data.answers || [] }));
+        setRows((prev) => prev.map((r) => (r.id === id ? { ...r, viewed: true } : r)));
       }
       setLoadingDetailsId(null);
     }
@@ -167,7 +169,14 @@ export default function AdminTradingPlanAbandonedPage() {
       <div key={r.id} className="admin-row" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
           <div>
-            <div className="name">{r.name || 'ללא שם'}</div>
+            <div className="name">
+              {r.name || 'ללא שם'}
+              {!r.viewed && (
+                <span style={{ marginRight: '8px', fontSize: '10.5px', fontWeight: 700, color: '#0b0d12', background: 'var(--teal)', borderRadius: '5px', padding: '2px 6px', verticalAlign: 'middle' }}>
+                  חדש
+                </span>
+              )}
+            </div>
             {r.phone && <div className="email">{r.phone}</div>}
             {r.email && <div className="email">{r.email}</div>}
             <div className="email" style={{ marginTop: '2px' }}>
@@ -227,7 +236,8 @@ export default function AdminTradingPlanAbandonedPage() {
 
       <div className="section-label"><h2>ננטשו באמצע תוכנית מסחר</h2><span className="count">{rows.length}</span></div>
       <p style={{ fontSize: '13px', color: 'var(--text-tertiary)', marginBottom: '20px' }}>
-        מי שהתחיל למלא את השאלון ועדיין לא סיים. "פרטים מלאים" מציג את כל התשובות שהוזנו עד הרגע שבו נעצר.
+        מי שהתחיל למלא את השאלון ועדיין לא סיים. {rows.filter((r) => !r.viewed).length > 0 ? `${rows.filter((r) => !r.viewed).length} מהם חדשים - עדיין לא נפתחו. ` : ''}
+        "פרטים מלאים" מציג את כל התשובות שהוזנו עד הרגע שבו נעצר, ומסמן שנצפה.
       </p>
 
       {loadingRows && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>טוענים...</p>}

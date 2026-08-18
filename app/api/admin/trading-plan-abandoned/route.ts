@@ -39,6 +39,7 @@ export async function GET(request: Request) {
     updated_at: r.updated_at,
     stepsReached: r.current_step ?? 0,
     totalSteps: visibleSteps(r).length,
+    viewed: !!r.admin_viewed_at,
   }));
 
   return NextResponse.json({ rows });

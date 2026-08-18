@@ -12,6 +12,8 @@ export default function AdminDashboard() {
   const [pendingCount, setPendingCount] = useState(0);
   const [approvedCount, setApprovedCount] = useState(0);
   const [openTradesCount, setOpenTradesCount] = useState(0);
+  const [abandonedTotal, setAbandonedTotal] = useState(0);
+  const [abandonedUnread, setAbandonedUnread] = useState(0);
 
   const [refreshing, setRefreshing] = useState(false);
   const [refreshMessage, setRefreshMessage] = useState('');
@@ -70,15 +72,20 @@ export default function AdminDashboard() {
   }
 
   async function loadCounts() {
-    const [pending, approved, openTrades] = await Promise.all([
+    const { data: { session } } = await supabase.auth.getSession();
+
+    const [pending, approved, openTrades, abandonedRes] = await Promise.all([
       supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'lead'),
       supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'subscriber'),
       supabase.from('trades').select('id', { count: 'exact', head: true }).eq('status', 'open'),
+      fetch('/api/admin/trading-plan-abandoned/count', { headers: { Authorization: `Bearer ${session?.access_token}` } }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
     ]);
 
     setPendingCount(pending.count || 0);
     setApprovedCount(approved.count || 0);
     setOpenTradesCount(openTrades.count || 0);
+    setAbandonedTotal(abandonedRes?.total || 0);
+    setAbandonedUnread(abandonedRes?.unread || 0);
   }
 
   async function handleLogout() {
@@ -149,10 +156,10 @@ export default function AdminDashboard() {
           <div className="at-count">{approvedCount} פעילים</div>
         </Link>
 
-        <Link href="/admin/trading-plan" className="admin-tile">
+        <Link href="/admin/trading-plan" className={`admin-tile ${abandonedUnread > 0 ? 'attention' : ''}`}>
           <div className="at-icon">📝</div>
           <div className="at-title">ננטשו באמצע שאלון</div>
-          <div className="at-count">תוכנית מסחר 30 יום</div>
+          <div className="at-count">{abandonedUnread > 0 ? `${abandonedUnread} חדשים · ` : ''}{abandonedTotal} סה״כ</div>
         </Link>
       </div>
 
