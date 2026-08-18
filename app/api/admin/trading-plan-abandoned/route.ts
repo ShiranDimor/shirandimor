@@ -2,8 +2,8 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/instantLogin';
 import { visibleSteps } from '@/lib/tradingPlan/questions';
 
-// GET - רשימת כל מי שהתחיל למלא את "תוכנית המסחר" ולא סיים (ננטש באמצע),
-// כדי שאפשר יהיה ליזום קשר עם מי שהשאיר נייד/מייל
+// GET - כל מי שמילא את "תוכנית המסחר", גם מי שהשלים וגם מי שננטש באמצע -
+// כדי שיהיה מקום אחד לראות מי חדש (סיים או לא) וליזום קשר עם מי שהשאיר נייד/מייל
 export async function GET(request: Request) {
   const authHeader = request.headers.get('Authorization') || '';
   const token = authHeader.replace('Bearer ', '');
@@ -21,7 +21,7 @@ export async function GET(request: Request) {
   const { data, error } = await supabaseAdmin
     .from('trading_plan_responses')
     .select('*')
-    .eq('status', 'in_progress')
+    .in('status', ['in_progress', 'completed'])
     .order('updated_at', { ascending: false })
     .limit(300);
 
@@ -35,8 +35,11 @@ export async function GET(request: Request) {
     phone: r.phone,
     email: r.email,
     source: r.source,
+    status: r.status,
     created_at: r.created_at,
     updated_at: r.updated_at,
+    completed_at: r.completed_at,
+    computedProfile: r.computed_profile,
     stepsReached: r.current_step ?? 0,
     totalSteps: visibleSteps(r).length,
     viewed: !!r.admin_viewed_at,

@@ -158,7 +158,7 @@ export default function AdminDashboard() {
 
         <Link href="/admin/trading-plan" className={`admin-tile ${abandonedUnread > 0 ? 'attention' : ''}`}>
           <div className="at-icon">📝</div>
-          <div className="at-title">ננטשו באמצע שאלון</div>
+          <div className="at-title">לידים - תוכנית מסחר</div>
           <div className="at-count">{abandonedUnread > 0 ? `${abandonedUnread} חדשים · ` : ''}{abandonedTotal} סה״כ</div>
         </Link>
 

@@ -10,8 +10,11 @@ type AbandonedRow = {
   phone: string | null;
   email: string | null;
   source: string | null;
+  status: 'in_progress' | 'completed';
   created_at: string;
   updated_at: string;
+  completed_at: string | null;
+  computedProfile: string | null;
   stepsReached: number;
   totalSteps: number;
   viewed: boolean;
@@ -20,6 +23,7 @@ type AbandonedRow = {
 type DetailAnswer = { id: string; title: string; value: string };
 
 function stepLabel(r: AbandonedRow) {
+  if (r.status === 'completed') return r.computedProfile ? `השלים/ה - פרופיל: ${r.computedProfile}` : 'השלים/ה את השאלון';
   if (!r.stepsReached) return 'בטופס הפרטים, עדיין לפני תחילת השאלון';
   return `בשלב ${r.stepsReached} מתוך ${r.totalSteps} בשאלון`;
 }
@@ -157,8 +161,10 @@ export default function AdminTradingPlanAbandonedPage() {
     );
   }
 
-  const contactable = rows.filter((r) => r.phone || r.email);
-  const noContact = rows.filter((r) => !r.phone && !r.email);
+  const completed = rows.filter((r) => r.status === 'completed');
+  const abandoned = rows.filter((r) => r.status === 'in_progress');
+  const contactable = abandoned.filter((r) => r.phone || r.email);
+  const noContact = abandoned.filter((r) => !r.phone && !r.email);
 
   function renderRow(r: AbandonedRow) {
     const waLink = r.phone ? `https://wa.me/972${r.phone.replace(/\D/g, '').replace(/^0/, '')}` : null;
@@ -180,7 +186,7 @@ export default function AdminTradingPlanAbandonedPage() {
             {r.phone && <div className="email">{r.phone}</div>}
             {r.email && <div className="email">{r.email}</div>}
             <div className="email" style={{ marginTop: '2px' }}>
-              עצר/ה {stepLabel(r)} · {r.source ? `מקור: ${r.source} · ` : ''}עדכון אחרון: {timeAgo(r.updated_at)}
+              {r.status === 'completed' ? stepLabel(r) : `עצר/ה ${stepLabel(r)}`} · {r.source ? `מקור: ${r.source} · ` : ''}עדכון אחרון: {timeAgo(r.status === 'completed' ? (r.completed_at || r.updated_at) : r.updated_at)}
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -192,18 +198,20 @@ export default function AdminTradingPlanAbandonedPage() {
                 וואטסאפ ←
               </a>
             )}
-            <button
-              className="row-delete-btn"
-              onClick={() => handleDelete(r.id, r.name || r.phone || r.email || 'ללא שם')}
-              disabled={deletingId === r.id}
-              title="מחיקת רשומה"
-            >
-              {deletingId === r.id ? '…' : (
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--loss)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M3 6h18" /><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /><line x1="10" y1="11" x2="10" y2="17" /><line x1="14" y1="11" x2="14" y2="17" />
-                </svg>
-              )}
-            </button>
+            {r.status === 'in_progress' && (
+              <button
+                className="row-delete-btn"
+                onClick={() => handleDelete(r.id, r.name || r.phone || r.email || 'ללא שם')}
+                disabled={deletingId === r.id}
+                title="מחיקת רשומה"
+              >
+                {deletingId === r.id ? '…' : (
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--loss)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M3 6h18" /><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /><line x1="10" y1="11" x2="10" y2="17" /><line x1="14" y1="11" x2="14" y2="17" />
+                  </svg>
+                )}
+              </button>
+            )}
           </div>
         </div>
 
@@ -234,25 +242,32 @@ export default function AdminTradingPlanAbandonedPage() {
         </div>
       </header>
 
-      <div className="section-label"><h2>ננטשו באמצע תוכנית מסחר</h2><span className="count">{rows.length}</span></div>
+      <div className="section-label"><h2>לידים - תוכנית מסחר</h2><span className="count">{rows.length}</span></div>
       <p style={{ fontSize: '13px', color: 'var(--text-tertiary)', marginBottom: '20px' }}>
-        מי שהתחיל למלא את השאלון ועדיין לא סיים. {rows.filter((r) => !r.viewed).length > 0 ? `${rows.filter((r) => !r.viewed).length} מהם חדשים - עדיין לא נפתחו. ` : ''}
-        "פרטים מלאים" מציג את כל התשובות שהוזנו עד הרגע שבו נעצר, ומסמן שנצפה.
+        כל מי שמילא את השאלון - גם מי שהשלים וגם מי שננטש באמצע. {rows.filter((r) => !r.viewed).length > 0 ? `${rows.filter((r) => !r.viewed).length} מהם חדשים - עדיין לא נפתחו. ` : ''}
+        "פרטים מלאים" מציג את כל התשובות, ומסמן שנצפה.
       </p>
 
       {loadingRows && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>טוענים...</p>}
-      {!loadingRows && rows.length === 0 && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>אין כרגע אף אחד באמצע</p>}
+      {!loadingRows && rows.length === 0 && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>אין כרגע אף אחד</p>}
+
+      {completed.length > 0 && (
+        <>
+          <div className="section-label" style={{ marginTop: '8px' }}><h2 style={{ fontSize: '15px' }}>השלימו את השאלון</h2></div>
+          {completed.map(renderRow)}
+        </>
+      )}
 
       {contactable.length > 0 && (
         <>
-          <div className="section-label" style={{ marginTop: '8px' }}><h2 style={{ fontSize: '15px' }}>יש פרטי קשר</h2></div>
+          <div className="section-label" style={{ marginTop: '24px' }}><h2 style={{ fontSize: '15px' }}>ננטשו באמצע - יש פרטי קשר</h2></div>
           {contactable.map(renderRow)}
         </>
       )}
 
       {noContact.length > 0 && (
         <>
-          <div className="section-label" style={{ marginTop: '24px' }}><h2 style={{ fontSize: '15px' }}>בלי פרטי קשר (עצרו בדיוק בטופס הפרטים עצמו)</h2></div>
+          <div className="section-label" style={{ marginTop: '24px' }}><h2 style={{ fontSize: '15px' }}>ננטשו באמצע - בלי פרטי קשר (עצרו בדיוק בטופס הפרטים עצמו)</h2></div>
           {noContact.map(renderRow)}
         </>
       )}
