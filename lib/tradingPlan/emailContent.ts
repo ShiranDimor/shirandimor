@@ -5,6 +5,7 @@ import { getProfileContent } from './profileContent';
 const SITE_URL = 'https://www.shirandimor.com';
 
 interface PlanRow {
+  id?: string;
   name?: string | null;
   phone?: string | null;
   email?: string | null;
@@ -37,6 +38,11 @@ interface FollowupRow extends PlanRow {
 }
 
 interface AbandonedRow {
+  id: string;
+  name?: string | null;
+}
+
+interface ProgressReminderRow {
   id: string;
   name?: string | null;
 }
@@ -105,6 +111,8 @@ export function buildUserPlanEmailHtml(r: PlanRow): string {
           <div style="font-size:10.5px;color:#888;text-transform:uppercase;margin-bottom:4px;">החוק שלך לחודש הקרוב</div>
           <div style="font-size:14px;color:#0f172a;font-weight:600;">${rule}</div>
         </div>
+
+        ${r.id ? `<a href="${SITE_URL}/my-plan/${r.id}" style="display:block;text-align:center;background:#4fc9c4;color:#08131a;text-decoration:none;font-weight:700;padding:13px;border-radius:10px;margin-bottom:20px;">למעקב היומי שלי - האם עמדתי בכלל שלי ←</a>` : ''}
 
         <p style="font-size:13px;color:#666;line-height:1.7;text-align:center;font-style:italic;margin-bottom:20px;">${content.closingMessage}</p>
 
@@ -284,6 +292,31 @@ export function buildAbandonedEmailHtml(r: AbandonedRow, reminderNumber: 1 | 2 =
         <p style="font-size:12.5px;color:#888;line-height:1.7;margin-top:20px;margin-bottom:8px;text-align:center;">אם יש שאלה בדרך - אפשר תמיד לכתוב לי בוואטסאפ:</p>
         <a href="https://wa.me/972547167419" style="display:block;text-align:center;background:#25D366;color:#fff;text-decoration:none;font-weight:700;padding:11px;border-radius:10px;">
           זמינה בשבילך בוואטסאפ ←
+        </a>
+      </div>
+    </div>
+  </div>`;
+}
+
+// המייל היומי (בוקר) שמזכיר לחזור לעמוד "המעקב האישי" ולסמן אם עמדו בכלל היום - נשלח רק ב-30 הימים שאחרי ההשלמה
+export function buildDailyProgressReminderEmailHtml(r: ProgressReminderRow): string {
+  const firstName = (r.name || '').trim().split(' ')[0] || '';
+  const link = `${SITE_URL}/my-plan/${r.id}`;
+
+  return `
+  <div dir="rtl" style="font-family: Arial, Helvetica, sans-serif; background:#f4f4f5; padding:24px 12px;">
+    <div style="max-width:600px;margin:0 auto;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #e5e5e5;">
+      <div style="background:#111318;padding:24px;text-align:center;">
+        <img src="${SITE_URL}/shiran-photo.jpg" width="56" height="56" alt="שירן דימור" style="width:56px;height:56px;border-radius:50%;object-fit:cover;border:2px solid #4fc9c4;margin-bottom:12px;" />
+        <div style="color:#fff;font-size:18px;font-weight:700;">בוקר טוב${firstName ? `, ${firstName}` : ''} ☀️</div>
+      </div>
+
+      <div style="padding:24px;">
+        <p style="font-size:14px;color:#222;line-height:1.7;">שאלה קצרה לפתיחת היום: עמדת היום בכלל האישי שלך?</p>
+        <p style="font-size:14px;color:#222;line-height:1.7;">לחיצה אחת ואפשר לסמן, ולראות את הרצף שלך.</p>
+
+        <a href="${link}" style="display:block;text-align:center;background:#4fc9c4;color:#08131a;text-decoration:none;font-weight:700;padding:13px;border-radius:10px;margin-top:16px;">
+          למעקב היומי שלי ←
         </a>
       </div>
     </div>

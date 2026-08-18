@@ -360,7 +360,7 @@ export default function TradingPlanPage() {
               📧 שלחנו את התוכנית גם לאימייל {answers.email}
             </div>
           )}
-          <SummaryScreen answers={answers} onCtaClick={handleCtaClick} />
+          <SummaryScreen answers={answers} onCtaClick={handleCtaClick} responseId={responseId} />
         </>
       )}
 

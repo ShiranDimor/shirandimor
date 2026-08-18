@@ -7,6 +7,7 @@ import { findOptions } from '@/lib/tradingPlan/questions';
 interface Props {
   answers: Record<string, unknown>;
   onCtaClick: () => void;
+  responseId?: string | null;
 }
 
 const CHECKLIST = [
@@ -19,7 +20,7 @@ const CHECKLIST = [
   'מה יגרום לא לקחת את העסקה?',
 ];
 
-export default function SummaryScreen({ answers, onCtaClick }: Props) {
+export default function SummaryScreen({ answers, onCtaClick, responseId }: Props) {
   const profileId = classifyProfile(answers);
   const content = getProfileContent(profileId);
 
@@ -98,6 +99,12 @@ export default function SummaryScreen({ answers, onCtaClick }: Props) {
         <div className="tp-mission-label">החוק שלך לחודש הקרוב</div>
         <div className="tp-mission-text">{rule}</div>
       </div>
+
+      {responseId && (
+        <a href={`/my-plan/${responseId}`} className="cta-btn" style={{ textDecoration: 'none', marginBottom: '16px' }}>
+          למעקב היומי שלי - האם עמדתי בכלל שלי ←
+        </a>
+      )}
 
       <p className="tp-closing-message">{content.closingMessage}</p>
 
