@@ -200,7 +200,7 @@ export function buildFollowupUserEmailHtml(r: FollowupRow): string {
         <p style="font-size:14px;color:#222;line-height:1.7;">אשמח לשמוע - פשוט תשיבו למייל הזה, או תכתבו לי בוואטסאפ.</p>
 
         <a href="https://wa.me/972547167419" style="display:block;text-align:center;background:#25D366;color:#fff;text-decoration:none;font-weight:700;padding:13px;border-radius:10px;margin-top:20px;">
-          כתיבה לשירן בוואטסאפ ←
+          זמינה בשבילך בוואטסאפ ←
         </a>
       </div>
     </div>
@@ -271,7 +271,7 @@ export function buildAbandonedEmailHtml(r: AbandonedRow, reminderNumber: 1 | 2 =
 
         <p style="font-size:12.5px;color:#888;line-height:1.7;margin-top:20px;margin-bottom:8px;text-align:center;">אם יש שאלה בדרך - אפשר תמיד לכתוב לי בוואטסאפ:</p>
         <a href="https://wa.me/972547167419" style="display:block;text-align:center;background:#25D366;color:#fff;text-decoration:none;font-weight:700;padding:11px;border-radius:10px;">
-          כתיבה לשירן בוואטסאפ ←
+          זמינה בשבילך בוואטסאפ ←
         </a>
       </div>
     </div>
