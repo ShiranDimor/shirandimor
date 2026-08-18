@@ -236,7 +236,7 @@ export default function AdminLessonsPage() {
           <div>
             <div className="name">
               {lesson.title}
-              {!lesson.published && <span style={{ marginRight: '8px', fontSize: '10.5px', color: '#888', border: '1px solid #888', borderRadius: '5px', padding: '2px 6px' }}>טיוטה</span>}
+              {!lesson.published && <span style={{ marginRight: '8px', fontSize: '10.5px', color: '#E8A33D', border: '1px solid #E8A33D', borderRadius: '5px', padding: '2px 6px' }}>טיוטה</span>}
             </div>
             <div className="email">{TIER_LABELS[lesson.tier]}{lesson.category ? ` · ${lesson.category}` : ''}{lesson.duration_minutes ? ` · ${lesson.duration_minutes} דק'` : ''}</div>
           </div>

@@ -178,7 +178,7 @@ export default function AdminTradingPlanAbandonedPage() {
             <div className="name">
               {r.name || 'ללא שם'}
               {!r.viewed && (
-                <span style={{ marginRight: '8px', fontSize: '10.5px', fontWeight: 700, color: '#0b0d12', background: 'var(--teal)', borderRadius: '5px', padding: '2px 6px', verticalAlign: 'middle' }}>
+                <span style={{ marginRight: '8px', fontSize: '10.5px', fontWeight: 700, color: '#0b0d12', background: '#E8A33D', borderRadius: '5px', padding: '2px 6px', verticalAlign: 'middle' }}>
                   חדש
                 </span>
               )}
@@ -193,6 +193,16 @@ export default function AdminTradingPlanAbandonedPage() {
             <button type="button" className="btn-outline" style={{ padding: '8px 12px', fontSize: '12.5px' }} onClick={() => toggleDetails(r.id)}>
               {isExpanded ? 'סגירה' : 'פרטים מלאים'}
             </button>
+            {r.status === 'completed' && (
+              <a
+                href={`/my-plan/${r.id}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ textDecoration: 'none', display: 'inline-block', padding: '8px 12px', fontSize: '12.5px', fontWeight: 700, color: '#E8A33D', background: 'rgba(232,163,61,0.1)', border: '1px solid rgba(232,163,61,0.3)', borderRadius: '8px' }}
+              >
+                מעקב התקדמות ←
+              </a>
+            )}
             {waLink && (
               <a href={waLink} target="_blank" rel="noopener noreferrer" className="approve-btn" style={{ textDecoration: 'none', display: 'inline-block' }}>
                 וואטסאפ ←

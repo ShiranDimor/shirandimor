@@ -4,16 +4,61 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 
+type DayStatus = 'followed' | 'missed' | 'no_checkin' | 'today_pending' | 'future';
+
 type ProgressData = {
   name: string | null;
   rule: string;
+  dream: string | null;
+  fear: string | null;
   mission: string;
   threeThings: string[];
   checkins: { checkin_date: string; followed_rule: boolean }[];
   streak: number;
   todayChecked: boolean;
   today: string;
+  dayNumber: number;
+  totalDays: number;
+  programDays: { date: string; dayNumber: number; status: DayStatus }[];
 };
+
+const DAY_COLORS: Record<DayStatus, string> = {
+  followed: '#4FB876',
+  missed: '#C9635E',
+  no_checkin: '#3a3f4a',
+  today_pending: '#E8A33D',
+  future: '#20242c',
+};
+
+function ProgressRing({ dayNumber, totalDays }: { dayNumber: number; totalDays: number }) {
+  const size = 140;
+  const strokeWidth = 12;
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const pct = Math.min(1, dayNumber / totalDays);
+  const offset = circumference * (1 - pct);
+
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+      <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="var(--border-hairline)" strokeWidth={strokeWidth} />
+      <circle
+        cx={size / 2}
+        cy={size / 2}
+        r={radius}
+        fill="none"
+        stroke="var(--teal)"
+        strokeWidth={strokeWidth}
+        strokeLinecap="round"
+        strokeDasharray={circumference}
+        strokeDashoffset={offset}
+        transform={`rotate(-90 ${size / 2} ${size / 2})`}
+        style={{ transition: 'stroke-dashoffset 0.4s ease' }}
+      />
+      <text x="50%" y="46%" textAnchor="middle" dominantBaseline="middle" style={{ fill: '#fff', fontSize: '28px', fontWeight: 700 }}>{dayNumber}</text>
+      <text x="50%" y="64%" textAnchor="middle" dominantBaseline="middle" style={{ fill: 'var(--text-tertiary)', fontSize: '11px' }}>{`מתוך ${totalDays}`}</text>
+    </svg>
+  );
+}
 
 export default function MyPlanProgressPage() {
   const params = useParams();
@@ -67,15 +112,47 @@ export default function MyPlanProgressPage() {
         <>
           <div className="form-title" style={{ fontSize: '22px' }}>המעקב האישי שלך{firstName ? `, ${firstName}` : ''}</div>
 
-          <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-hairline)', borderRadius: '12px', padding: '20px', textAlign: 'center', marginBottom: '20px' }}>
-            <div style={{ fontSize: '36px', fontWeight: 700, color: 'var(--teal)' }}>{data.streak}</div>
-            <div style={{ fontSize: '12.5px', color: 'var(--text-tertiary)' }}>{data.streak === 1 ? 'יום ברצף' : 'ימים ברצף'}</div>
+          <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-hairline)', borderRadius: '12px', padding: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '14px', marginBottom: '16px' }}>
+            <ProgressRing dayNumber={data.dayNumber} totalDays={data.totalDays} />
+            <div style={{ fontSize: '12.5px', color: 'var(--text-tertiary)' }}>בתוכנית ה-30 יום שלך</div>
+
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', justifyContent: 'center', maxWidth: '320px' }}>
+              {data.programDays.map((d) => (
+                <div
+                  key={d.date}
+                  title={`יום ${d.dayNumber}`}
+                  style={{ width: '16px', height: '16px', borderRadius: '4px', background: DAY_COLORS[d.status] }}
+                />
+              ))}
+            </div>
+
+            <div style={{ fontSize: '22px', fontWeight: 700, color: '#E8A33D', marginTop: '4px' }}>{data.streak}</div>
+            <div style={{ fontSize: '11.5px', color: 'var(--text-tertiary)', marginTop: '-10px' }}>{data.streak === 1 ? 'יום ברצף' : 'ימים ברצף'}</div>
           </div>
 
           <div className="tp-mission-box tp-rule-box">
             <div className="tp-mission-label">הכלל שלך</div>
             <div className="tp-mission-text">{data.rule}</div>
           </div>
+
+          {(data.dream || data.fear) && (
+            <div style={{ background: 'rgba(232,163,61,0.08)', border: '1px solid rgba(232,163,61,0.3)', borderRadius: '10px', padding: '16px', marginBottom: '18px' }}>
+              <div style={{ fontSize: '10.5px', color: '#E8A33D', textTransform: 'uppercase', fontWeight: 700, marginBottom: '10px' }}>למה זה חשוב לך</div>
+              {data.dream && (
+                <div style={{ fontSize: '13.5px', color: 'var(--text-primary, #fff)', lineHeight: 1.6, marginBottom: data.fear ? '8px' : 0 }}>
+                  <b>החלום שלך:</b> {data.dream}
+                </div>
+              )}
+              {data.fear && (
+                <div style={{ fontSize: '13.5px', color: 'var(--text-primary, #fff)', lineHeight: 1.6 }}>
+                  <b>מה שאת/ה רוצה לנצח:</b> {data.fear}
+                </div>
+              )}
+              <div style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginTop: '10px', lineHeight: 1.6 }}>
+                כל יום שאת/ה עומד/ת בכלל שלך - זה עוד צעד לכיוון החלום, ועוד רגע שבו לא נתת לפחד לנצח.
+              </div>
+            </div>
+          )}
 
           {!data.todayChecked ? (
             <div className="tp-question-card" style={{ textAlign: 'center' }}>

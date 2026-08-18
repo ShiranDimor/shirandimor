@@ -130,7 +130,9 @@ export default function LessonsLibraryPage() {
               <div style={{ padding: '12px' }}>
                 <div style={{ fontSize: '13.5px', fontWeight: 700, marginBottom: '4px' }}>{lesson.title}</div>
                 <div style={{ fontSize: '11.5px', color: 'var(--text-tertiary)' }}>
-                  {[lesson.category, lesson.durationMinutes ? `${lesson.durationMinutes} דק'` : null].filter(Boolean).join(' · ')}
+                  {lesson.category && <span style={{ color: '#E8A33D', fontWeight: 600 }}>{lesson.category}</span>}
+                  {lesson.category && lesson.durationMinutes ? ' · ' : ''}
+                  {lesson.durationMinutes ? `${lesson.durationMinutes} דק'` : ''}
                 </div>
               </div>
             </div>
