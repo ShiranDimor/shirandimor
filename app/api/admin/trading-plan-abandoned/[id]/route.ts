@@ -56,7 +56,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
   return NextResponse.json({ row, answers });
 }
 
-// DELETE - מחיקת רשומה שננטשה (מוגבל בכוונה לרשומות שעדיין לא הושלמו - לא ניתן למחוק דרך המסך הזה תוכנית שכבר נשלחה)
+// DELETE - מחיקת רשומה (גם ננטשה וגם הושלמה)
 export async function DELETE(request: Request, { params }: { params: { id: string } }) {
   const admin = await requireAdmin(request);
   if (!admin) return NextResponse.json({ error: 'אין הרשאת ניהול' }, { status: 403 });
@@ -64,8 +64,7 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
   const { error } = await supabaseAdmin
     .from('trading_plan_responses')
     .delete()
-    .eq('id', params.id)
-    .eq('status', 'in_progress');
+    .eq('id', params.id);
 
   if (error) {
     return NextResponse.json({ error: 'שגיאה במחיקה' }, { status: 500 });
