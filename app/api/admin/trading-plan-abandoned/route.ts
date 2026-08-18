@@ -37,7 +37,7 @@ export async function GET(request: Request) {
     source: r.source,
     created_at: r.created_at,
     updated_at: r.updated_at,
-    stepsReached: r.current_step || 1,
+    stepsReached: r.current_step ?? 0,
     totalSteps: visibleSteps(r).length,
   }));
 

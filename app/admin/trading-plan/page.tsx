@@ -16,6 +16,11 @@ type AbandonedRow = {
   totalSteps: number;
 };
 
+function stepLabel(r: AbandonedRow) {
+  if (!r.stepsReached) return 'בטופס הפרטים, עדיין לפני תחילת השאלון';
+  return `בשלב ${r.stepsReached} מתוך ${r.totalSteps} בשאלון`;
+}
+
 function timeAgo(iso: string) {
   const diffMs = Date.now() - new Date(iso).getTime();
   const mins = Math.round(diffMs / 60000);
@@ -140,7 +145,7 @@ export default function AdminTradingPlanAbandonedPage() {
                   {r.phone && <div className="email">{r.phone}</div>}
                   {r.email && <div className="email">{r.email}</div>}
                   <div className="email" style={{ marginTop: '2px' }}>
-                    עצר/ה בשלב {r.stepsReached} מתוך {r.totalSteps} · {r.source ? `מקור: ${r.source} · ` : ''}עדכון אחרון: {timeAgo(r.updated_at)}
+                    עצר/ה {stepLabel(r)} · {r.source ? `מקור: ${r.source} · ` : ''}עדכון אחרון: {timeAgo(r.updated_at)}
                   </div>
                 </div>
                 {waLink && (
@@ -156,13 +161,13 @@ export default function AdminTradingPlanAbandonedPage() {
 
       {noContact.length > 0 && (
         <>
-          <div className="section-label" style={{ marginTop: '24px' }}><h2 style={{ fontSize: '15px' }}>בלי פרטי קשר (הפסיקו לפני שהגיעו לשלב הפרטים)</h2></div>
+          <div className="section-label" style={{ marginTop: '24px' }}><h2 style={{ fontSize: '15px' }}>בלי פרטי קשר (עצרו בדיוק בטופס הפרטים עצמו)</h2></div>
           {noContact.map((r) => (
             <div className="admin-row" key={r.id}>
               <div>
                 <div className="name">ללא פרטי קשר</div>
                 <div className="email">
-                  עצר/ה בשלב {r.stepsReached} מתוך {r.totalSteps} · {r.source ? `מקור: ${r.source} · ` : ''}עדכון אחרון: {timeAgo(r.updated_at)}
+                  עצר/ה {stepLabel(r)} · {r.source ? `מקור: ${r.source} · ` : ''}עדכון אחרון: {timeAgo(r.updated_at)}
                 </div>
               </div>
             </div>

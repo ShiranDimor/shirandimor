@@ -9,12 +9,13 @@ import ProgressBar from '@/components/tradingPlan/ProgressBar';
 import SummaryScreen from '@/components/tradingPlan/SummaryScreen';
 
 const DRAFT_KEY = 'tp_draft_v1';
-type Phase = 'intro' | 'quiz' | 'contact' | 'summary';
+type Phase = 'intro' | 'contact' | 'quiz' | 'summary';
 
 interface Draft {
   id: string;
   answers: Record<string, unknown>;
   stepIndex: number;
+  phase: 'contact' | 'quiz';
 }
 
 export default function TradingPlanPage() {
@@ -42,16 +43,16 @@ export default function TradingPlanPage() {
           setResponseId(draft.id);
           setAnswers(draft.answers || {});
           setStepIndex(draft.stepIndex || 0);
-          setPhase('quiz');
+          setPhase(draft.phase || 'contact');
         }
       }
     } catch {}
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  function saveDraft(id: string, nextAnswers: Record<string, unknown>, nextStepIndex: number) {
+  function saveDraft(id: string, nextAnswers: Record<string, unknown>, nextStepIndex: number, nextPhase: 'contact' | 'quiz') {
     try {
-      localStorage.setItem(DRAFT_KEY, JSON.stringify({ id, answers: nextAnswers, stepIndex: nextStepIndex }));
+      localStorage.setItem(DRAFT_KEY, JSON.stringify({ id, answers: nextAnswers, stepIndex: nextStepIndex, phase: nextPhase }));
     } catch {}
   }
 
@@ -76,19 +77,19 @@ export default function TradingPlanPage() {
 
   async function handleStart() {
     setLoadingNext(true);
-    const id = await autosave(null, { source, current_step: 1 });
+    const id = await autosave(null, { source, current_step: 0 });
     setLoadingNext(false);
     if (id) {
       setResponseId(id);
-      saveDraft(id, {}, 0);
+      saveDraft(id, {}, 0, 'contact');
     }
-    setPhase('quiz');
+    setPhase('contact');
   }
 
   function handleAnswerChange(questionId: string, value: unknown) {
     setAnswers((prev) => {
       const next = { ...prev, [questionId]: value };
-      if (responseId) saveDraft(responseId, next, stepIndex);
+      if (responseId) saveDraft(responseId, next, stepIndex, phase === 'contact' ? 'contact' : 'quiz');
       return next;
     });
   }
@@ -114,14 +115,30 @@ export default function TradingPlanPage() {
     if (id && !responseId) setResponseId(id);
 
     if (isLastStep) {
-      if (id) saveDraft(id, answers, stepIndex); // שומרים טיוטה - עדיין לא הושלם עד שיוזנו פרטי קשר
+      if (id) {
+        await autosave(id, { computed_profile: classifyProfile(answers) });
+        await fetch('/api/trading-plan', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id, action: 'complete' }),
+        }).catch(() => null);
+
+        // שליחת המיילים (למשתמש + לשירן) - לא חוסמים את הצגת התוכנית על המסך אם זה נכשל
+        fetch('/api/trading-plan/send-summary', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id }),
+        }).catch(() => {});
+      }
+
+      clearDraft();
       setLoadingNext(false);
-      setPhase('contact');
+      setPhase('summary');
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
 
-    if (id) saveDraft(id, answers, nextStepIndex);
+    if (id) saveDraft(id, answers, nextStepIndex, 'quiz');
     setStepIndex(nextStepIndex);
     setLoadingNext(false);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -138,7 +155,7 @@ export default function TradingPlanPage() {
   const emailOk = typeof answers.email === 'string' && isValidEmail(answers.email);
   const contactValid = emailOk && phoneOk;
 
-  async function handleContactSubmit() {
+  async function handleContactContinue() {
     if (!contactValid) return;
     setLoadingNext(true);
 
@@ -146,38 +163,24 @@ export default function TradingPlanPage() {
       name: answers.name || null,
       phone: answers.phone,
       email: answers.email,
-      computed_profile: classifyProfile(answers),
+      current_step: 1,
     });
+    if (id && !responseId) setResponseId(id);
 
-    if (id) {
-      await fetch('/api/trading-plan', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, action: 'complete' }),
-      }).catch(() => null);
-
-      // שליחת המיילים (למשתמש + לשירן) - לא חוסמים את הצגת התוכנית על המסך אם זה נכשל
-      fetch('/api/trading-plan/send-summary', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id }),
-      }).catch(() => {});
-    }
-
-    clearDraft();
+    if (id) saveDraft(id, answers, 0, 'quiz');
     setLoadingNext(false);
-    setPhase('summary');
+    setPhase('quiz');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   function handleBack() {
     if (stepIndex === 0) {
-      setPhase('intro');
+      setPhase('contact');
       return;
     }
     const prevStepIndex = stepIndex - 1;
     setStepIndex(prevStepIndex);
-    if (responseId) saveDraft(responseId, answers, prevStepIndex);
+    if (responseId) saveDraft(responseId, answers, prevStepIndex, 'quiz');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
@@ -215,35 +218,11 @@ export default function TradingPlanPage() {
         </>
       )}
 
-      {phase === 'quiz' && currentStep && (
-        <>
-          <ProgressBar stepIndex={stepIndex} totalSteps={effectiveSteps.length} onBack={handleBack} />
-          <div className="tp-step-title">{currentStep.title}</div>
-          {currentStep.intro && <div className="tp-step-intro">{currentStep.intro}</div>}
-
-          {currentVisibleQuestions.map((q) => (
-            <QuestionCard
-              key={q.id}
-              question={q}
-              value={answers[q.id]}
-              onChange={(v) => handleAnswerChange(q.id, v)}
-            />
-          ))}
-
-          <div className="tp-nav-row">
-            <button type="button" className="tp-btn-back" onClick={handleBack}>חזרה</button>
-            <button type="button" className="tp-btn-next" onClick={handleNext} disabled={!canProceed || loadingNext}>
-              {stepIndex === effectiveSteps.length - 1 ? 'לסיכום התוכנית שלי' : 'המשך'}
-            </button>
-          </div>
-        </>
-      )}
-
       {phase === 'contact' && (
         <>
-          <div className="tp-step-title">לאן לשלוח את התוכנית?</div>
+          <div className="tp-step-title">לפני שמתחילים - לאן לשלוח את התוכנית?</div>
           <div className="tp-step-intro">
-            התוכנית האישית מוכנה. תשאירו נייד ומייל ונשלח אותה אליכם, כדי שתוכלו לחזור אליה בכל רגע - גם כשתשבו מול המסך עם עסקה פתוחה.
+            נייד ומייל, כדי שנוכל לשלוח אליכם את התוכנית האישית בסוף - ואם תצטרכו לעצור באמצע, נוכל תמיד לחזור אליה יחד איתכם.
           </div>
 
           <div className="tp-question-card">
@@ -295,9 +274,33 @@ export default function TradingPlanPage() {
           </div>
 
           <div className="tp-nav-row">
-            <button type="button" className="tp-btn-back" onClick={() => setPhase('quiz')}>חזרה</button>
-            <button type="button" className="tp-btn-next" onClick={handleContactSubmit} disabled={!contactValid || loadingNext}>
-              שלחו לי את התוכנית
+            <button type="button" className="tp-btn-back" onClick={() => setPhase('intro')}>חזרה</button>
+            <button type="button" className="tp-btn-next" onClick={handleContactContinue} disabled={!contactValid || loadingNext}>
+              המשך לשאלון
+            </button>
+          </div>
+        </>
+      )}
+
+      {phase === 'quiz' && currentStep && (
+        <>
+          <ProgressBar stepIndex={stepIndex} totalSteps={effectiveSteps.length} onBack={handleBack} />
+          <div className="tp-step-title">{currentStep.title}</div>
+          {currentStep.intro && <div className="tp-step-intro">{currentStep.intro}</div>}
+
+          {currentVisibleQuestions.map((q) => (
+            <QuestionCard
+              key={q.id}
+              question={q}
+              value={answers[q.id]}
+              onChange={(v) => handleAnswerChange(q.id, v)}
+            />
+          ))}
+
+          <div className="tp-nav-row">
+            <button type="button" className="tp-btn-back" onClick={handleBack}>חזרה</button>
+            <button type="button" className="tp-btn-next" onClick={handleNext} disabled={!canProceed || loadingNext}>
+              {stepIndex === effectiveSteps.length - 1 ? 'לסיכום התוכנית שלי' : 'המשך'}
             </button>
           </div>
         </>
