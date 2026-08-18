@@ -263,14 +263,19 @@ export function buildAbandonedEmailHtml(r: AbandonedRow, reminderNumber: 1 | 2 =
         ` : `
         <p style="font-size:14px;color:#222;line-height:1.7;">שמנו לב שהתחלת לבנות את התוכנית האישית שלך למסחר, ולא הספקת לסיים. חבל - היא כבר כמעט מוכנה 😊</p>
         `}
-        <p style="font-size:14px;color:#222;line-height:1.7;">אפשר לחזור בדיוק מהנקודה שבה עצרת, זה לוקח רק כמה דקות:</p>
+        <p style="font-size:14px;color:#222;line-height:1.7;">${isLast ? 'התהליך כבר כמעט גמור - נשארו רק כמה דקות כדי לסיים אותו:' : 'אפשר לחזור בדיוק מהנקודה שבה עצרת, זה לוקח רק כמה דקות:'}</p>
 
         <a href="${resumeLink}" style="display:block;text-align:center;background:#4fc9c4;color:#08131a;text-decoration:none;font-weight:700;padding:13px;border-radius:10px;margin-top:16px;">
           המשך בניית התוכנית שלי ←
         </a>
 
+        ${isLast ? `
+        <p style="font-size:13.5px;color:#444;line-height:1.7;margin-top:24px;">כבר השקעת/השקעתם כמה דקות יקרות בהתחלת הדרך - ממש חבל שזה יישאר תקוע ככה, בלי סיום.</p>
+        <p style="font-size:13.5px;color:#444;line-height:1.7;">ואם בכל זאת תרצו לדלג ישר לשלב הבא, ולא רק לעקוב מהצד - קבוצת הסוחרים תמיד פתוחה:</p>
+        ` : `
         <p style="font-size:13.5px;color:#444;line-height:1.7;margin-top:24px;">להישאר רק בקבוצת העדכונים ולקרוא על שוק ההון זה נחמד להתחלה - אבל מתישהו כדאי לעבור לשלב הבא, ולבנות תוכנית אמיתית שעובדים לפיה.</p>
         <p style="font-size:13.5px;color:#444;line-height:1.7;">זה הרבה יותר פשוט ממה שזה נראה: כמה דקות כל כמה ימים, לא יותר. עם קצת עקביות, התיק יכול להיראות אחרי כמה חודשים לגמרי אחרת.</p>
+        `}
 
         <a href="https://pay.grow.link/200a7cdcb258ee6ffdea0f423a1ace0e-MzE4MDU5OA" style="display:block;text-align:center;background:transparent;color:#0f766e;text-decoration:none;font-weight:700;padding:12px;border-radius:10px;border:2px solid #4fc9c4;margin-top:10px;">
           הצטרפות לקבוצת הסוחרים ←
