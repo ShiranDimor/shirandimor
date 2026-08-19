@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import { supabase } from '@/lib/supabase';
 import { visibleSteps, visibleQuestions } from '@/lib/tradingPlan/questions';
 import { classifyProfile } from '@/lib/tradingPlan/profile';
 import QuestionCard from '@/components/tradingPlan/QuestionCard';
@@ -97,9 +98,26 @@ export default function TradingPlanPage() {
           setAnswers(draft.answers || {});
           setStepIndex(draft.stepIndex || 0);
           setPhase(draft.phase || 'contact');
+          return;
         }
       }
     } catch {}
+
+    // אין פרמטרים ואין טיוטה - כשמישהו מגיע ישירות ללינק (למשל מהודעת קבוצה) בזמן שהוא כבר מחובר
+    // כמנוי, נמלא בשקט את הפרטים שכבר ידועים מהפרופיל שלו, בלי לחכות שיגיע דרך האזור האישי
+    if (!prefillName && !prefillPhone && !prefillEmail) {
+      supabase.auth.getUser().then(async ({ data: { user } }) => {
+        if (!user) return;
+        const { data: profile } = await supabase.from('profiles').select('full_name, phone, email').eq('id', user.id).single();
+        if (!profile) return;
+        setAnswers((prev) => ({
+          ...prev,
+          ...(profile.full_name ? { name: profile.full_name } : {}),
+          ...(profile.phone ? { phone: profile.phone } : {}),
+          ...(profile.email ? { email: profile.email } : {}),
+        }));
+      }).catch(() => {});
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
