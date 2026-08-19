@@ -132,6 +132,7 @@ export async function GET(request: Request) {
     threeThings: content.threeThings,
     streak: computeStreak(dueSoFar, checkinsByDate, today),
     todayChecked: checkinsByDate.has(today),
+    todayOutcome: checkinsByDate.get(today) || null,
     today,
     periodic,
     isTodayDue,
@@ -143,7 +144,7 @@ export async function GET(request: Request) {
   });
 }
 
-// POST - סימון תוצאת היום/הביקורת: עמדתי בכלל / לא עמדתי / לא היה מה לדווח
+// POST - סימון תוצאת היום/הדיווח: עמדתי בכלל / לא עמדתי / לא היה מה לדווח (upsert - גם עריכה של דיווח קיים)
 // body: { id: string, outcome: 'followed' | 'broke' | 'no_activity' }
 export async function POST(request: Request) {
   const body = await request.json().catch(() => ({}));

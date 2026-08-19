@@ -17,6 +17,7 @@ type ProgressData = {
   threeThings: string[];
   streak: number;
   todayChecked: boolean;
+  todayOutcome: Outcome | null;
   today: string;
   periodic: boolean;
   isTodayDue: boolean;
@@ -28,7 +29,7 @@ type ProgressData = {
 };
 
 // עיצוב לכל סטטוס משבצת - "future" מוצג כריק (מסגרת מקווקוות בלבד) כדי שיהיה ברור שזה שונה
-// מהותית מ"no_checkin" (ביקורת שכבר עברה ולא סומנה) ולא רק גוון כהה נוסף שקשה להבחין בו
+// מהותית מ"no_checkin" (מועד דיווח שכבר עבר ולא סומן) ולא רק גוון כהה נוסף שקשה להבחין בו
 const DAY_STYLES: Record<DayStatus, { background: string; border: string }> = {
   followed: { background: '#4FB876', border: '1px solid #4FB876' },
   broke: { background: '#C9635E', border: '1px solid #C9635E' },
@@ -123,6 +124,7 @@ export default function MyPlanProgressPage() {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [editing, setEditing] = useState(false);
 
   useEffect(() => {
     if (id) load();
@@ -149,11 +151,12 @@ export default function MyPlanProgressPage() {
     }).catch(() => {});
     await load();
     setSaving(false);
+    setEditing(false);
   }
 
   const firstName = (data?.name || '').trim().split(' ')[0] || '';
   const planUrl = typeof window !== 'undefined' ? window.location.href : '';
-  const streakLabel = data?.periodic ? (data.streak === 1 ? 'ביקורת ברצף' : 'ביקורות ברצף') : (data?.streak === 1 ? 'יום ברצף' : 'ימים ברצף');
+  const streakLabel = data?.periodic ? (data.streak === 1 ? 'דיווח ברצף' : 'דיווחים ברצף') : (data?.streak === 1 ? 'יום ברצף' : 'ימים ברצף');
 
   return (
     <div className="wrap">
@@ -189,11 +192,11 @@ export default function MyPlanProgressPage() {
           </div>
 
           <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-hairline)', borderRadius: '14px', padding: '24px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', marginBottom: '16px' }}>
-            <ProgressRing dayNumber={data.dayNumber} totalDays={data.totalDays} unitLabel={data.periodic ? 'ביקורות' : 'ימים'} />
+            <ProgressRing dayNumber={data.dayNumber} totalDays={data.totalDays} unitLabel={data.periodic ? 'דיווחים' : 'ימים'} />
 
             {data.periodic && (
               <p style={{ fontSize: '11.5px', color: 'var(--text-tertiary)', textAlign: 'center', marginTop: '-8px' }}>
-                {data.totalDays} ביקורות (שני וחמישי) לאורך 30 הימים של התוכנית שלך
+                {data.totalDays} דיווחים (שני וחמישי) לאורך 30 הימים של התוכנית שלך
               </p>
             )}
 
@@ -275,34 +278,67 @@ export default function MyPlanProgressPage() {
           )}
 
           {data.isTodayDue ? (
-            !data.todayChecked ? (
+            !data.todayChecked || editing ? (
               <div className="tp-question-card" style={{ textAlign: 'center' }}>
-                <div className="tp-question-title" style={{ marginBottom: '6px' }}>{data.periodic ? 'עמדת בכלל שלך מאז הביקורת האחרונה?' : 'עמדת היום בכלל שלך?'}</div>
+                <div className="tp-question-title" style={{ marginBottom: '6px' }}>{data.periodic ? 'עמדת בכלל שלך מאז הדיווח האחרון?' : 'עמדת היום בכלל שלך?'}</div>
                 <p style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginBottom: '14px' }}>אם נמנעת מעסקה כי היא לא התאימה לכלל - זו הצלחה, לא "כלום קרה".</p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <button type="button" className="btn-primary" onClick={() => checkIn('followed')} disabled={saving}>עמדתי בכלל שלי ✓</button>
-                  <button type="button" className="btn-outline" onClick={() => checkIn('broke')} disabled={saving}>לא עמדתי הפעם</button>
+                  <button
+                    type="button"
+                    className={data.todayOutcome === 'followed' ? 'btn-primary' : 'btn-outline'}
+                    onClick={() => checkIn('followed')}
+                    disabled={saving}
+                  >
+                    עמדתי בכלל שלי {data.todayOutcome === 'followed' ? '✓' : ''}
+                  </button>
+                  <button
+                    type="button"
+                    className={data.todayOutcome === 'broke' ? 'btn-primary' : 'btn-outline'}
+                    onClick={() => checkIn('broke')}
+                    disabled={saving}
+                  >
+                    לא עמדתי הפעם {data.todayOutcome === 'broke' ? '✓' : ''}
+                  </button>
                   <button
                     type="button"
                     onClick={() => checkIn('no_activity')}
                     disabled={saving}
-                    style={{ background: 'transparent', border: '1px dashed var(--border-hairline-strong)', color: 'var(--text-tertiary)', borderRadius: '8px', padding: '11px', fontSize: '13.5px', cursor: 'pointer', fontFamily: 'var(--font-body)' }}
+                    style={{
+                      background: data.todayOutcome === 'no_activity' ? 'rgba(232,163,61,0.12)' : 'transparent',
+                      border: data.todayOutcome === 'no_activity' ? '1px solid #E8A33D' : '1px dashed var(--border-hairline-strong)',
+                      color: data.todayOutcome === 'no_activity' ? '#E8A33D' : 'var(--text-tertiary)',
+                      borderRadius: '8px',
+                      padding: '11px',
+                      fontSize: '13.5px',
+                      cursor: 'pointer',
+                      fontFamily: 'var(--font-body)',
+                    }}
                   >
-                    לא היה מה לדווח
+                    לא היה מה לדווח {data.todayOutcome === 'no_activity' ? '✓' : ''}
                   </button>
                 </div>
+                {editing && (
+                  <button type="button" onClick={() => setEditing(false)} disabled={saving} style={{ background: 'none', border: 'none', color: 'var(--text-tertiary)', fontSize: '12px', marginTop: '10px', cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
+                    ביטול
+                  </button>
+                )}
                 <a href="https://wa.me/972547167419" target="_blank" rel="noopener noreferrer" style={{ display: 'block', marginTop: '14px', fontSize: '11.5px', color: 'var(--text-tertiary)', textDecoration: 'none' }}>
                   תקוע/ה עם זה? אפשר גם לכתוב לי בוואטסאפ ←
                 </a>
               </div>
             ) : (
-              <p className="tp-personal-note" style={{ textAlign: 'center', marginBottom: '20px' }}>
-                ✓ סימנת - {data.periodic ? `נחזור ב${data.nextDueWeekday ? `יום ${data.nextDueWeekday}` : 'ביקורת הבאה'}` : 'חוזרים מחר'}
-              </p>
+              <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+                <p className="tp-personal-note" style={{ marginBottom: '6px' }}>
+                  ✓ סימנת - {data.periodic ? `נחזור ב${data.nextDueWeekday ? `יום ${data.nextDueWeekday}` : 'הדיווח הבא'}` : 'חוזרים מחר'}
+                </p>
+                <button type="button" onClick={() => setEditing(true)} style={{ background: 'none', border: 'none', color: '#E8A33D', fontSize: '12px', cursor: 'pointer', fontFamily: 'var(--font-body)', textDecoration: 'underline' }}>
+                  לשנות את הדיווח
+                </button>
+              </div>
             )
           ) : (
             <p className="tp-personal-note" style={{ textAlign: 'center', marginBottom: '20px' }}>
-              היום אין צורך לעדכן - הביקורת הבאה שלך ביום {data.nextDueWeekday || ''}
+              היום אין צורך לעדכן - הדיווח הבא שלך ביום {data.nextDueWeekday || ''}
             </p>
           )}
 
