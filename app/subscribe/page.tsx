@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { track } from '@vercel/analytics';
+import { trackFunnelEvent } from '@/lib/trackEvent';
 
 export default function SubscribePage() {
   return (
@@ -32,7 +32,7 @@ export default function SubscribePage() {
           <div>תיק מסחר אישי וניתוח העסקאות ע"י שירן</div>
         </div>
 
-        <a href="https://pay.grow.link/200a7cdcb258ee6ffdea0f423a1ace0e-MzE4MDU5OA" target="_blank" className="btn-primary" style={{ display: 'block', textAlign: 'center', textDecoration: 'none' }} onClick={() => track('payment_link_click')}>
+        <a href="https://pay.grow.link/200a7cdcb258ee6ffdea0f423a1ace0e-MzE4MDU5OA" target="_blank" className="btn-primary" style={{ display: 'block', textAlign: 'center', textDecoration: 'none' }} onClick={() => trackFunnelEvent('payment_link_click')}>
           מעבר לדף התשלום המאובטח ←
         </a>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', marginTop: '10px' }}>
