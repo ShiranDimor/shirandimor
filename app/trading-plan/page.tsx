@@ -164,6 +164,29 @@ export default function TradingPlanPage() {
 
   async function handleStart() {
     setLoadingNext(true);
+
+    // כשהפרטים כבר ידועים ותקינים (מנוי מחובר, או הגעה עם prefill) - מדלגים על מסך
+    // "לאן לשלוח את התוכנית" ועוברים ישר לשאלון, כי אין מה לשאול שכבר לא ידוע
+    const knownPhoneOk = typeof answers.phone === 'string' && isValidPhone(answers.phone);
+    const knownEmailOk = typeof answers.email === 'string' && isValidEmail(answers.email);
+
+    if (knownPhoneOk && knownEmailOk) {
+      const id = await autosave(null, {
+        source,
+        name: answers.name || null,
+        phone: answers.phone,
+        email: answers.email,
+        current_step: 1,
+      });
+      setLoadingNext(false);
+      if (id) {
+        setResponseId(id);
+        saveDraft(id, answers, 0, 'quiz');
+      }
+      setPhase('quiz');
+      return;
+    }
+
     const id = await autosave(null, { source, current_step: 0 });
     setLoadingNext(false);
     if (id) {
