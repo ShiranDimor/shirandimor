@@ -35,21 +35,20 @@ function pad(n: number) {
   return String(n).padStart(2, '0');
 }
 
-// לינק להוספת תזכורת יומית ביומן גוגל - כדי שהמשתמש/ת יוכלו ליצור לעצמם תזכורת בלי תלות בנו
+// לינק להוספת תזכורת אישית ביומן גוגל - אירוע חד-פעמי, כדי שכל אחד יבחר לעצמו את הזמן והתדירות שמתאימים לו (לא כפינו "כל יום")
 function buildReminderLink(planUrl: string): string {
   const start = new Date();
   start.setDate(start.getDate() + 1);
-  start.setHours(9, 0, 0, 0);
+  start.setHours(20, 0, 0, 0);
   const end = new Date(start.getTime() + 15 * 60 * 1000);
 
   const fmt = (d: Date) => `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}T${pad(d.getHours())}${pad(d.getMinutes())}00`;
 
   const params = new URLSearchParams({
     action: 'TEMPLATE',
-    text: 'עמדתי היום בכלל שלי? - תוכנית המסחר',
-    details: `רגע קצר לסמן אם עמדת בכלל האישי שלך היום: ${planUrl}`,
+    text: 'לבדוק את ההתקדמות שלי - תוכנית המסחר',
+    details: `תזכורת אישית לחזור לעמוד המעקב ולסמן אם עמדת בכלל שלך. אפשר לשנות את השעה ואת התדירות כרצונך: ${planUrl}`,
     dates: `${fmt(start)}/${fmt(end)}`,
-    recur: 'RRULE:FREQ=DAILY;COUNT=30',
     ctz: 'Asia/Jerusalem',
   });
 
@@ -239,7 +238,7 @@ export default function MyPlanProgressPage() {
             rel="noopener noreferrer"
             style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontSize: '13px', fontWeight: 600, color: '#E8A33D', border: '1px dashed rgba(232,163,61,0.4)', borderRadius: '10px', padding: '11px', marginBottom: '20px', textDecoration: 'none' }}
           >
-            📅 תזכירו לי כל יום ביומן שלי
+            📅 הוסיפו לי תזכורת אישית ביומן
           </a>
 
           <div className="tp-diagnosis-section">
