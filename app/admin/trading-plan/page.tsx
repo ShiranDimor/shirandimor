@@ -172,8 +172,8 @@ export default function AdminTradingPlanAbandonedPage() {
     const rowAnswers = details[r.id];
 
     return (
-      <div key={r.id} className="admin-row" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+      <div key={r.id} className="admin-row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '10px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', width: '100%', gap: '10px' }}>
           <div>
             <div className="name">
               {r.name || 'ללא שם'}
@@ -189,38 +189,40 @@ export default function AdminTradingPlanAbandonedPage() {
               {r.status === 'completed' ? stepLabel(r) : `עצר/ה ${stepLabel(r)}`} · {r.source ? `מקור: ${r.source} · ` : ''}עדכון אחרון: {timeAgo(r.status === 'completed' ? (r.completed_at || r.updated_at) : r.updated_at)}
             </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <button type="button" className="btn-outline" style={{ padding: '8px 12px', fontSize: '12.5px' }} onClick={() => toggleDetails(r.id)}>
-              {isExpanded ? 'סגירה' : 'פרטים מלאים'}
-            </button>
-            {r.status === 'completed' && (
-              <a
-                href={`/my-plan/${r.id}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ textDecoration: 'none', display: 'inline-block', padding: '8px 12px', fontSize: '12.5px', fontWeight: 700, color: '#E8A33D', background: 'rgba(232,163,61,0.1)', border: '1px solid rgba(232,163,61,0.3)', borderRadius: '8px' }}
-              >
-                מעקב התקדמות ←
-              </a>
+          <button
+            className="row-delete-btn"
+            onClick={() => handleDelete(r.id, r.name || r.phone || r.email || 'ללא שם')}
+            disabled={deletingId === r.id}
+            title="מחיקת רשומה"
+            style={{ flexShrink: 0 }}
+          >
+            {deletingId === r.id ? '…' : (
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--loss)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 6h18" /><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /><line x1="10" y1="11" x2="10" y2="17" /><line x1="14" y1="11" x2="14" y2="17" />
+              </svg>
             )}
-            {waLink && (
-              <a href={waLink} target="_blank" rel="noopener noreferrer" className="approve-btn" style={{ textDecoration: 'none', display: 'inline-block' }}>
-                וואטסאפ ←
-              </a>
-            )}
-            <button
-              className="row-delete-btn"
-              onClick={() => handleDelete(r.id, r.name || r.phone || r.email || 'ללא שם')}
-              disabled={deletingId === r.id}
-              title="מחיקת רשומה"
+          </button>
+        </div>
+
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+          <button type="button" className="btn-outline" style={{ padding: '8px 12px', fontSize: '12.5px', flex: '0 0 auto' }} onClick={() => toggleDetails(r.id)}>
+            {isExpanded ? 'סגירה' : 'פרטים מלאים'}
+          </button>
+          {r.status === 'completed' && (
+            <a
+              href={`/my-plan/${r.id}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ textDecoration: 'none', display: 'inline-block', padding: '8px 12px', fontSize: '12.5px', fontWeight: 700, color: '#E8A33D', background: 'rgba(232,163,61,0.1)', border: '1px solid rgba(232,163,61,0.3)', borderRadius: '8px', flex: '0 0 auto' }}
             >
-              {deletingId === r.id ? '…' : (
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--loss)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M3 6h18" /><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /><line x1="10" y1="11" x2="10" y2="17" /><line x1="14" y1="11" x2="14" y2="17" />
-                </svg>
-              )}
-            </button>
-          </div>
+              מעקב התקדמות ←
+            </a>
+          )}
+          {waLink && (
+            <a href={waLink} target="_blank" rel="noopener noreferrer" className="approve-btn" style={{ textDecoration: 'none', display: 'inline-block', flex: '0 0 auto' }}>
+              וואטסאפ ←
+            </a>
+          )}
         </div>
 
         {isExpanded && (

@@ -28,6 +28,7 @@ export default function TradingPlanPage() {
   const [loadingNext, setLoadingNext] = useState(false);
   const [phoneTouched, setPhoneTouched] = useState(false);
   const [emailTouched, setEmailTouched] = useState(false);
+  const [isAdminPreview, setIsAdminPreview] = useState(false);
 
   const [showNudge, setShowNudge] = useState(false);
   const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -103,6 +104,14 @@ export default function TradingPlanPage() {
       }
     } catch {}
 
+    // מי שמחובר כאדמין (שירן) ומעיין בשאלון - זו תמיד תצוגה מקדימה, לא ליד אמיתי.
+    // בלי זה, כל לחיצה על "התחלה" כדי לבדוק משהו יוצרת רשומה ריקה ברשימת הלידים.
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
+      if (!user) return;
+      const { data: adminProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+      if (adminProfile?.role === 'admin') setIsAdminPreview(true);
+    }).catch(() => {});
+
     // אין פרמטרים ואין טיוטה - כשמישהו מגיע ישירות ללינק (למשל מהודעת קבוצה) בזמן שהוא כבר מחובר
     // כמנוי, נמלא בשקט את הפרטים שכבר ידועים מהפרופיל שלו, בלי לחכות שיגיע דרך האזור האישי
     if (!prefillName && !prefillPhone && !prefillEmail) {
@@ -138,6 +147,7 @@ export default function TradingPlanPage() {
   }
 
   async function autosave(id: string | null, fields: Record<string, unknown>): Promise<string | null> {
+    if (isAdminPreview) return id; // תצוגה מקדימה של אדמין - לא כותבים כלום לדאטהבייס
     try {
       const res = await fetch('/api/trading-plan', {
         method: 'POST',
