@@ -42,7 +42,8 @@ function isDueDate(dateStr: string, periodic: boolean): boolean {
   return dow === 1 || dow === 4; // שני, חמישי
 }
 
-// בונה את משבצות התוכנית - רק הימים ה"רלוונטיים" לקצב (כל 30 הימים אם יומי, רק שני/חמישי אם סווינג)
+// בונה את משבצות התוכנית - הימים ה"רלוונטיים" לקצב (כל 30 הימים אם יומי, רק שני/חמישי אם סווינג),
+// ובנוסף כל יום שכן דווח בו בפועל - גם אם זה לא יום חובה (למי שרוצה לדווח ביוזמתו על יום שלא היה "תורו")
 function buildProgramDays(startDateStr: string, checkinsByDate: Map<string, Outcome>, today: string, periodic: boolean) {
   const start = new Date(`${startDateStr}T00:00:00`);
   const days: { date: string; status: DayStatus }[] = [];
@@ -51,7 +52,7 @@ function buildProgramDays(startDateStr: string, checkinsByDate: Map<string, Outc
     const d = new Date(start);
     d.setDate(d.getDate() + i);
     const dateStr = dateToIsraelString(d);
-    if (!isDueDate(dateStr, periodic)) continue;
+    if (!isDueDate(dateStr, periodic) && !checkinsByDate.has(dateStr)) continue;
 
     let status: DayStatus;
     const outcome = checkinsByDate.get(dateStr);
