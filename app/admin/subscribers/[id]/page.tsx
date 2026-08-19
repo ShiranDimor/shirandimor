@@ -609,11 +609,9 @@ export default function AdminViewSubscriberJournal() {
         <Link href="/admin" className="brand">מסחר <span>אחראי</span> במניות</Link>
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
           <Link href="/admin/subscribers" className="nav-link">← למנויים</Link>
-          {tradingPlanId && (
-            <Link href={`/my-plan/${tradingPlanId}`} target="_blank" rel="noopener noreferrer" className="nav-link" style={{ color: '#E8A33D' }}>
-              תוכנית מסחר ←
-            </Link>
-          )}
+          <Link href={tradingPlanId ? `/my-plan/${tradingPlanId}` : '/trading-plan'} target="_blank" rel="noopener noreferrer" className="nav-cta-orange">
+            תוכנית מסחר
+          </Link>
           <button onClick={handleLogout} className="nav-link" style={{ background: 'none', border: 'none', cursor: 'pointer', font: 'inherit', padding: 0 }}>התנתקות</button>
         </div>
       </header>
@@ -649,21 +647,7 @@ export default function AdminViewSubscriberJournal() {
       <p style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginBottom: '10px', fontFamily: 'var(--font-mono)' }}>{subscriber?.email}</p>
 
       {tradingPlanId === null && (
-        <p style={{ marginBottom: '20px' }}>
-          <span style={{ fontSize: '12px', color: 'var(--text-tertiary)', display: 'block', marginBottom: '6px' }}>עדיין לא מילא/ה תוכנית מסחר</span>
-          {subscriber?.phone && (
-            <a
-              href={`https://wa.me/972${subscriber.phone.replace(/\D/g, '').replace(/^0/, '')}?text=${encodeURIComponent(
-                `היי${subscriber.full_name ? ` ${subscriber.full_name.split(' ')[0]}` : ''}, שמתי לב שעוד לא בנית תוכנית מסחר אישית באתר - זה לוקח רק כמה דקות וממש שווה את זה: https://www.shirandimor.com/trading-plan`
-              )}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{ display: 'inline-block', fontSize: '12.5px', fontWeight: 700, color: '#fff', background: '#25D366', borderRadius: '8px', padding: '7px 12px', textDecoration: 'none' }}
-            >
-              שליחת תזכורת בוואטסאפ ←
-            </a>
-          )}
-        </p>
+        <p style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginBottom: '20px' }}>עדיין לא מילא/ה תוכנית מסחר</p>
       )}
 
       <button className="add-btn" onClick={() => setShowAddForm(!showAddForm)}>+ עסקה חדשה</button>
