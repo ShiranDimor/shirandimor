@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { track } from '@vercel/analytics';
 import { supabase } from '@/lib/supabase';
 import ClearableInput from '@/components/ClearableInput';
 
@@ -58,6 +59,7 @@ export default function HomePage() {
 
     setLeadSubmitting(false);
     setLeadSubmitted(true);
+    track('free_group_lead_submitted');
   }
 
   useEffect(() => {
@@ -161,7 +163,7 @@ export default function HomePage() {
             <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '14px' }}>
               מעולה! הכפתור פותח את קבוצת הוואטסאפ, וההצטרפות משם היא כבר עניין של רגע.
             </p>
-            <a href="https://chat.whatsapp.com/GEf9Y4vFRDSEWKixrETWcg" target="_blank" rel="noopener noreferrer" className="btn-primary" style={{ display: 'block', textDecoration: 'none' }}>
+            <a href="https://chat.whatsapp.com/GEf9Y4vFRDSEWKixrETWcg" target="_blank" rel="noopener noreferrer" className="btn-primary" style={{ display: 'block', textDecoration: 'none' }} onClick={() => track('whatsapp_group_open_click')}>
               פתיחת קבוצת הוואטסאפ ←
             </a>
           </div>

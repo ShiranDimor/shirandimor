@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import { track } from '@vercel/analytics';
 import { supabase } from '@/lib/supabase';
 import { visibleSteps, visibleQuestions } from '@/lib/tradingPlan/questions';
 import { classifyProfile } from '@/lib/tradingPlan/profile';
@@ -188,6 +189,7 @@ export default function TradingPlanPage() {
       if (id) {
         setResponseId(id);
         saveDraft(id, answers, 0, 'quiz');
+        track('trading_plan_started');
       }
       setPhase('quiz');
       return;
@@ -198,6 +200,7 @@ export default function TradingPlanPage() {
     if (id) {
       setResponseId(id);
       saveDraft(id, {}, 0, 'contact');
+      track('trading_plan_started');
     }
     setPhase('contact');
   }
@@ -246,6 +249,8 @@ export default function TradingPlanPage() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ id }),
         }).catch(() => {});
+
+        track('trading_plan_completed');
       }
 
       clearDraft();
