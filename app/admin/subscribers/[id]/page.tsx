@@ -603,13 +603,21 @@ export default function AdminViewSubscriberJournal() {
     );
   }
 
+  const tradingPlanHref = tradingPlanId
+    ? `/my-plan/${tradingPlanId}`
+    : `/trading-plan?${new URLSearchParams({
+        ...(subscriber?.full_name ? { prefillName: subscriber.full_name } : {}),
+        ...(subscriber?.phone ? { prefillPhone: subscriber.phone } : {}),
+        ...(subscriber?.email ? { prefillEmail: subscriber.email } : {}),
+      }).toString()}`;
+
   return (
     <div className="wrap">
       <header>
         <Link href="/admin" className="brand">מסחר <span>אחראי</span> במניות</Link>
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
           <Link href="/admin/subscribers" className="nav-link">← למנויים</Link>
-          <Link href={tradingPlanId ? `/my-plan/${tradingPlanId}` : '/trading-plan'} target="_blank" rel="noopener noreferrer" className="nav-cta-orange">
+          <Link href={tradingPlanHref} target="_blank" rel="noopener noreferrer" className="nav-cta-orange">
             תוכנית מסחר
           </Link>
           <button onClick={handleLogout} className="nav-link" style={{ background: 'none', border: 'none', cursor: 'pointer', font: 'inherit', padding: 0 }}>התנתקות</button>

@@ -54,6 +54,19 @@ export default function TradingPlanPage() {
       params = new URLSearchParams();
     }
 
+    // הגעה מהאזור האישי של מנוי מחובר - השם/טלפון/מייל כבר ידועים, לא צריך להקליד אותם שוב
+    const prefillName = params.get('prefillName');
+    const prefillPhone = params.get('prefillPhone');
+    const prefillEmail = params.get('prefillEmail');
+    if (prefillName || prefillPhone || prefillEmail) {
+      setAnswers((prev) => ({
+        ...prev,
+        ...(prefillName ? { name: prefillName } : {}),
+        ...(prefillPhone ? { phone: prefillPhone } : {}),
+        ...(prefillEmail ? { email: prefillEmail } : {}),
+      }));
+    }
+
     const resumeId = params.get('resume');
     if (resumeId) {
       fetch(`/api/trading-plan?id=${encodeURIComponent(resumeId)}`)

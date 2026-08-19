@@ -85,6 +85,13 @@ export default function JournalPage() {
     if (data) setEntries(data);
     setLoading(false);
 
+    const { data: profile } = await supabase.from('profiles').select('full_name, phone, email').eq('id', user.id).single();
+    const prefillParams = new URLSearchParams();
+    if (profile?.full_name) prefillParams.set('prefillName', profile.full_name);
+    if (profile?.phone) prefillParams.set('prefillPhone', profile.phone);
+    if (profile?.email) prefillParams.set('prefillEmail', profile.email);
+    setTradingPlanHref(`/trading-plan?${prefillParams.toString()}`);
+
     const { data: { session } } = await supabase.auth.getSession();
     if (session?.access_token) {
       fetch('/api/trading-plan/my-link', { headers: { Authorization: `Bearer ${session.access_token}` } })

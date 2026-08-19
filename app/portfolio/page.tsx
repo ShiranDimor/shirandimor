@@ -86,11 +86,17 @@ export default function PortfolioPage() {
       setLoggedIn(true);
       const { data: profile } = await supabase
         .from('profiles')
-        .select('role')
+        .select('role, full_name, phone, email')
         .eq('id', user.id)
         .single();
       setHasFullAccess(profile?.role === 'admin' || profile?.role === 'subscriber');
       setIsAdmin(profile?.role === 'admin');
+
+      const prefillParams = new URLSearchParams();
+      if (profile?.full_name) prefillParams.set('prefillName', profile.full_name);
+      if (profile?.phone) prefillParams.set('prefillPhone', profile.phone);
+      if (profile?.email) prefillParams.set('prefillEmail', profile.email);
+      setTradingPlanHref(`/trading-plan?${prefillParams.toString()}`);
 
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.access_token) {
