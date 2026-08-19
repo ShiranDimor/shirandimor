@@ -59,6 +59,7 @@ export default function AdminViewSubscriberJournal() {
   const [savingName, setSavingName] = useState(false);
   const [entries, setEntries] = useState<JournalEntry[]>([]);
   const [loadingData, setLoadingData] = useState(true);
+  const [tradingPlanId, setTradingPlanId] = useState<string | null | undefined>(undefined);
   const [calYear, setCalYear] = useState(() => new Date().getFullYear());
   const [calMonthIdx, setCalMonthIdx] = useState(() => new Date().getMonth());
 
@@ -159,6 +160,16 @@ export default function AdminViewSubscriberJournal() {
     if (sub) setSubscriber(sub);
     if (journalEntries) setEntries(journalEntries);
     setLoadingData(false);
+
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.access_token) {
+      fetch(`/api/admin/subscriber-trading-plan?subscriberId=${subscriberId}`, { headers: { Authorization: `Bearer ${session.access_token}` } })
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => setTradingPlanId(data?.id ?? null))
+        .catch(() => setTradingPlanId(null));
+    } else {
+      setTradingPlanId(null);
+    }
   }
 
   const calcShares = entryPrice && stopLoss && riskAmount
@@ -629,7 +640,24 @@ export default function AdminViewSubscriberJournal() {
           </>
         )}
       </div>
-      <p style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginBottom: '20px', fontFamily: 'var(--font-mono)' }}>{subscriber?.email}</p>
+      <p style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginBottom: '10px', fontFamily: 'var(--font-mono)' }}>{subscriber?.email}</p>
+
+      {tradingPlanId !== undefined && (
+        <p style={{ marginBottom: '20px' }}>
+          {tradingPlanId ? (
+            <Link
+              href={`/my-plan/${tradingPlanId}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ fontSize: '12.5px', fontWeight: 700, color: '#E8A33D', background: 'rgba(232,163,61,0.1)', border: '1px solid rgba(232,163,61,0.3)', borderRadius: '8px', padding: '7px 12px', textDecoration: 'none' }}
+            >
+              תוכנית מסחר ומעקב התקדמות ←
+            </Link>
+          ) : (
+            <span style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>עדיין לא מילא/ה תוכנית מסחר</span>
+          )}
+        </p>
+      )}
 
       <button className="add-btn" onClick={() => setShowAddForm(!showAddForm)}>+ עסקה חדשה</button>
 
