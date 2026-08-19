@@ -4,6 +4,9 @@ import { classifyProfile } from '@/lib/tradingPlan/profile';
 import { getProfileContent } from '@/lib/tradingPlan/profileContent';
 import { findOptions } from '@/lib/tradingPlan/questions';
 
+type Outcome = 'followed' | 'broke' | 'no_activity';
+type DayStatus = Outcome | 'no_checkin' | 'today_pending' | 'future';
+
 // שולף את התשובה החזקה ביותר לחלום/פחד של האדם, כדי שהתוכנית תמשיך לגעת בהם ולא תישאר כלל יבש וגנרי
 function firstLabel(values: unknown, questionId: string): string | null {
   if (!Array.isArray(values) || !values.length) return null;
@@ -16,51 +19,66 @@ function todayIsrael(): string {
 }
 
 const PROGRAM_LENGTH_DAYS = 30;
+const WEEKDAY_LABELS = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
 
 function dateToIsraelString(d: Date): string {
   return d.toLocaleDateString('en-CA', { timeZone: 'Asia/Jerusalem' });
 }
 
-// בונה את 30 המשבצות של התוכנית - יום ההתחלה הוא יום ההשלמה של השאלון
-function buildProgramDays(startDateStr: string, checkinsByDate: Map<string, boolean>, today: string) {
+// יום בשבוע (0=ראשון...6=שבת) מתוך מחרוזת תאריך YYYY-MM-DD, בלי תלות באזור הזמן של השרת
+function weekdayOf(dateStr: string): number {
+  return new Date(`${dateStr}T12:00:00Z`).getUTCDay();
+}
+
+// מי שסווג את עצמו "סווינג" לא נמצא בשוק כל יום - הצ'ק-אין שלו עובר לקצב של פעמיים בשבוע,
+// באותם הימים שבהם ממילא נשלחת תזכורת (שני וחמישי) - במקום לשאול אותו "היום" כל יום
+function isPeriodicCadence(tradingStyle: string | null | undefined): boolean {
+  return tradingStyle === 'swing';
+}
+
+function isDueDate(dateStr: string, periodic: boolean): boolean {
+  if (!periodic) return true;
+  const dow = weekdayOf(dateStr);
+  return dow === 1 || dow === 4; // שני, חמישי
+}
+
+// בונה את משבצות התוכנית - רק הימים ה"רלוונטיים" לקצב (כל 30 הימים אם יומי, רק שני/חמישי אם סווינג)
+function buildProgramDays(startDateStr: string, checkinsByDate: Map<string, Outcome>, today: string, periodic: boolean) {
   const start = new Date(`${startDateStr}T00:00:00`);
-  const days: { date: string; dayNumber: number; status: 'followed' | 'missed' | 'no_checkin' | 'today_pending' | 'future' }[] = [];
+  const days: { date: string; status: DayStatus }[] = [];
 
   for (let i = 0; i < PROGRAM_LENGTH_DAYS; i++) {
     const d = new Date(start);
     d.setDate(d.getDate() + i);
     const dateStr = dateToIsraelString(d);
-    const dayNumber = i + 1;
+    if (!isDueDate(dateStr, periodic)) continue;
 
-    let status: (typeof days)[number]['status'];
-    if (dateStr > today) {
+    let status: DayStatus;
+    const outcome = checkinsByDate.get(dateStr);
+    if (outcome) {
+      status = outcome;
+    } else if (dateStr > today) {
       status = 'future';
-    } else if (checkinsByDate.has(dateStr)) {
-      status = checkinsByDate.get(dateStr) ? 'followed' : 'missed';
     } else if (dateStr === today) {
       status = 'today_pending';
     } else {
       status = 'no_checkin';
     }
 
-    days.push({ date: dateStr, dayNumber, status });
+    days.push({ date: dateStr, status });
   }
   return days;
 }
 
-function computeStreak(checkinDates: string[]): number {
-  const set = new Set(checkinDates);
+// רצף - נשמר על עצם הדיווח הכן בכל יום/ביקורת רלוונטיים, לא רק על הצלחות
+function computeStreak(dueDatesSoFarAsc: string[], checkinsByDate: Map<string, Outcome>, today: string): number {
+  let idx = dueDatesSoFarAsc.length - 1;
+  if (idx >= 0 && dueDatesSoFarAsc[idx] === today && !checkinsByDate.has(today)) idx--;
+
   let streak = 0;
-  const cursor = new Date(todayIsrael());
-
-  // אם היום עוד לא סומן - הרצף נספר עד אתמול (לא שובר את הרצף רק כי עוד לא הגיע הזמן היום)
-  if (!set.has(cursor.toISOString().slice(0, 10))) {
-    cursor.setDate(cursor.getDate() - 1);
-  }
-
-  while (set.has(cursor.toISOString().slice(0, 10))) {
+  while (idx >= 0 && checkinsByDate.has(dueDatesSoFarAsc[idx])) {
     streak++;
-    cursor.setDate(cursor.getDate() - 1);
+    idx--;
   }
   return streak;
 }
@@ -82,23 +100,27 @@ export async function GET(request: Request) {
 
   const { data: checkins } = await supabaseAdmin
     .from('trading_plan_checkins')
-    .select('checkin_date, followed_rule')
+    .select('checkin_date, outcome')
     .eq('response_id', id)
     .order('checkin_date', { ascending: false })
     .limit(60);
 
   const content = getProfileContent(classifyProfile(row as Record<string, unknown>));
   const rule = row.personal_rule?.trim() ? row.personal_rule : content.defaultRule;
-  const dates = (checkins || []).map((c) => c.checkin_date);
   const today = todayIsrael();
 
   const dream = firstLabel(row.trading_motivation, 'trading_motivation');
   const fear = firstLabel(row.money_fear, 'money_fear') || firstLabel(row.self_talk, 'self_talk');
 
-  const checkinsByDate = new Map((checkins || []).map((c) => [c.checkin_date, c.followed_rule]));
+  const periodic = isPeriodicCadence(row.trading_style as string | null);
+  const checkinsByDate = new Map<string, Outcome>((checkins || []).map((c) => [c.checkin_date, c.outcome as Outcome]));
   const startDateStr = row.completed_at ? dateToIsraelString(new Date(row.completed_at)) : today;
-  const programDays = buildProgramDays(startDateStr, checkinsByDate, today);
-  const dayNumber = Math.min(PROGRAM_LENGTH_DAYS, Math.max(1, programDays.filter((d) => d.status !== 'future').length));
+  const programDays = buildProgramDays(startDateStr, checkinsByDate, today, periodic);
+
+  const dueSoFar = programDays.filter((d) => d.status !== 'future').map((d) => d.date);
+  const occurrenceNumber = Math.min(programDays.length, Math.max(1, dueSoFar.length));
+  const isTodayDue = programDays.some((d) => d.date === today);
+  const nextDue = programDays.find((d) => d.date > today);
 
   return NextResponse.json({
     name: row.name,
@@ -108,23 +130,26 @@ export async function GET(request: Request) {
     fear,
     mission: content.mission,
     threeThings: content.threeThings,
-    checkins: checkins || [],
-    streak: computeStreak(dates),
-    todayChecked: dates.includes(today),
+    streak: computeStreak(dueSoFar, checkinsByDate, today),
+    todayChecked: checkinsByDate.has(today),
     today,
-    dayNumber,
-    totalDays: PROGRAM_LENGTH_DAYS,
+    periodic,
+    isTodayDue,
+    nextDueDate: nextDue ? nextDue.date : null,
+    nextDueWeekday: nextDue ? WEEKDAY_LABELS[weekdayOf(nextDue.date)] : null,
+    dayNumber: occurrenceNumber,
+    totalDays: programDays.length,
     programDays,
   });
 }
 
-// POST - סימון "עמדתי/לא עמדתי בכלל" להיום
-// body: { id: string, followedRule: boolean }
+// POST - סימון תוצאת היום/הביקורת: עמדתי בכלל / לא עמדתי / לא היה מה לדווח
+// body: { id: string, outcome: 'followed' | 'broke' | 'no_activity' }
 export async function POST(request: Request) {
   const body = await request.json().catch(() => ({}));
-  const { id, followedRule } = body as { id?: string; followedRule?: boolean };
+  const { id, outcome } = body as { id?: string; outcome?: string };
 
-  if (!id || typeof followedRule !== 'boolean') {
+  if (!id || !['followed', 'broke', 'no_activity'].includes(outcome || '')) {
     return NextResponse.json({ error: 'חסרים פרטים' }, { status: 400 });
   }
 
@@ -133,7 +158,7 @@ export async function POST(request: Request) {
 
   const { error } = await supabaseAdmin
     .from('trading_plan_checkins')
-    .upsert({ response_id: id, checkin_date: todayIsrael(), followed_rule: followedRule }, { onConflict: 'response_id,checkin_date' });
+    .upsert({ response_id: id, checkin_date: todayIsrael(), outcome }, { onConflict: 'response_id,checkin_date' });
 
   if (error) return NextResponse.json({ error: 'שגיאה בשמירה' }, { status: 500 });
 
