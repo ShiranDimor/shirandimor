@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/instantLogin';
+import { getActiveSubscriberPhoneSet, normalizePhone } from '@/lib/subscriberStatus';
 
-// GET - סך הכל מילאו את השאלון (השלימו + ננטשו באמצע), וכמה מהם עדיין לא נצפו (לא נלחץ עליהם "פרטים מלאים") - לבאדג' בדף הניהול
+// GET - סך הכל מילאו את השאלון (השלימו + ננטשו באמצע), וכמה מהם עדיין לא נצפו (לא נלחץ עליהם "פרטים מלאים") - לבאדג' בדף הניהול.
+// מנויים פעילים לא נספרים כאן - זו רשימת "לידים" להמרה, ומנוי כבר המיר (ראו הערה ב-route.ts הראשי).
 export async function GET(request: Request) {
   const authHeader = request.headers.get('Authorization') || '';
   const token = authHeader.replace('Bearer ', '');
@@ -16,10 +18,14 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'אין הרשאת ניהול' }, { status: 403 });
   }
 
-  const [{ count: total }, { count: unread }] = await Promise.all([
-    supabaseAdmin.from('trading_plan_responses').select('id', { count: 'exact', head: true }).in('status', ['in_progress', 'completed']),
-    supabaseAdmin.from('trading_plan_responses').select('id', { count: 'exact', head: true }).in('status', ['in_progress', 'completed']).is('admin_viewed_at', null),
+  const [{ data: rows }, subscriberPhones] = await Promise.all([
+    supabaseAdmin.from('trading_plan_responses').select('phone, admin_viewed_at').in('status', ['in_progress', 'completed']),
+    getActiveSubscriberPhoneSet(),
   ]);
 
-  return NextResponse.json({ total: total || 0, unread: unread || 0 });
+  const leadsOnly = (rows || []).filter((r) => !subscriberPhones.has(normalizePhone(r.phone)));
+  const total = leadsOnly.length;
+  const unread = leadsOnly.filter((r) => !r.admin_viewed_at).length;
+
+  return NextResponse.json({ total, unread });
 }

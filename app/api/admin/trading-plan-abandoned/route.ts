@@ -1,9 +1,12 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/instantLogin';
 import { visibleSteps } from '@/lib/tradingPlan/questions';
+import { getActiveSubscriberPhoneSet, normalizePhone } from '@/lib/subscriberStatus';
 
 // GET - כל מי שמילא את "תוכנית המסחר", גם מי שהשלים וגם מי שננטש באמצע -
-// כדי שיהיה מקום אחד לראות מי חדש (סיים או לא) וליזום קשר עם מי שהשאיר נייד/מייל
+// כדי שיהיה מקום אחד לראות מי חדש (סיים או לא) וליזום קשר עם מי שהשאיר נייד/מייל.
+// מנויים פעילים לא מופיעים כאן - זה רשימת "לידים" להמרה, ומנוי כבר המיר. התוכנית שלו/ה
+// עדיין נגישה תמיד דרך כפתור "תוכנית מסחר" בעמוד הניהול האישי שלו/ה (/admin/subscribers/[id]).
 export async function GET(request: Request) {
   const authHeader = request.headers.get('Authorization') || '';
   const token = authHeader.replace('Bearer ', '');
@@ -29,7 +32,10 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'שגיאה בשליפת נתונים' }, { status: 500 });
   }
 
-  const rows = (data || []).map((r) => ({
+  const subscriberPhones = await getActiveSubscriberPhoneSet();
+  const leadsOnly = (data || []).filter((r) => !subscriberPhones.has(normalizePhone(r.phone)));
+
+  const rows = leadsOnly.map((r) => ({
     id: r.id,
     name: r.name,
     phone: r.phone,

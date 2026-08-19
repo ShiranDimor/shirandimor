@@ -22,17 +22,25 @@ export async function findCompletedTradingPlanIdByPhone(phone: string | null | u
   return match?.id || null;
 }
 
-// בודק אם מספר טלפון שייך למנוי פעיל. אין קשר ישיר (foreign key) בין trading_plan_responses
-// לבין profiles - הקישור היחיד שיש בין שני העולמות הוא מספר הטלפון, אז זו ההשוואה שאפשר לעשות.
-export async function isActiveSubscriberPhone(phone: string | null | undefined): Promise<boolean> {
-  const target = normalizePhone(phone);
-  if (!target) return false;
-
+// כל מספרי הטלפון (מנורמלים) של מנויים פעילים - שימושי כשצריך לסנן רשימה שלמה בלי לשלוח שאילתה לכל שורה
+export async function getActiveSubscriberPhoneSet(): Promise<Set<string>> {
   const { data } = await supabaseAdmin
     .from('profiles')
     .select('phone')
     .eq('role', 'subscriber')
     .eq('subscription_status', 'active');
 
-  return (data || []).some((p) => normalizePhone(p.phone) === target);
+  return new Set((data || []).map((p) => normalizePhone(p.phone)).filter(Boolean));
 }
+
+// בודק אם מספר טלפון שייך למנוי פעיל. אין קשר ישיר (foreign key) בין trading_plan_responses
+// לבין profiles - הקישור היחיד שיש בין שני העולמות הוא מספר הטלפון, אז זו ההשוואה שאפשר לעשות.
+export async function isActiveSubscriberPhone(phone: string | null | undefined): Promise<boolean> {
+  const target = normalizePhone(phone);
+  if (!target) return false;
+
+  const phones = await getActiveSubscriberPhoneSet();
+  return phones.has(target);
+}
+
+export { normalizePhone };
