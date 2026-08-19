@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/lib/instantLogin';
 import { classifyProfile } from '@/lib/tradingPlan/profile';
 import { getProfileContent } from '@/lib/tradingPlan/profileContent';
 import { findOptions } from '@/lib/tradingPlan/questions';
+import { isActiveSubscriberPhone } from '@/lib/subscriberStatus';
 
 type Outcome = 'followed' | 'broke' | 'no_activity';
 type DayStatus = Outcome | 'no_checkin' | 'today_pending' | 'future';
@@ -122,9 +123,11 @@ export async function GET(request: Request) {
   const occurrenceNumber = Math.min(programDays.length, Math.max(1, dueSoFar.length));
   const isTodayDue = programDays.some((d) => d.date === today);
   const nextDue = programDays.find((d) => d.date > today);
+  const isSubscriber = await isActiveSubscriberPhone(row.phone as string | null);
 
   return NextResponse.json({
     name: row.name,
+    isSubscriber,
     profileTitle: content.title,
     rule,
     dream,

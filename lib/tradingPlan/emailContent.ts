@@ -326,7 +326,7 @@ function buildGroupPitch(dream: string | null, fear: string | null): string {
 // המייל שמזכיר לחזור לעמוד "המעקב האישי" ולסמן אם עמדו בכלל היום - נשלח פעמיים בשבוע (שני וחמישי, לא כל יום),
 // רק ב-30 הימים שאחרי ההשלמה. הפנייה משתמשת בחלום ובפחד שהאדם עצמו כתב בשאלון - לא מסר גנרי -
 // כי בסוף אנשים קונים חלום, מתוך רגש ואינטואיציה, לא מתוך טבלת השוואה.
-export function buildDailyProgressReminderEmailHtml(r: ProgressReminderRow): string {
+export function buildDailyProgressReminderEmailHtml(r: ProgressReminderRow, isSubscriber = false): string {
   const firstName = (r.name || '').trim().split(' ')[0] || '';
   const link = `${SITE_URL}/my-plan/${r.id}`;
   const dream = firstLabel(r.trading_motivation, 'trading_motivation');
@@ -349,9 +349,11 @@ export function buildDailyProgressReminderEmailHtml(r: ProgressReminderRow): str
           למעקב האישי שלי ←
         </a>
 
+        ${isSubscriber ? '' : `
         <div style="background:#fff7ed;border:1px solid #fde3b8;border-radius:10px;padding:14px 16px;">
           <p style="font-size:13px;color:#7a4e0a;line-height:1.65;margin:0;">${pitch}</p>
         </div>
+        `}
 
         <p style="font-size:11px;color:#aaa;line-height:1.6;text-align:center;margin-top:18px;margin-bottom:6px;">
           זו תזכורת חינמית, פעמיים בשבוע (שני וחמישי), לאורך 30 הימים שלך - בלי שום עלות.

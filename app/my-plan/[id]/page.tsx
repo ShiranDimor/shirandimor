@@ -9,6 +9,7 @@ type DayStatus = Outcome | 'no_checkin' | 'today_pending' | 'future';
 
 type ProgressData = {
   name: string | null;
+  isSubscriber: boolean;
   profileTitle: string;
   rule: string;
   dream: string | null;
@@ -368,7 +369,7 @@ export default function MyPlanProgressPage() {
             </div>
           </div>
 
-          {(() => {
+          {!data.isSubscriber && (() => {
             const teaser = LOCKED_TEASERS[data.dayNumber % LOCKED_TEASERS.length];
             return (
               <div style={{ position: 'relative', overflow: 'hidden', background: 'var(--bg-surface)', border: '1px dashed var(--border-hairline-strong)', borderRadius: '14px', padding: '18px', marginTop: '18px' }}>
@@ -394,26 +395,43 @@ export default function MyPlanProgressPage() {
             <div className="tp-mission-text">{data.mission}</div>
           </div>
 
-          <div
-            style={{
-              background: 'linear-gradient(160deg, rgba(79,201,196,0.1) 0%, var(--bg-surface-raised) 100%)',
-              border: '1px solid var(--border-hairline-strong)',
-              borderRadius: '14px',
-              padding: '18px',
-              textAlign: 'center',
-            }}
-          >
-            <div style={{ fontSize: '13.5px', color: 'var(--text-primary)', fontWeight: 600, marginBottom: '6px' }}>וזה עוד לפני שהצטרפת לקבוצת הסוחרים</div>
-            <p style={{ fontSize: '12.5px', color: 'var(--text-tertiary)', lineHeight: 1.6, marginBottom: '14px' }}>
-              המעקב האישי הזה חינמי לגמרי. מי שכבר בקבוצה מקבל את כל זה - ועוד ליווי, תשובות בזמן אמת ואנשים שעוברים בדיוק את מה שאת/ה עכשיו.
-            </p>
-            <a
-              href="https://pay.grow.link/200a7cdcb258ee6ffdea0f423a1ace0e-MzE4MDU5OA"
-              style={{ display: 'inline-block', fontSize: '13.5px', fontWeight: 700, color: '#08131a', background: '#E8A33D', borderRadius: '10px', padding: '12px 22px', textDecoration: 'none' }}
+          {data.isSubscriber ? (
+            <div
+              style={{
+                background: 'linear-gradient(160deg, rgba(79,201,196,0.1) 0%, var(--bg-surface-raised) 100%)',
+                border: '1px solid var(--border-hairline-strong)',
+                borderRadius: '14px',
+                padding: '18px',
+                textAlign: 'center',
+              }}
             >
-              הצטרפות לקבוצת הסוחרים ←
-            </a>
-          </div>
+              <div style={{ fontSize: '13.5px', color: 'var(--text-primary)', fontWeight: 600 }}>את/ה כבר חלק/ה מקבוצת הסוחרים 💜</div>
+              <p style={{ fontSize: '12.5px', color: 'var(--text-tertiary)', lineHeight: 1.6, marginTop: '6px' }}>
+                המעקב האישי הזה הוא רק תוספת קטנה למה שכבר יש לך בקבוצה. תמשיכ/י ככה.
+              </p>
+            </div>
+          ) : (
+            <div
+              style={{
+                background: 'linear-gradient(160deg, rgba(79,201,196,0.1) 0%, var(--bg-surface-raised) 100%)',
+                border: '1px solid var(--border-hairline-strong)',
+                borderRadius: '14px',
+                padding: '18px',
+                textAlign: 'center',
+              }}
+            >
+              <div style={{ fontSize: '13.5px', color: 'var(--text-primary)', fontWeight: 600, marginBottom: '6px' }}>וזה עוד לפני שהצטרפת לקבוצת הסוחרים</div>
+              <p style={{ fontSize: '12.5px', color: 'var(--text-tertiary)', lineHeight: 1.6, marginBottom: '14px' }}>
+                המעקב האישי הזה חינמי לגמרי. מי שכבר בקבוצה מקבל את כל זה - ועוד ליווי, תשובות בזמן אמת ואנשים שעוברים בדיוק את מה שאת/ה עכשיו.
+              </p>
+              <a
+                href="https://pay.grow.link/200a7cdcb258ee6ffdea0f423a1ace0e-MzE4MDU5OA"
+                style={{ display: 'inline-block', fontSize: '13.5px', fontWeight: 700, color: '#08131a', background: '#E8A33D', borderRadius: '10px', padding: '12px 22px', textDecoration: 'none' }}
+              >
+                הצטרפות לקבוצת הסוחרים ←
+              </a>
+            </div>
+          )}
 
           <p style={{ textAlign: 'center', marginTop: '18px' }}>
             <a href={`/api/trading-plan/unsubscribe-progress?id=${id}`} style={{ fontSize: '11px', color: 'var(--text-tertiary)', textDecoration: 'underline' }}>
