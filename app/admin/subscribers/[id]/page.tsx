@@ -655,7 +655,7 @@ export default function AdminViewSubscriberJournal() {
       <p style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginBottom: '10px', fontFamily: 'var(--font-mono)' }}>{subscriber?.email}</p>
 
       {tradingPlanId === null && (
-        <p style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginBottom: '20px' }}>עדיין לא מילא/ה תוכנית מסחר</p>
+        <p style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginBottom: '20px' }}>עדיין אין תוכנית מסחר</p>
       )}
 
       <button className="add-btn" onClick={() => setShowAddForm(!showAddForm)}>+ עסקה חדשה</button>

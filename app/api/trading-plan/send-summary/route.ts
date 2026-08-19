@@ -48,7 +48,7 @@ export async function POST(request: Request) {
       ? sendEmail(apiKey, row.email, 'התוכנית שלך ל-30 הימים הקרובים במסחר', buildUserPlanEmailHtml(row), 'שירן דימור <onboarding@resend.dev>')
       : Promise.resolve(false),
     apiKey && !isSubscriber
-      ? sendEmail(apiKey, 'shiran@shirandimor.com', 'מתעניין/ת חדש/ה - תוכנית מסחר 30 יום', buildAdminNotifyEmailHtml(row), 'התראות האתר <onboarding@resend.dev>')
+      ? sendEmail(apiKey, 'shiran@shirandimor.com', 'התעניינות חדשה - תוכנית מסחר 30 יום', buildAdminNotifyEmailHtml(row), 'התראות האתר <onboarding@resend.dev>')
       : Promise.resolve(false),
     syncTradingPlanLead(row),
   ]);

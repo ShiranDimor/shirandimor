@@ -213,7 +213,7 @@ export default function LoginPage() {
       {step === 'phone' && (
         <>
           <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '16px', textAlign: 'center' }}>
-            לא זיהינו את המייל הזה אצלנו - כדי לוודא שמדובר במנוי/ה פעיל/ה, אפשר למלא את הפרטים
+            לא זיהינו את המייל הזה אצלנו - כדי לוודא שמדובר במנוי פעיל, אפשר למלא את הפרטים
           </p>
           <div className="form-row">
             <div className="field" style={{ marginBottom: 0 }}>

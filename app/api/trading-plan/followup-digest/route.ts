@@ -57,7 +57,7 @@ export async function GET(request: Request) {
     sendEmail(
       apiKey,
       'shiran@shirandimor.com',
-      `תזכורת פולואפ - ${rows.length} ${rows.length === 1 ? 'איש/ה' : 'אנשים'} השבוע`,
+      `תזכורת פולואפ - ${rows.length} ${rows.length === 1 ? 'אדם' : 'אנשים'} השבוע`,
       buildFollowupDigestEmailHtml(rows as any),
       'תזכורות פולואפ <onboarding@resend.dev>'
     ),

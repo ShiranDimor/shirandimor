@@ -137,7 +137,7 @@ export function buildUserPlanEmailHtml(r: PlanRow): string {
   </div>`;
 }
 
-// המייל שנשלח לשירן - התראה על מתעניין/ת חדש/ה עם הפרופיל והתשובות המרכזיות
+// המייל שנשלח לשירן - התראה על התעניינות חדשה עם הפרופיל והתשובות המרכזיות
 export function buildAdminNotifyEmailHtml(r: PlanRow): string {
   const profileId = classifyProfile(r as Record<string, unknown>);
   const content = getProfileContent(profileId);
@@ -151,14 +151,14 @@ export function buildAdminNotifyEmailHtml(r: PlanRow): string {
   <div dir="rtl" style="font-family: Arial, Helvetica, sans-serif; background:#f4f4f5; padding:24px 12px;">
     <div style="max-width:600px;margin:0 auto;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #e5e5e5;">
       <div style="background:#111318;padding:20px 24px;">
-        <div style="color:#fff;font-size:16px;font-weight:700;">מתעניין/ת חדש/ה - תוכנית מסחר 30 יום</div>
+        <div style="color:#fff;font-size:16px;font-weight:700;">התעניינות חדשה - תוכנית מסחר 30 יום</div>
         <div style="color:#4fc9c4;font-size:13px;margin-top:4px;">פרופיל: ${content.title}</div>
       </div>
       <div style="padding:20px 24px;">
         <div style="background:#fff7ed;border:1px solid #fde3b8;border-radius:10px;padding:14px 16px;margin-bottom:16px;">
           <div style="font-size:11px;color:#92620c;text-transform:uppercase;margin-bottom:6px;font-weight:700;">לתזכורת - בעוד שבוע, לשאול על:</div>
           ${r.week_one_win && r.week_one_win.length ? listHtml(findOptions('week_one_win', r.week_one_win).map((o) => o.label), '★', '#b8860b') : '<div style="font-size:13px;color:#999;">לא נבחר</div>'}
-          <div style="font-size:11px;color:#92620c;text-transform:uppercase;margin:12px 0 6px;font-weight:700;">3 הדברים שהתחייב/ה עליהם לשבוע הראשון:</div>
+          <div style="font-size:11px;color:#92620c;text-transform:uppercase;margin:12px 0 6px;font-weight:700;">3 ההתחייבויות לשבוע הראשון:</div>
           ${content.threeThings.map((t, i) => `<div style="font-size:13px;color:#444;line-height:1.6;margin-bottom:4px;"><b>${i + 1}.</b> ${t}</div>`).join('')}
         </div>
         <table width="100%" style="border-collapse:collapse;">
@@ -166,7 +166,7 @@ export function buildAdminNotifyEmailHtml(r: PlanRow): string {
           ${row('נייד', r.phone || '—')}
           ${row('אימייל', r.email || '—')}
           ${row('מקור', r.source || 'ישיר')}
-          ${row('איפה נמצא/ת מול מסחר', labelSingle(r.trading_experience, 'trading_experience'))}
+          ${row('איפה עומדים מול מסחר', labelSingle(r.trading_experience, 'trading_experience'))}
           ${row('שווקים', labelsJoined(r.markets, 'markets'))}
           ${row('מה רוצה מהמסחר', labelsJoined(r.trading_motivation, 'trading_motivation'))}
           ${row('משפט מוכר לעצמו', labelsJoined(r.self_talk, 'self_talk'))}
@@ -182,7 +182,7 @@ export function buildAdminNotifyEmailHtml(r: PlanRow): string {
   </div>`;
 }
 
-// המייל האוטומטי שנשלח ישירות למי שמילא/ה את השאלון, בדיוק שבוע אחרי - פנייה אישית בשם שירן
+// המייל האוטומטי שנשלח ישירות למי שמילא את השאלון, בדיוק שבוע אחרי - פנייה אישית בשם שירן
 export function buildFollowupUserEmailHtml(r: FollowupRow): string {
   const content = getProfileContent(classifyProfile(r as unknown as Record<string, unknown>));
   const weekOneWin = labelsJoined(r.week_one_win, 'week_one_win');
@@ -223,7 +223,7 @@ export function buildFollowupUserEmailHtml(r: FollowupRow): string {
   </div>`;
 }
 
-// המייל היומי המרוכז לשירן - כל מי שמילא את השאלון לפני שבוע בדיוק, כדי לפנות אליו/ה בפולואפ
+// המייל היומי המרוכז לשירן - כל מי שמילא את השאלון לפני שבוע בדיוק, כדי לפנות בפולואפ
 export function buildFollowupDigestEmailHtml(rows: FollowupRow[]): string {
   const cards = rows.map((r) => {
     const content = getProfileContent(classifyProfile(r as unknown as Record<string, unknown>));
@@ -234,10 +234,10 @@ export function buildFollowupDigestEmailHtml(rows: FollowupRow[]): string {
       <div style="border:1px solid #eee;border-radius:12px;padding:16px 18px;margin-bottom:14px;">
         <div style="font-size:15px;font-weight:700;color:#111;margin-bottom:2px;">${r.name || 'ללא שם'}</div>
         <div style="font-size:12px;color:#888;margin-bottom:10px;">${r.phone || '—'} · ${r.email || '—'} · פרופיל: ${content.title}</div>
-        ${weekOneWin !== '—' ? `<div style="font-size:13px;color:#0f766e;margin-bottom:8px;"><b>ככה הוא/היא אמר/ה שידע/תדע שהתחיל/ה נכון:</b> ${weekOneWin}</div>` : ''}
+        ${weekOneWin !== '—' ? `<div style="font-size:13px;color:#0f766e;margin-bottom:8px;"><b>איך ידעו שהתחילו נכון:</b> ${weekOneWin}</div>` : ''}
         <div style="font-size:13px;color:#444;margin-bottom:8px;"><b>הכלל האישי:</b> ${r.personal_rule || content.defaultRule}</div>
         <div style="font-size:12.5px;color:#666;">
-          <b>3 הדברים שהתחייב/ה עליהם לשבוע הראשון:</b>
+          <b>3 ההתחייבויות לשבוע הראשון:</b>
           ${content.threeThings.map((t) => `<div style="margin-top:2px;">• ${t}</div>`).join('')}
         </div>
         ${waLink ? `<a href="${waLink}" style="display:inline-block;margin-top:12px;background:#25D366;color:#fff;text-decoration:none;font-size:12.5px;font-weight:700;padding:8px 14px;border-radius:8px;">שליחת הודעה בוואטסאפ ←</a>` : ''}
@@ -248,7 +248,7 @@ export function buildFollowupDigestEmailHtml(rows: FollowupRow[]): string {
   <div dir="rtl" style="font-family: Arial, Helvetica, sans-serif; background:#f4f4f5; padding:24px 12px;">
     <div style="max-width:600px;margin:0 auto;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #e5e5e5;">
       <div style="background:#111318;padding:20px 24px;">
-        <div style="color:#fff;font-size:16px;font-weight:700;">תזכורת פולואפ - ${rows.length} ${rows.length === 1 ? 'מי שמילא/ה' : 'שמילאו'} תוכנית מסחר לפני שבוע</div>
+        <div style="color:#fff;font-size:16px;font-weight:700;">תזכורת פולואפ - ${rows.length} ${rows.length === 1 ? 'אדם שמילא' : 'אנשים שמילאו'} תוכנית מסחר לפני שבוע</div>
       </div>
       <div style="padding:20px 24px;">
         ${cards}
@@ -312,13 +312,13 @@ function buildGroupPitch(dream: string | null, fear: string | null): string {
   const pitches: string[] = [];
 
   if (dream) {
-    pitches.push(`תדמיין/י לרגע שזה כבר קרה: ${dream}. זה בדיוק הכיוון שבנית בעצמך - והקבוצה קיימת בשביל לקצר את הדרך לשם, לא ללכת אותה לבד.`);
+    pitches.push(`לדמיין לרגע שזה כבר קרה: ${dream}. זה בדיוק הכיוון שבנית בעצמך - והקבוצה קיימת בשביל לקצר את הדרך לשם, לא ללכת אותה לבד.`);
   }
   if (fear) {
-    pitches.push(`את/ה בעצמך כתבת שמה שהכי מטריד זה "${fear}". זה בדיוק למה שווה להיות בסביבה שבה אפשר לשאול בזמן אמת, במקום להישאר עם זה לבד.`);
+    pitches.push(`בעצמך כתבת שמה שהכי מטריד זה "${fear}". זה בדיוק למה שווה להיות בסביבה שבה אפשר לשאול בזמן אמת, במקום להישאר עם זה לבד.`);
   }
-  pitches.push('מי שכבר בקבוצה אומר/ת דבר אחד בעקביות: הרגע שהכי התחרט/ה עליו הוא לא ההצטרפות - הוא כל החודש שחיכה/תה לפני.');
-  pitches.push('אין כאן הבטחות גדולות - יש תהליך, ואנשים שכבר עברו בדיוק את מה שאת/ה עכשיו. שווה להציץ, גם רק כדי לראות.');
+  pitches.push('מי שכבר בקבוצה חוזרים על דבר אחד בעקביות: הרגע שהכי מתחרטים עליו הוא לא ההצטרפות - הוא כל החודש שחיכו לפני.');
+  pitches.push('אין כאן הבטחות גדולות - יש תהליך, ואנשים שכבר עברו בדיוק את השלב הזה עכשיו. שווה להציץ, גם רק כדי לראות.');
 
   return pitches[Math.floor(Math.random() * pitches.length)];
 }
@@ -374,13 +374,13 @@ export function buildProgressUnsubscribeAdminEmailHtml(r: { id: string; name?: s
   <div dir="rtl" style="font-family: Arial, Helvetica, sans-serif; background:#f4f4f5; padding:24px 12px;">
     <div style="max-width:600px;margin:0 auto;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #e5e5e5;">
       <div style="background:#111318;padding:20px 24px;">
-        <div style="color:#fff;font-size:16px;font-weight:700;">מישהו/י ביטל/ה תזכורות מעקב יומי</div>
+        <div style="color:#fff;font-size:16px;font-weight:700;">ביטול תזכורות מעקב יומי</div>
         <div style="color:#E8A33D;font-size:13px;margin-top:4px;">כדאי אולי לפנות ולשמוע למה - לפעמים זה בדיוק ההזדמנות לשיחה</div>
       </div>
       <div style="padding:20px 24px;">
         <div style="font-size:15px;font-weight:700;color:#111;margin-bottom:2px;">${r.name || 'ללא שם'}</div>
         <div style="font-size:12.5px;color:#888;margin-bottom:14px;">${r.phone || '—'} · ${r.email || '—'}</div>
-        <a href="${SITE_URL}/my-plan/${r.id}" style="display:inline-block;margin-left:8px;background:#4fc9c4;color:#08131a;text-decoration:none;font-size:12.5px;font-weight:700;padding:8px 14px;border-radius:8px;">לעמוד המעקב שלו/ה ←</a>
+        <a href="${SITE_URL}/my-plan/${r.id}" style="display:inline-block;margin-left:8px;background:#4fc9c4;color:#08131a;text-decoration:none;font-size:12.5px;font-weight:700;padding:8px 14px;border-radius:8px;">לעמוד המעקב ←</a>
         ${waLink ? `<a href="${waLink}" style="display:inline-block;background:#25D366;color:#fff;text-decoration:none;font-size:12.5px;font-weight:700;padding:8px 14px;border-radius:8px;">שליחת הודעה בוואטסאפ ←</a>` : ''}
       </div>
     </div>

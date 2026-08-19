@@ -109,7 +109,7 @@ export default function SummaryScreen({ answers, onCtaClick, responseId }: Props
       <p className="tp-closing-message">{content.closingMessage}</p>
 
       <div className="tp-checklist-card">
-        <div className="tp-checklist-title">לפני כל עסקה אני עוצר/ת ובודק/ת:</div>
+        <div className="tp-checklist-title">לפני כל עסקה עוצרים ובודקים:</div>
         {CHECKLIST.map((item) => (
           <div key={item} className="tp-checklist-item">{item}</div>
         ))}

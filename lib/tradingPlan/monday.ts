@@ -100,11 +100,11 @@ async function findItemIdByPhone(token: string, boardId: string, phoneColumnId: 
 function buildInsightsNote(row: Record<string, any>, completed: boolean) {
   if (!completed) {
     const lines = [
-      'התחיל/ה למלא את "תוכנית המסחר ל-30 יום" באתר, ולא השלים/ה.',
+      '"תוכנית המסחר ל-30 יום" נפתחה באתר, בלי השלמה.',
       row.source ? `מקור: ${row.source}` : null,
-      `עצר/ה בשלב ${row.current_step ?? 0} בשאלון`,
+      `עצירה בשלב ${row.current_step ?? 0} בשאלון`,
       Array.isArray(row.trading_motivation) && row.trading_motivation.length ? `מה רוצה מהמסחר: ${row.trading_motivation.join(', ')}` : null,
-      row.trading_experience ? `איפה נמצא/ת מול מסחר: ${row.trading_experience}` : null,
+      row.trading_experience ? `המצב מול מסחר: ${row.trading_experience}` : null,
     ].filter(Boolean);
     return lines.join('\n');
   }
@@ -113,7 +113,7 @@ function buildInsightsNote(row: Record<string, any>, completed: boolean) {
   const weekOneWinLabels = findOptions('week_one_win', row.week_one_win).map((o) => o.label);
 
   const lines = [
-    'השלים/ה את "תוכנית המסחר ל-30 יום" באתר.',
+    '"תוכנית המסחר ל-30 יום" הושלמה באתר.',
     row.source ? `מקור: ${row.source}` : null,
     row.computed_profile ? `פרופיל: ${row.computed_profile}` : null,
     Array.isArray(row.trading_motivation) && row.trading_motivation.length ? `מה רוצה מהמסחר: ${row.trading_motivation.join(', ')}` : null,
@@ -123,7 +123,7 @@ function buildInsightsNote(row: Record<string, any>, completed: boolean) {
     Array.isArray(row.progress_markers) && row.progress_markers.length ? `מה ירגיש כהתקדמות: ${row.progress_markers.join(', ')}` : null,
     row.definition_of_success ? `סימן להצלחה: ${row.definition_of_success}` : null,
     row.personal_rule ? `הכלל האישי: ${row.personal_rule}` : null,
-    weekOneWinLabels.length ? `לתזכורת בעוד שבוע - איך ידע/תדע שהתחיל/ה נכון: ${weekOneWinLabels.join(', ')}` : null,
+    weekOneWinLabels.length ? `לתזכורת בעוד שבוע - הסימן שההתחלה הייתה נכונה: ${weekOneWinLabels.join(', ')}` : null,
     `3 הדברים לשבוע הראשון: ${content.threeThings.join(' | ')}`,
   ].filter(Boolean);
   return lines.join('\n');

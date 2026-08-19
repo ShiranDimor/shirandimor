@@ -191,7 +191,7 @@ export default function MyPlanProgressPage() {
             </div>
             <div className="form-title" style={{ fontSize: '23px', marginBottom: '6px' }}>המעקב האישי שלך{firstName ? `, ${firstName}` : ''}</div>
             <p style={{ fontSize: '13.5px', color: 'var(--text-secondary)', lineHeight: 1.7 }}>
-              כל דיווח כן שאת/ה משאיר/ה כאן - זו עוד עדות שאת/ה לא רק "עוד מישהו שרצה להתחיל". זו הדרך הכי אמיתית להוכיח לעצמך שהפעם זה שונה.
+              כל דיווח שנשאר כאן הוא עוד עדות שיש כאן יותר מ"עוד מישהו שרצה להתחיל". זו הדרך הכי אמיתית להוכיח לעצמך שהפעם זה שונה.
             </p>
           </div>
 
@@ -272,11 +272,11 @@ export default function MyPlanProgressPage() {
               {data.fear && (
                 <div style={{ display: 'flex', gap: '10px', fontSize: '13.5px', color: '#fff', lineHeight: 1.6 }}>
                   <span style={{ fontSize: '16px', flexShrink: 0 }}>💪</span>
-                  <span><b>מה שאת/ה רוצה לנצח:</b> {data.fear}</span>
+                  <span><b>מה שרצית לנצח:</b> {data.fear}</span>
                 </div>
               )}
               <div style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginTop: '12px', lineHeight: 1.6, borderTop: '1px solid rgba(232,163,61,0.2)', paddingTop: '10px' }}>
-                כל פעם שאת/ה עומד/ת בכלל שלך - כולל הרגעים שבהם נמנעת מלהיכנס כי זה לא היה מתאים - זה עוד צעד לכיוון החלום, ועוד רגע שבו לא נתת לפחד לנצח.
+                כל פעם שעמדת בכלל שלך - כולל הרגעים שבהם נמנעת מלהיכנס כי זה לא היה מתאים - זה עוד צעד לכיוון החלום, ועוד רגע שבו לא נתת לפחד לנצח.
               </div>
             </div>
           )}
@@ -328,7 +328,7 @@ export default function MyPlanProgressPage() {
                 </button>
               )}
               <a href="https://wa.me/972547167419" target="_blank" rel="noopener noreferrer" style={{ display: 'block', marginTop: '14px', fontSize: '11.5px', color: 'var(--text-tertiary)', textDecoration: 'none' }}>
-                תקוע/ה עם זה? אפשר גם לכתוב לי בוואטסאפ ←
+                נתקעת עם זה? אפשר גם לכתוב לי בוואטסאפ ←
               </a>
             </div>
           ) : data.todayChecked ? (
@@ -408,9 +408,9 @@ export default function MyPlanProgressPage() {
                 textAlign: 'center',
               }}
             >
-              <div style={{ fontSize: '13.5px', color: 'var(--text-primary)', fontWeight: 600 }}>את/ה כבר חלק/ה מקבוצת הסוחרים 💜</div>
+              <div style={{ fontSize: '13.5px', color: 'var(--text-primary)', fontWeight: 600 }}>כבר חלק מקבוצת הסוחרים 💜</div>
               <p style={{ fontSize: '12.5px', color: 'var(--text-tertiary)', lineHeight: 1.6, marginTop: '6px' }}>
-                המעקב האישי הזה הוא רק תוספת קטנה למה שכבר יש לך בקבוצה. תמשיכ/י ככה.
+                המעקב האישי הזה הוא רק תוספת קטנה למה שכבר יש לך בקבוצה. אז פשוט להמשיך ככה.
               </p>
             </div>
           ) : (
@@ -425,7 +425,7 @@ export default function MyPlanProgressPage() {
             >
               <div style={{ fontSize: '13.5px', color: 'var(--text-primary)', fontWeight: 600, marginBottom: '6px' }}>וזה עוד לפני שהצטרפת לקבוצת הסוחרים</div>
               <p style={{ fontSize: '12.5px', color: 'var(--text-tertiary)', lineHeight: 1.6, marginBottom: '14px' }}>
-                המעקב האישי הזה חינמי לגמרי. מי שכבר בקבוצה מקבל את כל זה - ועוד ליווי, תשובות בזמן אמת ואנשים שעוברים בדיוק את מה שאת/ה עכשיו.
+                המעקב האישי הזה חינמי לגמרי. מי שכבר בקבוצה מקבל את כל זה - ועוד ליווי, תשובות בזמן אמת ואנשים שעוברים בדיוק את השלב הזה עכשיו.
               </p>
               <a
                 href="https://pay.grow.link/200a7cdcb258ee6ffdea0f423a1ace0e-MzE4MDU5OA"

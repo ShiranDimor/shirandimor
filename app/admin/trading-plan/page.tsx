@@ -23,7 +23,7 @@ type AbandonedRow = {
 type DetailAnswer = { id: string; title: string; value: string };
 
 function stepLabel(r: AbandonedRow) {
-  if (r.status === 'completed') return r.computedProfile ? `השלים/ה - פרופיל: ${r.computedProfile}` : 'השלים/ה את השאלון';
+  if (r.status === 'completed') return r.computedProfile ? `הושלם - פרופיל: ${r.computedProfile}` : 'השאלון הושלם';
   if (!r.stepsReached) return 'בטופס הפרטים, עדיין לפני תחילת השאלון';
   return `בשלב ${r.stepsReached} מתוך ${r.totalSteps} בשאלון`;
 }
@@ -186,7 +186,7 @@ export default function AdminTradingPlanAbandonedPage() {
             {r.phone && <div className="email">{r.phone}</div>}
             {r.email && <div className="email">{r.email}</div>}
             <div className="email" style={{ marginTop: '2px' }}>
-              {r.status === 'completed' ? stepLabel(r) : `עצר/ה ${stepLabel(r)}`} · {r.source ? `מקור: ${r.source} · ` : ''}עדכון אחרון: {timeAgo(r.status === 'completed' ? (r.completed_at || r.updated_at) : r.updated_at)}
+              {r.status === 'completed' ? stepLabel(r) : `עצירה ${stepLabel(r)}`} · {r.source ? `מקור: ${r.source} · ` : ''}עדכון אחרון: {timeAgo(r.status === 'completed' ? (r.completed_at || r.updated_at) : r.updated_at)}
             </div>
           </div>
           <button

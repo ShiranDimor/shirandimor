@@ -39,7 +39,7 @@ export async function POST(request: Request) {
     <div style="max-width:480px;margin:0 auto;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #e5e5e5;">
       <div style="background:#111318;padding:24px;text-align:center;">
         <div style="color:#4FB876;font-size:26px;margin-bottom:6px;">✔</div>
-        <div style="color:#fff;font-size:19px;font-weight:700;">${firstName ? `${firstName}, ` : ''}את/ה מאושר/ת!</div>
+        <div style="color:#fff;font-size:19px;font-weight:700;">${firstName ? `${firstName}, ` : ''}אושרת!</div>
       </div>
       <div style="padding:24px;text-align:center;">
         <p style="font-size:14.5px;color:#333;line-height:1.7;margin:0 0 20px;">
@@ -62,7 +62,7 @@ export async function POST(request: Request) {
       body: JSON.stringify({
         from: 'קבוצת הסוחרים <noreply@shirandimor.com>',
         to: subscriber.email,
-        subject: 'אושרת כמנוי/ה בקבוצת הסוחרים 🎉',
+        subject: 'אושרת להצטרפות לקבוצת הסוחרים 🎉',
         html,
       }),
     });

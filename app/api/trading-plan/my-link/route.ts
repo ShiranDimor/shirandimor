@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/instantLogin';
 import { findCompletedTradingPlanIdByContact } from '@/lib/subscriberStatus';
 
-// GET - עבור משתמש/ת מחוברים: מוצא את מזהה תוכנית המסחר שלהם (אם השלימו אחת) לפי הטלפון/מייל בפרופיל.
+// GET - עבור משתמשים מחוברים: מוצא את מזהה תוכנית המסחר שלהם (אם השלימו אחת) לפי הטלפון/מייל בפרופיל.
 // דורש session תקף (לא לוקח פרטים מהקליינט - כדי שאי אפשר יהיה "לנחש" תוכנית של מישהו אחר).
 export async function GET(request: Request) {
   const authHeader = request.headers.get('Authorization') || '';

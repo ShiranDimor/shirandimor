@@ -39,7 +39,7 @@ export async function isActiveSubscriber(phone: string | null | undefined, email
 }
 
 // מוצא את תוכנית המסחר (אם הושלמה) ששייכת לטלפון/מייל נתונים - כדי לקשר מהאזור האישי המחובר
-// ישירות לעמוד המעקב שלו/ה, בלי לגרום ליצירת תוכנית כפולה למי שכבר מילא/ה
+// ישירות לעמוד המעקב האישי, בלי לגרום ליצירת תוכנית כפולה למי שכבר מילא
 export async function findCompletedTradingPlanIdByContact(phone: string | null | undefined, email: string | null | undefined): Promise<string | null> {
   const targetPhone = normalizePhone(phone);
   const targetEmail = normalizeEmail(email);

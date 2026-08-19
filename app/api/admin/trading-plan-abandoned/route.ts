@@ -5,8 +5,8 @@ import { getActiveSubscriberContacts, normalizePhone, normalizeEmail } from '@/l
 
 // GET - כל מי שמילא את "תוכנית המסחר", גם מי שהשלים וגם מי שננטש באמצע -
 // כדי שיהיה מקום אחד לראות מי חדש (סיים או לא) וליזום קשר עם מי שהשאיר נייד/מייל.
-// מנויים פעילים לא מופיעים כאן - זה רשימת "לידים" להמרה, ומנוי כבר המיר. התוכנית שלו/ה
-// עדיין נגישה תמיד דרך כפתור "תוכנית מסחר" בעמוד הניהול האישי שלו/ה (/admin/subscribers/[id]).
+// מנויים פעילים לא מופיעים כאן - זה רשימת "לידים" להמרה, ומנוי כבר המיר. תוכנית המנוי
+// עדיין נגישה תמיד דרך כפתור "תוכנית מסחר" בעמוד הניהול האישי של המנוי (/admin/subscribers/[id]).
 export async function GET(request: Request) {
   const authHeader = request.headers.get('Authorization') || '';
   const token = authHeader.replace('Bearer ', '');

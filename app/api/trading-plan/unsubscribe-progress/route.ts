@@ -60,7 +60,7 @@ export async function GET(request: Request) {
       await sendEmail(
         apiKey,
         'shiran@shirandimor.com',
-        `${row.name || 'מישהו/י'} ביטל/ה תזכורות מעקב`,
+        `ביטול תזכורות מעקב - ${row.name || 'מישהו'}`,
         buildProgressUnsubscribeAdminEmailHtml(row),
         'התראות האתר <onboarding@resend.dev>'
       ).catch(() => false);
