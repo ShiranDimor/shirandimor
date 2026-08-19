@@ -46,6 +46,7 @@ export async function GET(request: Request) {
     .from('trading_plan_responses')
     .select('id, name, email, completed_at, last_daily_reminder_sent_date, trading_motivation, money_fear, self_talk')
     .eq('status', 'completed')
+    .eq('progress_emails_opted_out', false)
     .not('email', 'is', null)
     .gte('completed_at', cutoff)
     .or(`last_daily_reminder_sent_date.is.null,last_daily_reminder_sent_date.neq.${today}`);

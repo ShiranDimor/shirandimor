@@ -414,6 +414,12 @@ export default function MyPlanProgressPage() {
               הצטרפות לקבוצת הסוחרים ←
             </a>
           </div>
+
+          <p style={{ textAlign: 'center', marginTop: '18px' }}>
+            <a href={`/api/trading-plan/unsubscribe-progress?id=${id}`} style={{ fontSize: '11px', color: 'var(--text-tertiary)', textDecoration: 'underline' }}>
+              להפסיק לקבל תזכורות מעקב במייל
+            </a>
+          </p>
         </>
       )}
 

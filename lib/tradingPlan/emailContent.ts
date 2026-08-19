@@ -353,9 +353,33 @@ export function buildDailyProgressReminderEmailHtml(r: ProgressReminderRow): str
           <p style="font-size:13px;color:#7a4e0a;line-height:1.65;margin:0;">${pitch}</p>
         </div>
 
-        <p style="font-size:11px;color:#aaa;line-height:1.6;text-align:center;margin-top:18px;">
+        <p style="font-size:11px;color:#aaa;line-height:1.6;text-align:center;margin-top:18px;margin-bottom:6px;">
           זו תזכורת חינמית, פעמיים בשבוע (שני וחמישי), לאורך 30 הימים שלך - בלי שום עלות.
         </p>
+        <p style="font-size:11px;color:#aaa;line-height:1.6;text-align:center;">
+          <a href="${SITE_URL}/api/trading-plan/unsubscribe-progress?id=${r.id}" style="color:#aaa;text-decoration:underline;">להפסיק לקבל תזכורות אלה</a>
+        </p>
+      </div>
+    </div>
+  </div>`;
+}
+
+// המייל שנשלח לשירן כשמישהו מבטל תזכורות מעקב - כדי שתוכל ליזום פנייה אישית ולקבל פידבק
+export function buildProgressUnsubscribeAdminEmailHtml(r: { id: string; name?: string | null; phone?: string | null; email?: string | null }): string {
+  const waLink = r.phone ? `https://wa.me/972${r.phone.replace(/\D/g, '').replace(/^0/, '')}` : null;
+
+  return `
+  <div dir="rtl" style="font-family: Arial, Helvetica, sans-serif; background:#f4f4f5; padding:24px 12px;">
+    <div style="max-width:600px;margin:0 auto;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #e5e5e5;">
+      <div style="background:#111318;padding:20px 24px;">
+        <div style="color:#fff;font-size:16px;font-weight:700;">מישהו/י ביטל/ה תזכורות מעקב יומי</div>
+        <div style="color:#E8A33D;font-size:13px;margin-top:4px;">כדאי אולי לפנות ולשמוע למה - לפעמים זה בדיוק ההזדמנות לשיחה</div>
+      </div>
+      <div style="padding:20px 24px;">
+        <div style="font-size:15px;font-weight:700;color:#111;margin-bottom:2px;">${r.name || 'ללא שם'}</div>
+        <div style="font-size:12.5px;color:#888;margin-bottom:14px;">${r.phone || '—'} · ${r.email || '—'}</div>
+        <a href="${SITE_URL}/my-plan/${r.id}" style="display:inline-block;margin-left:8px;background:#4fc9c4;color:#08131a;text-decoration:none;font-size:12.5px;font-weight:700;padding:8px 14px;border-radius:8px;">לעמוד המעקב שלו/ה ←</a>
+        ${waLink ? `<a href="${waLink}" style="display:inline-block;background:#25D366;color:#fff;text-decoration:none;font-size:12.5px;font-weight:700;padding:8px 14px;border-radius:8px;">שליחת הודעה בוואטסאפ ←</a>` : ''}
       </div>
     </div>
   </div>`;
