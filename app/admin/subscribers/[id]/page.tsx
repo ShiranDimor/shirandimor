@@ -608,6 +608,11 @@ export default function AdminViewSubscriberJournal() {
         <Link href="/admin" className="brand">מסחר <span>אחראי</span> במניות</Link>
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
           <Link href="/admin/subscribers" className="nav-link">← למנויים</Link>
+          {tradingPlanId && (
+            <Link href={`/my-plan/${tradingPlanId}`} target="_blank" rel="noopener noreferrer" className="nav-link" style={{ color: '#E8A33D' }}>
+              תוכנית מסחר ←
+            </Link>
+          )}
           <button onClick={handleLogout} className="nav-link" style={{ background: 'none', border: 'none', cursor: 'pointer', font: 'inherit', padding: 0 }}>התנתקות</button>
         </div>
       </header>
@@ -642,21 +647,8 @@ export default function AdminViewSubscriberJournal() {
       </div>
       <p style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginBottom: '10px', fontFamily: 'var(--font-mono)' }}>{subscriber?.email}</p>
 
-      {tradingPlanId !== undefined && (
-        <p style={{ marginBottom: '20px' }}>
-          {tradingPlanId ? (
-            <Link
-              href={`/my-plan/${tradingPlanId}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{ fontSize: '12.5px', fontWeight: 700, color: '#E8A33D', background: 'rgba(232,163,61,0.1)', border: '1px solid rgba(232,163,61,0.3)', borderRadius: '8px', padding: '7px 12px', textDecoration: 'none' }}
-            >
-              תוכנית מסחר ומעקב התקדמות ←
-            </Link>
-          ) : (
-            <span style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>עדיין לא מילא/ה תוכנית מסחר</span>
-          )}
-        </p>
+      {tradingPlanId === null && (
+        <p style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginBottom: '20px' }}>עדיין לא מילא/ה תוכנית מסחר</p>
       )}
 
       <button className="add-btn" onClick={() => setShowAddForm(!showAddForm)}>+ עסקה חדשה</button>
