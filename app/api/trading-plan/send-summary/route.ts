@@ -50,7 +50,9 @@ export async function POST(request: Request) {
     apiKey && !isSubscriber
       ? sendEmail(apiKey, 'shiran@shirandimor.com', 'התעניינות חדשה - תוכנית מסחר 30 יום', buildAdminNotifyEmailHtml(row), 'התראות האתר <onboarding@resend.dev>')
       : Promise.resolve(false),
-    syncTradingPlanLead(row),
+    // מנוי כבר "המיר" - אין טעם ליצור/לעדכן עבורו כרטיס ליד ב-Monday.com, מאותה סיבה שגם מייל
+    // "ליד חדש" מיותר עבורו למעלה
+    !isSubscriber ? syncTradingPlanLead(row) : Promise.resolve({ ok: false, reason: 'already_subscriber' }),
   ]);
 
   if (!apiKey) console.error('RESEND_API_KEY לא מוגדר - לא נשלחו מיילים (Monday.com עדיין רץ בנפרד)');

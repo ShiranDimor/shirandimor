@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/instantLogin';
 import { buildAbandonedEmailHtml } from '@/lib/tradingPlan/emailContent';
 import { syncTradingPlanLead, TRADING_PLAN_ABANDONED_STATUS_LABEL } from '@/lib/tradingPlan/monday';
+import { isActiveSubscriber } from '@/lib/subscriberStatus';
 
 async function sendEmail(apiKey: string, to: string, subject: string, html: string, from: string) {
   const res = await fetch('https://api.resend.com/emails', {
@@ -73,19 +74,26 @@ export async function GET(request: Request) {
   let mondaySynced = 0;
 
   for (const row of firstBatch || []) {
-    if (apiKey && row.email) {
-      const sent = await sendEmail(apiKey, row.email, 'התוכנית שלך מחכה לך - נשארו כמה דקות לסיים', buildAbandonedEmailHtml(row, 1), 'שירן דימור <onboarding@resend.dev>').catch(() => false);
-      if (sent) emailsSent++;
-    }
-    if (row.phone) {
-      const result = await syncTradingPlanLead(row, { statusLabel: TRADING_PLAN_ABANDONED_STATUS_LABEL, completed: false }).catch(() => null);
-      if (result?.ok) mondaySynced++;
+    // מנוי שכבר המיר לא צריך תזכורת "בואי נסיים כדי להצטרף" ולא כרטיס ליד חדש ב-Monday.com -
+    // מאותה סיבה שגם מייל "ליד חדש" מיותר עבור מנוי שממלא את התוכנית עד הסוף
+    const isSubscriber = await isActiveSubscriber(row.phone, row.email);
+
+    if (!isSubscriber) {
+      if (apiKey && row.email) {
+        const sent = await sendEmail(apiKey, row.email, 'התוכנית שלך מחכה לך - נשארו כמה דקות לסיים', buildAbandonedEmailHtml(row, 1), 'שירן דימור <onboarding@resend.dev>').catch(() => false);
+        if (sent) emailsSent++;
+      }
+      if (row.phone) {
+        const result = await syncTradingPlanLead(row, { statusLabel: TRADING_PLAN_ABANDONED_STATUS_LABEL, completed: false }).catch(() => null);
+        if (result?.ok) mondaySynced++;
+      }
     }
     await supabaseAdmin.from('trading_plan_responses').update({ abandon_reminder_count: 1, abandon_email_sent_at: new Date().toISOString() }).eq('id', row.id);
   }
 
   for (const row of secondBatch || []) {
-    if (apiKey && row.email) {
+    const isSubscriber = await isActiveSubscriber(row.phone, row.email);
+    if (!isSubscriber && apiKey && row.email) {
       const sent = await sendEmail(apiKey, row.email, 'תזכורת אחרונה - התוכנית שלך מחכה לך', buildAbandonedEmailHtml(row, 2), 'שירן דימור <onboarding@resend.dev>').catch(() => false);
       if (sent) emailsSent++;
     }
