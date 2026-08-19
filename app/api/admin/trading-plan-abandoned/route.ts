@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/instantLogin';
 import { visibleSteps } from '@/lib/tradingPlan/questions';
-import { getActiveSubscriberPhoneSet, normalizePhone } from '@/lib/subscriberStatus';
+import { getActiveSubscriberContacts, normalizePhone, normalizeEmail } from '@/lib/subscriberStatus';
 
 // GET - כל מי שמילא את "תוכנית המסחר", גם מי שהשלים וגם מי שננטש באמצע -
 // כדי שיהיה מקום אחד לראות מי חדש (סיים או לא) וליזום קשר עם מי שהשאיר נייד/מייל.
@@ -32,8 +32,10 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'שגיאה בשליפת נתונים' }, { status: 500 });
   }
 
-  const subscriberPhones = await getActiveSubscriberPhoneSet();
-  const leadsOnly = (data || []).filter((r) => !subscriberPhones.has(normalizePhone(r.phone)));
+  const { phones: subscriberPhones, emails: subscriberEmails } = await getActiveSubscriberContacts();
+  const leadsOnly = (data || []).filter(
+    (r) => !subscriberPhones.has(normalizePhone(r.phone)) && !subscriberEmails.has(normalizeEmail(r.email))
+  );
 
   const rows = leadsOnly.map((r) => ({
     id: r.id,

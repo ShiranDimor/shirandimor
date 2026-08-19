@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/instantLogin';
 import { buildDailyProgressReminderEmailHtml } from '@/lib/tradingPlan/emailContent';
-import { isActiveSubscriberPhone } from '@/lib/subscriberStatus';
+import { isActiveSubscriber } from '@/lib/subscriberStatus';
 
 async function sendEmail(apiKey: string, to: string, subject: string, html: string, from: string) {
   const res = await fetch('https://api.resend.com/emails', {
@@ -60,7 +60,7 @@ export async function GET(request: Request) {
   let sent = 0;
 
   for (const row of rows || []) {
-    const isSubscriber = await isActiveSubscriberPhone(row.phone as string | null);
+    const isSubscriber = await isActiveSubscriber(row.phone as string | null, row.email as string | null);
     const ok = await sendEmail(apiKey, row.email as string, 'בוקר טוב - עמדת היום בכלל שלך?', buildDailyProgressReminderEmailHtml(row, isSubscriber), 'שירן דימור <onboarding@resend.dev>').catch(() => false);
     if (ok) {
       sent++;

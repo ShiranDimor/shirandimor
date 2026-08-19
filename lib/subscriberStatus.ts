@@ -5,42 +5,56 @@ function normalizePhone(raw: string | null | undefined): string {
   return raw.replace(/\D/g, '').slice(-9);
 }
 
-// מוצא את תוכנית המסחר (אם הושלמה) ששייכת למספר טלפון נתון - כדי לקשר מהאזור האישי המחובר
-// ישירות לעמוד המעקב שלו/ה, בלי לגרום ליצירת תוכנית כפולה למי שכבר מילא/ה
-export async function findCompletedTradingPlanIdByPhone(phone: string | null | undefined): Promise<string | null> {
-  const target = normalizePhone(phone);
-  if (!target) return null;
-
-  const { data } = await supabaseAdmin
-    .from('trading_plan_responses')
-    .select('id, phone, completed_at')
-    .eq('status', 'completed')
-    .not('phone', 'is', null)
-    .order('completed_at', { ascending: false });
-
-  const match = (data || []).find((r) => normalizePhone(r.phone) === target);
-  return match?.id || null;
+function normalizeEmail(raw: string | null | undefined): string {
+  return (raw || '').trim().toLowerCase();
 }
 
-// כל מספרי הטלפון (מנורמלים) של מנויים פעילים - שימושי כשצריך לסנן רשימה שלמה בלי לשלוח שאילתה לכל שורה
-export async function getActiveSubscriberPhoneSet(): Promise<Set<string>> {
+type SubscriberContact = { phones: Set<string>; emails: Set<string> };
+
+// טלפונים ומיילים (מנורמלים) של מנויים פעילים. אין קשר ישיר (foreign key) בין
+// trading_plan_responses לבין profiles - הקישור היחיד הוא טלפון/מייל. הטלפון לבדו לא
+// מספיק: לרוב המנויים בפועל אין טלפון שמור בפרופיל (רק במייל שהם התחברו איתו) - אז בודקים
+// גם מייל, ומי שמתאים באחד מהשניים נחשב מנוי.
+export async function getActiveSubscriberContacts(): Promise<SubscriberContact> {
   const { data } = await supabaseAdmin
     .from('profiles')
-    .select('phone')
+    .select('phone, email')
     .eq('role', 'subscriber')
     .eq('subscription_status', 'active');
 
-  return new Set((data || []).map((p) => normalizePhone(p.phone)).filter(Boolean));
+  return {
+    phones: new Set((data || []).map((p) => normalizePhone(p.phone)).filter(Boolean)),
+    emails: new Set((data || []).map((p) => normalizeEmail(p.email)).filter(Boolean)),
+  };
 }
 
-// בודק אם מספר טלפון שייך למנוי פעיל. אין קשר ישיר (foreign key) בין trading_plan_responses
-// לבין profiles - הקישור היחיד שיש בין שני העולמות הוא מספר הטלפון, אז זו ההשוואה שאפשר לעשות.
-export async function isActiveSubscriberPhone(phone: string | null | undefined): Promise<boolean> {
-  const target = normalizePhone(phone);
-  if (!target) return false;
+// בודק אם טלפון/מייל שייכים למנוי פעיל
+export async function isActiveSubscriber(phone: string | null | undefined, email: string | null | undefined): Promise<boolean> {
+  const targetPhone = normalizePhone(phone);
+  const targetEmail = normalizeEmail(email);
+  if (!targetPhone && !targetEmail) return false;
 
-  const phones = await getActiveSubscriberPhoneSet();
-  return phones.has(target);
+  const { phones, emails } = await getActiveSubscriberContacts();
+  return (!!targetPhone && phones.has(targetPhone)) || (!!targetEmail && emails.has(targetEmail));
 }
 
-export { normalizePhone };
+// מוצא את תוכנית המסחר (אם הושלמה) ששייכת לטלפון/מייל נתונים - כדי לקשר מהאזור האישי המחובר
+// ישירות לעמוד המעקב שלו/ה, בלי לגרום ליצירת תוכנית כפולה למי שכבר מילא/ה
+export async function findCompletedTradingPlanIdByContact(phone: string | null | undefined, email: string | null | undefined): Promise<string | null> {
+  const targetPhone = normalizePhone(phone);
+  const targetEmail = normalizeEmail(email);
+  if (!targetPhone && !targetEmail) return null;
+
+  const { data } = await supabaseAdmin
+    .from('trading_plan_responses')
+    .select('id, phone, email, completed_at')
+    .eq('status', 'completed')
+    .order('completed_at', { ascending: false });
+
+  const match = (data || []).find(
+    (r) => (!!targetPhone && normalizePhone(r.phone) === targetPhone) || (!!targetEmail && normalizeEmail(r.email) === targetEmail)
+  );
+  return match?.id || null;
+}
+
+export { normalizePhone, normalizeEmail };

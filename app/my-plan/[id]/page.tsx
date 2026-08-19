@@ -163,7 +163,10 @@ export default function MyPlanProgressPage() {
     <div className="wrap">
       <header>
         <Link href="/" className="brand">מסחר <span>אחראי</span> במניות</Link>
-        <Link href="/" className="nav-link">בית</Link>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+          {data?.isSubscriber && <Link href="/portfolio" className="nav-link">← לתיק שלי</Link>}
+          <Link href="/" className="nav-link">בית</Link>
+        </div>
       </header>
 
       {loading && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>טוענים...</p>}

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/instantLogin';
-import { findCompletedTradingPlanIdByPhone } from '@/lib/subscriberStatus';
+import { findCompletedTradingPlanIdByContact } from '@/lib/subscriberStatus';
 
 async function requireAdmin(request: Request) {
   const authHeader = request.headers.get('Authorization') || '';
@@ -15,7 +15,7 @@ async function requireAdmin(request: Request) {
   return user;
 }
 
-// GET - מוצא את תוכנית המסחר שהושלמה עבור מנוי מסוים (לפי הטלפון בפרופיל שלו) - לתצוגת אדמין
+// GET - מוצא את תוכנית המסחר שהושלמה עבור מנוי מסוים (לפי הטלפון/מייל בפרופיל שלו) - לתצוגת אדמין
 export async function GET(request: Request) {
   const admin = await requireAdmin(request);
   if (!admin) return NextResponse.json({ error: 'אין הרשאת ניהול' }, { status: 403 });
@@ -24,8 +24,8 @@ export async function GET(request: Request) {
   const subscriberId = searchParams.get('subscriberId');
   if (!subscriberId) return NextResponse.json({ error: 'חסר מזהה' }, { status: 400 });
 
-  const { data: profile } = await supabaseAdmin.from('profiles').select('phone').eq('id', subscriberId).single();
-  const id = await findCompletedTradingPlanIdByPhone(profile?.phone);
+  const { data: profile } = await supabaseAdmin.from('profiles').select('phone, email').eq('id', subscriberId).single();
+  const id = await findCompletedTradingPlanIdByContact(profile?.phone, profile?.email);
 
   return NextResponse.json({ id });
 }
