@@ -28,7 +28,10 @@ export default function TradingPlanPage() {
   const [loadingNext, setLoadingNext] = useState(false);
   const [phoneTouched, setPhoneTouched] = useState(false);
   const [emailTouched, setEmailTouched] = useState(false);
-  const [isAdminPreview, setIsAdminPreview] = useState(false);
+  // Promise (לא state) - כדי שאפילו הקריאה הראשונה ל-autosave (מיד בלחיצת "התחלה") תמתין
+  // לתוצאה ולא "תרוץ" מול הבדיקה האסינכרונית. עם state רגיל היה מרוץ: לחיצה מהירה של
+  // אדמין הייתה יכולה ליצור שורה אמיתית בדאטהבייס לפני שהדגל הספיק להתעדכן.
+  const adminCheckRef = useRef<Promise<boolean> | null>(null);
 
   const [showNudge, setShowNudge] = useState(false);
   const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -106,11 +109,11 @@ export default function TradingPlanPage() {
 
     // מי שמחובר כאדמין (שירן) ומעיין בשאלון - זו תמיד תצוגה מקדימה, לא ליד אמיתי.
     // בלי זה, כל לחיצה על "התחלה" כדי לבדוק משהו יוצרת רשומה ריקה ברשימת הלידים.
-    supabase.auth.getUser().then(async ({ data: { user } }) => {
-      if (!user) return;
+    adminCheckRef.current = supabase.auth.getUser().then(async ({ data: { user } }) => {
+      if (!user) return false;
       const { data: adminProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
-      if (adminProfile?.role === 'admin') setIsAdminPreview(true);
-    }).catch(() => {});
+      return adminProfile?.role === 'admin';
+    }).catch(() => false);
 
     // אין פרמטרים ואין טיוטה - כשמישהו מגיע ישירות ללינק (למשל מהודעת קבוצה) בזמן שהוא כבר מחובר
     // כמנוי, נמלא בשקט את הפרטים שכבר ידועים מהפרופיל שלו, בלי לחכות שיגיע דרך האזור האישי
@@ -147,7 +150,10 @@ export default function TradingPlanPage() {
   }
 
   async function autosave(id: string | null, fields: Record<string, unknown>): Promise<string | null> {
-    if (isAdminPreview) return id; // תצוגה מקדימה של אדמין - לא כותבים כלום לדאטהבייס
+    // ממתינים לבדיקת האדמין (אם עדיין לא הסתיימה) לפני כל כתיבה - כולל הראשונה - כדי שלא
+    // תיווצר רשומה בדאטהבייס גם אם לוחצים "התחלה" מהר, עוד לפני שהבדיקה הספיקה להסתיים
+    const isAdmin = adminCheckRef.current ? await adminCheckRef.current : false;
+    if (isAdmin) return id; // תצוגה מקדימה של אדמין - לא כותבים כלום לדאטהבייס
     try {
       const res = await fetch('/api/trading-plan', {
         method: 'POST',
