@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/instantLogin';
 import { buildUserPlanEmailHtml, buildAdminNotifyEmailHtml } from '@/lib/tradingPlan/emailContent';
 import { syncTradingPlanLead } from '@/lib/tradingPlan/monday';
+import { isActiveSubscriberPhone } from '@/lib/subscriberStatus';
 
 async function sendEmail(apiKey: string, to: string, subject: string, html: string, from: string) {
   const res = await fetch('https://api.resend.com/emails', {
@@ -38,12 +39,15 @@ export async function POST(request: Request) {
   }
 
   const apiKey = process.env.RESEND_API_KEY;
+  // מנוי כבר "המיר" - מייל "ליד חדש" לשירן מיותר עבורו ורק מוסיף רעש. התוכנית שלו עדיין נגישה
+  // תמיד דרך כפתור "תוכנית מסחר" בעמוד הניהול שלו, פשוט בלי דחיפה אוטומטית ברגע ההשלמה.
+  const isSubscriber = await isActiveSubscriberPhone(row.phone as string | null);
 
   const results = await Promise.allSettled([
     apiKey && row.email
       ? sendEmail(apiKey, row.email, 'התוכנית שלך ל-30 הימים הקרובים במסחר', buildUserPlanEmailHtml(row), 'שירן דימור <onboarding@resend.dev>')
       : Promise.resolve(false),
-    apiKey
+    apiKey && !isSubscriber
       ? sendEmail(apiKey, 'shiran@shirandimor.com', 'מתעניין/ת חדש/ה - תוכנית מסחר 30 יום', buildAdminNotifyEmailHtml(row), 'התראות האתר <onboarding@resend.dev>')
       : Promise.resolve(false),
     syncTradingPlanLead(row),
