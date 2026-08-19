@@ -5,6 +5,23 @@ function normalizePhone(raw: string | null | undefined): string {
   return raw.replace(/\D/g, '').slice(-9);
 }
 
+// מוצא את תוכנית המסחר (אם הושלמה) ששייכת למספר טלפון נתון - כדי לקשר מהאזור האישי המחובר
+// ישירות לעמוד המעקב שלו/ה, בלי לגרום ליצירת תוכנית כפולה למי שכבר מילא/ה
+export async function findCompletedTradingPlanIdByPhone(phone: string | null | undefined): Promise<string | null> {
+  const target = normalizePhone(phone);
+  if (!target) return null;
+
+  const { data } = await supabaseAdmin
+    .from('trading_plan_responses')
+    .select('id, phone, completed_at')
+    .eq('status', 'completed')
+    .not('phone', 'is', null)
+    .order('completed_at', { ascending: false });
+
+  const match = (data || []).find((r) => normalizePhone(r.phone) === target);
+  return match?.id || null;
+}
+
 // בודק אם מספר טלפון שייך למנוי פעיל. אין קשר ישיר (foreign key) בין trading_plan_responses
 // לבין profiles - הקישור היחיד שיש בין שני העולמות הוא מספר הטלפון, אז זו ההשוואה שאפשר לעשות.
 export async function isActiveSubscriberPhone(phone: string | null | undefined): Promise<boolean> {

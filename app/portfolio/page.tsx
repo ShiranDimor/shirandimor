@@ -63,6 +63,7 @@ export default function PortfolioPage() {
   const [entry, setEntry] = useState('');
   const [stop, setStop] = useState('');
   const [showStickyCta, setShowStickyCta] = useState(false);
+  const [tradingPlanHref, setTradingPlanHref] = useState('/trading-plan');
 
   useEffect(() => {
     load();
@@ -90,6 +91,14 @@ export default function PortfolioPage() {
         .single();
       setHasFullAccess(profile?.role === 'admin' || profile?.role === 'subscriber');
       setIsAdmin(profile?.role === 'admin');
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.access_token) {
+        fetch('/api/trading-plan/my-link', { headers: { Authorization: `Bearer ${session.access_token}` } })
+          .then((res) => (res.ok ? res.json() : null))
+          .then((data) => { if (data?.id) setTradingPlanHref(`/my-plan/${data.id}`); })
+          .catch(() => {});
+      }
     }
 
     const { data: open } = await supabase
@@ -233,6 +242,7 @@ export default function PortfolioPage() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
             <Link href="/" className="nav-link">בית</Link>
             {hasFullAccess && !isAdmin && <Link href="/journal" className="nav-link">היומן האישי שלי</Link>}
+            {hasFullAccess && !isAdmin && <Link href={tradingPlanHref} className="nav-link" style={{ color: '#E8A33D' }}>תוכנית המסחר שלי</Link>}
             <button onClick={handleLogout} className="nav-link" style={{ background: 'none', border: 'none', cursor: 'pointer', font: 'inherit', padding: 0 }}>התנתקות</button>
           </div>
         ) : (

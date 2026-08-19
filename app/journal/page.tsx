@@ -63,6 +63,7 @@ export default function JournalPage() {
   const [stopLoss, setStopLoss] = useState('');
   const [riskAmount, setRiskAmount] = useState('');
   const [saving, setSaving] = useState(false);
+  const [tradingPlanHref, setTradingPlanHref] = useState('/trading-plan');
 
   useEffect(() => {
     load();
@@ -83,6 +84,14 @@ export default function JournalPage() {
 
     if (data) setEntries(data);
     setLoading(false);
+
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.access_token) {
+      fetch('/api/trading-plan/my-link', { headers: { Authorization: `Bearer ${session.access_token}` } })
+        .then((res) => (res.ok ? res.json() : null))
+        .then((linkData) => { if (linkData?.id) setTradingPlanHref(`/my-plan/${linkData.id}`); })
+        .catch(() => {});
+    }
   }
 
   const calcShares = entryPrice && stopLoss && riskAmount
@@ -349,6 +358,7 @@ export default function JournalPage() {
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
           <Link href="/" className="nav-link">בית</Link>
           <Link href="/portfolio" className="nav-link">← לתיק</Link>
+          <Link href={tradingPlanHref} className="nav-link" style={{ color: '#E8A33D' }}>תוכנית המסחר שלי</Link>
           <button onClick={handleLogout} className="nav-link" style={{ background: 'none', border: 'none', cursor: 'pointer', font: 'inherit', padding: 0 }}>התנתקות</button>
         </div>
       </header>
