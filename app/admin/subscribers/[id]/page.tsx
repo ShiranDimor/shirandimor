@@ -38,6 +38,7 @@ function unrealizedPct(e: JournalEntry) {
 type Profile = {
   full_name: string | null;
   email: string;
+  phone: string | null;
 };
 
 function formatDate(iso: string | null) {
@@ -153,7 +154,7 @@ export default function AdminViewSubscriberJournal() {
 
   async function loadData() {
     const [{ data: sub }, { data: journalEntries }] = await Promise.all([
-      supabase.from('profiles').select('full_name, email').eq('id', subscriberId).single(),
+      supabase.from('profiles').select('full_name, email, phone').eq('id', subscriberId).single(),
       supabase.from('journal_entries').select('*').eq('user_id', subscriberId).order('opened_at', { ascending: false }),
     ]);
 
@@ -648,7 +649,21 @@ export default function AdminViewSubscriberJournal() {
       <p style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginBottom: '10px', fontFamily: 'var(--font-mono)' }}>{subscriber?.email}</p>
 
       {tradingPlanId === null && (
-        <p style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginBottom: '20px' }}>עדיין לא מילא/ה תוכנית מסחר</p>
+        <p style={{ marginBottom: '20px' }}>
+          <span style={{ fontSize: '12px', color: 'var(--text-tertiary)', display: 'block', marginBottom: '6px' }}>עדיין לא מילא/ה תוכנית מסחר</span>
+          {subscriber?.phone && (
+            <a
+              href={`https://wa.me/972${subscriber.phone.replace(/\D/g, '').replace(/^0/, '')}?text=${encodeURIComponent(
+                `היי${subscriber.full_name ? ` ${subscriber.full_name.split(' ')[0]}` : ''}, שמתי לב שעוד לא בנית תוכנית מסחר אישית באתר - זה לוקח רק כמה דקות וממש שווה את זה: https://www.shirandimor.com/trading-plan`
+              )}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ display: 'inline-block', fontSize: '12.5px', fontWeight: 700, color: '#fff', background: '#25D366', borderRadius: '8px', padding: '7px 12px', textDecoration: 'none' }}
+            >
+              שליחת תזכורת בוואטסאפ ←
+            </a>
+          )}
+        </p>
       )}
 
       <button className="add-btn" onClick={() => setShowAddForm(!showAddForm)}>+ עסקה חדשה</button>
