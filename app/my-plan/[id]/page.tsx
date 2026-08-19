@@ -27,13 +27,15 @@ type ProgressData = {
   programDays: { date: string; status: DayStatus }[];
 };
 
-const DAY_COLORS: Record<DayStatus, string> = {
-  followed: '#4FB876',
-  broke: '#C9635E',
-  no_activity: '#4A5568',
-  no_checkin: '#2a3040',
-  today_pending: '#E8A33D',
-  future: '#181d29',
+// עיצוב לכל סטטוס משבצת - "future" מוצג כריק (מסגרת מקווקוות בלבד) כדי שיהיה ברור שזה שונה
+// מהותית מ"no_checkin" (ביקורת שכבר עברה ולא סומנה) ולא רק גוון כהה נוסף שקשה להבחין בו
+const DAY_STYLES: Record<DayStatus, { background: string; border: string }> = {
+  followed: { background: '#4FB876', border: '1px solid #4FB876' },
+  broke: { background: '#C9635E', border: '1px solid #C9635E' },
+  no_activity: { background: '#5A6478', border: '1px solid #5A6478' },
+  no_checkin: { background: '#3a4152', border: '1px solid #545b6e' },
+  today_pending: { background: '#E8A33D', border: '1px solid #E8A33D' },
+  future: { background: 'transparent', border: '1px dashed #2a2f3a' },
 };
 
 const LEGEND: { status: DayStatus; label: string }[] = [
@@ -76,7 +78,7 @@ function buildReminderLink(planUrl: string): string {
   return `https://calendar.google.com/calendar/render?${params.toString()}`;
 }
 
-function ProgressRing({ dayNumber, totalDays }: { dayNumber: number; totalDays: number }) {
+function ProgressRing({ dayNumber, totalDays, unitLabel }: { dayNumber: number; totalDays: number; unitLabel: string }) {
   const size = 168;
   const strokeWidth = 13;
   const radius = (size - strokeWidth) / 2;
@@ -107,7 +109,7 @@ function ProgressRing({ dayNumber, totalDays }: { dayNumber: number; totalDays: 
         style={{ transition: 'stroke-dashoffset 0.5s ease' }}
       />
       <text x="50%" y="45%" textAnchor="middle" dominantBaseline="middle" style={{ fill: '#fff', fontSize: '34px', fontWeight: 800 }}>{dayNumber}</text>
-      <text x="50%" y="63%" textAnchor="middle" dominantBaseline="middle" style={{ fill: 'var(--text-tertiary)', fontSize: '11.5px' }}>{`מתוך ${totalDays}`}</text>
+      <text x="50%" y="63%" textAnchor="middle" dominantBaseline="middle" style={{ fill: 'var(--text-tertiary)', fontSize: '11.5px' }}>{`מתוך ${totalDays} ${unitLabel}`}</text>
       <text x="50%" y="76%" textAnchor="middle" dominantBaseline="middle" style={{ fill: '#E8A33D', fontSize: '11px', fontWeight: 700 }}>{`${Math.round(pct * 100)}% מהדרך`}</text>
     </svg>
   );
@@ -187,22 +189,45 @@ export default function MyPlanProgressPage() {
           </div>
 
           <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-hairline)', borderRadius: '14px', padding: '24px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', marginBottom: '16px' }}>
-            <ProgressRing dayNumber={data.dayNumber} totalDays={data.totalDays} />
+            <ProgressRing dayNumber={data.dayNumber} totalDays={data.totalDays} unitLabel={data.periodic ? 'ביקורות' : 'ימים'} />
 
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', justifyContent: 'center', maxWidth: '340px' }}>
-              {data.programDays.map((d) => (
-                <div
-                  key={d.date}
-                  title={d.date}
-                  style={{ width: '17px', height: '17px', borderRadius: '5px', background: DAY_COLORS[d.status], boxShadow: d.status === 'today_pending' ? '0 0 8px rgba(232,163,61,0.6)' : 'none' }}
-                />
-              ))}
+            {data.periodic && (
+              <p style={{ fontSize: '11.5px', color: 'var(--text-tertiary)', textAlign: 'center', marginTop: '-8px' }}>
+                {data.totalDays} ביקורות (שני וחמישי) לאורך 30 הימים של התוכנית שלך
+              </p>
+            )}
+
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: data.periodic ? '10px' : '5px', justifyContent: 'center', maxWidth: '340px' }}>
+              {data.programDays.map((d) => {
+                const size = data.periodic ? '30px' : '17px';
+                const isToday = d.date === data.today;
+                return (
+                  <div key={d.date} title={d.date} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+                    <div
+                      style={{
+                        width: size,
+                        height: size,
+                        borderRadius: '6px',
+                        ...DAY_STYLES[d.status],
+                        outline: isToday ? '2px solid #E8A33D' : 'none',
+                        outlineOffset: '2px',
+                        boxShadow: d.status === 'today_pending' ? '0 0 8px rgba(232,163,61,0.6)' : 'none',
+                      }}
+                    />
+                    {data.periodic && (
+                      <span style={{ fontSize: '9px', color: 'var(--text-tertiary)' }}>
+                        {new Date(`${d.date}T12:00:00Z`).toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit', timeZone: 'UTC' })}
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
             </div>
 
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px 14px', justifyContent: 'center' }}>
               {LEGEND.map((l) => (
                 <div key={l.status} style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '10.5px', color: 'var(--text-tertiary)' }}>
-                  <span style={{ width: '9px', height: '9px', borderRadius: '3px', background: DAY_COLORS[l.status], display: 'inline-block' }} />
+                  <span style={{ width: '9px', height: '9px', borderRadius: '3px', display: 'inline-block', ...DAY_STYLES[l.status] }} />
                   {l.label}
                 </div>
               ))}
@@ -266,6 +291,9 @@ export default function MyPlanProgressPage() {
                     לא היה מה לדווח
                   </button>
                 </div>
+                <a href="https://wa.me/972547167419" target="_blank" rel="noopener noreferrer" style={{ display: 'block', marginTop: '14px', fontSize: '11.5px', color: 'var(--text-tertiary)', textDecoration: 'none' }}>
+                  תקוע/ה עם זה? אפשר גם לכתוב לי בוואטסאפ ←
+                </a>
               </div>
             ) : (
               <p className="tp-personal-note" style={{ textAlign: 'center', marginBottom: '20px' }}>
