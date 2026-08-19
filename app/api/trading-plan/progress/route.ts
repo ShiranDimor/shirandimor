@@ -5,6 +5,10 @@ import { getProfileContent } from '@/lib/tradingPlan/profileContent';
 import { findOptions } from '@/lib/tradingPlan/questions';
 import { isActiveSubscriber } from '@/lib/subscriberStatus';
 
+// חייב תמיד להיות דינמי - זה ראוט GET ציבורי בלי headers/cookies, אז Next.js עלול "לקפוא"
+// אותו לתשובה סטטית קבועה של הבקשה הראשונה (בעיה ידועה) במקום לקרוא נתונים חיים בכל פעם
+export const dynamic = 'force-dynamic';
+
 type Outcome = 'followed' | 'broke' | 'no_activity';
 type DayStatus = Outcome | 'no_checkin' | 'today_pending' | 'future';
 

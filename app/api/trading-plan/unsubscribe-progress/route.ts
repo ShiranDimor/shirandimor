@@ -2,6 +2,10 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/instantLogin';
 import { buildProgressUnsubscribeAdminEmailHtml } from '@/lib/tradingPlan/emailContent';
 
+// חייב תמיד להיות דינמי - ראוט GET ציבורי בלי headers/cookies שגם כותב לדאטהבייס,
+// אסור שייתפס בקאש סטטי של Next.js
+export const dynamic = 'force-dynamic';
+
 async function sendEmail(apiKey: string, to: string, subject: string, html: string, from: string) {
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
