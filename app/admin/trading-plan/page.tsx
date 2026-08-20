@@ -349,7 +349,7 @@ export default function AdminTradingPlanAbandonedPage() {
             onClick={() => setShowHandled((v) => !v)}
             style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', gap: '8px', width: '100%' }}
           >
-            <h2 style={{ fontSize: '15px', color: 'var(--text-secondary)' }}>✓ טופלו ({handledRows.length})</h2>
+            <h2 style={{ fontSize: '15px', color: 'var(--text-secondary)' }}>✓ לידים שטופלו ({handledRows.length})</h2>
             <span style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>{showHandled ? '▲ הסתרה' : '▼ הצגה'}</span>
           </button>
           {showHandled && <div style={{ marginTop: '14px' }}>{handledRows.map(renderRow)}</div>}
