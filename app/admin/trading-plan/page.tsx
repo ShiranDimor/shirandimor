@@ -23,6 +23,15 @@ type AbandonedRow = {
 
 type DetailAnswer = { id: string; title: string; value: string };
 
+type SubscriberRow = {
+  id: string;
+  name: string | null;
+  phone: string | null;
+  email: string | null;
+  computedProfile: string | null;
+  completed_at: string | null;
+};
+
 function stepLabel(r: AbandonedRow) {
   if (r.status === 'completed') return r.computedProfile ? `הושלם - פרופיל: ${r.computedProfile}` : 'השאלון הושלם';
   if (!r.stepsReached) return 'בטופס הפרטים, עדיין לפני תחילת השאלון';
@@ -54,6 +63,10 @@ export default function AdminTradingPlanAbandonedPage() {
   const [handlingId, setHandlingId] = useState<string | null>(null);
   const [showHandled, setShowHandled] = useState(false);
 
+  const [subscriberRows, setSubscriberRows] = useState<SubscriberRow[]>([]);
+  const [loadingSubscriberRows, setLoadingSubscriberRows] = useState(false);
+  const [showSubscribers, setShowSubscribers] = useState(false);
+
   useEffect(() => {
     checkAdmin();
   }, []);
@@ -74,6 +87,7 @@ export default function AdminTradingPlanAbandonedPage() {
     setChecking(false);
     if (profile?.role === 'admin') {
       loadRows();
+      loadSubscriberRows();
     }
   }
 
@@ -88,6 +102,19 @@ export default function AdminTradingPlanAbandonedPage() {
       setRows(data.rows || []);
     }
     setLoadingRows(false);
+  }
+
+  async function loadSubscriberRows() {
+    setLoadingSubscriberRows(true);
+    const { data: { session } } = await supabase.auth.getSession();
+    const res = await fetch('/api/admin/trading-plan-subscribers', {
+      headers: { Authorization: `Bearer ${session?.access_token}` },
+    });
+    if (res.ok) {
+      const data = await res.json();
+      setSubscriberRows(data.rows || []);
+    }
+    setLoadingSubscriberRows(false);
   }
 
   async function toggleDetails(id: string) {
@@ -327,6 +354,50 @@ export default function AdminTradingPlanAbandonedPage() {
           {showHandled && <div style={{ marginTop: '14px' }}>{handledRows.map(renderRow)}</div>}
         </div>
       )}
+
+      <div style={{ marginTop: '32px', paddingTop: '20px', borderTop: '1px solid var(--border-hairline)' }}>
+        <button
+          type="button"
+          onClick={() => setShowSubscribers((v) => !v)}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', gap: '8px', width: '100%' }}
+        >
+          <h2 style={{ fontSize: '15px' }}>מנויים שמילאו את התוכנית ({subscriberRows.length})</h2>
+          <span style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>{showSubscribers ? '▲ הסתרה' : '▼ הצגה'}</span>
+        </button>
+        <p style={{ fontSize: '12.5px', color: 'var(--text-tertiary)', marginTop: '8px' }}>
+          מנויים פעילים (גם באתר וגם ב"קבוצת סוחרים" ב-Monday.com) שהשלימו את שאלון תוכנית המסחר.
+        </p>
+
+        {loadingSubscriberRows && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)', marginTop: '10px' }}>טוענים...</p>}
+
+        {showSubscribers && (
+          <div style={{ marginTop: '14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {subscriberRows.length === 0 && !loadingSubscriberRows && (
+              <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>אף מנוי עדיין לא מילא את השאלון</p>
+            )}
+            {subscriberRows.map((r) => (
+              <div key={r.id} className="admin-row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '10px' }}>
+                <div>
+                  <div className="name">{r.name || 'ללא שם'}</div>
+                  {r.phone && <div className="email">{r.phone}</div>}
+                  {r.email && <div className="email">{r.email}</div>}
+                  <div className="email" style={{ marginTop: '2px' }}>
+                    {r.computedProfile ? `פרופיל: ${r.computedProfile} · ` : ''}מילא/ה {r.completed_at ? timeAgo(r.completed_at) : ''}
+                  </div>
+                </div>
+                <a
+                  href={`/my-plan/${r.id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ textDecoration: 'none', display: 'inline-block', padding: '8px 12px', fontSize: '12.5px', fontWeight: 700, color: '#E8A33D', background: 'rgba(232,163,61,0.1)', border: '1px solid rgba(232,163,61,0.3)', borderRadius: '8px', alignSelf: 'flex-start' }}
+                >
+                  מעקב התקדמות ←
+                </a>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
