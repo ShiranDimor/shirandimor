@@ -165,6 +165,7 @@ export default function AdminTradingPlanAbandonedPage() {
     setDeletingId(null);
     if (res.ok) {
       setRows((prev) => prev.filter((r) => r.id !== id));
+      setSubscriberRows((prev) => prev.filter((r) => r.id !== id));
       if (expandedId === id) setExpandedId(null);
     }
   }
@@ -377,13 +378,28 @@ export default function AdminTradingPlanAbandonedPage() {
             )}
             {subscriberRows.map((r) => (
               <div key={r.id} className="admin-row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '10px' }}>
-                <div>
-                  <div className="name">{r.name || 'ללא שם'}</div>
-                  {r.phone && <div className="email">{r.phone}</div>}
-                  {r.email && <div className="email">{r.email}</div>}
-                  <div className="email" style={{ marginTop: '2px' }}>
-                    {r.computedProfile ? `פרופיל: ${r.computedProfile} · ` : ''}מילא/ה {r.completed_at ? timeAgo(r.completed_at) : ''}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', width: '100%', gap: '10px' }}>
+                  <div>
+                    <div className="name">{r.name || 'ללא שם'}</div>
+                    {r.phone && <div className="email">{r.phone}</div>}
+                    {r.email && <div className="email">{r.email}</div>}
+                    <div className="email" style={{ marginTop: '2px' }}>
+                      {r.computedProfile ? `פרופיל: ${r.computedProfile} · ` : ''}השלמה {r.completed_at ? timeAgo(r.completed_at) : ''}
+                    </div>
                   </div>
+                  <button
+                    className="row-delete-btn"
+                    onClick={() => handleDelete(r.id, r.name || r.phone || r.email || 'ללא שם')}
+                    disabled={deletingId === r.id}
+                    title="מחיקת רשומה"
+                    style={{ flexShrink: 0 }}
+                  >
+                    {deletingId === r.id ? '…' : (
+                      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--loss)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M3 6h18" /><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /><line x1="10" y1="11" x2="10" y2="17" /><line x1="14" y1="11" x2="14" y2="17" />
+                      </svg>
+                    )}
+                  </button>
                 </div>
                 <a
                   href={`/my-plan/${r.id}`}
