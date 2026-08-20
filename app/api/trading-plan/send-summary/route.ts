@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/instantLogin';
 import { buildUserPlanEmailHtml, buildAdminNotifyEmailHtml } from '@/lib/tradingPlan/emailContent';
-import { syncTradingPlanLead, isPhoneInSubscribersGroupMonday } from '@/lib/tradingPlan/monday';
+import { syncTradingPlanLead, isContactInSubscribersGroupMonday } from '@/lib/tradingPlan/monday';
 import { isActiveSubscriber } from '@/lib/subscriberStatus';
 
 async function sendEmail(apiKey: string, to: string, subject: string, html: string, from: string): Promise<{ ok: boolean; error?: string }> {
@@ -46,7 +46,7 @@ export async function POST(request: Request) {
   // שמנוהלים רק שם, בלי שאי פעם נוצר להם חשבון באתר.
   const isSubscriber =
     (await isActiveSubscriber(row.phone as string | null, row.email as string | null)) ||
-    (await isPhoneInSubscribersGroupMonday(row.phone as string | null));
+    (await isContactInSubscribersGroupMonday(row.phone as string | null, row.email as string | null));
 
   const results = await Promise.allSettled([
     apiKey && row.email

@@ -1,24 +1,11 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/instantLogin';
+import { getMondaySubscriberContacts } from '@/lib/tradingPlan/monday';
+import { normalizePhone, normalizeEmail } from '@/lib/subscriberStatus';
 
-const SUBSCRIBER_GROUP_NAME = 'קבוצת סוחרים';
-
-function normalizePhone(raw: string) {
-  const digits = raw.replace(/\D/g, '');
-  return digits.slice(-9);
-}
-
-async function mondayRequest(token: string, query: string, variables: Record<string, unknown>) {
-  const res = await fetch('https://api.monday.com/v2', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: token },
-    body: JSON.stringify({ query, variables }),
-  });
-  return res.json();
-}
-
-// עובר על כל המנויים המאושרים עם טלפון בכרטיס, ובודק שהם עדיין נמצאים בקבוצת "קבוצת סוחרים" במאנדיי -
-// מי שכבר לא שם מורד מ"מנוי" ל"ליד", ומאבד את הכניסה המיידית
+// עובר על כל המנויים המאושרים, ובודק שהם עדיין נמצאים בקבוצת "קבוצת סוחרים" במאנדיי -
+// לפי טלפון או מייל (לרוב המנויים בפועל אין טלפון שמור, רק מייל) - מי שכבר לא שם מורד
+// מ"מנוי" ל"ליד", ומאבד את הכניסה המיידית
 export async function POST(request: Request) {
   const authHeader = request.headers.get('Authorization') || '';
   const token = authHeader.replace('Bearer ', '');
@@ -49,66 +36,24 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  const withPhone = (subscribers || []).filter((s) => s.phone);
-  const skippedNoPhone = (subscribers || []).length - withPhone.length;
+  const withContact = (subscribers || []).filter((s) => s.phone || s.email);
+  const skippedNoPhone = (subscribers || []).length - withContact.length;
 
-  if (withPhone.length === 0) {
+  if (withContact.length === 0) {
     return NextResponse.json({ checked: 0, removed: 0, removedNames: [], skippedNoPhone });
   }
 
-  const boardData = await mondayRequest(
-    mondayToken,
-    `query ($boardId: ID!) {
-      boards (ids: [$boardId]) { columns { id title type } groups { id title } }
-    }`,
-    { boardId }
+  const { phones: activePhones, emails: activeEmails } = await getMondaySubscriberContacts();
+
+  if (activePhones.size === 0 && activeEmails.size === 0) {
+    return NextResponse.json({ error: 'לא נמצאו נתונים בקבוצת "קבוצת סוחרים" במאנדיי' }, { status: 500 });
+  }
+
+  const toRemove = withContact.filter(
+    (s) =>
+      !(s.phone && activePhones.has(normalizePhone(s.phone))) &&
+      !(s.email && activeEmails.has(normalizeEmail(s.email)))
   );
-
-  const board = boardData?.data?.boards?.[0];
-  const phoneColumns = board?.columns?.filter((c: { type: string }) => c.type === 'phone') || [];
-  const groups = board?.groups?.filter((g: { title: string }) => g.title === SUBSCRIBER_GROUP_NAME) || [];
-
-  if (phoneColumns.length === 0 || groups.length === 0) {
-    return NextResponse.json({ error: 'לא נמצאה עמודת טלפון או קבוצת "קבוצת סוחרים" במאנדיי' }, { status: 500 });
-  }
-
-  const phoneColumnIds = phoneColumns.map((c: { id: string }) => c.id);
-
-  const activePhones = new Set<string>();
-
-  for (const g of groups) {
-    let cursor: string | null = null;
-
-    do {
-      const itemsData: any = await mondayRequest(
-        mondayToken,
-        `query ($boardId: ID!, $groupId: [String], $cursor: String, $columnIds: [String!]) {
-          boards (ids: [$boardId]) {
-            groups (ids: $groupId) {
-              items_page (limit: 100, cursor: $cursor) {
-                cursor
-                items { column_values (ids: $columnIds) { text } }
-              }
-            }
-          }
-        }`,
-        { boardId, groupId: [g.id], cursor, columnIds: phoneColumnIds }
-      );
-
-      const page = itemsData?.data?.boards?.[0]?.groups?.[0]?.items_page;
-      const items = page?.items || [];
-
-      for (const item of items) {
-        for (const cv of item.column_values || []) {
-          if (cv.text) activePhones.add(normalizePhone(cv.text));
-        }
-      }
-
-      cursor = page?.cursor || null;
-    } while (cursor);
-  }
-
-  const toRemove = withPhone.filter((s) => !activePhones.has(normalizePhone(s.phone as string)));
 
   if (toRemove.length > 0) {
     await supabaseAdmin
@@ -118,7 +63,7 @@ export async function POST(request: Request) {
   }
 
   return NextResponse.json({
-    checked: withPhone.length,
+    checked: withContact.length,
     removed: toRemove.length,
     removedNames: toRemove.map((s) => s.full_name || s.email),
     skippedNoPhone,

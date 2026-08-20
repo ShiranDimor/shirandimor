@@ -49,10 +49,17 @@ async function getBoardSchema(token: string, boardId: string) {
   };
 }
 
-// בודק אם מספר נייד מנורמל קיים כפריט בקבוצת "קבוצת סוחרים" ב-Monday.com - כדי לתפוס גם
+// בודק אם ערך מנורמל (טלפון או מייל) קיים בעמודה נתונה בתוך קבוצה ב-Monday.com - כדי לתפוס גם
 // מנוי ששירן ניהלה/אישרה ידנית שם, בלי שאי פעם נוצר לו חשבון באתר עצמו (ולכן לא ניתן
-// לזהות אותו דרך טבלת המנויים באתר)
-async function isPhoneInGroup(token: string, boardId: string, groupId: string, phoneColumnId: string, targetNormalized: string): Promise<boolean> {
+// לזהות אותו דרך טבלת המנויים באתר). normalize מקבל את פונקציית הנרמול המתאימה (טלפון/מייל).
+async function isTextInGroup(
+  token: string,
+  boardId: string,
+  groupId: string,
+  columnId: string,
+  target: string,
+  normalize: (raw: string) => string
+): Promise<boolean> {
   let cursor: string | null = null;
 
   do {
@@ -68,7 +75,7 @@ async function isPhoneInGroup(token: string, boardId: string, groupId: string, p
           }
         }
       }`,
-      { boardId, groupId: [groupId], cursor, columnIds: [phoneColumnId] }
+      { boardId, groupId: [groupId], cursor, columnIds: [columnId] }
     );
 
     const page = itemsData?.data?.boards?.[0]?.groups?.[0]?.items_page;
@@ -76,7 +83,7 @@ async function isPhoneInGroup(token: string, boardId: string, groupId: string, p
 
     const found = items.some((item) => {
       const text = item.column_values?.[0]?.text;
-      return text && normalizePhone(text) === targetNormalized;
+      return text && normalize(text) === target;
     });
     if (found) return true;
 
@@ -86,35 +93,60 @@ async function isPhoneInGroup(token: string, boardId: string, groupId: string, p
   return false;
 }
 
-// בדיקה ציבורית: האם הטלפון הזה נמצא בקבוצת "קבוצת סוחרים" ב-Monday.com - להשלמת הבדיקה
-// isActiveSubscriber (שבודקת רק מול טבלת profiles באתר) עבור מנויים שמנוהלים רק ב-Monday
-export async function isPhoneInSubscribersGroupMonday(phone: string | null | undefined): Promise<boolean> {
+// בדיקה ציבורית: האם הטלפון או המייל הזה נמצאים בקבוצת "קבוצת סוחרים" ב-Monday.com - להשלמת
+// הבדיקה isActiveSubscriber (שבודקת רק מול טבלת profiles באתר) עבור מנויים שמנוהלים רק ב-Monday.
+// בודקים גם מייל ולא רק טלפון - לרוב המנויים בפועל אין טלפון שמור, רק מייל.
+export async function isContactInSubscribersGroupMonday(
+  phone: string | null | undefined,
+  email: string | null | undefined
+): Promise<boolean> {
   const token = process.env.MONDAY_API_TOKEN;
   const boardId = process.env.MONDAY_BOARD_ID;
-  if (!token || !boardId || !phone) return false;
+  if (!token || !boardId || (!phone && !email)) return false;
 
   try {
-    const { subscriberGroupId, phoneColumnId } = await getBoardSchema(token, boardId);
-    if (!subscriberGroupId || !phoneColumnId) return false;
-    return await isPhoneInGroup(token, boardId, subscriberGroupId, phoneColumnId, normalizePhone(phone));
+    const { subscriberGroupId, phoneColumnId, emailColumnId } = await getBoardSchema(token, boardId);
+    if (!subscriberGroupId || (!phoneColumnId && !emailColumnId)) return false;
+
+    if (phone && phoneColumnId) {
+      const found = await isTextInGroup(token, boardId, subscriberGroupId, phoneColumnId, normalizePhone(phone), normalizePhone);
+      if (found) return true;
+    }
+    if (email && emailColumnId) {
+      const target = email.trim().toLowerCase();
+      const found = await isTextInGroup(token, boardId, subscriberGroupId, emailColumnId, target, (raw) => raw.trim().toLowerCase());
+      if (found) return true;
+    }
+    return false;
   } catch (e) {
     console.error('שגיאה בבדיקת קבוצת הסוחרים ב-Monday.com', e);
     return false;
   }
 }
 
-// כל הטלפונים המנורמלים בקבוצת "קבוצת סוחרים" ב-Monday.com בקריאה אחת (לא לכל שורה בנפרד) -
-// לשימוש ברשימות שמסננות כמות גדולה של לידים בבת אחת (למשל עמוד הניהול)
-export async function getMondaySubscriberPhones(): Promise<Set<string>> {
+// תאימות לאחור
+export async function isPhoneInSubscribersGroupMonday(phone: string | null | undefined): Promise<boolean> {
+  return isContactInSubscribersGroupMonday(phone, null);
+}
+
+// כל הטלפונים והמיילים המנורמלים בקבוצת "קבוצת סוחרים" ב-Monday.com בקריאה אחת (לא לכל שורה
+// בנפרד) - לשימוש ברשימות שמסננות כמות גדולה של לידים/מנויים בבת אחת. חשוב לבדוק גם מייל
+// ולא רק טלפון - לרוב המנויים בפועל אין טלפון שמור, רק מייל.
+export async function getMondaySubscriberContacts(): Promise<{ phones: Set<string>; emails: Set<string> }> {
   const token = process.env.MONDAY_API_TOKEN;
   const boardId = process.env.MONDAY_BOARD_ID;
-  if (!token || !boardId) return new Set();
+  if (!token || !boardId) return { phones: new Set(), emails: new Set() };
 
   try {
-    const { subscriberGroupId, phoneColumnId } = await getBoardSchema(token, boardId);
-    if (!subscriberGroupId || !phoneColumnId) return new Set();
+    const { subscriberGroupId, phoneColumnId, emailColumnId } = await getBoardSchema(token, boardId);
+    if (!subscriberGroupId || (!phoneColumnId && !emailColumnId)) return { phones: new Set(), emails: new Set() };
+
+    const columnIds = [phoneColumnId, emailColumnId].filter(Boolean) as string[];
+    const phoneIndex = columnIds.indexOf(phoneColumnId || '');
+    const emailIndex = columnIds.indexOf(emailColumnId || '');
 
     const phones = new Set<string>();
+    const emails = new Set<string>();
     let cursor: string | null = null;
 
     do {
@@ -130,24 +162,36 @@ export async function getMondaySubscriberPhones(): Promise<Set<string>> {
             }
           }
         }`,
-        { boardId, groupId: [subscriberGroupId], cursor, columnIds: [phoneColumnId] }
+        { boardId, groupId: [subscriberGroupId], cursor, columnIds }
       );
 
       const page = itemsData?.data?.boards?.[0]?.groups?.[0]?.items_page;
       const items: { column_values: { text: string | null }[] }[] = page?.items || [];
       for (const item of items) {
-        const text = item.column_values?.[0]?.text;
-        if (text) phones.add(normalizePhone(text));
+        if (phoneIndex >= 0) {
+          const text = item.column_values?.[phoneIndex]?.text;
+          if (text) phones.add(normalizePhone(text));
+        }
+        if (emailIndex >= 0) {
+          const text = item.column_values?.[emailIndex]?.text;
+          if (text) emails.add(text.trim().toLowerCase());
+        }
       }
 
       cursor = page?.cursor || null;
     } while (cursor);
 
-    return phones;
+    return { phones, emails };
   } catch (e) {
     console.error('שגיאה בשליפת קבוצת הסוחרים ב-Monday.com', e);
-    return new Set();
+    return { phones: new Set(), emails: new Set() };
   }
+}
+
+// תאימות לאחור - רק הטלפונים, לקוד ישן שעדיין משתמש בזה
+export async function getMondaySubscriberPhones(): Promise<Set<string>> {
+  const { phones } = await getMondaySubscriberContacts();
+  return phones;
 }
 
 // יוצר את עמודת "תאריך פולואפ" בלוח אם היא עדיין לא קיימת - כדי שלא תצטרכי להוסיף אותה ידנית

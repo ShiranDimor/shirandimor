@@ -24,6 +24,7 @@ export default function AdminSubscribersPage() {
   const [syncing, setSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState('');
   const [removing, setRemoving] = useState<string | null>(null);
+  const [cancelling, setCancelling] = useState<string | null>(null);
 
   const [debugPhone, setDebugPhone] = useState('');
   const [debugging, setDebugging] = useState(false);
@@ -48,7 +49,7 @@ export default function AdminSubscribersPage() {
         const removedText = data.removed > 0 ? ` (${data.removedNames.join(', ')})` : '';
         setSyncMessage(
           `נבדקו ${data.checked} מנויים · ${data.removed} הוסרו${removedText}` +
-          (data.skippedNoPhone > 0 ? ` · ${data.skippedNoPhone} לא נבדקו (אין טלפון בכרטיס)` : '')
+          (data.skippedNoPhone > 0 ? ` · ${data.skippedNoPhone} לא נבדקו (אין טלפון ואין מייל בפרופיל)` : '')
         );
         loadApprovedSubs();
       }
@@ -78,6 +79,23 @@ export default function AdminSubscribersPage() {
     }
 
     setDebugging(false);
+  }
+
+  async function cancelSubscription(id: string, name: string) {
+    if (!window.confirm(`לבטל את המנוי של ${name}? הוא יאבד גישה מיידית, אבל החשבון ונתוני היומן שלו יישארו שמורים.`)) return;
+    setCancelling(id);
+
+    const { data: { session } } = await supabase.auth.getSession();
+    const res = await fetch('/api/admin/cancel-subscription', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
+      body: JSON.stringify({ userId: id }),
+    });
+
+    setCancelling(null);
+    if (res.ok) {
+      setApprovedSubs((prev) => prev.filter((s) => s.id !== id));
+    }
   }
 
   async function removeSubscriber(id: string, name: string) {
@@ -251,19 +269,29 @@ export default function AdminSubscribersPage() {
             </div>
             <span style={{ fontSize: '11px', color: 'var(--profit)', fontWeight: 700 }}>{sub.subscription_status === 'active' ? 'פעיל' : sub.subscription_status}</span>
           </Link>
-          <button
-            className="row-delete-btn"
-            style={{ flexShrink: 0 }}
-            onClick={() => removeSubscriber(sub.id, sub.full_name || sub.email)}
-            disabled={removing === sub.id}
-            title="מחיקת מנוי"
-          >
-            {removing === sub.id ? '…' : (
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--loss)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M3 6h18" /><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /><line x1="10" y1="11" x2="10" y2="17" /><line x1="14" y1="11" x2="14" y2="17" />
-              </svg>
-            )}
-          </button>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flexShrink: 0 }}>
+            <button
+              className="btn-outline"
+              style={{ padding: '5px 10px', fontSize: '11px', whiteSpace: 'nowrap' }}
+              onClick={() => cancelSubscription(sub.id, sub.full_name || sub.email)}
+              disabled={cancelling === sub.id}
+              title="ביטול מנוי - מאבד גישה, נתונים נשארים"
+            >
+              {cancelling === sub.id ? '…' : 'ביטול מנוי'}
+            </button>
+            <button
+              className="row-delete-btn"
+              onClick={() => removeSubscriber(sub.id, sub.full_name || sub.email)}
+              disabled={removing === sub.id}
+              title="מחיקת חשבון לצמיתות"
+            >
+              {removing === sub.id ? '…' : (
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--loss)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 6h18" /><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /><line x1="10" y1="11" x2="10" y2="17" /><line x1="14" y1="11" x2="14" y2="17" />
+                </svg>
+              )}
+            </button>
+          </div>
         </div>
       ))}
     </div>

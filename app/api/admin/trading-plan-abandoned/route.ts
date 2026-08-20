@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/instantLogin';
 import { visibleSteps } from '@/lib/tradingPlan/questions';
 import { getActiveSubscriberContacts, normalizePhone, normalizeEmail } from '@/lib/subscriberStatus';
-import { getMondaySubscriberPhones } from '@/lib/tradingPlan/monday';
+import { getMondaySubscriberContacts } from '@/lib/tradingPlan/monday';
 
 // GET - כל מי שמילא את "תוכנית המסחר", גם מי שהשלים וגם מי שננטש באמצע -
 // כדי שיהיה מקום אחד לראות מי חדש (סיים או לא) וליזום קשר עם מי שהשאיר נייד/מייל.
@@ -33,16 +33,18 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'שגיאה בשליפת נתונים' }, { status: 500 });
   }
 
-  const [{ phones: subscriberPhones, emails: subscriberEmails }, mondaySubscriberPhones] = await Promise.all([
+  const [{ phones: subscriberPhones, emails: subscriberEmails }, { phones: mondayPhones, emails: mondayEmails }] = await Promise.all([
     getActiveSubscriberContacts(),
-    getMondaySubscriberPhones(),
+    getMondaySubscriberContacts(),
   ]);
   const leadsOnly = (data || []).filter(
     (r) =>
       !subscriberPhones.has(normalizePhone(r.phone)) &&
       !subscriberEmails.has(normalizeEmail(r.email)) &&
-      // גם מנוי שמנוהל רק ב-Monday.com (בקבוצת "קבוצת סוחרים"), בלי חשבון תואם באתר
-      !mondaySubscriberPhones.has(normalizePhone(r.phone)) &&
+      // גם מנוי שמנוהל רק ב-Monday.com (בקבוצת "קבוצת סוחרים"), בלי חשבון תואם באתר -
+      // לפי טלפון או מייל, כי לרוב אין טלפון שמור
+      !mondayPhones.has(normalizePhone(r.phone)) &&
+      !mondayEmails.has(normalizeEmail(r.email)) &&
       // מי שלחץ "התחלה" ועזב מיד, בלי שם/טלפון/מייל - אין שום דרך ליצור איתו קשר, אז אין
       // טעם להציג אותו כ"ליד" ברשימה. הכמות הכוללת של ניסיונות כאלה נראית במשפך ההמרה באדמין
       (r.name || r.phone || r.email)

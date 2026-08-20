@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/instantLogin';
 import { isActiveSubscriber } from '@/lib/subscriberStatus';
-import { isPhoneInSubscribersGroupMonday } from '@/lib/tradingPlan/monday';
+import { isContactInSubscribersGroupMonday } from '@/lib/tradingPlan/monday';
 
 // שמות אירועי ההמרה הנעקבים - חייב להיות תואם למה שנשלח גם ל-Vercel Analytics
 const ALLOWED_EVENTS = [
@@ -27,7 +27,7 @@ export async function POST(request: Request) {
   }
 
   if (phone || email) {
-    const isSubscriber = (await isActiveSubscriber(phone, email)) || (await isPhoneInSubscribersGroupMonday(phone));
+    const isSubscriber = (await isActiveSubscriber(phone, email)) || (await isContactInSubscribersGroupMonday(phone, email));
     if (isSubscriber) return NextResponse.json({ ok: true, skipped: true });
   }
 
