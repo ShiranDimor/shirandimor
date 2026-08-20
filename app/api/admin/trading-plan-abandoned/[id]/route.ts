@@ -56,6 +56,27 @@ export async function GET(request: Request, { params }: { params: { id: string }
   return NextResponse.json({ row, answers });
 }
 
+// PATCH - סימון/ביטול סימון "טופל" - כדי להעביר לידים שכבר יצרה איתם קשר לאזור נפרד ברשימה
+// body: { handled: boolean }
+export async function PATCH(request: Request, { params }: { params: { id: string } }) {
+  const admin = await requireAdmin(request);
+  if (!admin) return NextResponse.json({ error: 'אין הרשאת ניהול' }, { status: 403 });
+
+  const body = await request.json().catch(() => ({}));
+  const handled = body?.handled === true;
+
+  const { error } = await supabaseAdmin
+    .from('trading_plan_responses')
+    .update({ admin_handled_at: handled ? new Date().toISOString() : null })
+    .eq('id', params.id);
+
+  if (error) {
+    return NextResponse.json({ error: 'שגיאה בעדכון' }, { status: 500 });
+  }
+
+  return NextResponse.json({ ok: true });
+}
+
 // DELETE - מחיקת רשומה (גם ננטשה וגם הושלמה)
 export async function DELETE(request: Request, { params }: { params: { id: string } }) {
   const admin = await requireAdmin(request);

@@ -56,6 +56,7 @@ export async function GET(request: Request) {
     stepsReached: r.current_step ?? 0,
     totalSteps: visibleSteps(r).length,
     viewed: !!r.admin_viewed_at,
+    handledAt: r.admin_handled_at,
   }));
 
   return NextResponse.json({ rows });

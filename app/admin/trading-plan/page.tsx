@@ -18,6 +18,7 @@ type AbandonedRow = {
   stepsReached: number;
   totalSteps: number;
   viewed: boolean;
+  handledAt: string | null;
 };
 
 type DetailAnswer = { id: string; title: string; value: string };
@@ -50,6 +51,8 @@ export default function AdminTradingPlanAbandonedPage() {
   const [details, setDetails] = useState<Record<string, DetailAnswer[]>>({});
   const [loadingDetailsId, setLoadingDetailsId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [handlingId, setHandlingId] = useState<string | null>(null);
+  const [showHandled, setShowHandled] = useState(false);
 
   useEffect(() => {
     checkAdmin();
@@ -108,6 +111,20 @@ export default function AdminTradingPlanAbandonedPage() {
     }
   }
 
+  async function handleToggleHandled(id: string, handled: boolean) {
+    setHandlingId(id);
+    const { data: { session } } = await supabase.auth.getSession();
+    const res = await fetch(`/api/admin/trading-plan-abandoned/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
+      body: JSON.stringify({ handled }),
+    });
+    setHandlingId(null);
+    if (res.ok) {
+      setRows((prev) => prev.map((r) => (r.id === id ? { ...r, handledAt: handled ? new Date().toISOString() : null } : r)));
+    }
+  }
+
   async function handleDelete(id: string, label: string) {
     if (!window.confirm(`למחוק לצמיתות את הרשומה של ${label}?`)) return;
     setDeletingId(id);
@@ -161,8 +178,11 @@ export default function AdminTradingPlanAbandonedPage() {
     );
   }
 
-  const completed = rows.filter((r) => r.status === 'completed');
-  const abandoned = rows.filter((r) => r.status === 'in_progress');
+  const activeRows = rows.filter((r) => !r.handledAt);
+  const handledRows = rows.filter((r) => r.handledAt);
+
+  const completed = activeRows.filter((r) => r.status === 'completed');
+  const abandoned = activeRows.filter((r) => r.status === 'in_progress');
   const contactable = abandoned.filter((r) => r.phone || r.email);
   const noContact = abandoned.filter((r) => !r.phone && !r.email);
 
@@ -188,6 +208,9 @@ export default function AdminTradingPlanAbandonedPage() {
             <div className="email" style={{ marginTop: '2px' }}>
               {r.status === 'completed' ? stepLabel(r) : `עצירה ${stepLabel(r)}`} · {r.source ? `מקור: ${r.source} · ` : ''}עדכון אחרון: {timeAgo(r.status === 'completed' ? (r.completed_at || r.updated_at) : r.updated_at)}
             </div>
+            {r.handledAt && (
+              <div style={{ fontSize: '11.5px', color: 'var(--profit)', marginTop: '2px' }}>✓ טופל {timeAgo(r.handledAt)}</div>
+            )}
           </div>
           <button
             className="row-delete-btn"
@@ -223,6 +246,15 @@ export default function AdminTradingPlanAbandonedPage() {
               וואטסאפ ←
             </a>
           )}
+          <button
+            type="button"
+            className="btn-outline"
+            style={{ padding: '8px 12px', fontSize: '12.5px', flex: '0 0 auto' }}
+            onClick={() => handleToggleHandled(r.id, !r.handledAt)}
+            disabled={handlingId === r.id}
+          >
+            {handlingId === r.id ? '…' : r.handledAt ? 'ביטול סימון טופל' : '✓ סימון כטופל'}
+          </button>
         </div>
 
         {isExpanded && (
@@ -252,14 +284,14 @@ export default function AdminTradingPlanAbandonedPage() {
         </div>
       </header>
 
-      <div className="section-label"><h2>לידים - תוכנית מסחר</h2><span className="count">{rows.length}</span></div>
+      <div className="section-label"><h2>לידים - תוכנית מסחר</h2><span className="count">{activeRows.length}</span></div>
       <p style={{ fontSize: '13px', color: 'var(--text-tertiary)', marginBottom: '20px' }}>
-        כל מי שמילא את השאלון - גם מי שהשלים וגם מי שננטש באמצע. {rows.filter((r) => !r.viewed).length > 0 ? `${rows.filter((r) => !r.viewed).length} מהם חדשים - עדיין לא נפתחו. ` : ''}
-        "פרטים מלאים" מציג את כל התשובות, ומסמן שנצפה.
+        כל מי שמילא את השאלון - גם מי שהשלים וגם מי שננטש באמצע. {activeRows.filter((r) => !r.viewed).length > 0 ? `${activeRows.filter((r) => !r.viewed).length} מהם חדשים - עדיין לא נפתחו. ` : ''}
+        "פרטים מלאים" מציג את כל התשובות, ומסמן שנצפה. "סימון כטופל" מעביר את הליד לאזור נפרד למטה.
       </p>
 
       {loadingRows && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>טוענים...</p>}
-      {!loadingRows && rows.length === 0 && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>אין כרגע אף אחד</p>}
+      {!loadingRows && activeRows.length === 0 && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>אין כרגע אף אחד לטיפול</p>}
 
       {completed.length > 0 && (
         <>
@@ -280,6 +312,20 @@ export default function AdminTradingPlanAbandonedPage() {
           <div className="section-label" style={{ marginTop: '24px' }}><h2 style={{ fontSize: '15px' }}>ננטשו באמצע - בלי פרטי קשר (עצרו בדיוק בטופס הפרטים עצמו)</h2></div>
           {noContact.map(renderRow)}
         </>
+      )}
+
+      {handledRows.length > 0 && (
+        <div style={{ marginTop: '32px', paddingTop: '20px', borderTop: '1px solid var(--border-hairline)' }}>
+          <button
+            type="button"
+            onClick={() => setShowHandled((v) => !v)}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', gap: '8px', width: '100%' }}
+          >
+            <h2 style={{ fontSize: '15px', color: 'var(--text-secondary)' }}>✓ טופלו ({handledRows.length})</h2>
+            <span style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>{showHandled ? '▲ הסתרה' : '▼ הצגה'}</span>
+          </button>
+          {showHandled && <div style={{ marginTop: '14px' }}>{handledRows.map(renderRow)}</div>}
+        </div>
       )}
     </div>
   );
