@@ -17,13 +17,15 @@ const META_PIXEL_EVENT: Record<FunnelEvent, string> = {
   payment_link_click: 'AddPaymentInfo',
 };
 
-// שולח את האירוע ל-Vercel Analytics, לדאטהבייס שלנו (למשפך ההמרה באדמין) ול-Meta Pixel (אם מוגדר)
-export function trackFunnelEvent(event: FunnelEvent) {
+// שולח את האירוע ל-Vercel Analytics, לדאטהבייס שלנו (למשפך ההמרה באדמין) ול-Meta Pixel (אם מוגדר).
+// identity (טלפון/מייל, אם ידועים) משמש רק בצד השרת כדי לא לספור במשפך ההמרה מנוי קיים שבודק
+// לעצמו - כדי שהמספרים באדמין ישקפו תנועה אמיתית של לידים חדשים
+export function trackFunnelEvent(event: FunnelEvent, identity?: { phone?: string | null; email?: string | null }) {
   track(event);
   fetch('/api/track-event', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ event }),
+    body: JSON.stringify({ event, phone: identity?.phone, email: identity?.email }),
   }).catch(() => {});
 
   const fbq = (window as any).fbq;

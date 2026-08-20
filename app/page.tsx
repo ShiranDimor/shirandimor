@@ -59,7 +59,7 @@ export default function HomePage() {
 
     setLeadSubmitting(false);
     setLeadSubmitted(true);
-    trackFunnelEvent('free_group_lead_submitted');
+    trackFunnelEvent('free_group_lead_submitted', { phone: leadPhone, email: leadEmail });
   }
 
   useEffect(() => {
@@ -163,7 +163,7 @@ export default function HomePage() {
             <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '14px' }}>
               מעולה! הכפתור פותח את קבוצת הוואטסאפ, וההצטרפות משם היא כבר עניין של רגע.
             </p>
-            <a href="https://chat.whatsapp.com/GEf9Y4vFRDSEWKixrETWcg" target="_blank" rel="noopener noreferrer" className="btn-primary" style={{ display: 'block', textDecoration: 'none' }} onClick={() => trackFunnelEvent('whatsapp_group_open_click')}>
+            <a href="https://chat.whatsapp.com/GEf9Y4vFRDSEWKixrETWcg" target="_blank" rel="noopener noreferrer" className="btn-primary" style={{ display: 'block', textDecoration: 'none' }} onClick={() => trackFunnelEvent('whatsapp_group_open_click', { phone: leadPhone, email: leadEmail })}>
               פתיחת קבוצת הוואטסאפ ←
             </a>
           </div>

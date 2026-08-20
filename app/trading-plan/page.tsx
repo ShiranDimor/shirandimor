@@ -189,7 +189,7 @@ export default function TradingPlanPage() {
       if (id) {
         setResponseId(id);
         saveDraft(id, answers, 0, 'quiz');
-        trackFunnelEvent('trading_plan_started');
+        trackFunnelEvent('trading_plan_started', { phone: answers.phone as string, email: answers.email as string });
       }
       setPhase('quiz');
       return;
@@ -250,7 +250,7 @@ export default function TradingPlanPage() {
           body: JSON.stringify({ id }),
         }).catch(() => {});
 
-        trackFunnelEvent('trading_plan_completed');
+        trackFunnelEvent('trading_plan_completed', { phone: answers.phone as string, email: answers.email as string });
       }
 
       clearDraft();
