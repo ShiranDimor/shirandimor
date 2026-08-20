@@ -50,7 +50,7 @@ export async function POST(request: Request) {
 
   const results = await Promise.allSettled([
     apiKey && row.email
-      ? sendEmail(apiKey, row.email, 'התוכנית שלך ל-30 הימים הקרובים במסחר', buildUserPlanEmailHtml(row), 'שירן דימור <onboarding@resend.dev>')
+      ? sendEmail(apiKey, row.email, 'התוכנית שלך ל-30 הימים הקרובים במסחר', buildUserPlanEmailHtml(row), 'שירן דימור <noreply@shirandimor.com>')
       : Promise.resolve({ ok: false }),
     apiKey && !isSubscriber
       ? sendEmail(apiKey, 'shiran@shirandimor.com', 'התעניינות חדשה - תוכנית מסחר 30 יום', buildAdminNotifyEmailHtml(row), 'התראות האתר <onboarding@resend.dev>')
