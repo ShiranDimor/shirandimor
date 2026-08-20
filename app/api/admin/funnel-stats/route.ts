@@ -22,16 +22,18 @@ async function requireAdmin(request: Request) {
   return user;
 }
 
-// GET - ספירת אירועי משפך ההמרה, מקובצת לפי סוג אירוע. תומך בסינון טווח זמן: ?since=ISO-date
+// GET - ספירת אירועי משפך ההמרה, מקובצת לפי סוג אירוע. תומך בסינון טווח זמן: ?since=ISO-date&until=ISO-date
 export async function GET(request: Request) {
   const admin = await requireAdmin(request);
   if (!admin) return NextResponse.json({ error: 'אין הרשאת ניהול' }, { status: 403 });
 
   const { searchParams } = new URL(request.url);
   const since = searchParams.get('since');
+  const until = searchParams.get('until');
 
   let query = supabaseAdmin.from('funnel_events').select('event_name');
   if (since) query = query.gte('created_at', since);
+  if (until) query = query.lte('created_at', until);
 
   const { data, error } = await query;
   if (error) return NextResponse.json({ error: 'שגיאה בשליפת הנתונים' }, { status: 500 });

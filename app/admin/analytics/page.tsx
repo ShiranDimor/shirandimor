@@ -5,13 +5,14 @@ import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 
 type Counts = Record<string, number>;
-type RangeKey = 'today' | '7d' | '30d' | 'all';
+type RangeKey = 'today' | '7d' | '30d' | 'all' | 'custom';
 
 const RANGES: { key: RangeKey; label: string }[] = [
   { key: 'today', label: 'היום' },
   { key: '7d', label: '7 ימים' },
   { key: '30d', label: '30 יום' },
   { key: 'all', label: 'הכל' },
+  { key: 'custom', label: 'טווח מותאם אישית' },
 ];
 
 const EVENT_LABELS: { key: string; label: string; icon: string }[] = [
@@ -47,15 +48,20 @@ export default function AdminAnalyticsPage() {
   const [counts, setCounts] = useState<Counts | null>(null);
   const [loadingCounts, setLoadingCounts] = useState(false);
 
+  const [customFrom, setCustomFrom] = useState('');
+  const [customTo, setCustomTo] = useState('');
+
   useEffect(() => {
     checkAdmin();
   }, []);
 
-  const loadCounts = useCallback(async (r: RangeKey) => {
+  const loadCounts = useCallback(async (since: string | null, until?: string | null) => {
     setLoadingCounts(true);
     const { data: { session } } = await supabase.auth.getSession();
-    const since = sinceFor(r);
-    const url = since ? `/api/admin/funnel-stats?since=${encodeURIComponent(since)}` : '/api/admin/funnel-stats';
+    const params = new URLSearchParams();
+    if (since) params.set('since', since);
+    if (until) params.set('until', until);
+    const url = params.toString() ? `/api/admin/funnel-stats?${params.toString()}` : '/api/admin/funnel-stats';
 
     const res = await fetch(url, { headers: { Authorization: `Bearer ${session?.access_token}` } });
     if (res.ok) {
@@ -74,13 +80,22 @@ export default function AdminAnalyticsPage() {
     setIsAdmin(profile?.role === 'admin');
     setChecking(false);
 
-    if (profile?.role === 'admin') loadCounts(range);
+    if (profile?.role === 'admin') loadCounts(sinceFor(range));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }
 
   function handleRangeChange(r: RangeKey) {
     setRange(r);
-    loadCounts(r);
+    if (r === 'custom') return; // ממתינים לבחירת תאריכים + לחיצה על "החלה"
+    loadCounts(sinceFor(r));
+  }
+
+  function handleApplyCustomRange() {
+    if (!customFrom) return;
+    // תאריך "עד" כולל את כל היום שנבחר, לא רק חצות
+    const untilIso = customTo ? new Date(`${customTo}T23:59:59.999`).toISOString() : undefined;
+    const sinceIso = new Date(`${customFrom}T00:00:00`).toISOString();
+    loadCounts(sinceIso, untilIso);
   }
 
   if (checking) {
@@ -138,6 +153,39 @@ export default function AdminAnalyticsPage() {
           </button>
         ))}
       </div>
+
+      {range === 'custom' && (
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-end', flexWrap: 'wrap', marginBottom: '20px' }}>
+          <div>
+            <label style={{ display: 'block', fontSize: '11.5px', color: 'var(--text-tertiary)', marginBottom: '4px' }}>מתאריך</label>
+            <input
+              type="date"
+              value={customFrom}
+              onChange={(e) => setCustomFrom(e.target.value)}
+              style={{ padding: '7px 10px', borderRadius: '8px', border: '1px solid var(--border-hairline-strong)', background: 'var(--bg-surface)', color: 'var(--text-primary)', fontSize: '13px' }}
+            />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: '11.5px', color: 'var(--text-tertiary)', marginBottom: '4px' }}>עד תאריך (לא חובה)</label>
+            <input
+              type="date"
+              value={customTo}
+              onChange={(e) => setCustomTo(e.target.value)}
+              style={{ padding: '7px 10px', borderRadius: '8px', border: '1px solid var(--border-hairline-strong)', background: 'var(--bg-surface)', color: 'var(--text-primary)', fontSize: '13px' }}
+            />
+          </div>
+          <button
+            onClick={handleApplyCustomRange}
+            disabled={!customFrom}
+            style={{
+              padding: '8px 18px', borderRadius: '8px', fontSize: '13px', fontWeight: 700, cursor: customFrom ? 'pointer' : 'not-allowed',
+              border: 'none', background: '#E8A33D', color: '#0b0d12', opacity: customFrom ? 1 : 0.5,
+            }}
+          >
+            החלה
+          </button>
+        </div>
+      )}
 
       {loadingCounts && !counts && <p style={{ textAlign: 'center', color: 'var(--text-tertiary)' }}>טוענים נתונים...</p>}
 
