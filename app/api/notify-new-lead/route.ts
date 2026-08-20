@@ -22,7 +22,7 @@ export async function POST(request: Request) {
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        from: 'התראות האתר <onboarding@resend.dev>',
+        from: 'התראות האתר <noreply@shirandimor.com>',
         to: 'shiran@shirandimor.com',
         subject: 'בקשת הצטרפות חדשה לאתר',
         text: `התקבלה בקשת הצטרפות חדשה.\n\nשם: ${full_name || 'ללא שם'}\nאימייל: ${email}\nנייד: ${phone || 'לא נמסר'}\n\nלאישור: https://www.shirandimor.com/admin/pending`,

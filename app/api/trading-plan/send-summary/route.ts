@@ -53,7 +53,7 @@ export async function POST(request: Request) {
       ? sendEmail(apiKey, row.email, 'התוכנית שלך ל-30 הימים הקרובים במסחר', buildUserPlanEmailHtml(row), 'שירן דימור <noreply@shirandimor.com>')
       : Promise.resolve({ ok: false }),
     apiKey && !isSubscriber
-      ? sendEmail(apiKey, 'shiran@shirandimor.com', 'התעניינות חדשה - תוכנית מסחר 30 יום', buildAdminNotifyEmailHtml(row), 'התראות האתר <onboarding@resend.dev>')
+      ? sendEmail(apiKey, 'shiran@shirandimor.com', 'התעניינות חדשה - תוכנית מסחר 30 יום', buildAdminNotifyEmailHtml(row), 'התראות האתר <noreply@shirandimor.com>')
       : Promise.resolve({ ok: false }),
     // מנוי כבר "המיר" - אין טעם ליצור/לעדכן עבורו כרטיס ליד ב-Monday.com, מאותה סיבה שגם מייל
     // "ליד חדש" מיותר עבורו למעלה

@@ -61,7 +61,7 @@ export async function GET(request: Request) {
 
   for (const row of rows || []) {
     const isSubscriber = await isActiveSubscriber(row.phone as string | null, row.email as string | null);
-    const ok = await sendEmail(apiKey, row.email as string, 'בוקר טוב - עמדת היום בכלל שלך?', buildDailyProgressReminderEmailHtml(row, isSubscriber), 'שירן דימור <onboarding@resend.dev>').catch(() => false);
+    const ok = await sendEmail(apiKey, row.email as string, 'בוקר טוב - עמדת היום בכלל שלך?', buildDailyProgressReminderEmailHtml(row, isSubscriber), 'שירן דימור <noreply@shirandimor.com>').catch(() => false);
     if (ok) {
       sent++;
       await supabaseAdmin.from('trading_plan_responses').update({ last_daily_reminder_sent_date: today }).eq('id', row.id);

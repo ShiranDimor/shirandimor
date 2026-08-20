@@ -41,8 +41,8 @@ export async function GET(request: Request) {
     if (!apiKey) return NextResponse.json({ error: 'RESEND_API_KEY לא מוגדר' }, { status: 500 });
 
     const sampleRow = { id: 'preview-id', name: 'שירן' };
-    const sent1 = await sendEmail(apiKey, to, '[דוגמה] התוכנית שלך מחכה לך', buildAbandonedEmailHtml(sampleRow, 1), 'שירן דימור <onboarding@resend.dev>');
-    const sent2 = await sendEmail(apiKey, to, '[דוגמה] תזכורת אחרונה - התוכנית שלך מחכה לך', buildAbandonedEmailHtml(sampleRow, 2), 'שירן דימור <onboarding@resend.dev>');
+    const sent1 = await sendEmail(apiKey, to, '[דוגמה] התוכנית שלך מחכה לך', buildAbandonedEmailHtml(sampleRow, 1), 'שירן דימור <noreply@shirandimor.com>');
+    const sent2 = await sendEmail(apiKey, to, '[דוגמה] תזכורת אחרונה - התוכנית שלך מחכה לך', buildAbandonedEmailHtml(sampleRow, 2), 'שירן דימור <noreply@shirandimor.com>');
 
     return NextResponse.json({ ok: true, preview: true, to, sent1, sent2 });
   }
@@ -81,7 +81,7 @@ export async function GET(request: Request) {
 
     if (!isSubscriber) {
       if (apiKey && row.email) {
-        const sent = await sendEmail(apiKey, row.email, 'התוכנית שלך מחכה לך - נשארו כמה דקות לסיים', buildAbandonedEmailHtml(row, 1), 'שירן דימור <onboarding@resend.dev>').catch(() => false);
+        const sent = await sendEmail(apiKey, row.email, 'התוכנית שלך מחכה לך - נשארו כמה דקות לסיים', buildAbandonedEmailHtml(row, 1), 'שירן דימור <noreply@shirandimor.com>').catch(() => false);
         if (sent) emailsSent++;
       }
       if (row.phone) {
@@ -95,7 +95,7 @@ export async function GET(request: Request) {
   for (const row of secondBatch || []) {
     const isSubscriber = (await isActiveSubscriber(row.phone, row.email)) || (await isPhoneInSubscribersGroupMonday(row.phone));
     if (!isSubscriber && apiKey && row.email) {
-      const sent = await sendEmail(apiKey, row.email, 'תזכורת אחרונה - התוכנית שלך מחכה לך', buildAbandonedEmailHtml(row, 2), 'שירן דימור <onboarding@resend.dev>').catch(() => false);
+      const sent = await sendEmail(apiKey, row.email, 'תזכורת אחרונה - התוכנית שלך מחכה לך', buildAbandonedEmailHtml(row, 2), 'שירן דימור <noreply@shirandimor.com>').catch(() => false);
       if (sent) emailsSent++;
     }
     await supabaseAdmin.from('trading_plan_responses').update({ abandon_reminder_count: 2, abandon_email_sent_at: new Date().toISOString() }).eq('id', row.id);

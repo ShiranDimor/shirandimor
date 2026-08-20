@@ -59,12 +59,12 @@ export async function GET(request: Request) {
       'shiran@shirandimor.com',
       `תזכורת פולואפ - ${rows.length} ${rows.length === 1 ? 'אדם' : 'אנשים'} השבוע`,
       buildFollowupDigestEmailHtml(rows as any),
-      'תזכורות פולואפ <onboarding@resend.dev>'
+      'תזכורות פולואפ <noreply@shirandimor.com>'
     ),
     Promise.allSettled(
       rows.map((r) =>
         r.email
-          ? sendEmail(apiKey, r.email, 'עבר בדיוק שבוע - אז איך הולך?', buildFollowupUserEmailHtml(r as any), 'שירן דימור <onboarding@resend.dev>')
+          ? sendEmail(apiKey, r.email, 'עבר בדיוק שבוע - אז איך הולך?', buildFollowupUserEmailHtml(r as any), 'שירן דימור <noreply@shirandimor.com>')
           : Promise.resolve(false)
       )
     ),

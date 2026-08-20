@@ -62,7 +62,7 @@ export async function GET(request: Request) {
         'shiran@shirandimor.com',
         `ביטול תזכורות מעקב - ${row.name || 'מישהו'}`,
         buildProgressUnsubscribeAdminEmailHtml(row),
-        'התראות האתר <onboarding@resend.dev>'
+        'התראות האתר <noreply@shirandimor.com>'
       ).catch(() => false);
     }
   }
