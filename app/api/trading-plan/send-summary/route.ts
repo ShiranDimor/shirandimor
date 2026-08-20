@@ -4,17 +4,18 @@ import { buildUserPlanEmailHtml, buildAdminNotifyEmailHtml } from '@/lib/trading
 import { syncTradingPlanLead, isPhoneInSubscribersGroupMonday } from '@/lib/tradingPlan/monday';
 import { isActiveSubscriber } from '@/lib/subscriberStatus';
 
-async function sendEmail(apiKey: string, to: string, subject: string, html: string, from: string) {
+async function sendEmail(apiKey: string, to: string, subject: string, html: string, from: string): Promise<{ ok: boolean; error?: string }> {
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
     body: JSON.stringify({ from, to, subject, html }),
   });
   if (!res.ok) {
-    console.error(`שגיאה בשליחת מייל אל ${to}`, await res.text());
-    return false;
+    const text = await res.text();
+    console.error(`שגיאה בשליחת מייל אל ${to}`, text);
+    return { ok: false, error: text };
   }
-  return true;
+  return { ok: true };
 }
 
 // POST - שולח מייל עם התוכנית האישית למשתמש, ומייל התראה על ליד חדש לשירן
@@ -50,10 +51,10 @@ export async function POST(request: Request) {
   const results = await Promise.allSettled([
     apiKey && row.email
       ? sendEmail(apiKey, row.email, 'התוכנית שלך ל-30 הימים הקרובים במסחר', buildUserPlanEmailHtml(row), 'שירן דימור <onboarding@resend.dev>')
-      : Promise.resolve(false),
+      : Promise.resolve({ ok: false }),
     apiKey && !isSubscriber
       ? sendEmail(apiKey, 'shiran@shirandimor.com', 'התעניינות חדשה - תוכנית מסחר 30 יום', buildAdminNotifyEmailHtml(row), 'התראות האתר <onboarding@resend.dev>')
-      : Promise.resolve(false),
+      : Promise.resolve({ ok: false }),
     // מנוי כבר "המיר" - אין טעם ליצור/לעדכן עבורו כרטיס ליד ב-Monday.com, מאותה סיבה שגם מייל
     // "ליד חדש" מיותר עבורו למעלה
     !isSubscriber ? syncTradingPlanLead(row) : Promise.resolve({ ok: false, reason: 'already_subscriber' }),
@@ -61,9 +62,17 @@ export async function POST(request: Request) {
 
   if (!apiKey) console.error('RESEND_API_KEY לא מוגדר - לא נשלחו מיילים (Monday.com עדיין רץ בנפרד)');
 
-  const userEmailSent = results[0].status === 'fulfilled' && results[0].value === true;
-  const adminEmailSent = results[1].status === 'fulfilled' && results[1].value === true;
+  const userEmailResult = results[0].status === 'fulfilled' ? (results[0].value as any) : { ok: false };
+  const adminEmailResult = results[1].status === 'fulfilled' ? (results[1].value as any) : { ok: false };
+  const userEmailSent = userEmailResult.ok === true;
+  const adminEmailSent = adminEmailResult.ok === true;
   const mondaySynced = results[2].status === 'fulfilled' && (results[2].value as any)?.ok === true;
 
-  return NextResponse.json({ ok: true, userEmailSent, adminEmailSent, mondaySynced });
+  return NextResponse.json({
+    ok: true,
+    userEmailSent,
+    adminEmailSent,
+    mondaySynced,
+    userEmailError: userEmailSent ? undefined : userEmailResult.error,
+  });
 }
