@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/instantLogin';
 import { buildAbandonedEmailHtml } from '@/lib/tradingPlan/emailContent';
-import { syncTradingPlanLead, TRADING_PLAN_ABANDONED_STATUS_LABEL } from '@/lib/tradingPlan/monday';
+import { syncTradingPlanLead, TRADING_PLAN_ABANDONED_STATUS_LABEL, isPhoneInSubscribersGroupMonday } from '@/lib/tradingPlan/monday';
 import { isActiveSubscriber } from '@/lib/subscriberStatus';
 
 async function sendEmail(apiKey: string, to: string, subject: string, html: string, from: string) {
@@ -75,8 +75,9 @@ export async function GET(request: Request) {
 
   for (const row of firstBatch || []) {
     // מנוי שכבר המיר לא צריך תזכורת "בואי נסיים כדי להצטרף" ולא כרטיס ליד חדש ב-Monday.com -
-    // מאותה סיבה שגם מייל "ליד חדש" מיותר עבור מנוי שממלא את התוכנית עד הסוף
-    const isSubscriber = await isActiveSubscriber(row.phone, row.email);
+    // מאותה סיבה שגם מייל "ליד חדש" מיותר עבור מנוי שממלא את התוכנית עד הסוף. בודקים גם מול
+    // קבוצת "קבוצת סוחרים" ב-Monday.com, למנויים שמנוהלים רק שם בלי חשבון באתר
+    const isSubscriber = (await isActiveSubscriber(row.phone, row.email)) || (await isPhoneInSubscribersGroupMonday(row.phone));
 
     if (!isSubscriber) {
       if (apiKey && row.email) {
@@ -92,7 +93,7 @@ export async function GET(request: Request) {
   }
 
   for (const row of secondBatch || []) {
-    const isSubscriber = await isActiveSubscriber(row.phone, row.email);
+    const isSubscriber = (await isActiveSubscriber(row.phone, row.email)) || (await isPhoneInSubscribersGroupMonday(row.phone));
     if (!isSubscriber && apiKey && row.email) {
       const sent = await sendEmail(apiKey, row.email, 'תזכורת אחרונה - התוכנית שלך מחכה לך', buildAbandonedEmailHtml(row, 2), 'שירן דימור <onboarding@resend.dev>').catch(() => false);
       if (sent) emailsSent++;

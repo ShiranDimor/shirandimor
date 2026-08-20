@@ -3,6 +3,7 @@ import { getProfileContent } from './profileContent';
 import { findOptions } from './questions';
 
 const LEAD_GROUP_NAME = 'לידים חדשים';
+const SUBSCRIBER_GROUP_NAME = 'קבוצת סוחרים';
 const CAMPAIGN_COLUMN_TITLE = 'campaign_name';
 const STATUS_COLUMN_TITLE = 'סטטוס טיפול';
 const FOLLOWUP_COLUMN_TITLE = 'תאריך פולואפ';
@@ -39,12 +40,114 @@ async function getBoardSchema(token: string, boardId: string) {
 
   return {
     groupId: groups.find((g) => g.title === LEAD_GROUP_NAME)?.id,
+    subscriberGroupId: groups.find((g) => g.title === SUBSCRIBER_GROUP_NAME)?.id,
     phoneColumnId: columns.find((c) => c.type === 'phone')?.id,
     emailColumnId: columns.find((c) => c.type === 'email')?.id,
     campaignColumnId: columns.find((c) => c.title === CAMPAIGN_COLUMN_TITLE)?.id,
     statusColumnId: columns.find((c) => c.title === STATUS_COLUMN_TITLE)?.id,
     followupColumnId: columns.find((c) => c.title === FOLLOWUP_COLUMN_TITLE && c.type === 'date')?.id,
   };
+}
+
+// בודק אם מספר נייד מנורמל קיים כפריט בקבוצת "קבוצת סוחרים" ב-Monday.com - כדי לתפוס גם
+// מנוי ששירן ניהלה/אישרה ידנית שם, בלי שאי פעם נוצר לו חשבון באתר עצמו (ולכן לא ניתן
+// לזהות אותו דרך טבלת המנויים באתר)
+async function isPhoneInGroup(token: string, boardId: string, groupId: string, phoneColumnId: string, targetNormalized: string): Promise<boolean> {
+  let cursor: string | null = null;
+
+  do {
+    const itemsData: any = await mondayRequest(
+      token,
+      `query ($boardId: ID!, $groupId: [String!], $cursor: String, $columnIds: [String!]) {
+        boards (ids: [$boardId]) {
+          groups (ids: $groupId) {
+            items_page (limit: 100, cursor: $cursor) {
+              cursor
+              items { column_values (ids: $columnIds) { text } }
+            }
+          }
+        }
+      }`,
+      { boardId, groupId: [groupId], cursor, columnIds: [phoneColumnId] }
+    );
+
+    const page = itemsData?.data?.boards?.[0]?.groups?.[0]?.items_page;
+    const items: { column_values: { text: string | null }[] }[] = page?.items || [];
+
+    const found = items.some((item) => {
+      const text = item.column_values?.[0]?.text;
+      return text && normalizePhone(text) === targetNormalized;
+    });
+    if (found) return true;
+
+    cursor = page?.cursor || null;
+  } while (cursor);
+
+  return false;
+}
+
+// בדיקה ציבורית: האם הטלפון הזה נמצא בקבוצת "קבוצת סוחרים" ב-Monday.com - להשלמת הבדיקה
+// isActiveSubscriber (שבודקת רק מול טבלת profiles באתר) עבור מנויים שמנוהלים רק ב-Monday
+export async function isPhoneInSubscribersGroupMonday(phone: string | null | undefined): Promise<boolean> {
+  const token = process.env.MONDAY_API_TOKEN;
+  const boardId = process.env.MONDAY_BOARD_ID;
+  if (!token || !boardId || !phone) return false;
+
+  try {
+    const { subscriberGroupId, phoneColumnId } = await getBoardSchema(token, boardId);
+    if (!subscriberGroupId || !phoneColumnId) return false;
+    return await isPhoneInGroup(token, boardId, subscriberGroupId, phoneColumnId, normalizePhone(phone));
+  } catch (e) {
+    console.error('שגיאה בבדיקת קבוצת הסוחרים ב-Monday.com', e);
+    return false;
+  }
+}
+
+// כל הטלפונים המנורמלים בקבוצת "קבוצת סוחרים" ב-Monday.com בקריאה אחת (לא לכל שורה בנפרד) -
+// לשימוש ברשימות שמסננות כמות גדולה של לידים בבת אחת (למשל עמוד הניהול)
+export async function getMondaySubscriberPhones(): Promise<Set<string>> {
+  const token = process.env.MONDAY_API_TOKEN;
+  const boardId = process.env.MONDAY_BOARD_ID;
+  if (!token || !boardId) return new Set();
+
+  try {
+    const { subscriberGroupId, phoneColumnId } = await getBoardSchema(token, boardId);
+    if (!subscriberGroupId || !phoneColumnId) return new Set();
+
+    const phones = new Set<string>();
+    let cursor: string | null = null;
+
+    do {
+      const itemsData: any = await mondayRequest(
+        token,
+        `query ($boardId: ID!, $groupId: [String!], $cursor: String, $columnIds: [String!]) {
+          boards (ids: [$boardId]) {
+            groups (ids: $groupId) {
+              items_page (limit: 100, cursor: $cursor) {
+                cursor
+                items { column_values (ids: $columnIds) { text } }
+              }
+            }
+          }
+        }`,
+        { boardId, groupId: [subscriberGroupId], cursor, columnIds: [phoneColumnId] }
+      );
+
+      const page = itemsData?.data?.boards?.[0]?.groups?.[0]?.items_page;
+      const items: { column_values: { text: string | null }[] }[] = page?.items || [];
+      for (const item of items) {
+        const text = item.column_values?.[0]?.text;
+        if (text) phones.add(normalizePhone(text));
+      }
+
+      cursor = page?.cursor || null;
+    } while (cursor);
+
+    return phones;
+  } catch (e) {
+    console.error('שגיאה בשליפת קבוצת הסוחרים ב-Monday.com', e);
+    return new Set();
+  }
 }
 
 // יוצר את עמודת "תאריך פולואפ" בלוח אם היא עדיין לא קיימת - כדי שלא תצטרכי להוסיף אותה ידנית

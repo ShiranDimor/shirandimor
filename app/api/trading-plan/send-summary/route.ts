@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/instantLogin';
 import { buildUserPlanEmailHtml, buildAdminNotifyEmailHtml } from '@/lib/tradingPlan/emailContent';
-import { syncTradingPlanLead } from '@/lib/tradingPlan/monday';
+import { syncTradingPlanLead, isPhoneInSubscribersGroupMonday } from '@/lib/tradingPlan/monday';
 import { isActiveSubscriber } from '@/lib/subscriberStatus';
 
 async function sendEmail(apiKey: string, to: string, subject: string, html: string, from: string) {
@@ -41,7 +41,11 @@ export async function POST(request: Request) {
   const apiKey = process.env.RESEND_API_KEY;
   // מנוי כבר "המיר" - מייל "ליד חדש" לשירן מיותר עבורו ורק מוסיף רעש. התוכנית שלו עדיין נגישה
   // תמיד דרך כפתור "תוכנית מסחר" בעמוד הניהול שלו, פשוט בלי דחיפה אוטומטית ברגע ההשלמה.
-  const isSubscriber = await isActiveSubscriber(row.phone as string | null, row.email as string | null);
+  // בודקים גם מול טבלת המנויים באתר וגם מול קבוצת "קבוצת סוחרים" ב-Monday.com - יש מנויים
+  // שמנוהלים רק שם, בלי שאי פעם נוצר להם חשבון באתר.
+  const isSubscriber =
+    (await isActiveSubscriber(row.phone as string | null, row.email as string | null)) ||
+    (await isPhoneInSubscribersGroupMonday(row.phone as string | null));
 
   const results = await Promise.allSettled([
     apiKey && row.email
