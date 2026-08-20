@@ -19,12 +19,16 @@ export async function GET(request: Request) {
   }
 
   const [{ data: rows }, { phones: subscriberPhones, emails: subscriberEmails }] = await Promise.all([
-    supabaseAdmin.from('trading_plan_responses').select('phone, email, admin_viewed_at').in('status', ['in_progress', 'completed']),
+    supabaseAdmin.from('trading_plan_responses').select('name, phone, email, admin_viewed_at').in('status', ['in_progress', 'completed']),
     getActiveSubscriberContacts(),
   ]);
 
   const leadsOnly = (rows || []).filter(
-    (r) => !subscriberPhones.has(normalizePhone(r.phone)) && !subscriberEmails.has(normalizeEmail(r.email))
+    (r) =>
+      !subscriberPhones.has(normalizePhone(r.phone)) &&
+      !subscriberEmails.has(normalizeEmail(r.email)) &&
+      // אותו סינון כמו ב-route הראשי - מי שאין לו שום פרט קשר לא נחשב "ליד"
+      (r.name || r.phone || r.email)
   );
   const total = leadsOnly.length;
   const unread = leadsOnly.filter((r) => !r.admin_viewed_at).length;

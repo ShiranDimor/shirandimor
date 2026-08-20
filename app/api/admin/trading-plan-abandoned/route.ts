@@ -34,7 +34,12 @@ export async function GET(request: Request) {
 
   const { phones: subscriberPhones, emails: subscriberEmails } = await getActiveSubscriberContacts();
   const leadsOnly = (data || []).filter(
-    (r) => !subscriberPhones.has(normalizePhone(r.phone)) && !subscriberEmails.has(normalizeEmail(r.email))
+    (r) =>
+      !subscriberPhones.has(normalizePhone(r.phone)) &&
+      !subscriberEmails.has(normalizeEmail(r.email)) &&
+      // מי שלחץ "התחלה" ועזב מיד, בלי שם/טלפון/מייל - אין שום דרך ליצור איתו קשר, אז אין
+      // טעם להציג אותו כ"ליד" ברשימה. הכמות הכוללת של ניסיונות כאלה נראית במשפך ההמרה באדמין
+      (r.name || r.phone || r.email)
   );
 
   const rows = leadsOnly.map((r) => ({
