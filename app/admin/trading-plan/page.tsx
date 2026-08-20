@@ -361,7 +361,7 @@ export default function AdminTradingPlanAbandonedPage() {
           onClick={() => setShowSubscribers((v) => !v)}
           style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', gap: '8px', width: '100%' }}
         >
-          <h2 style={{ fontSize: '15px' }}>מנויים שמילאו את התוכנית ({subscriberRows.length})</h2>
+          <h2 style={{ fontSize: '15px', color: 'var(--text-primary)' }}>מנויים שמילאו את התוכנית ({subscriberRows.length})</h2>
           <span style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>{showSubscribers ? '▲ הסתרה' : '▼ הצגה'}</span>
         </button>
         <p style={{ fontSize: '12.5px', color: 'var(--text-tertiary)', marginTop: '8px' }}>
