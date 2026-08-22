@@ -21,6 +21,7 @@ export async function POST(request: Request) {
   const event = body?.event;
   const phone = typeof body?.phone === 'string' ? body.phone : null;
   const email = typeof body?.email === 'string' ? body.email : null;
+  const source = typeof body?.source === 'string' ? body.source.slice(0, 100) : null;
 
   if (typeof event !== 'string' || !ALLOWED_EVENTS.includes(event as (typeof ALLOWED_EVENTS)[number])) {
     return NextResponse.json({ error: 'אירוע לא מוכר' }, { status: 400 });
@@ -32,7 +33,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    await supabaseAdmin.from('funnel_events').insert({ event_name: event });
+    await supabaseAdmin.from('funnel_events').insert({ event_name: event, source });
   } catch {}
 
   return NextResponse.json({ ok: true });

@@ -1,4 +1,5 @@
 import { track } from '@vercel/analytics';
+import { getStoredSource } from '@/lib/attribution';
 
 export type FunnelEvent =
   | 'free_group_lead_submitted'
@@ -25,7 +26,7 @@ export function trackFunnelEvent(event: FunnelEvent, identity?: { phone?: string
   fetch('/api/track-event', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ event, phone: identity?.phone, email: identity?.email }),
+    body: JSON.stringify({ event, phone: identity?.phone, email: identity?.email, source: getStoredSource() }),
   }).catch(() => {});
 
   const fbq = (window as any).fbq;

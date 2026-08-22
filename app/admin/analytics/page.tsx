@@ -39,6 +39,11 @@ function pct(numerator: number, denominator: number): string {
   return `${Math.round((numerator / denominator) * 100)}%`;
 }
 
+function costPer(spend: number, count: number): string {
+  if (!count) return '—';
+  return `₪${(spend / count).toFixed(1)}`;
+}
+
 export default function AdminAnalyticsPage() {
   const [checking, setChecking] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -46,27 +51,33 @@ export default function AdminAnalyticsPage() {
 
   const [range, setRange] = useState<RangeKey>('7d');
   const [counts, setCounts] = useState<Counts | null>(null);
+  const [sourceBreakdown, setSourceBreakdown] = useState<Record<string, number>>({});
   const [loadingCounts, setLoadingCounts] = useState(false);
 
   const [customFrom, setCustomFrom] = useState('');
   const [customTo, setCustomTo] = useState('');
 
+  const [selectedSource, setSelectedSource] = useState('');
+  const [spend, setSpend] = useState('');
+
   useEffect(() => {
     checkAdmin();
   }, []);
 
-  const loadCounts = useCallback(async (since: string | null, until?: string | null) => {
+  const loadCounts = useCallback(async (since: string | null, until?: string | null, source?: string) => {
     setLoadingCounts(true);
     const { data: { session } } = await supabase.auth.getSession();
     const params = new URLSearchParams();
     if (since) params.set('since', since);
     if (until) params.set('until', until);
+    if (source) params.set('source', source);
     const url = params.toString() ? `/api/admin/funnel-stats?${params.toString()}` : '/api/admin/funnel-stats';
 
     const res = await fetch(url, { headers: { Authorization: `Bearer ${session?.access_token}` } });
     if (res.ok) {
       const data = await res.json();
       setCounts(data.counts || null);
+      setSourceBreakdown(data.sourceBreakdown || {});
     }
     setLoadingCounts(false);
   }, []);
@@ -87,7 +98,7 @@ export default function AdminAnalyticsPage() {
   function handleRangeChange(r: RangeKey) {
     setRange(r);
     if (r === 'custom') return; // ממתינים לבחירת תאריכים + לחיצה על "החלה"
-    loadCounts(sinceFor(r));
+    loadCounts(sinceFor(r), undefined, selectedSource || undefined);
   }
 
   function handleApplyCustomRange() {
@@ -95,7 +106,14 @@ export default function AdminAnalyticsPage() {
     // תאריך "עד" כולל את כל היום שנבחר, לא רק חצות
     const untilIso = customTo ? new Date(`${customTo}T23:59:59.999`).toISOString() : undefined;
     const sinceIso = new Date(`${customFrom}T00:00:00`).toISOString();
-    loadCounts(sinceIso, untilIso);
+    loadCounts(sinceIso, untilIso, selectedSource || undefined);
+  }
+
+  function handleSourceChange(source: string) {
+    setSelectedSource(source);
+    const since = range === 'custom' ? (customFrom ? new Date(`${customFrom}T00:00:00`).toISOString() : null) : sinceFor(range);
+    const until = range === 'custom' && customTo ? new Date(`${customTo}T23:59:59.999`).toISOString() : undefined;
+    loadCounts(since, until, source || undefined);
   }
 
   if (checking) {
@@ -121,6 +139,7 @@ export default function AdminAnalyticsPage() {
   const started = counts?.trading_plan_started ?? 0;
   const completed = counts?.trading_plan_completed ?? 0;
   const paymentClicks = counts?.payment_link_click ?? 0;
+  const spendNum = parseFloat(spend) || 0;
 
   return (
     <div className="wrap">
@@ -187,6 +206,39 @@ export default function AdminAnalyticsPage() {
         </div>
       )}
 
+      {Object.keys(sourceBreakdown).length > 0 && (
+        <div style={{ marginBottom: '20px' }}>
+          <label style={{ display: 'block', fontSize: '11.5px', color: 'var(--text-tertiary)', marginBottom: '4px' }}>
+            סינון לפי מקור/קמפיין (מהפרמטר ?source= בקישור)
+          </label>
+          <select
+            value={selectedSource}
+            onChange={(e) => handleSourceChange(e.target.value)}
+            style={{ padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--border-hairline-strong)', background: 'var(--bg-surface)', color: 'var(--text-primary)', fontSize: '13px', width: '100%', maxWidth: '320px' }}
+          >
+            <option value="">כל המקורות</option>
+            {Object.entries(sourceBreakdown).sort((a, b) => b[1] - a[1]).map(([src, count]) => (
+              <option key={src} value={src}>{src} ({count})</option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {selectedSource && (
+        <div style={{ marginBottom: '20px' }}>
+          <label style={{ display: 'block', fontSize: '11.5px', color: 'var(--text-tertiary)', marginBottom: '4px' }}>
+            כמה הוצאת על "{selectedSource}" בטווח הזה (₪) - כדי לחשב עלות לתוצאה
+          </label>
+          <input
+            type="number"
+            value={spend}
+            onChange={(e) => setSpend(e.target.value)}
+            placeholder="למשל 450"
+            style={{ padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--border-hairline-strong)', background: 'var(--bg-surface)', color: 'var(--text-primary)', fontSize: '13px', width: '100%', maxWidth: '200px' }}
+          />
+        </div>
+      )}
+
       {loadingCounts && !counts && <p style={{ textAlign: 'center', color: 'var(--text-tertiary)' }}>טוענים נתונים...</p>}
 
       {counts && (
@@ -197,6 +249,9 @@ export default function AdminAnalyticsPage() {
                 <div className="at-icon">{e.icon}</div>
                 <div className="at-title">{e.label}</div>
                 <div className="at-count">{counts[e.key] ?? 0}</div>
+                {selectedSource && spendNum > 0 && (
+                  <div style={{ fontSize: '11px', color: '#E8A33D', marginTop: '2px' }}>{costPer(spendNum, counts[e.key] ?? 0)} לתוצאה</div>
+                )}
               </div>
             ))}
           </div>
@@ -218,7 +273,8 @@ export default function AdminAnalyticsPage() {
           </div>
 
           <p style={{ fontSize: '11.5px', color: 'var(--text-tertiary)', marginTop: '20px', textAlign: 'center' }}>
-            המספרים נאספים החל מהיום שהמעקב הופעל - אירועים מלפני כן לא נכללים.
+            המספרים נאספים החל מהיום שהמעקב הופעל - אירועים מלפני כן לא נכללים. סינון לפי מקור עובד רק
+            לאירועים שהגיעו מקישור עם ?source=... בסוף.
           </p>
         </>
       )}

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { trackFunnelEvent } from '@/lib/trackEvent';
+import { captureSourceFromUrl } from '@/lib/attribution';
 import { supabase } from '@/lib/supabase';
 import ClearableInput from '@/components/ClearableInput';
 
@@ -63,6 +64,7 @@ export default function HomePage() {
   }
 
   useEffect(() => {
+    captureSourceFromUrl();
     loadTrades();
     if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('join') === '1') {
       setShowLeadForm(true);

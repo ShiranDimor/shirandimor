@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { trackFunnelEvent } from '@/lib/trackEvent';
+import { captureSourceFromUrl } from '@/lib/attribution';
 import { supabase } from '@/lib/supabase';
 import { visibleSteps, visibleQuestions } from '@/lib/tradingPlan/questions';
 import { classifyProfile } from '@/lib/tradingPlan/profile';
@@ -56,6 +57,7 @@ export default function TradingPlanPage() {
     try {
       params = new URLSearchParams(window.location.search);
       setSource(params.get('source'));
+      captureSourceFromUrl();
     } catch {
       params = new URLSearchParams();
     }

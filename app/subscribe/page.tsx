@@ -1,9 +1,15 @@
 'use client';
 
+import { useEffect } from 'react';
 import Link from 'next/link';
 import { trackFunnelEvent } from '@/lib/trackEvent';
+import { captureSourceFromUrl } from '@/lib/attribution';
 
 export default function SubscribePage() {
+  useEffect(() => {
+    captureSourceFromUrl();
+  }, []);
+
   return (
     <div className="wrap">
       <header>
