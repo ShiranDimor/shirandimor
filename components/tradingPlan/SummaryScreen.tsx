@@ -69,7 +69,7 @@ export default function SummaryScreen({ answers, onCtaClick, responseId }: Props
 
       {weekOneWin.length > 0 && (
         <div className="tp-diagnosis-section">
-          <div className="tp-diagnosis-label">בעוד שבוע בדיוק, ככה תדעו שהתחלתם נכון</div>
+          <div className="tp-diagnosis-label">בעוד שבוע בדיוק, ככה אפשר לדעת שההתחלה הייתה נכונה</div>
           <div className="tp-strength-list">
             {weekOneWin.map((o) => (
               <div key={o.value} className="tp-strength-item">{o.label}</div>

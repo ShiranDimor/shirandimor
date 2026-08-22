@@ -220,7 +220,7 @@ export function buildFollowupUserEmailHtml(r: FollowupRow): string {
         </div>
 
         <p style="font-size:14px;color:#222;line-height:1.7;">אז - איך הלך? הכלל נשמר? היה קשה? השתנה משהו בדרך?</p>
-        <p style="font-size:14px;color:#222;line-height:1.7;">אשמח לשמוע - פשוט תשיבו למייל הזה, או תכתבו לי בוואטסאפ.</p>
+        <p style="font-size:14px;color:#222;line-height:1.7;">אשמח לשמוע - אפשר פשוט להשיב למייל הזה, או לכתוב לי בוואטסאפ.</p>
 
         <a href="https://wa.me/972547167419" style="display:block;text-align:center;background:#25D366;color:#fff;text-decoration:none;font-weight:700;padding:13px;border-radius:10px;margin-top:20px;">
           זמינה בשבילך בוואטסאפ ←
@@ -294,7 +294,7 @@ export function buildAbandonedEmailHtml(r: AbandonedRow, reminderNumber: 1 | 2 =
 
         ${isLast ? `
         <p style="font-size:13.5px;color:#444;line-height:1.7;margin-top:24px;">כבר הושקעו כמה דקות יקרות בהתחלת הדרך - ממש חבל שזה יישאר תקוע ככה, בלי סיום.</p>
-        <p style="font-size:13.5px;color:#444;line-height:1.7;">ואם בכל זאת תרצו לדלג ישר לשלב הבא, ולא רק לעקוב מהצד - קבוצת הסוחרים תמיד פתוחה:</p>
+        <p style="font-size:13.5px;color:#444;line-height:1.7;">ואם בכל זאת יש רצון לדלג ישר לשלב הבא, ולא רק לעקוב מהצד - קבוצת הסוחרים תמיד פתוחה:</p>
         ` : `
         <p style="font-size:13.5px;color:#444;line-height:1.7;margin-top:24px;">להישאר רק בקבוצת העדכונים ולקרוא על שוק ההון זה נחמד להתחלה - אבל מתישהו כדאי לעבור לשלב הבא, ולבנות תוכנית אמיתית שעובדים לפיה.</p>
         <p style="font-size:13.5px;color:#444;line-height:1.7;">זה הרבה יותר פשוט ממה שזה נראה: כמה דקות כל כמה ימים, לא יותר. עם קצת עקביות, התיק יכול להיראות אחרי כמה חודשים לגמרי אחרת.</p>

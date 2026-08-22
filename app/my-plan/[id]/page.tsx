@@ -359,7 +359,7 @@ export default function MyPlanProgressPage() {
             rel="noopener noreferrer"
             style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontSize: '13px', fontWeight: 600, color: '#E8A33D', border: '1px dashed rgba(232,163,61,0.4)', borderRadius: '10px', padding: '11px', marginBottom: '20px', textDecoration: 'none' }}
           >
-            📅 הוסיפו לי תזכורת אישית ביומן
+            📅 הוספת תזכורת אישית ליומן
           </a>
 
           <div className="tp-diagnosis-section">

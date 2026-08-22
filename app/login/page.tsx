@@ -151,7 +151,7 @@ export default function LoginPage() {
         <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-hairline-strong)', borderRight: '3px solid var(--lavender)', borderRadius: '10px', padding: '16px', textAlign: 'center' }}>
           <div style={{ fontSize: '14px', fontWeight: 600, marginBottom: '6px' }}>שלחנו קישור כניסה למייל</div>
           <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '14px' }}>
-            נשלח קישור לכתובת {email} - לחיצה עליו תכניס אתכם ישר, בלי סיסמה. אם אין סימן תוך כמה דקות, כדאי לבדוק גם בספאם.
+            נשלח קישור לכתובת {email} - לחיצה עליו פותחת גישה ישר, בלי סיסמה. אם אין סימן תוך כמה דקות, כדאי לבדוק גם בספאם.
           </div>
           <a href="#" onClick={(e) => { e.preventDefault(); setStep('email'); setError(''); }} style={{ color: 'var(--lavender)', fontSize: '12px' }}>
             ← חזרה

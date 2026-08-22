@@ -184,7 +184,7 @@ export default function HomePage() {
         <div className="tp-home-teaser-badge">10 דקות · בלי התחייבות</div>
         <div className="tp-home-teaser-title">8 שלבים לבניית תוכנית מסחר</div>
         <div className="tp-home-teaser-text">כמה שאלות קצרות, ובסוף יוצאים עם תוכנית עבודה ברורה - לא עוד טופס, ולא עוד הבטחה.</div>
-        <div className="tp-home-teaser-cta">בואו נתחיל <span>←</span></div>
+        <div className="tp-home-teaser-cta">להתחיל <span>←</span></div>
       </Link>
 
       <div className="about-feature">
