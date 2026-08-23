@@ -62,9 +62,11 @@ function tradeRowHtml(t: Trade, kind: 'open' | 'closed') {
   const dirColor = t.direction === 'long' ? '#4FB876' : '#C9635E';
 
   if (kind === 'open') {
+    // עסקאות פתוחות הן "הטיפ" בפועל - מטשטשים את הסימבול בדיוק כמו באתר לגולשים שאינם מנויים,
+    // כדי שהתמונה תהיה בטוחה לשליחה גם לקבוצת העדכונים החינמית
     return `
       <tr>
-        <td style="padding:10px 12px;border-bottom:1px solid #eee;font-weight:700;">${t.symbol}</td>
+        <td style="padding:10px 12px;border-bottom:1px solid #eee;font-weight:700;"><span style="filter:blur(5px);color:#5A6178;user-select:none;">${t.symbol}</span></td>
         <td style="padding:10px 12px;border-bottom:1px solid #eee;color:${dirColor};font-weight:600;">${dirLabel}</td>
         <td style="padding:10px 12px;border-bottom:1px solid #eee;">$${t.entry_price}</td>
         <td style="padding:10px 12px;border-bottom:1px solid #eee;">$${t.stop_loss}</td>
