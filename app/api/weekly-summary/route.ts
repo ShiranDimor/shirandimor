@@ -219,6 +219,17 @@ export async function GET(request: Request) {
     imageError = e instanceof Error ? e.message : String(e);
   }
 
+  // ?image=1 - מחזיר את קובץ ה-PNG ישירות (בלי לשלוח מייל), כדי לאפשר הורדה/שמירה ידנית
+  // ושליחה עצמאית בוואטסאפ - במקום להסתמך על צירוף המייל
+  if (url.searchParams.get('image') === '1') {
+    if (!imageBase64) {
+      return NextResponse.json({ error: imageError || 'שגיאה ביצירת התמונה' }, { status: 500 });
+    }
+    return new NextResponse(Buffer.from(imageBase64, 'base64'), {
+      headers: { 'Content-Type': 'image/png', 'Content-Disposition': 'inline; filename="סיכום-החודש.png"' },
+    });
+  }
+
   try {
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
