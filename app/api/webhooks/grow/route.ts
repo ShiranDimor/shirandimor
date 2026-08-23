@@ -1,0 +1,66 @@
+import { NextResponse } from 'next/server';
+import { parseGrowPayload, syncGrowPaymentToMonday } from '@/lib/grow';
+import { ensureActiveSubscriberAccount } from '@/lib/subscriberStatus';
+import { sendLoginEmail } from '@/lib/instantLogin';
+
+// מקבל התראת תשלום מ-Grow (server-to-server callback) בכל פעם שלקוח נרשם וחויב, מעדכן את הפריט
+// שלו במאנדיי (עלות חודשית, תאריך הרשמה, הטבת חודש ראשון אם רלוונטי) ומעביר אותו לקבוצת
+// "קבוצת סוחרים" - ומאשר אותו כמנוי פעיל באתר (או יוצר לו חשבון, אם עוד אין).
+export async function POST(request: Request) {
+  const contentType = request.headers.get('content-type') || '';
+  let body: Record<string, unknown> = {};
+
+  try {
+    if (contentType.includes('application/json')) {
+      body = await request.json();
+    } else {
+      const form = await request.formData();
+      body = Object.fromEntries(form.entries());
+    }
+  } catch (e) {
+    console.error('Grow webhook: לא ניתן לפענח את גוף הבקשה', e);
+    return NextResponse.json({ ok: false, error: 'invalid_body' }, { status: 400 });
+  }
+
+  const payment = parseGrowPayload(body);
+
+  const expectedKey = process.env.GROW_WEBHOOK_SECRET;
+  if (expectedKey) {
+    if (payment.webhookKey !== expectedKey) {
+      console.error('Grow webhook: מפתח אימות שגוי או חסר');
+      return NextResponse.json({ ok: false, error: 'unauthorized' }, { status: 401 });
+    }
+  } else {
+    // עדיין לא הוגדר GROW_WEBHOOK_SECRET בסביבה - לוג בולט כדי שלא יישכח להגדיר לפני עלייה לאוויר,
+    // בלי לחסום את הפיתוח/הבדיקה הראשונית
+    console.error('Grow webhook: GROW_WEBHOOK_SECRET לא מוגדר - הבקשה מתקבלת ללא אימות מקור');
+  }
+
+  if (!payment.phone && !payment.email) {
+    console.error('Grow webhook: אין טלפון או מייל בבקשה', body);
+    return NextResponse.json({ ok: false, error: 'missing_contact' }, { status: 400 });
+  }
+
+  console.log('Grow webhook: התקבל תשלום', { ...payment, raw: body });
+
+  const mondayResult = await syncGrowPaymentToMonday(payment);
+  if (!mondayResult.ok) {
+    console.error('Grow webhook: סנכרון מאנדיי נכשל', mondayResult.reason);
+  }
+
+  let siteAccount: 'ok' | 'skipped_no_email' | 'error' = 'skipped_no_email';
+  if (payment.email) {
+    try {
+      await ensureActiveSubscriberAccount(payment.email, payment.phone || '', payment.fullName || payment.email);
+      await sendLoginEmail(payment.email);
+      siteAccount = 'ok';
+    } catch (e) {
+      console.error('Grow webhook: נכשל אישור המנוי באתר', e);
+      siteAccount = 'error';
+    }
+  } else {
+    console.error('Grow webhook: אין מייל בבקשה - לא ניתן ליצור/לאשר חשבון באתר', body);
+  }
+
+  return NextResponse.json({ ok: true, monday: mondayResult.ok, siteAccount });
+}
