@@ -106,6 +106,13 @@ export default function SummaryScreen({ answers, onCtaClick, responseId }: Props
         </a>
       )}
 
+      <p className="tp-checklist-footer" style={{ textAlign: 'center', marginBottom: '18px' }}>
+        התוכנית האישית נשלחת גם למייל שהוזן (כדאי לבדוק גם בספאם). אם היא לא מגיעה תוך כמה דקות,{' '}
+        <a href="https://wa.me/972547167419" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--teal)', fontWeight: 600 }}>
+          אפשר לעדכן בוואטסאפ ←
+        </a>
+      </p>
+
       <p className="tp-closing-message">{content.closingMessage}</p>
 
       <div className="tp-checklist-card">
