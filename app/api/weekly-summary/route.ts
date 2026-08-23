@@ -99,7 +99,9 @@ export async function GET(request: Request) {
   }
 
   const now = new Date();
-  const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  // עד 22/8/2026 הסיכום כיסה 7 ימים אחורה. מ-23/8/2026 הוא מכסה את החודש הנוכחי מתחילתו -
+  // כל יום ראשון מקבלים סיכום מצטבר של כל מה שקרה מתחילת החודש ועד עכשיו, ולא רק את השבוע האחרון.
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
   const { data: allTrades, error } = await supabaseAdmin
     .from('trades')
@@ -112,11 +114,11 @@ export async function GET(request: Request) {
   const trades: Trade[] = allTrades || [];
 
   const openedThisWeekStillOpen = trades
-    .filter((t) => t.status === 'open' && new Date(t.opened_at) >= weekAgo)
+    .filter((t) => t.status === 'open' && new Date(t.opened_at) >= monthStart)
     .sort((a, b) => new Date(b.opened_at).getTime() - new Date(a.opened_at).getTime());
 
   const closedThisWeek = trades
-    .filter((t) => t.status === 'closed' && t.closed_at && new Date(t.closed_at) >= weekAgo)
+    .filter((t) => t.status === 'closed' && t.closed_at && new Date(t.closed_at) >= monthStart)
     .sort((a, b) => new Date(b.closed_at as string).getTime() - new Date(a.closed_at as string).getTime());
 
   const wins = closedThisWeek.filter((t) => (t.realized_pnl_usd ?? 0) >= 0);
@@ -125,7 +127,7 @@ export async function GET(request: Request) {
   const winRate = closedThisWeek.length > 0 ? (wins.length / closedThisWeek.length) * 100 : null;
   const totalOpenNow = trades.filter((t) => t.status === 'open').length;
 
-  const rangeLabel = `${formatDate(weekAgo.toISOString())} - ${formatDate(now.toISOString())}`;
+  const rangeLabel = `${formatDate(monthStart.toISOString())} - ${formatDate(now.toISOString())}`;
 
   const html = `
   <div dir="rtl" style="font-family: Arial, Helvetica, sans-serif; background:#f4f4f5; padding:24px 12px;">
@@ -135,7 +137,7 @@ export async function GET(request: Request) {
         <img src="${SITE_URL}/shiran-photo.jpg" width="56" height="56" alt="שירן דימור" style="width:56px;height:56px;border-radius:50%;object-fit:cover;border:2px solid #4fc9c4;margin-bottom:12px;" />
         <div style="color:#fff;font-size:18px;font-weight:700;">מסחר <span style="color:#4fc9c4;">אחראי</span> במניות</div>
         <div style="color:#9C8FD9;font-size:12.5px;letter-spacing:0.02em;margin-top:6px;">שירן דימור · קבוצת הסוחרים &quot;${GROUP_NAME}&quot;</div>
-        <div style="color:#fff;font-size:20px;font-weight:700;margin-top:14px;">סיכום שבועי</div>
+        <div style="color:#fff;font-size:20px;font-weight:700;margin-top:14px;">סיכום החודש</div>
         <div style="color:#aaa;font-size:13px;margin-top:4px;">${rangeLabel}</div>
       </div>
 
@@ -143,7 +145,7 @@ export async function GET(request: Request) {
         <table style="width:100%;border-collapse:collapse;"><tr>
           <td style="text-align:center;padding:8px;">
             <div style="font-size:20px;font-weight:700;color:${(avgPct ?? 0) >= 0 ? '#4FB876' : '#C9635E'};">${avgPct !== null ? `${avgPct >= 0 ? '+' : ''}${avgPct.toFixed(2)}%` : '—'}</div>
-            <div style="font-size:11.5px;color:#888;margin-top:2px;">תשואה ממוצעת השבוע</div>
+            <div style="font-size:11.5px;color:#888;margin-top:2px;">תשואה ממוצעת החודש</div>
           </td>
           <td style="text-align:center;padding:8px;">
             <div style="font-size:20px;font-weight:700;color:#111;">${closedThisWeek.length}</div>
@@ -161,8 +163,8 @@ export async function GET(request: Request) {
       </div>
 
       <div style="padding:20px 16px 4px;">
-        <div style="font-size:14.5px;font-weight:700;color:#111;margin-bottom:10px;">🟢 נפתחו השבוע ונשארו פתוחות (${openedThisWeekStillOpen.length})</div>
-        ${openedThisWeekStillOpen.length === 0 ? `<div style="font-size:13px;color:#888;padding-bottom:16px;">לא נפתחו עסקאות חדשות השבוע</div>` : `
+        <div style="font-size:14.5px;font-weight:700;color:#111;margin-bottom:10px;">🟢 נפתחו החודש ונשארו פתוחות (${openedThisWeekStillOpen.length})</div>
+        ${openedThisWeekStillOpen.length === 0 ? `<div style="font-size:13px;color:#888;padding-bottom:16px;">לא נפתחו עסקאות חדשות החודש</div>` : `
         <table style="width:100%;border-collapse:collapse;font-size:13.5px;">
           <tr style="color:#888;font-size:11.5px;text-align:right;">
             <th style="padding:0 12px 6px;text-align:right;">סימבול</th>
@@ -176,8 +178,8 @@ export async function GET(request: Request) {
       </div>
 
       <div style="padding:20px 16px 4px;">
-        <div style="font-size:14.5px;font-weight:700;color:#111;margin-bottom:10px;">✔ נסגרו השבוע (${closedThisWeek.length})</div>
-        ${closedThisWeek.length === 0 ? `<div style="font-size:13px;color:#888;padding-bottom:16px;">לא נסגרו עסקאות השבוע</div>` : `
+        <div style="font-size:14.5px;font-weight:700;color:#111;margin-bottom:10px;">✔ נסגרו החודש (${closedThisWeek.length})</div>
+        ${closedThisWeek.length === 0 ? `<div style="font-size:13px;color:#888;padding-bottom:16px;">לא נסגרו עסקאות החודש</div>` : `
         <table style="width:100%;border-collapse:collapse;font-size:13.5px;">
           <tr style="color:#888;font-size:11.5px;text-align:right;">
             <th style="padding:0 12px 6px;text-align:right;">סימבול</th>
@@ -223,9 +225,9 @@ export async function GET(request: Request) {
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        from: 'סיכום שבועי <noreply@shirandimor.com>',
+        from: 'סיכום החודש <noreply@shirandimor.com>',
         to: 'shiran@shirandimor.com',
-        subject: `סיכום שבועי לקבוצות · ${rangeLabel}`,
+        subject: `סיכום החודש לקבוצות · ${rangeLabel}`,
         html: imageBase64
           ? `<div dir="rtl" style="font-family: Arial, Helvetica, sans-serif; padding: 16px; color:#333;">
               <p>הסיכום מצורף כתמונה למטה - אפשר לשמור ולשלוח אותה כמו שהיא לקבוצת העדכונים.</p>
@@ -236,7 +238,7 @@ ${GROW_LINK}</div>
             </div>`
           : html,
         attachments: imageBase64
-          ? [{ filename: 'סיכום-שבועי.png', content: imageBase64 }]
+          ? [{ filename: 'סיכום-החודש.png', content: imageBase64 }]
           : undefined,
       }),
     });
