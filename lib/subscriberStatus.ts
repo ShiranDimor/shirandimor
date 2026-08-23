@@ -57,4 +57,46 @@ export async function findCompletedTradingPlanIdByContact(phone: string | null |
   return match?.id || null;
 }
 
+// מוודא שיש פרופיל מנוי פעיל לאימייל הזה - יוצר חשבון אם אין, או משדרג ל"מנוי" אם היה "ליד" בלבד.
+// שומר גם את הטלפון והשם המלא על הפרופיל, כדי שאפשר יהיה בעתיד לבדוק שוב מול מאנדיי אם המנוי עדיין בקבוצה.
+// משותף בין אימות מנוי ידני (verify-membership) לבין סנכרון תשלום מ-Grow.
+export async function ensureActiveSubscriberAccount(email: string, phone: string, fullName: string) {
+  const { data: existing } = await supabaseAdmin.from('profiles').select('id, role').eq('email', email).maybeSingle();
+
+  if (existing) {
+    const updates: Record<string, unknown> = { phone, full_name: fullName };
+    if (existing.role !== 'admin' && existing.role !== 'subscriber') {
+      updates.role = 'subscriber';
+      updates.subscription_status = 'active';
+      updates.subscription_started_at = new Date().toISOString();
+    }
+    await supabaseAdmin.from('profiles').update(updates).eq('id', existing.id);
+    return;
+  }
+
+  const { data: created, error } = await supabaseAdmin.auth.admin.createUser({
+    email,
+    email_confirm: true,
+    user_metadata: { phone, full_name: fullName },
+  });
+
+  let userId = created.user?.id;
+
+  if (error || !userId) {
+    // חשבון התחברות כבר קיים באימייל הזה בלי פרופיל (למשל מחיקת מנוי שנעצרה באמצע) - נשלים את הפרופיל
+    // החסר על אותו חשבון קיים במקום להיכשל
+    if (error?.code === 'email_exists' || /already.*registered/i.test(error?.message || '')) {
+      const { data: existingUserId } = await supabaseAdmin.rpc('find_auth_user_id_by_email', { p_email: email });
+      if (!existingUserId) throw new Error(error?.message || 'שגיאה ביצירת חשבון');
+      userId = existingUserId;
+    } else {
+      throw new Error(error?.message || 'שגיאה ביצירת חשבון');
+    }
+  }
+
+  await supabaseAdmin
+    .from('profiles')
+    .upsert({ id: userId, email, full_name: fullName, role: 'subscriber', subscription_status: 'active', subscription_started_at: new Date().toISOString(), phone });
+}
+
 export { normalizePhone, normalizeEmail };

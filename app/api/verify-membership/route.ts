@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin, sendLoginEmail } from '@/lib/instantLogin';
+import { sendLoginEmail } from '@/lib/instantLogin';
+import { ensureActiveSubscriberAccount } from '@/lib/subscriberStatus';
 
 const SUBSCRIBER_GROUP_NAME = 'קבוצת סוחרים';
 
@@ -15,46 +16,6 @@ async function mondayRequest(token: string, query: string, variables: Record<str
     body: JSON.stringify({ query, variables }),
   });
   return res.json();
-}
-
-// מוודא שיש פרופיל מנוי פעיל לאימייל הזה - יוצר חשבון אם אין, או משדרג ל"מנוי" אם היה "ליד" בלבד
-// שומר גם את הטלפון והשם המלא על הפרופיל, כדי שאפשר יהיה בעתיד לבדוק שוב מול מאנדיי אם המנוי עדיין בקבוצה
-async function ensureActiveSubscriber(email: string, phone: string, fullName: string) {
-  const { data: existing } = await supabaseAdmin.from('profiles').select('id, role').eq('email', email).maybeSingle();
-
-  if (existing) {
-    const updates: Record<string, unknown> = { phone, full_name: fullName };
-    if (existing.role !== 'admin' && existing.role !== 'subscriber') {
-      updates.role = 'subscriber';
-      updates.subscription_status = 'active';
-      updates.subscription_started_at = new Date().toISOString();
-    }
-    await supabaseAdmin.from('profiles').update(updates).eq('id', existing.id);
-    return;
-  }
-
-  const { data: created, error } = await supabaseAdmin.auth.admin.createUser({
-    email,
-    email_confirm: true,
-    user_metadata: { phone, full_name: fullName },
-  });
-
-  let userId = created.user?.id;
-
-  if (error || !userId) {
-    // חשבון התחברות כבר קיים באימייל הזה בלי פרופיל (למשל מחיקת מנוי שנעצרה באמצע) - נשלים את הפרופיל החסר על אותו חשבון קיים במקום להיכשל
-    if (error?.code === 'email_exists' || /already.*registered/i.test(error?.message || '')) {
-      const { data: existingUserId } = await supabaseAdmin.rpc('find_auth_user_id_by_email', { p_email: email });
-      if (!existingUserId) throw new Error(error?.message || 'שגיאה ביצירת חשבון');
-      userId = existingUserId;
-    } else {
-      throw new Error(error?.message || 'שגיאה ביצירת חשבון');
-    }
-  }
-
-  await supabaseAdmin
-    .from('profiles')
-    .upsert({ id: userId, email, full_name: fullName, role: 'subscriber', subscription_status: 'active', subscription_started_at: new Date().toISOString(), phone });
 }
 
 export async function POST(request: Request) {
@@ -143,7 +104,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ verified: false, configured: true });
     }
 
-    await ensureActiveSubscriber(email, phone, fullName);
+    await ensureActiveSubscriberAccount(email, phone, fullName);
     await sendLoginEmail(email);
 
     return NextResponse.json({ verified: true, configured: true });
