@@ -20,7 +20,7 @@ export async function GET(request: Request) {
   }
 
   const [{ data: rows }, { phones: subscriberPhones, emails: subscriberEmails }, { phones: mondayPhones, emails: mondayEmails }] = await Promise.all([
-    supabaseAdmin.from('trading_plan_responses').select('name, phone, email, admin_viewed_at').in('status', ['in_progress', 'completed']),
+    supabaseAdmin.from('trading_plan_responses').select('name, phone, email, admin_viewed_at, admin_handled_at').in('status', ['in_progress', 'completed']),
     getActiveSubscriberContacts(),
     getMondaySubscriberContacts(),
   ]);
@@ -35,7 +35,9 @@ export async function GET(request: Request) {
       (r.name || r.phone || r.email)
   );
   const total = leadsOnly.length;
-  const unread = leadsOnly.filter((r) => !r.admin_viewed_at).length;
+  // "חדש" נספר רק מבין לידים שעדיין לא טופלו - ליד שכבר סומן "טופל" לא צריך תשומת לב,
+  // גם אם מעולם לא נלחץ עליו "פרטים מלאים" (למשל סומן כטופל ישירות בלי לפתוח קודם)
+  const unread = leadsOnly.filter((r) => !r.admin_viewed_at && !r.admin_handled_at).length;
 
   return NextResponse.json({ total, unread });
 }
