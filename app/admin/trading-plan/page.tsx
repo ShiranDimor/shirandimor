@@ -55,6 +55,7 @@ export default function AdminTradingPlanAbandonedPage() {
 
   const [rows, setRows] = useState<AbandonedRow[]>([]);
   const [loadingRows, setLoadingRows] = useState(false);
+  const [leadStats, setLeadStats] = useState<{ total: number; leads: number; blank: number; alreadySubscriber: number } | null>(null);
 
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [details, setDetails] = useState<Record<string, DetailAnswer[]>>({});
@@ -100,6 +101,7 @@ export default function AdminTradingPlanAbandonedPage() {
     if (res.ok) {
       const data = await res.json();
       setRows(data.rows || []);
+      setLeadStats(data.stats || null);
     }
     setLoadingRows(false);
   }
@@ -317,6 +319,14 @@ export default function AdminTradingPlanAbandonedPage() {
         כל מי שמילא את השאלון - גם מי שהשלים וגם מי שננטש באמצע. {activeRows.filter((r) => !r.viewed).length > 0 ? `${activeRows.filter((r) => !r.viewed).length} מהם חדשים - עדיין לא נפתחו. ` : ''}
         "פרטים מלאים" מציג את כל התשובות, ומסמן שנצפה. "סימון כטופל" מעביר את הליד לאזור נפרד למטה.
       </p>
+
+      {leadStats && (
+        <p style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginBottom: '20px', lineHeight: 1.7 }}>
+          מתוך {leadStats.total} שלחצו "התחלה": {leadStats.blank > 0 ? `${leadStats.blank} עזבו בלי להשאיר שם/טלפון/מייל (אי אפשר ליצור איתם קשר), ` : ''}
+          {leadStats.alreadySubscriber > 0 ? `${leadStats.alreadySubscriber} כבר מנויים (לא מוצגים כאן כי כבר המירו), ` : ''}
+          ונשארו {leadStats.leads} לידים בני-פנייה ברשימה למטה. במשפך ההמרה באנליטיקה רואים גם את כל הלחיצות על "התחלה" שבכלל לא הגיעו לטופס הפרטים.
+        </p>
+      )}
 
       {loadingRows && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>טוענים...</p>}
       {!loadingRows && activeRows.length === 0 && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>אין כרגע אף אחד לטיפול</p>}

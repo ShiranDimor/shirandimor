@@ -37,18 +37,23 @@ export async function GET(request: Request) {
     getActiveSubscriberContacts(),
     getMondaySubscriberContacts(),
   ]);
-  const leadsOnly = (data || []).filter(
-    (r) =>
-      !subscriberPhones.has(normalizePhone(r.phone)) &&
-      !subscriberEmails.has(normalizeEmail(r.email)) &&
-      // גם מנוי שמנוהל רק ב-Monday.com (בקבוצת "קבוצת סוחרים"), בלי חשבון תואם באתר -
-      // לפי טלפון או מייל, כי לרוב אין טלפון שמור
-      !mondayPhones.has(normalizePhone(r.phone)) &&
-      !mondayEmails.has(normalizeEmail(r.email)) &&
-      // מי שלחץ "התחלה" ועזב מיד, בלי שם/טלפון/מייל - אין שום דרך ליצור איתו קשר, אז אין
-      // טעם להציג אותו כ"ליד" ברשימה. הכמות הכוללת של ניסיונות כאלה נראית במשפך ההמרה באדמין
-      (r.name || r.phone || r.email)
-  );
+
+  const isSubscriber = (r: { phone: string | null; email: string | null }) =>
+    subscriberPhones.has(normalizePhone(r.phone)) ||
+    subscriberEmails.has(normalizeEmail(r.email)) ||
+    // גם מנוי שמנוהל רק ב-Monday.com (בקבוצת "קבוצת סוחרים"), בלי חשבון תואם באתר -
+    // לפי טלפון או מייל, כי לרוב אין טלפון שמור
+    mondayPhones.has(normalizePhone(r.phone)) ||
+    mondayEmails.has(normalizeEmail(r.email));
+  const hasContact = (r: { name: string | null; phone: string | null; email: string | null }) => !!(r.name || r.phone || r.email);
+
+  const allRows = data || [];
+  // מי שלחץ "התחלה" ועזב מיד, בלי שם/טלפון/מייל - אין שום דרך ליצור איתו קשר, אז אין טעם
+  // להציג אותו כ"ליד" ברשימה. במקום זאת סופרים אותו בנפרד, כדי שהפער מול מספר המתחילים
+  // הכולל (שרואים במשפך ההמרה) יהיה מוסבר ולא נראה כמו אי-התאמה
+  const leadsOnly = allRows.filter((r) => !isSubscriber(r) && hasContact(r));
+  const blankCount = allRows.filter((r) => !hasContact(r)).length;
+  const alreadySubscriberCount = allRows.filter((r) => hasContact(r) && isSubscriber(r)).length;
 
   const rows = leadsOnly.map((r) => ({
     id: r.id,
@@ -67,5 +72,8 @@ export async function GET(request: Request) {
     handledAt: r.admin_handled_at,
   }));
 
-  return NextResponse.json({ rows });
+  return NextResponse.json({
+    rows,
+    stats: { total: allRows.length, leads: rows.length, blank: blankCount, alreadySubscriber: alreadySubscriberCount },
+  });
 }
