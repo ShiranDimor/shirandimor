@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/instantLogin';
+import { createLiveCalendarEvent } from '@/lib/googleCalendar';
 
 async function requireAdmin(request: Request) {
   const authHeader = request.headers.get('Authorization') || '';
@@ -65,5 +66,33 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'שגיאה בשמירה' }, { status: 500 });
   }
 
-  return NextResponse.json({ live: data });
+  let live = data;
+
+  // אם לא הוזנו ידנית פרטי הצטרפות - יוצרים אוטומטית אירוע ביומן Google של שירן עם קישור Meet,
+  // וממלאים אותו כפרטי ההצטרפות של הלייב (עובד רק אם חובר יומן Google, ולא נכשל אם לא)
+  if (!joinInfo) {
+    const meetLink = await createLiveCalendarEvent(title, (description as string) || null, live.scheduled_at, live.id);
+    if (meetLink) {
+      const { data: updated } = await supabaseAdmin
+        .from('lives')
+        .update({ join_info: meetLink })
+        .eq('id', live.id)
+        .select('*')
+        .single();
+      if (updated) live = updated;
+    }
+  }
+
+  // רושמים אוטומטית את המנהלת עצמה כנרשמת ללייב שהיא יצרה
+  const { data: adminProfile } = await supabaseAdmin.from('profiles').select('full_name, phone, email').eq('id', admin.id).maybeSingle();
+  await supabaseAdmin.from('live_registrations').insert({
+    live_id: live.id,
+    user_id: admin.id,
+    name: adminProfile?.full_name || null,
+    phone: adminProfile?.phone || null,
+    email: adminProfile?.email || admin.email || null,
+    is_subscriber: true,
+  });
+
+  return NextResponse.json({ live });
 }
