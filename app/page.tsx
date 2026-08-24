@@ -26,6 +26,7 @@ export default function HomePage() {
   const [leadEmail, setLeadEmail] = useState('');
   const [leadSubmitting, setLeadSubmitting] = useState(false);
   const [leadError, setLeadError] = useState('');
+  const [leadAlreadySubscriber, setLeadAlreadySubscriber] = useState(false);
   const [openTrades, setOpenTrades] = useState<Trade[]>([]);
   const [lastClosed, setLastClosed] = useState<Trade | null>(null);
   const [openCount, setOpenCount] = useState(0);
@@ -48,19 +49,23 @@ export default function HomePage() {
     setLeadSubmitting(true);
     setLeadError('');
 
+    let alreadySubscriber = false;
     try {
-      await fetch('/api/lead', {
+      const res = await fetch('/api/lead', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: leadName, phone: leadPhone, email: leadEmail }),
       });
+      const data = await res.json().catch(() => null);
+      alreadySubscriber = !!data?.alreadySubscriber;
     } catch (e) {
       // ממשיכים לוואטסאפ גם אם השליחה נכשלה, כדי לא לאבד את ההצטרפות
     }
 
     setLeadSubmitting(false);
+    setLeadAlreadySubscriber(alreadySubscriber);
     setLeadSubmitted(true);
-    trackFunnelEvent('free_group_lead_submitted', { phone: leadPhone, email: leadEmail });
+    if (!alreadySubscriber) trackFunnelEvent('free_group_lead_submitted', { phone: leadPhone, email: leadEmail });
   }
 
   useEffect(() => {
@@ -160,7 +165,18 @@ export default function HomePage() {
           </div>
         )}
 
-        {showLeadForm && leadSubmitted && (
+        {showLeadForm && leadSubmitted && leadAlreadySubscriber && (
+          <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-hairline-strong)', borderRight: '3px solid var(--lavender)', borderRadius: '10px', padding: '16px', marginBottom: '10px', textAlign: 'center' }}>
+            <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '14px' }}>
+              הפרטים האלה כבר שייכים למנוי פעיל בקבוצת הסוחרים &quot;מדברים עסקאות&quot; - אין צורך להצטרף גם לקבוצת העדכונים, כי כמנויים מקבלים שם את כל מה שיש בקבוצת העדכונים, ועוד הרבה יותר.
+            </p>
+            <Link href="/journal" className="btn-primary" style={{ display: 'block', textDecoration: 'none' }}>
+              מעבר לאזור האישי ←
+            </Link>
+          </div>
+        )}
+
+        {showLeadForm && leadSubmitted && !leadAlreadySubscriber && (
           <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-hairline-strong)', borderRight: '3px solid var(--profit)', borderRadius: '10px', padding: '16px', marginBottom: '10px', textAlign: 'center' }}>
             <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '14px' }}>
               מעולה! הכפתור פותח את קבוצת הוואטסאפ, וההצטרפות משם היא כבר עניין של רגע.

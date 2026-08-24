@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+import { isActiveSubscriber } from '@/lib/subscriberStatus';
+import { isContactInSubscribersGroupMonday } from '@/lib/tradingPlan/monday';
 
 const LEAD_GROUP_NAME = 'לידים חדשים';
 const CAMPAIGN_COLUMN_TITLE = 'campaign_name';
@@ -78,6 +80,14 @@ export async function POST(request: Request) {
 
   if (!name || !phone) {
     return NextResponse.json({ error: 'חסרים פרטים' }, { status: 400 });
+  }
+
+  // מי שכבר מנוי פעיל (באתר או בקבוצת הסוחרים ב-Monday) לא צריך להצטרף לקבוצת העדכונים -
+  // הוא כבר מקבל את כל מה שיש שם ועוד הרבה יותר. בלי הבדיקה הזו כל הרשמה כזו יוצרת ליד מיותר
+  // ב-Monday שצריך לזהות ולמחוק ידנית
+  const isSubscriber = (await isActiveSubscriber(phone, email)) || (await isContactInSubscribersGroupMonday(phone, email));
+  if (isSubscriber) {
+    return NextResponse.json({ ok: true, alreadySubscriber: true });
   }
 
   const token = process.env.MONDAY_API_TOKEN;
