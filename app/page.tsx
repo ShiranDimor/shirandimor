@@ -122,11 +122,11 @@ export default function HomePage() {
     <div className="wrap">
       <header>
         <Link href="/" className="brand">מסחר <span>אחראי</span> במניות</Link>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, auto)', gap: '8px' }}>
           <Link href="/trading-plan" className="nav-cta-orange">תוכנית מסחר</Link>
           <Link href="/lives" className="nav-cta-live"><span className="live-dot" />לייבים</Link>
-          <Link href="/portfolio" className="nav-link">תיק מסחר</Link>
-          <Link href="/login" className="nav-link">כניסה לסוחרים</Link>
+          <Link href="/portfolio" className="nav-cta-teal">תיק מסחר</Link>
+          <Link href="/login" className="nav-cta-teal">כניסה לסוחרים</Link>
         </div>
       </header>
 

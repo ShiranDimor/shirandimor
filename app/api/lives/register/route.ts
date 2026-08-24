@@ -76,7 +76,7 @@ async function hasExistingPhone(token: string, boardId: string, phoneColumnId: s
   return false;
 }
 
-async function createMondayLiveLead(name: string, phone: string, email: string | null, liveTitle: string) {
+async function createMondayLiveLead(name: string, phone: string, email: string | null, liveTitle: string, liveScheduledAt: string) {
   const token = process.env.MONDAY_API_TOKEN;
   const boardId = process.env.MONDAY_BOARD_ID;
   if (!token || !boardId) return;
@@ -88,10 +88,14 @@ async function createMondayLiveLead(name: string, phone: string, email: string |
       ? await hasExistingPhone(token, boardId, phoneColumnId, normalizeMondayPhone(phone)).catch(() => false)
       : false;
 
+    // מוסיפים את תאריך הלייב לשם הקמפיין, כדי שאפשר יהיה להבדיל בין לידים מלייבים שונים בלוח
+    const liveDateLabel = new Date(liveScheduledAt).toLocaleDateString('he-IL');
+    const campaignValue = `${CAMPAIGN_VALUE} - ${liveDateLabel}`;
+
     const columnValues: Record<string, unknown> = {};
     if (phoneColumnId) columnValues[phoneColumnId] = { phone: phone.startsWith('0') ? `972${phone.slice(1)}` : phone, countryShortName: 'IL' };
     if (emailColumnId && email) columnValues[emailColumnId] = { email, text: email };
-    if (campaignColumnId) columnValues[campaignColumnId] = CAMPAIGN_VALUE;
+    if (campaignColumnId) columnValues[campaignColumnId] = campaignValue;
 
     const createItemData = await mondayRequest(
       token,
@@ -138,7 +142,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'חסר מזהה לייב' }, { status: 400 });
   }
 
-  const { data: live, error: liveError } = await supabaseAdmin.from('lives').select('id, title, join_info').eq('id', liveId).eq('published', true).maybeSingle();
+  const { data: live, error: liveError } = await supabaseAdmin.from('lives').select('id, title, join_info, scheduled_at').eq('id', liveId).eq('published', true).maybeSingle();
   if (liveError || !live) {
     return NextResponse.json({ error: 'הלייב לא נמצא' }, { status: 404 });
   }
@@ -194,7 +198,7 @@ export async function POST(request: Request) {
     is_subscriber: false,
   });
 
-  await createMondayLiveLead(name, phone, email || null, live.title).catch(() => {});
+  await createMondayLiveLead(name, phone, email || null, live.title, live.scheduled_at).catch(() => {});
 
   return NextResponse.json({ ok: true, isSubscriber: false });
 }
