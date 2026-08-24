@@ -377,7 +377,8 @@
   .about-feature {
     position: relative; background: linear-gradient(135deg, rgba(79,201,196,0.08), rgba(156,143,217,0.06));
     border: 1px solid var(--border-hairline-strong); border-right: 3px solid var(--teal);
-    border-radius: 12px; padding: 20px 20px 20px 18px; margin: 26px 0 16px;
+    /* צורה א-סימטרית ורכה במקום מלבן - מייחדת את הכרטיס האישי מכל שאר הכרטיסים בעמוד */
+    border-radius: 30px 10px 30px 10px; padding: 20px 20px 20px 18px; margin: 26px 0 16px;
     display: flex; gap: 16px; align-items: flex-start;
   }
   .about-feature .af-photo {
