@@ -203,11 +203,11 @@ export default function HomePage() {
         <div className="tp-home-teaser-cta">להתחיל <span>←</span></div>
       </Link>
 
-      <Link href="/lives" className="tp-home-teaser">
-        <div className="tp-home-teaser-badge">שאלות בזמן אמת</div>
-        <div className="tp-home-teaser-title">הלייבים הקרובים</div>
-        <div className="tp-home-teaser-text">מפגשים חיים - מנויים נרשמים בלחיצה אחת, וכל אחד אחר יכול להשאיר פרטים ולהצטרף.</div>
-        <div className="tp-home-teaser-cta">לצפייה בלייבים הקרובים <span>←</span></div>
+      <Link href="/lives" className="live-teaser">
+        <div className="live-teaser-badge"><span className="live-dot" />לייב</div>
+        <div className="live-teaser-title">הלייבים הקרובים</div>
+        <div className="live-teaser-text">מפגשים חיים - מנויים נרשמים בלחיצה אחת, וכל אחד אחר יכול להשאיר פרטים ולהצטרף.</div>
+        <div className="live-teaser-cta">לצפייה בלייבים הקרובים <span>←</span></div>
       </Link>
 
       <div className="about-feature">
