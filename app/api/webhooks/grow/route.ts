@@ -22,12 +22,24 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: 'invalid_body' }, { status: 400 });
   }
 
+  // רושמים את גוף הבקשה הגולמי (וה-headers) מייד עם הקבלה, לפני כל בדיקת אימות/תוקף - כדי שגם
+  // בקשה שנדחית תישאר ניתנת לאבחון בלוגים, ולא "תיעלם" בלי עקבות
+  console.log('Grow webhook: בקשה גולמית התקבלה', {
+    headers: Object.fromEntries(request.headers.entries()),
+    body,
+  });
+
   const payment = parseGrowPayload(body);
+  const headerKey =
+    request.headers.get('x-webhook-key') ||
+    request.headers.get('webhook-key') ||
+    request.headers.get('x-api-key') ||
+    request.headers.get('x-grow-webhook-key');
 
   const expectedKey = process.env.GROW_WEBHOOK_SECRET;
   if (expectedKey) {
-    if (payment.webhookKey !== expectedKey) {
-      console.error('Grow webhook: מפתח אימות שגוי או חסר');
+    if (payment.webhookKey !== expectedKey && headerKey !== expectedKey) {
+      console.error('Grow webhook: מפתח אימות שגוי או חסר', { bodyKey: payment.webhookKey, headerKey });
       return NextResponse.json({ ok: false, error: 'unauthorized' }, { status: 401 });
     }
   } else {
