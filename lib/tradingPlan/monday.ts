@@ -49,53 +49,11 @@ async function getBoardSchema(token: string, boardId: string) {
   };
 }
 
-// בודק אם ערך מנורמל (טלפון או מייל) קיים בעמודה נתונה בתוך קבוצה ב-Monday.com - כדי לתפוס גם
-// מנוי ששירן ניהלה/אישרה ידנית שם, בלי שאי פעם נוצר לו חשבון באתר עצמו (ולכן לא ניתן
-// לזהות אותו דרך טבלת המנויים באתר). normalize מקבל את פונקציית הנרמול המתאימה (טלפון/מייל).
-async function isTextInGroup(
-  token: string,
-  boardId: string,
-  groupId: string,
-  columnId: string,
-  target: string,
-  normalize: (raw: string) => string
-): Promise<boolean> {
-  let cursor: string | null = null;
-
-  do {
-    const itemsData: any = await mondayRequest(
-      token,
-      `query ($boardId: ID!, $groupId: [String!], $cursor: String, $columnIds: [String!]) {
-        boards (ids: [$boardId]) {
-          groups (ids: $groupId) {
-            items_page (limit: 100, cursor: $cursor) {
-              cursor
-              items { column_values (ids: $columnIds) { text } }
-            }
-          }
-        }
-      }`,
-      { boardId, groupId: [groupId], cursor, columnIds: [columnId] }
-    );
-
-    const page = itemsData?.data?.boards?.[0]?.groups?.[0]?.items_page;
-    const items: { column_values: { text: string | null }[] }[] = page?.items || [];
-
-    const found = items.some((item) => {
-      const text = item.column_values?.[0]?.text;
-      return text && normalize(text) === target;
-    });
-    if (found) return true;
-
-    cursor = page?.cursor || null;
-  } while (cursor);
-
-  return false;
-}
-
 // בדיקה ציבורית: האם הטלפון או המייל הזה נמצאים בקבוצת "קבוצת סוחרים" ב-Monday.com - להשלמת
 // הבדיקה isActiveSubscriber (שבודקת רק מול טבלת profiles באתר) עבור מנויים שמנוהלים רק ב-Monday.
 // בודקים גם מייל ולא רק טלפון - לרוב המנויים בפועל אין טלפון שמור, רק מייל.
+// עובר על הקבוצה במעבר יחיד (טלפון ומייל באותה קריאה, עם limit גבוה) במקום שני מעברים נפרדים -
+// זה מה שגרם לבדיקה לקחת כמה שניות טובות בהרשמה ללייב
 export async function isContactInSubscribersGroupMonday(
   phone: string | null | undefined,
   email: string | null | undefined
@@ -108,15 +66,50 @@ export async function isContactInSubscribersGroupMonday(
     const { subscriberGroupId, phoneColumnId, emailColumnId } = await getBoardSchema(token, boardId);
     if (!subscriberGroupId || (!phoneColumnId && !emailColumnId)) return false;
 
-    if (phone && phoneColumnId) {
-      const found = await isTextInGroup(token, boardId, subscriberGroupId, phoneColumnId, normalizePhone(phone), normalizePhone);
+    const targetPhone = phone && phoneColumnId ? normalizePhone(phone) : null;
+    const targetEmail = email && emailColumnId ? email.trim().toLowerCase() : null;
+    if (!targetPhone && !targetEmail) return false;
+
+    const columnIds = [phoneColumnId, emailColumnId].filter(Boolean) as string[];
+    const phoneIndex = columnIds.indexOf(phoneColumnId || '');
+    const emailIndex = columnIds.indexOf(emailColumnId || '');
+
+    let cursor: string | null = null;
+    do {
+      const itemsData: any = await mondayRequest(
+        token,
+        `query ($boardId: ID!, $groupId: [String!], $cursor: String, $columnIds: [String!]) {
+          boards (ids: [$boardId]) {
+            groups (ids: $groupId) {
+              items_page (limit: 500, cursor: $cursor) {
+                cursor
+                items { column_values (ids: $columnIds) { text } }
+              }
+            }
+          }
+        }`,
+        { boardId, groupId: [subscriberGroupId], cursor, columnIds }
+      );
+
+      const page = itemsData?.data?.boards?.[0]?.groups?.[0]?.items_page;
+      const items: { column_values: { text: string | null }[] }[] = page?.items || [];
+
+      const found = items.some((item) => {
+        if (targetPhone && phoneIndex >= 0) {
+          const text = item.column_values?.[phoneIndex]?.text;
+          if (text && normalizePhone(text) === targetPhone) return true;
+        }
+        if (targetEmail && emailIndex >= 0) {
+          const text = item.column_values?.[emailIndex]?.text;
+          if (text && text.trim().toLowerCase() === targetEmail) return true;
+        }
+        return false;
+      });
       if (found) return true;
-    }
-    if (email && emailColumnId) {
-      const target = email.trim().toLowerCase();
-      const found = await isTextInGroup(token, boardId, subscriberGroupId, emailColumnId, target, (raw) => raw.trim().toLowerCase());
-      if (found) return true;
-    }
+
+      cursor = page?.cursor || null;
+    } while (cursor);
+
     return false;
   } catch (e) {
     console.error('שגיאה בבדיקת קבוצת הסוחרים ב-Monday.com', e);

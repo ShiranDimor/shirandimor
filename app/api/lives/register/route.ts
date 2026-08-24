@@ -88,8 +88,9 @@ async function createMondayLiveLead(name: string, phone: string, email: string |
       ? await hasExistingPhone(token, boardId, phoneColumnId, normalizeMondayPhone(phone)).catch(() => false)
       : false;
 
-    // מוסיפים את תאריך הלייב לשם הקמפיין, כדי שאפשר יהיה להבדיל בין לידים מלייבים שונים בלוח
-    const liveDateLabel = new Date(liveScheduledAt).toLocaleDateString('he-IL');
+    // מוסיפים את תאריך ושעת הלייב לשם הקמפיין, כדי שאפשר יהיה להבדיל בין לידים מלייבים שונים בלוח
+    const liveDate = new Date(liveScheduledAt);
+    const liveDateLabel = `${liveDate.toLocaleDateString('he-IL')} ${liveDate.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}`;
     const campaignValue = `${CAMPAIGN_VALUE} - ${liveDateLabel}`;
 
     const columnValues: Record<string, unknown> = {};

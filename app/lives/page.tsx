@@ -176,7 +176,7 @@ export default function LivesPage() {
           {confirmedLeadIds.has(live.id) && (
             <div style={{ background: 'var(--profit-bg)', border: '1px solid var(--profit)', borderRadius: '8px', padding: '12px 14px', marginBottom: '10px', fontSize: '13px', lineHeight: 1.6 }}>
               <p style={{ marginBottom: '10px' }}>✓ הפרטים נקלטו! הלייבים האלה פתוחים למנויי קבוצת הסוחרים &quot;מדברים עסקאות&quot;. אפשר להצטרף עכשיו לחודש ניסיון ב-50% הנחה ולקבל גישה מיידית:</p>
-              <Link href="/subscribe" className="btn-primary" style={{ display: 'block', textAlign: 'center', textDecoration: 'none', marginBottom: '10px' }}>
+              <Link href="/subscribe" className="btn-primary" style={{ display: 'block', textAlign: 'center', textDecoration: 'none', marginBottom: '10px', background: accentColor }}>
                 להצטרפות לקבוצת הסוחרים ←
               </Link>
               <p style={{ marginBottom: '8px' }}>יש שאלות לפני שמצטרפים? אפשר לשלוח לי הודעה בוואטסאפ:</p>
