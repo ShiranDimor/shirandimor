@@ -62,6 +62,7 @@ export default function AdminLivesPage() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [registrations, setRegistrations] = useState<Record<string, Registration[]>>({});
   const [loadingRegsId, setLoadingRegsId] = useState<string | null>(null);
+  const [deletingRegId, setDeletingRegId] = useState<string | null>(null);
 
   useEffect(() => {
     checkAdmin();
@@ -172,6 +173,16 @@ export default function AdminLivesPage() {
         setRegistrations((prev) => ({ ...prev, [id]: data.registrations || [] }));
       }
       setLoadingRegsId(null);
+    }
+  }
+
+  async function handleDeleteRegistration(liveId: string, regId: string) {
+    if (!window.confirm('למחוק את הנרשם הזה?')) return;
+    setDeletingRegId(regId);
+    const res = await fetch(`/api/admin/lives/${liveId}/registrations?registrationId=${regId}`, { method: 'DELETE', headers: await authHeader() });
+    setDeletingRegId(null);
+    if (res.ok) {
+      setRegistrations((prev) => ({ ...prev, [liveId]: (prev[liveId] || []).filter((r) => r.id !== regId) }));
     }
   }
 
@@ -300,8 +311,23 @@ export default function AdminLivesPage() {
                       {waLink ? <a href={waLink} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--teal)' }}>{r.phone}</a> : (r.phone || '—')}
                       {' '}· {r.email || '—'}
                     </span>
-                    <span style={{ color: r.is_subscriber ? 'var(--text-tertiary)' : 'var(--loss)', fontSize: '11.5px', fontWeight: r.is_subscriber ? 400 : 700 }}>
-                      {r.is_subscriber ? 'מנוי' : 'לא מנוי - לפנות'}
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ color: r.is_subscriber ? 'var(--text-tertiary)' : 'var(--loss)', fontSize: '11.5px', fontWeight: r.is_subscriber ? 400 : 700 }}>
+                        {r.is_subscriber ? 'מנוי' : 'לא מנוי - לפנות'}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteRegistration(live.id, r.id)}
+                        disabled={deletingRegId === r.id}
+                        title="מחיקת נרשם"
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', lineHeight: 0 }}
+                      >
+                        {deletingRegId === r.id ? '…' : (
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--loss)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M3 6h18" /><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /><line x1="10" y1="11" x2="10" y2="17" /><line x1="14" y1="11" x2="14" y2="17" />
+                          </svg>
+                        )}
+                      </button>
                     </span>
                   </div>
                 );

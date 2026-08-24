@@ -29,3 +29,18 @@ export async function GET(request: Request, { params }: { params: { id: string }
 
   return NextResponse.json({ registrations: data });
 }
+
+// DELETE - מחיקת נרשם בודד ללייב (לדוגמה הרשמות ניסיון של המנהלת)
+export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+  const admin = await requireAdmin(request);
+  if (!admin) return NextResponse.json({ error: 'אין הרשאת ניהול' }, { status: 403 });
+
+  const { searchParams } = new URL(request.url);
+  const registrationId = searchParams.get('registrationId');
+  if (!registrationId) return NextResponse.json({ error: 'חסר מזהה נרשם' }, { status: 400 });
+
+  const { error } = await supabaseAdmin.from('live_registrations').delete().eq('id', registrationId).eq('live_id', params.id);
+  if (error) return NextResponse.json({ error: 'שגיאה במחיקה' }, { status: 500 });
+
+  return NextResponse.json({ ok: true });
+}
