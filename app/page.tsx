@@ -203,6 +203,13 @@ export default function HomePage() {
         <div className="tp-home-teaser-cta">להתחיל <span>←</span></div>
       </Link>
 
+      <Link href="/lives" className="tp-home-teaser">
+        <div className="tp-home-teaser-badge">שאלות בזמן אמת</div>
+        <div className="tp-home-teaser-title">הלייבים הקרובים</div>
+        <div className="tp-home-teaser-text">מפגשים חיים - מנויים נרשמים בלחיצה אחת, וכל אחד אחר יכול להשאיר פרטים ולהצטרף.</div>
+        <div className="tp-home-teaser-cta">לצפייה בלייבים הקרובים <span>←</span></div>
+      </Link>
+
       <div className="about-feature">
         <img className="af-photo" src="/shiran-photo.jpg" alt="שירן דימור" />
         <div className="af-text">

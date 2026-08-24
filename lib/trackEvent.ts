@@ -6,7 +6,9 @@ export type FunnelEvent =
   | 'whatsapp_group_open_click'
   | 'trading_plan_started'
   | 'trading_plan_completed'
-  | 'payment_link_click';
+  | 'payment_link_click'
+  | 'live_registered'
+  | 'live_registration_lead';
 
 // מיפוי לאירועי המרה סטנדרטיים של פייסבוק/מטא, כדי שקמפיינים ממומנים ידעו לבצע אופטימיזציה
 // לפי מי שבאמת מתקדם במשפך - לא רק כניסות לעמוד. פועל רק אם ה-Pixel מוגדר (ראו components/MetaPixel).
@@ -16,6 +18,8 @@ const META_PIXEL_EVENT: Record<FunnelEvent, string> = {
   trading_plan_started: 'InitiateCheckout',
   trading_plan_completed: 'CompleteRegistration',
   payment_link_click: 'AddPaymentInfo',
+  live_registered: 'CompleteRegistration',
+  live_registration_lead: 'Lead',
 };
 
 // שולח את האירוע ל-Vercel Analytics, לדאטהבייס שלנו (למשפך ההמרה באדמין) ול-Meta Pixel (אם מוגדר).

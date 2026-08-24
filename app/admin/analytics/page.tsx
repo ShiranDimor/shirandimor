@@ -21,6 +21,8 @@ const EVENT_LABELS: { key: string; label: string; icon: string }[] = [
   { key: 'trading_plan_started', label: 'התחלת שאלון תוכנית מסחר', icon: '🚀' },
   { key: 'trading_plan_completed', label: 'השלמת שאלון תוכנית מסחר', icon: '✅' },
   { key: 'payment_link_click', label: 'לחיצה על קישור תשלום', icon: '💳' },
+  { key: 'live_registered', label: 'הרשמת מנוי ללייב', icon: '🎥' },
+  { key: 'live_registration_lead', label: 'ליד מהרשמה ללייב', icon: '🙋' },
 ];
 
 function sinceFor(range: RangeKey): string | null {

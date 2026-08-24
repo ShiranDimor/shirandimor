@@ -168,6 +168,12 @@ export default function AdminDashboard() {
           <div className="at-count">ניהול תוכן</div>
         </Link>
 
+        <Link href="/admin/lives" className="admin-tile">
+          <div className="at-icon">📡</div>
+          <div className="at-title">לייבים</div>
+          <div className="at-count">ניהול והרשמות</div>
+        </Link>
+
         <Link href="/admin/analytics" className="admin-tile">
           <div className="at-icon">📈</div>
           <div className="at-title">משפך המרה</div>
