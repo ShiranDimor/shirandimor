@@ -35,10 +35,21 @@ export default function LivesPage() {
   const [email, setEmail] = useState('');
   const [submittingId, setSubmittingId] = useState<string | null>(null);
   const [error, setError] = useState('');
-  const [leadConfirmedId, setLeadConfirmedId] = useState<string | null>(null);
+  const [confirmedLeadIds, setConfirmedLeadIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     loadLives();
+    // שחזור מצב "הפרטים נקלטו" ממי שכבר השאיר פרטים כליד בעבר בדפדפן הזה (לדוגמה אחרי חזרה מדף ההצטרפות)
+    try {
+      const stored = new Set<string>();
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key?.startsWith('live_lead_')) stored.add(key.replace('live_lead_', ''));
+      }
+      setConfirmedLeadIds(stored);
+    } catch (e) {
+      // localStorage לא זמין (למשל גלישה פרטית) - לא קריטי, פשוט לא ישוחזר המצב
+    }
   }, []);
 
   async function loadLives() {
@@ -119,7 +130,8 @@ export default function LivesPage() {
         setLives((prev) => prev.map((l) => (l.id === liveId ? { ...l, registered: true, joinInfo: data.joinInfo } : l)));
       } else {
         trackFunnelEvent('live_registration_lead', { phone, email });
-        setLeadConfirmedId(liveId);
+        setConfirmedLeadIds((prev) => new Set(prev).add(liveId));
+        try { localStorage.setItem(`live_lead_${liveId}`, '1'); } catch (e) {}
       }
       setOpenFormId(null);
     } catch (e) {
@@ -161,7 +173,7 @@ export default function LivesPage() {
               ✓ נרשמת! פרטי ההצטרפות יישלחו בקרוב.
             </div>
           )}
-          {leadConfirmedId === live.id && (
+          {confirmedLeadIds.has(live.id) && (
             <div style={{ background: 'var(--profit-bg)', border: '1px solid var(--profit)', borderRadius: '8px', padding: '12px 14px', marginBottom: '10px', fontSize: '13px', lineHeight: 1.6 }}>
               <p style={{ marginBottom: '10px' }}>✓ הפרטים נקלטו! הלייבים האלה פתוחים למנויי קבוצת הסוחרים &quot;מדברים עסקאות&quot;. אפשר להצטרף עכשיו לחודש ניסיון ב-50% הנחה ולקבל גישה מיידית:</p>
               <Link href="/subscribe" className="btn-primary" style={{ display: 'block', textAlign: 'center', textDecoration: 'none', marginBottom: '10px' }}>
@@ -190,7 +202,7 @@ export default function LivesPage() {
             </div>
           )}
 
-          {!live.registered && leadConfirmedId !== live.id && (
+          {!live.registered && !confirmedLeadIds.has(live.id) && (
             <>
               {viewerIsSubscriber ? (
                 <button type="button" className="btn-primary" style={{ background: accentColor }} onClick={() => registerSubscriber(live.id)} disabled={submittingId === live.id}>
