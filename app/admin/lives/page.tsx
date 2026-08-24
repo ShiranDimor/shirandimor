@@ -291,12 +291,21 @@ export default function AdminLivesPage() {
               {loadingRegsId !== live.id && (registrations[live.id] || []).length === 0 && (
                 <p style={{ fontSize: '12.5px', color: 'var(--text-tertiary)' }}>עדיין אין נרשמים</p>
               )}
-              {(registrations[live.id] || []).map((r) => (
-                <div key={r.id} style={{ fontSize: '13px', padding: '6px 0', borderBottom: '1px solid var(--border-hairline)', display: 'flex', justifyContent: 'space-between' }}>
-                  <span>{r.name || '—'} · {r.phone || '—'} · {r.email || '—'}</span>
-                  <span style={{ color: r.is_subscriber ? 'var(--profit)' : 'var(--text-tertiary)', fontSize: '11.5px' }}>{r.is_subscriber ? 'מנוי' : 'ליד'}</span>
-                </div>
-              ))}
+              {(registrations[live.id] || []).map((r) => {
+                const waLink = r.phone ? `https://wa.me/972${r.phone.replace(/\D/g, '').replace(/^0/, '')}` : null;
+                return (
+                  <div key={r.id} style={{ fontSize: '13px', padding: '6px 0', borderBottom: '1px solid var(--border-hairline)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                    <span>
+                      {r.name || '—'} ·{' '}
+                      {waLink ? <a href={waLink} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--teal)' }}>{r.phone}</a> : (r.phone || '—')}
+                      {' '}· {r.email || '—'}
+                    </span>
+                    <span style={{ color: r.is_subscriber ? 'var(--text-tertiary)' : 'var(--loss)', fontSize: '11.5px', fontWeight: r.is_subscriber ? 400 : 700 }}>
+                      {r.is_subscriber ? 'מנוי' : 'לא מנוי - לפנות'}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>

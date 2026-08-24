@@ -198,3 +198,29 @@ export async function POST(request: Request) {
 
   return NextResponse.json({ ok: true, isSubscriber: false });
 }
+
+// DELETE - ביטול הרשמה למי שמתחרט. רק למנוי מחובר (שנרשם עם חשבון) - למי שהשאיר פרטים כליד
+// אין חשבון לאמת מולו, אז ביטול עבורו נעשה ידנית מול שירן (יש לה קישור וואטסאפ ישיר בפאנל הניהול)
+export async function DELETE(request: Request) {
+  const authHeader = request.headers.get('Authorization') || '';
+  const token = authHeader.replace('Bearer ', '');
+  if (!token) {
+    return NextResponse.json({ error: 'צריך להיות מחוברים כדי לבטל הרשמה' }, { status: 401 });
+  }
+
+  const { data: { user } } = await supabaseAdmin.auth.getUser(token);
+  if (!user) {
+    return NextResponse.json({ error: 'צריך להיות מחוברים כדי לבטל הרשמה' }, { status: 401 });
+  }
+
+  const { searchParams } = new URL(request.url);
+  const liveId = searchParams.get('liveId');
+  if (!liveId) {
+    return NextResponse.json({ error: 'חסר מזהה לייב' }, { status: 400 });
+  }
+
+  const { error } = await supabaseAdmin.from('live_registrations').delete().eq('live_id', liveId).eq('user_id', user.id);
+  if (error) return NextResponse.json({ error: 'שגיאה בביטול ההרשמה' }, { status: 500 });
+
+  return NextResponse.json({ ok: true });
+}

@@ -213,7 +213,7 @@ export default function HomePage() {
 
       <Link href="/lives" className="live-teaser">
         <span className="live-dot" />
-        <span className="live-teaser-text"><strong>הלייבים הקרובים</strong> - מפגשים חיים, שאלות בזמן אמת</span>
+        <span className="live-teaser-text"><strong>הלייבים הקרובים</strong> - מנקים את כל הרעש: לבנות תיק השקעות אחראי ומציאותי הרבה יותר פשוט ממה שנדמה</span>
         <span className="live-teaser-arrow">←</span>
       </Link>
 

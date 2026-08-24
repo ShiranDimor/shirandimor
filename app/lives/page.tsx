@@ -16,6 +16,9 @@ type Live = {
   registered: boolean;
 };
 
+// כל לייב מקבל צבע שונה מהרשימה הזו לפי סדר הופעתו, כדי שיהיה קל להבדיל בין כמה לייבים ברשימה
+const LIVE_ACCENT_COLORS = ['var(--teal)', 'var(--lavender)', 'var(--orange)', 'var(--profit)'];
+
 function formatDateTime(iso: string) {
   return new Date(iso).toLocaleString('he-IL', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
 }
@@ -76,6 +79,23 @@ export default function LivesPage() {
     }
   }
 
+  async function cancelRegistration(liveId: string) {
+    if (!window.confirm('לבטל את ההרשמה ללייב הזה?')) return;
+    setSubmittingId(liveId);
+    setError('');
+    const { data: { session } } = await supabase.auth.getSession();
+    const res = await fetch(`/api/lives/register?liveId=${liveId}`, {
+      method: 'DELETE',
+      headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {},
+    });
+    setSubmittingId(null);
+    if (res.ok) {
+      loadLives();
+    } else {
+      setError('משהו השתבש - כדאי לנסות שוב בעוד רגע');
+    }
+  }
+
   async function submitLead(liveId: string) {
     if (!name || !phone) {
       setError('צריך למלא שם ומספר נייד');
@@ -121,10 +141,14 @@ export default function LivesPage() {
       {(loading || checkingAuth) && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)', textAlign: 'center', marginTop: '20px' }}>טוענים...</p>}
       {!loading && lives.length === 0 && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)', textAlign: 'center', marginTop: '20px' }}>אין כרגע לייבים קרובים - שווה לחזור בקרוב</p>}
 
-      {!loading && lives.map((live) => (
-        <div key={live.id} style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-hairline-strong)', borderRight: '3px solid var(--teal)', borderRadius: '10px', padding: '16px', marginBottom: '14px' }}>
+      {!loading && lives.map((live, i) => {
+        const accentColor = LIVE_ACCENT_COLORS[i % LIVE_ACCENT_COLORS.length];
+        const calendarTitle = `${live.title} - עם שירן דימור, מדברים עסקאות`;
+        const calendarDescription = [live.description, live.joinInfo ? `קישור הצטרפות: ${live.joinInfo}` : ''].filter(Boolean).join('\n\n');
+        return (
+        <div key={live.id} style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-hairline-strong)', borderRight: `3px solid ${accentColor}`, borderRadius: '10px', padding: '16px', marginBottom: '14px' }}>
           <div style={{ fontSize: '15px', fontWeight: 700, marginBottom: '4px' }}>{live.title}</div>
-          <div style={{ fontSize: '12.5px', color: 'var(--teal)', fontFamily: 'var(--font-mono)', marginBottom: '8px' }}>{formatDateTime(live.scheduledAt)}</div>
+          <div style={{ fontSize: '12.5px', color: accentColor, fontFamily: 'var(--font-mono)', marginBottom: '8px' }}>{formatDateTime(live.scheduledAt)}</div>
           {live.description && <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: '12px' }}>{live.description}</p>}
 
           {live.registered && live.joinInfo && (
@@ -145,12 +169,17 @@ export default function LivesPage() {
 
           {live.registered && (
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-              <a href={buildGoogleCalendarUrl(live.title, live.description || '', live.scheduledAt)} target="_blank" rel="noopener noreferrer" className="btn-outline" style={{ fontSize: '12.5px', padding: '8px 12px', textDecoration: 'none' }}>
+              <a href={buildGoogleCalendarUrl(calendarTitle, calendarDescription, live.scheduledAt)} target="_blank" rel="noopener noreferrer" className="btn-outline" style={{ fontSize: '12.5px', padding: '8px 12px', textDecoration: 'none' }}>
                 הוספה ליומן Google
               </a>
-              <a href={buildIcsDataUri(live.title, live.description || '', live.scheduledAt)} download={`${live.title}.ics`} className="btn-outline" style={{ fontSize: '12.5px', padding: '8px 12px', textDecoration: 'none' }}>
+              <a href={buildIcsDataUri(calendarTitle, calendarDescription, live.scheduledAt)} download={`${live.title}.ics`} className="btn-outline" style={{ fontSize: '12.5px', padding: '8px 12px', textDecoration: 'none' }}>
                 הורדה ליומן אחר
               </a>
+              {viewerIsSubscriber && (
+                <button type="button" onClick={() => cancelRegistration(live.id)} disabled={submittingId === live.id} style={{ fontSize: '12.5px', padding: '8px 12px', background: 'none', border: '1px solid var(--loss)', color: 'var(--loss)', borderRadius: '8px', cursor: 'pointer' }}>
+                  {submittingId === live.id ? '...' : 'ביטול הרשמה'}
+                </button>
+              )}
             </div>
           )}
 
@@ -184,7 +213,8 @@ export default function LivesPage() {
             </>
           )}
         </div>
-      ))}
+        );
+      })}
 
       <Link className="cta-sub-link" href="/subscribe">מנויים נרשמים ללייבים בלחיצה אחת - להכיר את קבוצת הסוחרים <span>←</span></Link>
 
