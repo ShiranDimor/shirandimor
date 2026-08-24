@@ -18,7 +18,11 @@
     },
     {
       "path": "/api/trading-plan/daily-checkin-reminder",
-      "schedule": "0 7 * * 1,4"
+      "schedule": "0 15 * * 1"
+    },
+    {
+      "path": "/api/trading-plan/daily-checkin-reminder",
+      "schedule": "0 7 * * 4"
     }
   ]
 }
