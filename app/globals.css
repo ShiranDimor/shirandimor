@@ -673,26 +673,17 @@
 .tp-home-teaser-text { font-size: 13px; color: var(--text-secondary); line-height: 1.6; margin-bottom: 12px; }
 .tp-home-teaser-cta { font-size: 14px; font-weight: 700; color: var(--orange); display: flex; align-items: center; gap: 4px; }
 
-/* ===== כרטיס טיזר בעמוד הבית ללייבים - בכוונה שונה לגמרי מטיזר תוכנית המסחר (צבע, צורה, נקודת "לייב" פועמת) ===== */
+/* ===== רצועת טיזר קומפקטית ללייבים - שורה אחת, לא עוד "ריבוע" גדול שמתחרה עם הכרטיס העיקרי ===== */
 .live-teaser {
-  display: block; text-decoration: none; position: relative; overflow: hidden;
-  background: linear-gradient(135deg, rgba(156,143,217,0.16) 0%, rgba(79,201,196,0.08) 60%, var(--bg-surface) 100%);
-  border: 1px solid rgba(156,143,217,0.4); border-radius: 16px; padding: 20px 24px 20px 20px; margin-bottom: 28px;
+  display: flex; align-items: center; gap: 10px; text-decoration: none;
+  background: rgba(156,143,217,0.08); border: 1px solid rgba(156,143,217,0.3);
+  border-radius: 30px; padding: 10px 16px; margin-bottom: 28px;
 }
-.live-teaser::before {
-  content: ''; position: absolute; top: 0; right: 0; bottom: 0; width: 4px;
-  background: linear-gradient(180deg, var(--loss), var(--lavender));
-}
-.live-teaser-badge {
-  display: inline-flex; align-items: center; gap: 7px; font-size: 11px; font-family: var(--font-mono);
-  font-weight: 700; color: #fff; text-transform: uppercase; letter-spacing: 0.06em;
-  background: var(--loss); border-radius: 20px; padding: 4px 10px; margin-bottom: 12px;
-}
-.live-dot { width: 7px; height: 7px; border-radius: 50%; background: #fff; flex-shrink: 0; animation: live-pulse 1.6s ease-in-out infinite; }
+.live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--loss); flex-shrink: 0; animation: live-pulse 1.6s ease-in-out infinite; }
 @keyframes live-pulse {
-  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(255,255,255,0.5); }
-  50% { opacity: 0.5; box-shadow: 0 0 0 5px rgba(255,255,255,0); }
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(201,99,94,0.45); }
+  50% { opacity: 0.55; box-shadow: 0 0 0 5px rgba(201,99,94,0); }
 }
-.live-teaser-title { font-family: var(--font-display); font-size: 18px; font-weight: 700; color: var(--text-primary); margin-bottom: 6px; line-height: 1.4; }
-.live-teaser-text { font-size: 13px; color: var(--text-secondary); line-height: 1.6; margin-bottom: 12px; }
-.live-teaser-cta { font-size: 14px; font-weight: 700; color: var(--lavender); display: flex; align-items: center; gap: 4px; }
+.live-teaser-text { flex: 1; font-size: 13px; color: var(--text-secondary); line-height: 1.4; }
+.live-teaser-text strong { color: var(--text-primary); }
+.live-teaser-arrow { font-size: 15px; font-weight: 700; color: var(--lavender); flex-shrink: 0; }

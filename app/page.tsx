@@ -196,6 +196,14 @@ export default function HomePage() {
         <div className="trust-item"><div className="num">3</div><div className="lbl">סגנונות מסחר, קבוצה אחת</div></div>
       </div>
 
+      <div className="about-feature">
+        <img className="af-photo" src="/shiran-photo.jpg" alt="שירן דימור" />
+        <div className="af-text">
+          <div className="af-label">מי אני</div>
+          <p className="af-main">שירן דימור, סוחרת 14 שנה בשוק. לא הפכתי למיליארדרית, ולא אבטיח לך שזה יקרה. למדתי לנהל סיכונים כמו שצריך - פחות מלהיב מרכב יוקרה באינסטגרם, אבל הרבה יותר מציאותי לאורך זמן.</p>
+        </div>
+      </div>
+
       <Link href="/trading-plan" className="tp-home-teaser">
         <div className="tp-home-teaser-badge">10 דקות · בלי התחייבות</div>
         <div className="tp-home-teaser-title">8 שלבים לבניית תוכנית מסחר</div>
@@ -204,19 +212,10 @@ export default function HomePage() {
       </Link>
 
       <Link href="/lives" className="live-teaser">
-        <div className="live-teaser-badge"><span className="live-dot" />לייב</div>
-        <div className="live-teaser-title">הלייבים הקרובים</div>
-        <div className="live-teaser-text">מפגשים חיים - מנויים נרשמים בלחיצה אחת, וכל אחד אחר יכול להשאיר פרטים ולהצטרף.</div>
-        <div className="live-teaser-cta">לצפייה בלייבים הקרובים <span>←</span></div>
+        <span className="live-dot" />
+        <span className="live-teaser-text"><strong>הלייבים הקרובים</strong> - מפגשים חיים, הרשמה בלחיצה אחת</span>
+        <span className="live-teaser-arrow">←</span>
       </Link>
-
-      <div className="about-feature">
-        <img className="af-photo" src="/shiran-photo.jpg" alt="שירן דימור" />
-        <div className="af-text">
-          <div className="af-label">מי אני</div>
-          <p className="af-main">שירן דימור, סוחרת 14 שנה בשוק. לא הפכתי למיליארדרית, ולא אבטיח לך שזה יקרה. למדתי לנהל סיכונים כמו שצריך - פחות מלהיב מרכב יוקרה באינסטגרם, אבל הרבה יותר מציאותי לאורך זמן.</p>
-        </div>
-      </div>
 
       <div className="section-label"><h2>אז למי הקבוצה מתאימה?</h2></div>
       <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.65, marginBottom: '12px' }}>
