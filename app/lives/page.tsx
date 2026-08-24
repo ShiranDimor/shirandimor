@@ -186,7 +186,7 @@ export default function LivesPage() {
           {!live.registered && leadConfirmedId !== live.id && (
             <>
               {viewerIsSubscriber ? (
-                <button type="button" className="btn-primary" onClick={() => registerSubscriber(live.id)} disabled={submittingId === live.id}>
+                <button type="button" className="btn-primary" style={{ background: accentColor }} onClick={() => registerSubscriber(live.id)} disabled={submittingId === live.id}>
                   {submittingId === live.id ? 'נרשמים...' : 'הרשמה ללייב ←'}
                 </button>
               ) : openFormId === live.id ? (
@@ -201,12 +201,12 @@ export default function LivesPage() {
                     <ClearableInput type="email" value={email} onChange={(e) => setEmail(e.target.value)} onClear={() => setEmail('')} placeholder="אימייל (לא חובה)" />
                   </div>
                   {error && <p style={{ color: 'var(--loss)', fontSize: '12px', marginBottom: '8px' }}>{error}</p>}
-                  <button type="button" className="btn-primary" onClick={() => submitLead(live.id)} disabled={submittingId === live.id}>
+                  <button type="button" className="btn-primary" style={{ background: accentColor }} onClick={() => submitLead(live.id)} disabled={submittingId === live.id}>
                     {submittingId === live.id ? 'שולחים...' : 'הרשמה ←'}
                   </button>
                 </div>
               ) : (
-                <button type="button" className="btn-primary" onClick={() => { setOpenFormId(live.id); setError(''); }}>
+                <button type="button" className="btn-primary" style={{ background: accentColor }} onClick={() => { setOpenFormId(live.id); setError(''); }}>
                   הרשמה ללייב ←
                 </button>
               )}
