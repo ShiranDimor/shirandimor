@@ -213,7 +213,7 @@ export default function HomePage() {
 
       <Link href="/lives" className="live-teaser">
         <span className="live-dot" />
-        <span className="live-teaser-text"><strong>הלייבים הקרובים</strong> - מפגשים חיים, הרשמה בלחיצה אחת</span>
+        <span className="live-teaser-text"><strong>הלייבים הקרובים</strong> - מפגשים חיים, שאלות בזמן אמת</span>
         <span className="live-teaser-arrow">←</span>
       </Link>
 
