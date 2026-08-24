@@ -177,7 +177,12 @@ export async function POST(request: Request) {
 
   const isSubscriberByContact = (await isActiveSubscriber(phone, email || null)) || (await isContactInSubscribersGroupMonday(phone, email || null));
   if (isSubscriberByContact) {
-    // מנוי פעיל שממלא את הטופס בלי להיות מחובר - לא יוצרים לו ליד מיותר, רק מציגים לו את הפרטים
+    // מנוי פעיל שממלא את הטופס בלי להיות מחובר - לא יוצרים לו ליד מיותר, רק שומרים שהוא נרשם
+    // (כדי שיופיע ברשימת הנרשמים לשירן) ומציגים לו את הפרטים
+    const { data: existing } = await supabaseAdmin.from('live_registrations').select('id').eq('live_id', liveId).eq('phone', phone).maybeSingle();
+    if (!existing) {
+      await supabaseAdmin.from('live_registrations').insert({ live_id: liveId, name, phone, email: email || null, is_subscriber: true });
+    }
     return NextResponse.json({ ok: true, isSubscriber: true, joinInfo: live.join_info });
   }
 
