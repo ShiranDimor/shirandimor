@@ -32,7 +32,9 @@ const emptyForm = {
 };
 
 function formatDateTime(iso: string) {
-  return new Date(iso).toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' });
+  const d = new Date(iso);
+  const weekday = d.toLocaleDateString('he-IL', { weekday: 'long' });
+  return `${weekday}, ${d.toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' })}`;
 }
 
 // input[type=datetime-local] מייצג שעון-קיר בלי אזור זמן. new Date(iso).toISOString() תמיד מחזיר UTC,
@@ -227,7 +229,12 @@ export default function AdminLivesPage() {
 
         <input className="tp-text-input" style={{ minHeight: 'auto', marginBottom: '10px' }} placeholder="כותרת" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
         <textarea className="tp-text-input" style={{ marginBottom: '10px' }} placeholder="תיאור קצר" rows={2} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
-        <input className="tp-text-input" style={{ minHeight: 'auto', marginBottom: '10px' }} type="datetime-local" value={form.scheduledAt} onChange={(e) => setForm({ ...form, scheduledAt: e.target.value })} />
+        <input className="tp-text-input" style={{ minHeight: 'auto' }} type="datetime-local" value={form.scheduledAt} onChange={(e) => setForm({ ...form, scheduledAt: e.target.value })} />
+        {form.scheduledAt && !isNaN(Date.parse(form.scheduledAt)) && (
+          <p style={{ fontSize: '12px', color: 'var(--teal)', marginTop: '4px', marginBottom: '10px' }}>
+            {new Date(form.scheduledAt).toLocaleDateString('he-IL', { weekday: 'long', day: 'numeric', month: 'numeric', year: 'numeric' })}
+          </p>
+        )}
         <textarea className="tp-text-input" style={{ marginBottom: '10px' }} placeholder="פרטי הצטרפות (קישור Zoom/וואטסאפ וכו') - נחשף רק למי שנרשם" rows={2} value={form.joinInfo} onChange={(e) => setForm({ ...form, joinInfo: e.target.value })} />
 
         <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', marginBottom: '14px', cursor: 'pointer' }}>
