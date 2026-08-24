@@ -35,6 +35,14 @@ function formatDateTime(iso: string) {
   return new Date(iso).toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' });
 }
 
+// input[type=datetime-local] מייצג שעון-קיר בלי אזור זמן. new Date(iso).toISOString() תמיד מחזיר UTC,
+// אז ממירים לפי הפרש שעון הזמן המקומי של הדפדפן כדי שהשדה יציג את השעה המקומית הנכונה בעריכה
+function isoToLocalInputValue(iso: string): string {
+  const d = new Date(iso);
+  const localMs = d.getTime() - d.getTimezoneOffset() * 60000;
+  return new Date(localMs).toISOString().slice(0, 16);
+}
+
 export default function AdminLivesPage() {
   const [checking, setChecking] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -88,7 +96,7 @@ export default function AdminLivesPage() {
     setForm({
       title: live.title,
       description: live.description || '',
-      scheduledAt: new Date(live.scheduled_at).toISOString().slice(0, 16),
+      scheduledAt: isoToLocalInputValue(live.scheduled_at),
       joinInfo: live.join_info || '',
       published: live.published,
     });
@@ -112,7 +120,9 @@ export default function AdminLivesPage() {
     const body = {
       title: form.title.trim(),
       description: form.description.trim() || null,
-      scheduledAt: form.scheduledAt,
+      // form.scheduledAt הוא שעון-קיר בלי אזור זמן (מה-input) - new Date(...) כאן רץ בדפדפן ומפרש
+      // אותו לפי אזור הזמן המקומי (ישראל), ואז toISOString() נותן UTC נכון לשמירה בשרת
+      scheduledAt: new Date(form.scheduledAt).toISOString(),
       joinInfo: form.joinInfo.trim() || null,
       published: form.published,
     };
