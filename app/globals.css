@@ -61,6 +61,12 @@
     border: 1px solid rgba(232,163,61,0.3); border-radius: 20px; padding: 5px 10px; text-decoration: none;
     white-space: nowrap;
   }
+  .nav-cta-live {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 12px; font-weight: 700; color: var(--lavender); background: var(--lavender-bg);
+    border: 1px solid rgba(156,143,217,0.3); border-radius: 20px; padding: 5px 10px; text-decoration: none;
+    white-space: nowrap;
+  }
 
   /* ===== Hero ===== */
   .hero {
