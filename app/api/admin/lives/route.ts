@@ -19,10 +19,18 @@ export async function GET(request: Request) {
   const admin = await requireAdmin(request);
   if (!admin) return NextResponse.json({ error: 'אין הרשאת ניהול' }, { status: 403 });
 
-  const { data, error } = await supabaseAdmin.from('lives').select('*').order('scheduled_at', { ascending: false });
+  const { data, error } = await supabaseAdmin
+    .from('lives')
+    .select('*, live_registrations(count)')
+    .order('scheduled_at', { ascending: false });
   if (error) return NextResponse.json({ error: 'שגיאה בשליפה' }, { status: 500 });
 
-  return NextResponse.json({ lives: data });
+  const lives = (data || []).map((live) => {
+    const { live_registrations, ...rest } = live as typeof live & { live_registrations: { count: number }[] };
+    return { ...rest, registrationsCount: live_registrations?.[0]?.count || 0 };
+  });
+
+  return NextResponse.json({ lives });
 }
 
 // POST - יצירת לייב חדש

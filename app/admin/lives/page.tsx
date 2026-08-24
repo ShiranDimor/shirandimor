@@ -12,6 +12,7 @@ type Live = {
   join_info: string | null;
   published: boolean;
   created_at: string;
+  registrationsCount: number;
 };
 
 type Registration = {
@@ -183,6 +184,7 @@ export default function AdminLivesPage() {
     setDeletingRegId(null);
     if (res.ok) {
       setRegistrations((prev) => ({ ...prev, [liveId]: (prev[liveId] || []).filter((r) => r.id !== regId) }));
+      setLives((prev) => prev.map((l) => (l.id === liveId ? { ...l, registrationsCount: Math.max(0, l.registrationsCount - 1) } : l)));
     }
   }
 
@@ -278,7 +280,7 @@ export default function AdminLivesPage() {
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <button type="button" className="btn-outline" style={{ padding: '8px 12px', fontSize: '12.5px' }} onClick={() => toggleRegistrations(live.id)}>
-                {expandedId === live.id ? 'הסתרת נרשמים' : 'נרשמים'}
+                {expandedId === live.id ? 'הסתרת נרשמים' : `נרשמים (${live.registrationsCount})`}
               </button>
               <button type="button" className="btn-outline" style={{ padding: '8px 12px', fontSize: '12.5px' }} onClick={() => startEdit(live)}>עריכה</button>
               <button

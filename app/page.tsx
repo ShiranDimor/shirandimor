@@ -126,7 +126,7 @@ export default function HomePage() {
           <Link href="/trading-plan" className="nav-cta-orange">תוכנית מסחר</Link>
           <Link href="/lives" className="nav-cta-live"><span className="live-dot" />לייבים</Link>
           <Link href="/portfolio" className="nav-cta-teal">תיק מסחר</Link>
-          <Link href="/login" className="nav-cta-teal">כניסה לסוחרים</Link>
+          <Link href="/login" className="nav-cta-profit">כניסה לסוחרים</Link>
         </div>
       </header>
 
