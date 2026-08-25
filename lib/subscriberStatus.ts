@@ -74,10 +74,12 @@ export async function ensureActiveSubscriberAccount(email: string, phone: string
     return;
   }
 
+  // role/subscription_status מועברים כבר כאן ב-metadata, כדי שהטריגר שיוצר את הפרופיל (handle_new_user)
+  // ייצור אותו ישר כמנוי פעיל - בלי לעבור דרך "ליד" רגעי שמפעיל בטעות את מייל "בקשת הצטרפות לאישור"
   const { data: created, error } = await supabaseAdmin.auth.admin.createUser({
     email,
     email_confirm: true,
-    user_metadata: { phone, full_name: fullName },
+    user_metadata: { phone, full_name: fullName, role: 'subscriber', subscription_status: 'active' },
   });
 
   let userId = created.user?.id;
