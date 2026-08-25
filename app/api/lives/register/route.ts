@@ -124,7 +124,7 @@ async function createMondayLiveLead(name: string, phone: string, email: string |
       `mutation ($itemId: ID!, $body: String!) { create_update (item_id: $itemId, body: $body) { id } }`,
       {
         itemId,
-        body: `נייד: ${phone}${email ? `\nאימייל: ${email}` : ''}\nמקור: הרשמה ללייב "${liveTitle}" באתר${isDuplicate ? '\n⚠ כבר קיים ליד/מנוי אחר עם אותו נייד - סומן כ"ליד כפול"' : ''}`,
+        body: `נייד: ${phone}${email ? `\nאימייל: ${email}` : ''}\nמקור: הרשמה ללייב "${liveTitle}" (${liveDateLabel}) באתר${isDuplicate ? '\n⚠ כבר קיים ליד/מנוי אחר עם אותו נייד - סומן כ"ליד כפול"' : ''}`,
       }
     );
   } catch (e) {
