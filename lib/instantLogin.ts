@@ -6,25 +6,42 @@ export const supabaseAdmin = createClient(
 );
 
 // שולח מייל כניסה אמיתי (קישור קסם) לכתובת שכבר אושרה כמנוי/אדמין -
-// הכניסה בפועל מותנית בלחיצה על הקישור מתוך תיבת המייל, לא רק בידיעת הכתובת
+// הכניסה בפועל מותנית בלחיצה על הקישור מתוך תיבת המייל, לא רק בידיעת הכתובת.
+// הקישור עצמו נוצר דרך Supabase, אבל המייל נשלח דרך Resend (כמו כל שאר המיילים באתר) ולא
+// דרך שרת המייל המובנה של Supabase - זה האחרון נוטה להיתקע בהגבלות קצב נמוכות מאוד או
+// להיתפס כספאם, מה שגרם למנויים לא לקבל את קישור הכניסה בפועל
 export async function sendLoginEmail(email: string) {
-  const { error } = await supabaseAdmin.auth.signInWithOtp({
+  const { data, error } = await supabaseAdmin.auth.admin.generateLink({
+    type: 'magiclink',
     email,
-    options: {
-      shouldCreateUser: false,
-      emailRedirectTo: 'https://shirandimor.com/auth/callback',
-    },
+    options: { redirectTo: 'https://shirandimor.com/auth/callback' },
   });
 
-  if (error) {
-    // אם מדובר רק בהגבלת קצב של Supabase (ניסיון חוזר תוך פחות מדקה) - כבר נשלח קישור תקף לפני רגע,
-    // אז זו לא כשל אמיתי; לא זורקים שגיאה כדי שהמשתמש לא ייראה "לא מזוהה" בגלל ניסיון חוזר מהיר מדי
-    const isRateLimit = (error as { status?: number; code?: string }).status === 429
-      || (error as { code?: string }).code === 'over_email_send_rate_limit'
-      || /security purposes/i.test(error.message || '');
+  const actionLink = data?.properties?.action_link;
+  if (error || !actionLink) {
+    throw new Error(error?.message || 'לא ניתן היה ליצור קישור כניסה');
+  }
 
-    if (!isRateLimit) {
-      throw new Error(error.message || 'לא ניתן היה לשלוח מייל כניסה');
-    }
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    console.error('RESEND_API_KEY לא מוגדר - לא ניתן לשלוח מייל כניסה');
+    throw new Error('לא ניתן היה לשלוח מייל כניסה');
+  }
+
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+    body: JSON.stringify({
+      from: 'כניסה לאתר <noreply@shirandimor.com>',
+      to: email,
+      subject: 'קישור כניסה לאתר',
+      text: `שלום,\n\nהקישור הבא נותן גישה ישירה לחשבון שלך באתר, בלי סיסמה (בתוקף לזמן קצר):\n${actionLink}\n\nאם לא ביקשת קישור כניסה, אפשר פשוט להתעלם מהמייל הזה.`,
+      html: `<div dir="rtl" style="font-family:sans-serif;font-size:14px;line-height:1.6;"><p>שלום,</p><p>הקישור הבא נותן גישה ישירה לחשבון שלך באתר, בלי סיסמה (בתוקף לזמן קצר):</p><p><a href="${actionLink}">כניסה לאתר ←</a></p><p>אם לא ביקשת קישור כניסה, אפשר פשוט להתעלם מהמייל הזה.</p></div>`,
+    }),
+  });
+
+  if (!res.ok) {
+    console.error('שגיאה בשליחת מייל כניסה דרך Resend', await res.text().catch(() => ''));
+    throw new Error('לא ניתן היה לשלוח מייל כניסה');
   }
 }
