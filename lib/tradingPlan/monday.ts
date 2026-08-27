@@ -7,7 +7,11 @@ const SUBSCRIBER_GROUP_NAME = 'קבוצת סוחרים';
 const CAMPAIGN_COLUMN_TITLE = 'campaign_name';
 const STATUS_COLUMN_TITLE = 'סטטוס טיפול';
 const FOLLOWUP_COLUMN_TITLE = 'תאריך פולואפ';
-const JOIN_DATE_COLUMN_TITLES = ['תאריך ההרשמה', 'תאריך הרשמה', 'תאריך הצטרפות'];
+// שם העמודה חייב להתאים בדיוק לזה שב-lib/grow.ts (REGISTRATION_DATE_COLUMN_TITLE) - זו אותה
+// עמודה ("תאריך הרשמה") ולא עמודת "תאריך תשלום" נפרדת
+const JOIN_DATE_COLUMN_TITLE = 'תאריך הרשמה';
+// שם העמודה חייב להתאים בדיוק לזה שב-lib/grow.ts (MONTHLY_COST_COLUMN_TITLE)
+const MONTHLY_COST_COLUMN_TITLE = 'עלות חודשית ששילם';
 const TRADING_PLAN_STATUS_LABEL = 'בנה תוכנית מסחר';
 export const TRADING_PLAN_ABANDONED_STATUS_LABEL = 'יצא באמצע התוכנית מסחר';
 const CAMPAIGN_VALUE = 'תוכנית מסחר 30 יום';
@@ -46,8 +50,9 @@ async function getBoardSchema(token: string, boardId: string) {
     emailColumnId: columns.find((c) => c.type === 'email')?.id,
     campaignColumnId: columns.find((c) => c.title === CAMPAIGN_COLUMN_TITLE)?.id,
     statusColumnId: columns.find((c) => c.title === STATUS_COLUMN_TITLE)?.id,
+    monthlyCostColumnId: columns.find((c) => c.title === MONTHLY_COST_COLUMN_TITLE)?.id,
     followupColumnId: columns.find((c) => c.title === FOLLOWUP_COLUMN_TITLE && c.type === 'date')?.id,
-    joinDateColumnId: columns.find((c) => c.type === 'date' && JOIN_DATE_COLUMN_TITLES.includes(c.title))?.id,
+    joinDateColumnId: columns.find((c) => c.type === 'date' && c.title === JOIN_DATE_COLUMN_TITLE)?.id,
   };
 }
 
@@ -189,7 +194,7 @@ export async function getMondaySubscriberPhones(): Promise<Set<string>> {
   return phones;
 }
 
-export type MondaySubscriberDetail = { name: string | null; phone: string | null; email: string | null; joinDate: string | null };
+export type MondaySubscriberDetail = { name: string | null; phone: string | null; email: string | null; joinDate: string | null; monthlyCost: string | null };
 
 // כל הפרטים (שם, טלפון, מייל, תאריך הצטרפות אם קיימת עמודה כזו) של כל מי שנמצא בקבוצת
 // "קבוצת סוחרים" ב-Monday.com - לשימוש בסנכרון מנויים שקיימים רק במאנדיי לחשבון באתר,
@@ -200,13 +205,14 @@ export async function getMondaySubscriberDetails(): Promise<MondaySubscriberDeta
   if (!token || !boardId) return [];
 
   try {
-    const { subscriberGroupId, phoneColumnId, emailColumnId, joinDateColumnId } = await getBoardSchema(token, boardId);
+    const { subscriberGroupId, phoneColumnId, emailColumnId, joinDateColumnId, monthlyCostColumnId } = await getBoardSchema(token, boardId);
     if (!subscriberGroupId) return [];
 
-    const columnIds = [phoneColumnId, emailColumnId, joinDateColumnId].filter(Boolean) as string[];
+    const columnIds = [phoneColumnId, emailColumnId, joinDateColumnId, monthlyCostColumnId].filter(Boolean) as string[];
     const phoneIndex = columnIds.indexOf(phoneColumnId || '');
     const emailIndex = columnIds.indexOf(emailColumnId || '');
     const joinDateIndex = columnIds.indexOf(joinDateColumnId || '');
+    const monthlyCostIndex = columnIds.indexOf(monthlyCostColumnId || '');
 
     const result: MondaySubscriberDetail[] = [];
     let cursor: string | null = null;
@@ -235,6 +241,7 @@ export async function getMondaySubscriberDetails(): Promise<MondaySubscriberDeta
           phone: phoneIndex >= 0 ? item.column_values?.[phoneIndex]?.text || null : null,
           email: emailIndex >= 0 ? item.column_values?.[emailIndex]?.text || null : null,
           joinDate: joinDateIndex >= 0 ? item.column_values?.[joinDateIndex]?.text || null : null,
+          monthlyCost: monthlyCostIndex >= 0 ? item.column_values?.[monthlyCostIndex]?.text || null : null,
         });
       }
 

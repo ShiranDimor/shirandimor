@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/instantLogin';
+import { getMondaySubscriberDetails } from '@/lib/tradingPlan/monday';
 
 async function requireAdmin(request: Request) {
   const authHeader = request.headers.get('Authorization') || '';
@@ -14,52 +15,83 @@ async function requireAdmin(request: Request) {
   return user;
 }
 
-// המחיר אחרי החודש הראשון (חודש ראשון תמיד ב-200 ש"ח, ולכן לא נכלל בצפי - הוא כבר קרה בהרשמה
-// ושירן רואה אותו ישירות מול Grow). ראו app/subscribe/page.tsx לאותו מחיר.
+// מחיר החודש הראשון (חודש ההצטרפות עצמו) לעומת חודשים הבאים - ראו app/subscribe/page.tsx
+const FIRST_MONTH_PRICE = 200;
 const MONTHLY_PRICE = 400;
 
-// גרו מחייבת כל מנוי חודשית ביום-בחודש שבו הוא הצטרף (subscription_started_at) - ואם היום הזה
-// לא קיים בחודש הנוכחי (למשל הצטרפות ב-31 לחודש, וחודש נוכחי עם 30 ימים בלבד), ההנחה היא
-// שהחיוב עובר ליום האחרון של החודש - מוסכמת חיוב נפוצה, אך כדאי לוודא מול גרו בפועל
-function chargeDateThisMonth(startedAtIso: string, referenceDate: Date): Date {
-  const day = new Date(startedAtIso).getDate();
+// גרו מחייבת כל מנוי חודשית ביום-בחודש שבו הוא הצטרף - ואם היום הזה לא קיים בחודש הנוכחי
+// (למשל הצטרפות ב-31 לחודש, וחודש נוכחי עם 30 ימים בלבד), ההנחה היא שהחיוב עובר ליום האחרון
+// של החודש - מוסכמת חיוב נפוצה, אך כדאי לוודא מול גרו בפועל
+function chargeDateThisMonth(startedAt: Date, referenceDate: Date): Date {
+  const day = startedAt.getDate();
   const year = referenceDate.getFullYear();
   const month = referenceDate.getMonth();
   const lastDayOfMonth = new Date(year, month + 1, 0).getDate();
   return new Date(year, month, Math.min(day, lastDayOfMonth));
 }
 
-// GET - צפי הכנסה מחיובים שעדיין אמורים לקרות החודש (מחר ועד סוף החודש) - לא כולל את היום
-// עצמו, כי חיובי היום כבר נראים ישירות מול Grow. זה תמיד צפי, לא הבטחה - תלוי שהחיוב בפועל יעבור
+function isJoinMonth(startedAt: Date, referenceDate: Date): boolean {
+  return startedAt.getFullYear() === referenceDate.getFullYear() && startedAt.getMonth() === referenceDate.getMonth();
+}
+
+type Charge = { name: string | null; email: string | null; phone: string | null; chargeDate: Date; price: number };
+
+// GET - תמונה מלאה של חיובי החודש: כמה כבר חויב עד היום, וכמה עוד אמור להיות מחויב עד סוף
+// החודש. מקור המידע היחיד הוא קבוצת "קבוצת סוחרים" ב-Monday.com (לא מוזג עם חשבונות האתר) -
+// כי זה המקום שבו כל מנוי אמיתי קיים תמיד, בין אם יש לו חשבון באתר ובין אם לא (למשל אין לו מייל).
+// זה תמיד צפי, לא הבטחה - תלוי שהחיוב בפועל יעבור
 export async function GET(request: Request) {
   const admin = await requireAdmin(request);
   if (!admin) return NextResponse.json({ error: 'אין הרשאת ניהול' }, { status: 403 });
 
-  const { data: subscribers, error } = await supabaseAdmin
-    .from('profiles')
-    .select('id, full_name, email, subscription_started_at')
-    .eq('role', 'subscriber')
-    .eq('subscription_status', 'active')
-    .not('subscription_started_at', 'is', null);
-
-  if (error) return NextResponse.json({ error: 'שגיאה בשליפה' }, { status: 500 });
+  const subscribers = await getMondaySubscriberDetails();
 
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-  const upcoming = (subscribers || [])
-    .map((s) => ({ ...s, chargeDate: chargeDateThisMonth(s.subscription_started_at as string, now) }))
-    .filter((s) => s.chargeDate > today)
-    .sort((a, b) => a.chargeDate.getTime() - b.chargeDate.getTime());
+  const charges: Charge[] = [];
+  const missingJoinDate: string[] = [];
+
+  for (const s of subscribers) {
+    if (!s.joinDate) {
+      missingJoinDate.push(s.name || s.phone || s.email || 'ללא שם');
+      continue;
+    }
+
+    const startedAt = new Date(s.joinDate);
+    const monthlyCost = s.monthlyCost ? Number(s.monthlyCost) : null;
+    charges.push({
+      name: s.name,
+      email: s.email,
+      phone: s.phone,
+      chargeDate: chargeDateThisMonth(startedAt, now),
+      price: isJoinMonth(startedAt, now) ? FIRST_MONTH_PRICE : (monthlyCost && !isNaN(monthlyCost) ? monthlyCost : MONTHLY_PRICE),
+    });
+  }
+
+  const alreadyCharged = charges.filter((c) => c.chargeDate <= today).sort((a, b) => a.chargeDate.getTime() - b.chargeDate.getTime());
+  const upcoming = charges.filter((c) => c.chargeDate > today).sort((a, b) => a.chargeDate.getTime() - b.chargeDate.getTime());
+
+  const toResponseItem = (c: Charge) => ({
+    name: c.name,
+    email: c.email,
+    phone: c.phone,
+    chargeDate: c.chargeDate.toISOString().slice(0, 10),
+    price: c.price,
+  });
 
   return NextResponse.json({
-    count: upcoming.length,
-    totalAmount: upcoming.length * MONTHLY_PRICE,
-    pricePerCharge: MONTHLY_PRICE,
-    upcoming: upcoming.map((s) => ({
-      name: s.full_name,
-      email: s.email,
-      chargeDate: s.chargeDate.toISOString().slice(0, 10),
-    })),
+    alreadyCharged: {
+      count: alreadyCharged.length,
+      totalAmount: alreadyCharged.reduce((sum, c) => sum + c.price, 0),
+      items: alreadyCharged.map(toResponseItem),
+    },
+    upcoming: {
+      count: upcoming.length,
+      totalAmount: upcoming.reduce((sum, c) => sum + c.price, 0),
+      items: upcoming.map(toResponseItem),
+    },
+    monthTotal: charges.reduce((sum, c) => sum + c.price, 0),
+    missingJoinDate,
   });
 }

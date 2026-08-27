@@ -98,8 +98,8 @@ export default function AdminDashboard() {
     setLivesCount(lives.length);
     setLiveRegistrationsTotal(lives.reduce((sum, l) => sum + (l.registrationsCount || 0), 0));
     setLessonsCount((lessonsRes?.lessons || []).length);
-    setRevenueCount(revenueRes?.count || 0);
-    setRevenueTotal(revenueRes?.totalAmount || 0);
+    setRevenueCount((revenueRes?.alreadyCharged?.count || 0) + (revenueRes?.upcoming?.count || 0));
+    setRevenueTotal(revenueRes?.monthTotal || 0);
   }
 
   async function handleLogout() {
