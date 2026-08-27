@@ -28,15 +28,34 @@ export async function sendLoginEmail(email: string) {
     throw new Error('לא ניתן היה לשלוח מייל כניסה');
   }
 
+  const siteUrl = 'https://www.shirandimor.com';
+  const html = `<!doctype html><html dir="rtl" lang="he"><head><meta charset="utf-8" /></head><body style="margin:0;padding:0;">
+    <div dir="rtl" style="font-family: Arial, Helvetica, sans-serif; background:#f4f4f5; padding:24px 12px;">
+      <div style="max-width:520px;margin:0 auto;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #e5e5e5;">
+        <div style="background:#111318;padding:24px;text-align:center;">
+          <img src="${siteUrl}/shiran-photo.jpg" width="56" height="56" alt="שירן דימור" style="width:56px;height:56px;border-radius:50%;object-fit:cover;border:2px solid #4fc9c4;margin-bottom:12px;" />
+          <div style="color:#fff;font-size:18px;font-weight:700;">מסחר <span style="color:#4fc9c4;">אחראי</span> במניות</div>
+          <div style="color:#9C8FD9;font-size:12px;margin-top:8px;">שירן דימור</div>
+        </div>
+        <div style="padding:28px 24px;">
+          <p style="font-size:14px;color:#222;line-height:1.7;margin:0 0 16px;">היי, זה קישור כניסה לחשבון שלך באתר - בלי סיסמה, בתוקף לזמן קצר:</p>
+          <a href="${actionLink}" style="display:block;text-align:center;background:#4fc9c4;color:#08131a;text-decoration:none;font-weight:700;padding:13px;border-radius:10px;margin-bottom:20px;">כניסה לאתר ←</a>
+          <p style="font-size:12.5px;color:#888;line-height:1.6;margin:0;">אם לא ביקשת את זה, אפשר פשוט להתעלם מהמייל. יש שאלה? אפשר לענות ישירות למייל הזה.</p>
+        </div>
+      </div>
+    </div>
+  </body></html>`;
+
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
     body: JSON.stringify({
-      from: 'כניסה לאתר <noreply@shirandimor.com>',
+      from: 'שירן דימור - מסחר אחראי במניות <noreply@shirandimor.com>',
       to: email,
-      subject: 'קישור כניסה לאתר',
-      text: `שלום,\n\nהקישור הבא נותן גישה ישירה לחשבון שלך באתר, בלי סיסמה (בתוקף לזמן קצר):\n${actionLink}\n\nאם לא ביקשת קישור כניסה, אפשר פשוט להתעלם מהמייל הזה.`,
-      html: `<div dir="rtl" style="font-family:sans-serif;font-size:14px;line-height:1.6;"><p>שלום,</p><p>הקישור הבא נותן גישה ישירה לחשבון שלך באתר, בלי סיסמה (בתוקף לזמן קצר):</p><p><a href="${actionLink}">כניסה לאתר ←</a></p><p>אם לא ביקשת קישור כניסה, אפשר פשוט להתעלם מהמייל הזה.</p></div>`,
+      reply_to: 'shiran@shirandimor.com',
+      subject: 'קישור כניסה לאתר שלך',
+      text: `היי, זה קישור כניסה לחשבון שלך באתר - בלי סיסמה, בתוקף לזמן קצר:\n${actionLink}\n\nאם לא ביקשת את זה, אפשר פשוט להתעלם מהמייל.`,
+      html,
     }),
   });
 
