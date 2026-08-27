@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import Link from 'next/link';
 
 type Outcome = 'followed' | 'broke' | 'no_activity';
@@ -119,7 +119,6 @@ function ProgressRing({ dayNumber, totalDays, unitLabel }: { dayNumber: number; 
 
 export default function MyPlanProgressPage() {
   const params = useParams();
-  const router = useRouter();
   const id = typeof params.id === 'string' ? params.id : Array.isArray(params.id) ? params.id[0] : '';
 
   const [data, setData] = useState<ProgressData | null>(null);
@@ -165,7 +164,6 @@ export default function MyPlanProgressPage() {
       <header>
         <Link href="/" className="brand">מסחר <span>אחראי</span> במניות</Link>
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-          <button onClick={() => router.back()} className="nav-link" style={{ background: 'none', border: 'none', cursor: 'pointer', font: 'inherit', padding: 0 }}>→ חזרה</button>
           {data?.isSubscriber && <Link href="/portfolio" className="nav-link">לתיק שלי</Link>}
           <Link href="/" className="nav-link">בית</Link>
         </div>
