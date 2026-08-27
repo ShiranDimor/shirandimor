@@ -38,9 +38,9 @@ export async function sendLoginEmail(email: string) {
           <div style="color:#9C8FD9;font-size:12px;margin-top:8px;">שירן דימור</div>
         </div>
         <div style="padding:28px 24px;">
-          <p style="font-size:14px;color:#222;line-height:1.7;margin:0 0 16px;">היי, זה קישור כניסה לחשבון שלך באתר - בלי סיסמה, בתוקף לזמן קצר:</p>
+          <p style="font-size:14px;color:#222;line-height:1.7;margin:0 0 16px;">היי, זה קישור כניסה לחשבון שלך באתר - בלי סיסמה, בתוקף לשעה:</p>
           <a href="${actionLink}" style="display:block;text-align:center;background:#4fc9c4;color:#08131a;text-decoration:none;font-weight:700;padding:13px;border-radius:10px;margin-bottom:20px;">כניסה לאתר ←</a>
-          <p style="font-size:12.5px;color:#888;line-height:1.6;margin:0;">אם לא ביקשת את זה, אפשר פשוט להתעלם מהמייל. יש שאלה? אפשר לענות ישירות למייל הזה.</p>
+          <p style="font-size:12.5px;color:#888;line-height:1.6;margin:0;">לא ביקשת קישור כניסה? כדאי לספר לי - פשוט משיבים למייל הזה.</p>
         </div>
       </div>
     </div>
@@ -54,7 +54,7 @@ export async function sendLoginEmail(email: string) {
       to: email,
       reply_to: 'shiran@shirandimor.com',
       subject: 'קישור כניסה לאתר שלך',
-      text: `היי, זה קישור כניסה לחשבון שלך באתר - בלי סיסמה, בתוקף לזמן קצר:\n${actionLink}\n\nאם לא ביקשת את זה, אפשר פשוט להתעלם מהמייל.`,
+      text: `היי, זה קישור כניסה לחשבון שלך באתר - בלי סיסמה, בתוקף לשעה:\n${actionLink}\n\nלא ביקשת קישור כניסה? כדאי לספר לי - פשוט משיבים למייל הזה.`,
       html,
     }),
   });
