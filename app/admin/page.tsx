@@ -17,6 +17,8 @@ export default function AdminDashboard() {
   const [livesCount, setLivesCount] = useState(0);
   const [liveRegistrationsTotal, setLiveRegistrationsTotal] = useState(0);
   const [lessonsCount, setLessonsCount] = useState(0);
+  const [revenueCount, setRevenueCount] = useState(0);
+  const [revenueTotal, setRevenueTotal] = useState(0);
 
   const [refreshing, setRefreshing] = useState(false);
   const [refreshMessage, setRefreshMessage] = useState('');
@@ -77,13 +79,14 @@ export default function AdminDashboard() {
   async function loadCounts() {
     const { data: { session } } = await supabase.auth.getSession();
 
-    const [pending, approved, openTrades, abandonedRes, livesRes, lessonsRes] = await Promise.all([
+    const [pending, approved, openTrades, abandonedRes, livesRes, lessonsRes, revenueRes] = await Promise.all([
       supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'lead'),
       supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'subscriber'),
       supabase.from('trades').select('id', { count: 'exact', head: true }).eq('status', 'open'),
       fetch('/api/admin/trading-plan-abandoned/count', { headers: { Authorization: `Bearer ${session?.access_token}` } }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
       fetch('/api/admin/lives', { headers: { Authorization: `Bearer ${session?.access_token}` } }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
       fetch('/api/admin/lessons', { headers: { Authorization: `Bearer ${session?.access_token}` } }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+      fetch('/api/admin/revenue-projection', { headers: { Authorization: `Bearer ${session?.access_token}` } }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
     ]);
 
     setPendingCount(pending.count || 0);
@@ -95,6 +98,8 @@ export default function AdminDashboard() {
     setLivesCount(lives.length);
     setLiveRegistrationsTotal(lives.reduce((sum, l) => sum + (l.registrationsCount || 0), 0));
     setLessonsCount((lessonsRes?.lessons || []).length);
+    setRevenueCount(revenueRes?.count || 0);
+    setRevenueTotal(revenueRes?.totalAmount || 0);
   }
 
   async function handleLogout() {
@@ -187,6 +192,12 @@ export default function AdminDashboard() {
           <div className="at-icon">📈</div>
           <div className="at-title">משפך המרה</div>
           <div className="at-count">אנליטיקס</div>
+        </Link>
+
+        <Link href="/admin/revenue" className="admin-tile">
+          <div className="at-icon">💰</div>
+          <div className="at-title">צפי הכנסה החודש</div>
+          <div className="at-count">₪{revenueTotal.toLocaleString('he-IL')} · {revenueCount} חיובים</div>
         </Link>
       </div>
 
