@@ -25,6 +25,9 @@ export default function AdminRevenuePage() {
   const [pricePerCharge, setPricePerCharge] = useState(400);
   const [upcoming, setUpcoming] = useState<UpcomingCharge[]>([]);
 
+  const [syncing, setSyncing] = useState(false);
+  const [syncMessage, setSyncMessage] = useState('');
+
   useEffect(() => {
     checkAdmin();
   }, []);
@@ -52,6 +55,31 @@ export default function AdminRevenuePage() {
       setUpcoming(data.upcoming || []);
     }
     setLoading(false);
+  }
+
+  async function handleSync() {
+    setSyncing(true);
+    setSyncMessage('');
+    const { data: { session } } = await supabase.auth.getSession();
+    try {
+      const res = await fetch('/api/admin/sync-monday-subscribers', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session?.access_token}` },
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setSyncMessage('שגיאה: ' + (data.error || 'לא הצלחנו לסנכרן'));
+      } else {
+        const parts = [`${data.totalInMonday} בקבוצת הסוחרים במאנדיי`, `${data.created} חשבונות חדשים נוצרו`, `${data.updated} שודרגו למנוי`, `${data.alreadyOk} כבר תקינים`];
+        if (data.skippedNoEmail?.length) parts.push(`${data.skippedNoEmail.length} בלי מייל (לא ניתן ליצור חשבון): ${data.skippedNoEmail.join(', ')}`);
+        if (data.failed?.length) parts.push(`${data.failed.length} נכשלו`);
+        setSyncMessage(parts.join(' · '));
+        await loadData();
+      }
+    } catch (e) {
+      setSyncMessage('שגיאה בסנכרון');
+    }
+    setSyncing(false);
   }
 
   async function handleLogout() {
@@ -103,8 +131,17 @@ export default function AdminRevenuePage() {
 
       <div className="section-label"><h2>צפי הכנסה עד סוף החודש</h2></div>
       <p style={{ fontSize: '12.5px', color: 'var(--text-tertiary)', marginBottom: '18px', lineHeight: 1.6 }}>
-        חיובים שעדיין אמורים לקרות מהיום ועד סוף החודש (לא כולל היום עצמו - זה כבר נראה ישירות מול Grow). זה צפי בלבד, לא הבטחה - תלוי שהחיוב בפועל יעבור.
+        חיובים שעדיין אמורים לקרות מהיום ועד סוף החודש (לא כולל היום עצמו - זה כבר נראה ישירות מול Grow). זה צפי בלבד, לא הבטחה - תלוי שהחיוב בפועל יעבור. החישוב מבוסס על מנויים שקיימים באתר - מנוי שקיים רק במאנדיי (מעולם לא נכנס לאתר) יסונכרן אוטומטית פעם ביום, או מיד עם לחיצה על הכפתור למטה.
       </p>
+
+      <button className="btn-outline" style={{ width: '100%', marginBottom: '10px' }} onClick={handleSync} disabled={syncing}>
+        {syncing ? 'מסנכרנים מול Monday.com...' : '🔄 סנכרון מנויים ממאנדיי עכשיו'}
+      </button>
+      {syncMessage && (
+        <p style={{ fontSize: '12px', color: syncMessage.startsWith('שגיאה') ? 'var(--loss)' : 'var(--text-secondary)', marginBottom: '18px', lineHeight: 1.6 }}>
+          {syncMessage}
+        </p>
+      )}
 
       {loading && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>טוענים...</p>}
 

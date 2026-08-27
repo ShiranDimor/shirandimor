@@ -7,6 +7,7 @@ const SUBSCRIBER_GROUP_NAME = 'קבוצת סוחרים';
 const CAMPAIGN_COLUMN_TITLE = 'campaign_name';
 const STATUS_COLUMN_TITLE = 'סטטוס טיפול';
 const FOLLOWUP_COLUMN_TITLE = 'תאריך פולואפ';
+const JOIN_DATE_COLUMN_TITLES = ['תאריך ההרשמה', 'תאריך הרשמה', 'תאריך הצטרפות'];
 const TRADING_PLAN_STATUS_LABEL = 'בנה תוכנית מסחר';
 export const TRADING_PLAN_ABANDONED_STATUS_LABEL = 'יצא באמצע התוכנית מסחר';
 const CAMPAIGN_VALUE = 'תוכנית מסחר 30 יום';
@@ -46,6 +47,7 @@ async function getBoardSchema(token: string, boardId: string) {
     campaignColumnId: columns.find((c) => c.title === CAMPAIGN_COLUMN_TITLE)?.id,
     statusColumnId: columns.find((c) => c.title === STATUS_COLUMN_TITLE)?.id,
     followupColumnId: columns.find((c) => c.title === FOLLOWUP_COLUMN_TITLE && c.type === 'date')?.id,
+    joinDateColumnId: columns.find((c) => c.type === 'date' && JOIN_DATE_COLUMN_TITLES.includes(c.title))?.id,
   };
 }
 
@@ -185,6 +187,65 @@ export async function getMondaySubscriberContacts(): Promise<{ phones: Set<strin
 export async function getMondaySubscriberPhones(): Promise<Set<string>> {
   const { phones } = await getMondaySubscriberContacts();
   return phones;
+}
+
+export type MondaySubscriberDetail = { name: string | null; phone: string | null; email: string | null; joinDate: string | null };
+
+// כל הפרטים (שם, טלפון, מייל, תאריך הצטרפות אם קיימת עמודה כזו) של כל מי שנמצא בקבוצת
+// "קבוצת סוחרים" ב-Monday.com - לשימוש בסנכרון מנויים שקיימים רק במאנדיי לחשבון באתר,
+// כדי שלא יהיה תלוי בכך שהם ייכנסו בעצמם פעם אחת כדי "להיספר" כמנויים באתר
+export async function getMondaySubscriberDetails(): Promise<MondaySubscriberDetail[]> {
+  const token = process.env.MONDAY_API_TOKEN;
+  const boardId = process.env.MONDAY_BOARD_ID;
+  if (!token || !boardId) return [];
+
+  try {
+    const { subscriberGroupId, phoneColumnId, emailColumnId, joinDateColumnId } = await getBoardSchema(token, boardId);
+    if (!subscriberGroupId) return [];
+
+    const columnIds = [phoneColumnId, emailColumnId, joinDateColumnId].filter(Boolean) as string[];
+    const phoneIndex = columnIds.indexOf(phoneColumnId || '');
+    const emailIndex = columnIds.indexOf(emailColumnId || '');
+    const joinDateIndex = columnIds.indexOf(joinDateColumnId || '');
+
+    const result: MondaySubscriberDetail[] = [];
+    let cursor: string | null = null;
+
+    do {
+      const itemsData: any = await mondayRequest(
+        token,
+        `query ($boardId: ID!, $groupId: [String!], $cursor: String, $columnIds: [String!]) {
+          boards (ids: [$boardId]) {
+            groups (ids: $groupId) {
+              items_page (limit: 100, cursor: $cursor) {
+                cursor
+                items { name column_values (ids: $columnIds) { text } }
+              }
+            }
+          }
+        }`,
+        { boardId, groupId: [subscriberGroupId], cursor, columnIds }
+      );
+
+      const page = itemsData?.data?.boards?.[0]?.groups?.[0]?.items_page;
+      const items: { name: string; column_values: { text: string | null }[] }[] = page?.items || [];
+      for (const item of items) {
+        result.push({
+          name: item.name || null,
+          phone: phoneIndex >= 0 ? item.column_values?.[phoneIndex]?.text || null : null,
+          email: emailIndex >= 0 ? item.column_values?.[emailIndex]?.text || null : null,
+          joinDate: joinDateIndex >= 0 ? item.column_values?.[joinDateIndex]?.text || null : null,
+        });
+      }
+
+      cursor = page?.cursor || null;
+    } while (cursor);
+
+    return result;
+  } catch (e) {
+    console.error('שגיאה בשליפת פרטי קבוצת הסוחרים ב-Monday.com', e);
+    return [];
+  }
 }
 
 // יוצר את עמודת "תאריך פולואפ" בלוח אם היא עדיין לא קיימת - כדי שלא תצטרכי להוסיף אותה ידנית

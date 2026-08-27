@@ -59,8 +59,11 @@ export async function findCompletedTradingPlanIdByContact(phone: string | null |
 
 // מוודא שיש פרופיל מנוי פעיל לאימייל הזה - יוצר חשבון אם אין, או משדרג ל"מנוי" אם היה "ליד" בלבד.
 // שומר גם את הטלפון והשם המלא על הפרופיל, כדי שאפשר יהיה בעתיד לבדוק שוב מול מאנדיי אם המנוי עדיין בקבוצה.
-// משותף בין אימות מנוי ידני (verify-membership) לבין סנכרון תשלום מ-Grow.
-export async function ensureActiveSubscriberAccount(email: string, phone: string, fullName: string) {
+// משותף בין אימות מנוי ידני (verify-membership), סנכרון תשלום מ-Grow, וסנכרון מנויים ממאנדיי.
+// startedAt אופציונלי - מאפשר להעביר את תאריך ההצטרפות האמיתי (למשל ממאנדיי) במקום "עכשיו",
+// כי תאריך ההצטרפות קובע את יום החיוב החודשי וחשוב לדיוק בחישובים כמו צפי הכנסה
+export async function ensureActiveSubscriberAccount(email: string, phone: string, fullName: string, startedAt?: string) {
+  const subscriptionStartedAt = startedAt || new Date().toISOString();
   const { data: existing } = await supabaseAdmin.from('profiles').select('id, role').eq('email', email).maybeSingle();
 
   if (existing) {
@@ -68,7 +71,7 @@ export async function ensureActiveSubscriberAccount(email: string, phone: string
     if (existing.role !== 'admin' && existing.role !== 'subscriber') {
       updates.role = 'subscriber';
       updates.subscription_status = 'active';
-      updates.subscription_started_at = new Date().toISOString();
+      updates.subscription_started_at = subscriptionStartedAt;
     }
     await supabaseAdmin.from('profiles').update(updates).eq('id', existing.id);
     return;
@@ -98,7 +101,7 @@ export async function ensureActiveSubscriberAccount(email: string, phone: string
 
   await supabaseAdmin
     .from('profiles')
-    .upsert({ id: userId, email, full_name: fullName, role: 'subscriber', subscription_status: 'active', subscription_started_at: new Date().toISOString(), phone });
+    .upsert({ id: userId, email, full_name: fullName, role: 'subscriber', subscription_status: 'active', subscription_started_at: subscriptionStartedAt, phone });
 }
 
 export { normalizePhone, normalizeEmail };
