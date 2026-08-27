@@ -143,7 +143,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'חסר מזהה לייב' }, { status: 400 });
   }
 
-  const { data: live, error: liveError } = await supabaseAdmin.from('lives').select('id, title, join_info, scheduled_at').eq('id', liveId).eq('published', true).maybeSingle();
+  const { data: live, error: liveError } = await supabaseAdmin.from('lives').select('id, title, join_info, scheduled_at, open_to_all').eq('id', liveId).eq('published', true).maybeSingle();
   if (liveError || !live) {
     return NextResponse.json({ error: 'הלייב לא נמצא' }, { status: 404 });
   }
@@ -198,6 +198,12 @@ export async function POST(request: Request) {
     email: email || null,
     is_subscriber: false,
   });
+
+  // ללייב שמסומן כפתוח לכולם, מי שאינו מנוי מקבל את פרטי ההצטרפות ישירות ולא הופך לליד
+  // מכירתי במאנדיי - אין למה "לפנות" אליו, הוא כבר קיבל גישה לוובינר הפתוח
+  if (live.open_to_all) {
+    return NextResponse.json({ ok: true, isSubscriber: false, openToAll: true, joinInfo: live.join_info });
+  }
 
   await createMondayLiveLead(name, phone, email || null, live.title, live.scheduled_at).catch(() => {});
 

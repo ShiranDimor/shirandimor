@@ -22,7 +22,7 @@ export async function GET(request: Request) {
 
   const { data, error } = await supabaseAdmin
     .from('lives')
-    .select('id, title, description, scheduled_at, join_info')
+    .select('id, title, description, scheduled_at, join_info, open_to_all')
     .eq('published', true)
     .gte('scheduled_at', new Date().toISOString())
     .order('scheduled_at', { ascending: true });
@@ -42,8 +42,10 @@ export async function GET(request: Request) {
       title: l.title,
       description: l.description,
       scheduledAt: l.scheduled_at,
-      // join_info נחשף רק למי שבאמת רשום, ורק אם הוא מנוי (מי שהשאיר פרטים כליד מקבל את זה בנפרד מהצוות)
-      joinInfo: registered && viewerIsSubscriber ? l.join_info : null,
+      openToAll: l.open_to_all,
+      // join_info נחשף למי שבאמת רשום, אם הוא מנוי (מי שהשאיר פרטים כליד למנוי מקבל את זה בנפרד
+      // מהצוות) - או תמיד, ללייב שמסומן כפתוח לכולם
+      joinInfo: registered && (viewerIsSubscriber || l.open_to_all) ? l.join_info : null,
       registered,
     };
   });

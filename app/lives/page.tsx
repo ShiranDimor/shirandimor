@@ -14,6 +14,7 @@ type Live = {
   scheduledAt: string;
   joinInfo: string | null;
   registered: boolean;
+  openToAll: boolean;
 };
 
 // כל לייב מקבל צבע שונה מהרשימה הזו לפי סדר הופעתו, כדי שיהיה קל להבדיל בין כמה לייבים ברשימה
@@ -36,17 +37,26 @@ export default function LivesPage() {
   const [submittingId, setSubmittingId] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [confirmedLeadIds, setConfirmedLeadIds] = useState<Set<string>>(new Set());
+  // גישה שהתקבלה בלי חשבון מחובר (מנוי שמילא טופס בלי להתחבר, או הרשמה ללייב "פתוח לכולם") -
+  // נשמר בדפדפן כי לשרת אין דרך לזהות מבקר כזה בביקור הבא (אין user_id)
+  const [guestAccess, setGuestAccess] = useState<Record<string, string | null>>({});
 
   useEffect(() => {
     loadLives();
-    // שחזור מצב "הפרטים נקלטו" ממי שכבר השאיר פרטים כליד בעבר בדפדפן הזה (לדוגמה אחרי חזרה מדף ההצטרפות)
+    // שחזור מצב מהדפדפן הזה: לידים שהושארו בעבר, וגישה שהתקבלה בלי חשבון מחובר
     try {
       const stored = new Set<string>();
+      const access: Record<string, string | null> = {};
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
         if (key?.startsWith('live_lead_')) stored.add(key.replace('live_lead_', ''));
+        if (key?.startsWith('live_access_')) {
+          const liveId = key.replace('live_access_', '');
+          try { access[liveId] = JSON.parse(localStorage.getItem(key) || 'null')?.joinInfo ?? null; } catch (e) {}
+        }
       }
       setConfirmedLeadIds(stored);
+      setGuestAccess(access);
     } catch (e) {
       // localStorage לא זמין (למשל גלישה פרטית) - לא קריטי, פשוט לא ישוחזר המצב
     }
@@ -125,9 +135,11 @@ export default function LivesPage() {
         body: JSON.stringify({ liveId, name, phone, email }),
       });
       const data = await res.json().catch(() => null);
-      if (data?.isSubscriber) {
-        // מנוי שמילא את הטופס בלי להיות מחובר - מציגים לו ישר את פרטי ההצטרפות
-        setLives((prev) => prev.map((l) => (l.id === liveId ? { ...l, registered: true, joinInfo: data.joinInfo } : l)));
+      if (data?.isSubscriber || data?.openToAll) {
+        // מנוי שמילא את הטופס בלי להיות מחובר, או הרשמה ללייב שפתוח לכולם - מציגים ישר את
+        // פרטי ההצטרפות, ושומרים בדפדפן כדי שזה יישאר גם אחרי רענון (אין חשבון מחובר לזהות לפיו)
+        setGuestAccess((prev) => ({ ...prev, [liveId]: data.joinInfo ?? null }));
+        try { localStorage.setItem(`live_access_${liveId}`, JSON.stringify({ joinInfo: data.joinInfo ?? null })); } catch (e) {}
       } else {
         trackFunnelEvent('live_registration_lead', { phone, email });
         setConfirmedLeadIds((prev) => new Set(prev).add(liveId));
@@ -155,20 +167,25 @@ export default function LivesPage() {
 
       {!loading && lives.map((live, i) => {
         const accentColor = LIVE_ACCENT_COLORS[i % LIVE_ACCENT_COLORS.length];
+        // גישה שהתקבלה בלי חשבון מחובר (מנוי שמילא טופס בלי להתחבר, או לייב "פתוח לכולם") -
+        // מטופלת כמו הרשמה, אבל האמת המלאה (registered/joinInfo) קיימת רק בשרת למי שיש לו חשבון
+        const isGuestAccess = live.id in guestAccess;
+        const hasAccess = live.registered || isGuestAccess;
+        const effectiveJoinInfo = live.registered ? live.joinInfo : guestAccess[live.id];
         const calendarTitle = `${live.title} - עם שירן דימור, מדברים עסקאות`;
-        const calendarDescription = [live.description, live.joinInfo ? `קישור הצטרפות: ${live.joinInfo}` : ''].filter(Boolean).join('\n\n');
+        const calendarDescription = [live.description, effectiveJoinInfo ? `קישור הצטרפות: ${effectiveJoinInfo}` : ''].filter(Boolean).join('\n\n');
         return (
         <div key={live.id} style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-hairline-strong)', borderRight: `3px solid ${accentColor}`, borderRadius: '10px', padding: '16px', marginBottom: '14px' }}>
           <div style={{ fontSize: '15px', fontWeight: 700, marginBottom: '4px' }}>{live.title}</div>
           <div style={{ fontSize: '12.5px', color: accentColor, fontFamily: 'var(--font-mono)', marginBottom: '8px' }}>{formatDateTime(live.scheduledAt)}</div>
           {live.description && <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: '12px' }}>{live.description}</p>}
 
-          {live.registered && live.joinInfo && (
+          {hasAccess && effectiveJoinInfo && (
             <div style={{ background: 'var(--profit-bg)', border: '1px solid var(--profit)', borderRadius: '8px', padding: '10px 12px', marginBottom: '10px', fontSize: '13px', whiteSpace: 'pre-line' }}>
-              ✓ נרשמת! פרטי ההצטרפות: {live.joinInfo}
+              ✓ נרשמת! פרטי ההצטרפות: {effectiveJoinInfo}
             </div>
           )}
-          {live.registered && !live.joinInfo && (
+          {hasAccess && !effectiveJoinInfo && (
             <div style={{ background: 'var(--profit-bg)', border: '1px solid var(--profit)', borderRadius: '8px', padding: '10px 12px', marginBottom: '10px', fontSize: '13px' }}>
               ✓ נרשמת! פרטי ההצטרפות יישלחו בקרוב.
             </div>
@@ -186,7 +203,7 @@ export default function LivesPage() {
             </div>
           )}
 
-          {live.registered && (
+          {hasAccess && (
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
               <a href={buildGoogleCalendarUrl(calendarTitle, calendarDescription, live.scheduledAt)} target="_blank" rel="noopener noreferrer" className="btn-outline" style={{ fontSize: '12.5px', padding: '8px 12px', textDecoration: 'none' }}>
                 הוספה ליומן Google
@@ -194,7 +211,7 @@ export default function LivesPage() {
               <a href={buildIcsDataUri(calendarTitle, calendarDescription, live.scheduledAt)} download={`${live.title}.ics`} className="btn-outline" style={{ fontSize: '12.5px', padding: '8px 12px', textDecoration: 'none' }}>
                 הורדה ליומן אחר
               </a>
-              {viewerIsSubscriber && (
+              {live.registered && viewerIsSubscriber && (
                 <button type="button" onClick={() => cancelRegistration(live.id)} disabled={submittingId === live.id} style={{ fontSize: '12.5px', padding: '8px 12px', background: 'none', border: '1px solid var(--loss)', color: 'var(--loss)', borderRadius: '8px', cursor: 'pointer' }}>
                   {submittingId === live.id ? '...' : 'ביטול הרשמה'}
                 </button>
@@ -202,7 +219,7 @@ export default function LivesPage() {
             </div>
           )}
 
-          {!live.registered && !confirmedLeadIds.has(live.id) && (
+          {!hasAccess && !confirmedLeadIds.has(live.id) && (
             <>
               {viewerIsSubscriber ? (
                 <button type="button" className="btn-primary" style={{ background: accentColor }} onClick={() => registerSubscriber(live.id)} disabled={submittingId === live.id}>

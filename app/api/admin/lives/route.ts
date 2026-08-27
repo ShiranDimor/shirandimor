@@ -40,7 +40,7 @@ export async function POST(request: Request) {
   if (!admin) return NextResponse.json({ error: 'אין הרשאת ניהול' }, { status: 403 });
 
   const body = await request.json().catch(() => ({}));
-  const { title, description, scheduledAt, joinInfo, published } = body as Record<string, unknown>;
+  const { title, description, scheduledAt, joinInfo, published, openToAll } = body as Record<string, unknown>;
 
   if (!title || typeof title !== 'string') {
     return NextResponse.json({ error: 'חסרה כותרת' }, { status: 400 });
@@ -57,6 +57,7 @@ export async function POST(request: Request) {
       scheduled_at: new Date(scheduledAt).toISOString(),
       join_info: joinInfo || null,
       published: published !== false,
+      open_to_all: openToAll === true,
     })
     .select('*')
     .single();

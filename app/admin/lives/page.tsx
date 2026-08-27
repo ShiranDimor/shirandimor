@@ -11,6 +11,7 @@ type Live = {
   scheduled_at: string;
   join_info: string | null;
   published: boolean;
+  open_to_all: boolean;
   created_at: string;
   registrationsCount: number;
 };
@@ -30,6 +31,7 @@ const emptyForm = {
   scheduledAt: '',
   joinInfo: '',
   published: true,
+  openToAll: false,
 };
 
 function formatDateTime(iso: string) {
@@ -103,6 +105,7 @@ export default function AdminLivesPage() {
       scheduledAt: isoToLocalInputValue(live.scheduled_at),
       joinInfo: live.join_info || '',
       published: live.published,
+      openToAll: live.open_to_all,
     });
     setFormError('');
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -129,6 +132,7 @@ export default function AdminLivesPage() {
       scheduledAt: new Date(form.scheduledAt).toISOString(),
       joinInfo: form.joinInfo.trim() || null,
       published: form.published,
+      openToAll: form.openToAll,
     };
 
     const res = await fetch(editingId ? `/api/admin/lives/${editingId}` : '/api/admin/lives', {
@@ -250,9 +254,14 @@ export default function AdminLivesPage() {
         )}
         <textarea className="tp-text-input" style={{ marginBottom: '10px' }} placeholder="פרטי הצטרפות (קישור Zoom/וואטסאפ וכו') - נחשף רק למי שנרשם" rows={2} value={form.joinInfo} onChange={(e) => setForm({ ...form, joinInfo: e.target.value })} />
 
-        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', marginBottom: '14px', cursor: 'pointer' }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', marginBottom: '10px', cursor: 'pointer' }}>
           <input type="checkbox" checked={form.published} onChange={(e) => setForm({ ...form, published: e.target.checked })} />
           מפורסם (גלוי באתר)
+        </label>
+
+        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', marginBottom: '14px', cursor: 'pointer' }}>
+          <input type="checkbox" checked={form.openToAll} onChange={(e) => setForm({ ...form, openToAll: e.target.checked })} />
+          פתוח לכולם - מי שאינו מנוי מקבל את פרטי ההצטרפות ישירות, בלי ליצור ליד למאנדיי
         </label>
 
         {formError && <p style={{ color: 'var(--loss)', fontSize: '13px', marginBottom: '10px' }}>{formError}</p>}
@@ -275,6 +284,7 @@ export default function AdminLivesPage() {
               <div className="name">
                 {live.title}
                 {!live.published && <span style={{ marginRight: '8px', fontSize: '10.5px', color: '#E8A33D', border: '1px solid #E8A33D', borderRadius: '5px', padding: '2px 6px' }}>טיוטה</span>}
+                {live.open_to_all && <span style={{ marginRight: '8px', fontSize: '10.5px', color: 'var(--profit)', border: '1px solid var(--profit)', borderRadius: '5px', padding: '2px 6px' }}>פתוח לכולם</span>}
               </div>
               <div className="email">{formatDateTime(live.scheduled_at)}</div>
             </div>
@@ -314,8 +324,8 @@ export default function AdminLivesPage() {
                       {' '}· {r.email || '—'}
                     </span>
                     <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ color: r.is_subscriber ? 'var(--text-tertiary)' : 'var(--loss)', fontSize: '11.5px', fontWeight: r.is_subscriber ? 400 : 700 }}>
-                        {r.is_subscriber ? 'מנוי' : 'לא מנוי - לפנות'}
+                      <span style={{ color: r.is_subscriber ? 'var(--text-tertiary)' : 'var(--loss)', fontSize: '11.5px', fontWeight: r.is_subscriber || live.open_to_all ? 400 : 700 }}>
+                        {r.is_subscriber ? 'מנוי' : live.open_to_all ? 'לא מנוי' : 'לא מנוי - לפנות'}
                       </span>
                       <button
                         type="button"

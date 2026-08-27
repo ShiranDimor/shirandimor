@@ -20,13 +20,14 @@ export async function PATCH(request: Request, { params }: { params: { id: string
   if (!admin) return NextResponse.json({ error: 'אין הרשאת ניהול' }, { status: 403 });
 
   const body = await request.json().catch(() => ({}));
-  const { title, description, scheduledAt, joinInfo, published } = body as Record<string, unknown>;
+  const { title, description, scheduledAt, joinInfo, published, openToAll } = body as Record<string, unknown>;
 
   const fields: Record<string, unknown> = { updated_at: new Date().toISOString() };
   if (typeof title === 'string') fields.title = title;
   if (typeof description === 'string' || description === null) fields.description = description;
   if (typeof joinInfo === 'string' || joinInfo === null) fields.join_info = joinInfo;
   if (typeof published === 'boolean') fields.published = published;
+  if (typeof openToAll === 'boolean') fields.open_to_all = openToAll;
 
   if (typeof scheduledAt === 'string') {
     if (isNaN(Date.parse(scheduledAt))) {
