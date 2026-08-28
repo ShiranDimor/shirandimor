@@ -78,8 +78,6 @@ export async function isContactInSubscribersGroupMonday(
     if (!targetPhone && !targetEmail) return false;
 
     const columnIds = [phoneColumnId, emailColumnId].filter(Boolean) as string[];
-    const phoneIndex = columnIds.indexOf(phoneColumnId || '');
-    const emailIndex = columnIds.indexOf(emailColumnId || '');
 
     let cursor: string | null = null;
     do {
@@ -90,7 +88,7 @@ export async function isContactInSubscribersGroupMonday(
             groups (ids: $groupId) {
               items_page (limit: 500, cursor: $cursor) {
                 cursor
-                items { column_values (ids: $columnIds) { text } }
+                items { column_values (ids: $columnIds) { id text } }
               }
             }
           }
@@ -99,15 +97,18 @@ export async function isContactInSubscribersGroupMonday(
       );
 
       const page = itemsData?.data?.boards?.[0]?.groups?.[0]?.items_page;
-      const items: { column_values: { text: string | null }[] }[] = page?.items || [];
+      // Monday.com לא בהכרח מחזיר את column_values בסדר של columnIds שביקשנו - אלא בסדר הפנימי
+      // של הלוח - לכן חייבים להתאים לפי id ולא לפי מיקום במערך (זה מה שגרם לתקרית שבה
+      // "המייל" בפועל היה תאריך הצטרפות, ו"תאריך ההצטרפות" היה עלות חודשית)
+      const items: { column_values: { id: string; text: string | null }[] }[] = page?.items || [];
 
       const found = items.some((item) => {
-        if (targetPhone && phoneIndex >= 0) {
-          const text = item.column_values?.[phoneIndex]?.text;
+        if (targetPhone && phoneColumnId) {
+          const text = item.column_values?.find((cv) => cv.id === phoneColumnId)?.text;
           if (text && normalizePhone(text) === targetPhone) return true;
         }
-        if (targetEmail && emailIndex >= 0) {
-          const text = item.column_values?.[emailIndex]?.text;
+        if (targetEmail && emailColumnId) {
+          const text = item.column_values?.find((cv) => cv.id === emailColumnId)?.text;
           if (text && text.trim().toLowerCase() === targetEmail) return true;
         }
         return false;
@@ -142,8 +143,6 @@ export async function getMondaySubscriberContacts(): Promise<{ phones: Set<strin
     if (!subscriberGroupId || (!phoneColumnId && !emailColumnId)) return { phones: new Set(), emails: new Set() };
 
     const columnIds = [phoneColumnId, emailColumnId].filter(Boolean) as string[];
-    const phoneIndex = columnIds.indexOf(phoneColumnId || '');
-    const emailIndex = columnIds.indexOf(emailColumnId || '');
 
     const phones = new Set<string>();
     const emails = new Set<string>();
@@ -157,7 +156,7 @@ export async function getMondaySubscriberContacts(): Promise<{ phones: Set<strin
             groups (ids: $groupId) {
               items_page (limit: 100, cursor: $cursor) {
                 cursor
-                items { column_values (ids: $columnIds) { text } }
+                items { column_values (ids: $columnIds) { id text } }
               }
             }
           }
@@ -166,14 +165,15 @@ export async function getMondaySubscriberContacts(): Promise<{ phones: Set<strin
       );
 
       const page = itemsData?.data?.boards?.[0]?.groups?.[0]?.items_page;
-      const items: { column_values: { text: string | null }[] }[] = page?.items || [];
+      // התאמה לפי id, לא לפי מיקום במערך - ר' הערה למעלה ב-isContactInSubscribersGroupMonday
+      const items: { column_values: { id: string; text: string | null }[] }[] = page?.items || [];
       for (const item of items) {
-        if (phoneIndex >= 0) {
-          const text = item.column_values?.[phoneIndex]?.text;
+        if (phoneColumnId) {
+          const text = item.column_values?.find((cv) => cv.id === phoneColumnId)?.text;
           if (text) phones.add(normalizePhone(text));
         }
-        if (emailIndex >= 0) {
-          const text = item.column_values?.[emailIndex]?.text;
+        if (emailColumnId) {
+          const text = item.column_values?.find((cv) => cv.id === emailColumnId)?.text;
           if (text) emails.add(text.trim().toLowerCase());
         }
       }
@@ -209,10 +209,6 @@ export async function getMondaySubscriberDetails(): Promise<MondaySubscriberDeta
     if (!subscriberGroupId) return [];
 
     const columnIds = [phoneColumnId, emailColumnId, joinDateColumnId, monthlyCostColumnId].filter(Boolean) as string[];
-    const phoneIndex = columnIds.indexOf(phoneColumnId || '');
-    const emailIndex = columnIds.indexOf(emailColumnId || '');
-    const joinDateIndex = columnIds.indexOf(joinDateColumnId || '');
-    const monthlyCostIndex = columnIds.indexOf(monthlyCostColumnId || '');
 
     const result: MondaySubscriberDetail[] = [];
     let cursor: string | null = null;
@@ -225,7 +221,7 @@ export async function getMondaySubscriberDetails(): Promise<MondaySubscriberDeta
             groups (ids: $groupId) {
               items_page (limit: 100, cursor: $cursor) {
                 cursor
-                items { name column_values (ids: $columnIds) { text } }
+                items { name column_values (ids: $columnIds) { id text } }
               }
             }
           }
@@ -234,14 +230,17 @@ export async function getMondaySubscriberDetails(): Promise<MondaySubscriberDeta
       );
 
       const page = itemsData?.data?.boards?.[0]?.groups?.[0]?.items_page;
-      const items: { name: string; column_values: { text: string | null }[] }[] = page?.items || [];
+      // התאמה לפי id, לא לפי מיקום במערך - ר' הערה למעלה ב-isContactInSubscribersGroupMonday
+      const items: { name: string; column_values: { id: string; text: string | null }[] }[] = page?.items || [];
       for (const item of items) {
+        const byId = (colId: string | undefined) =>
+          colId ? item.column_values?.find((cv) => cv.id === colId)?.text || null : null;
         result.push({
           name: item.name || null,
-          phone: phoneIndex >= 0 ? item.column_values?.[phoneIndex]?.text || null : null,
-          email: emailIndex >= 0 ? item.column_values?.[emailIndex]?.text || null : null,
-          joinDate: joinDateIndex >= 0 ? item.column_values?.[joinDateIndex]?.text || null : null,
-          monthlyCost: monthlyCostIndex >= 0 ? item.column_values?.[monthlyCostIndex]?.text || null : null,
+          phone: byId(phoneColumnId),
+          email: byId(emailColumnId),
+          joinDate: byId(joinDateColumnId),
+          monthlyCost: byId(monthlyCostColumnId),
         });
       }
 
