@@ -199,6 +199,12 @@ export default function AdminDashboard() {
           <div className="at-title">צפי הכנסה החודש</div>
           <div className="at-count">₪{revenueTotal.toLocaleString('he-IL')} · {revenueCount} חיובים</div>
         </Link>
+
+        <Link href="/admin/support-bot" className="admin-tile">
+          <div className="at-icon">🤖</div>
+          <div className="at-title">בוט תמיכה - בדיקה</div>
+          <div className="at-count">כלי פנימי</div>
+        </Link>
       </div>
 
       <button className="btn-outline" style={{ width: '100%', marginTop: '8px' }} onClick={handleRefreshAllPrices} disabled={refreshing}>
