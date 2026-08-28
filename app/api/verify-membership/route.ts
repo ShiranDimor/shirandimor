@@ -1,15 +1,7 @@
 import { NextResponse } from 'next/server';
-import { sendLoginEmail, supabaseAdmin } from '@/lib/instantLogin';
+import { sendLoginEmail } from '@/lib/instantLogin';
 import { ensureActiveSubscriberAccount } from '@/lib/subscriberStatus';
 import { isContactInSubscribersGroupMonday } from '@/lib/tradingPlan/monday';
-
-// רישום אבחוני זמני - יש להסיר יחד עם טבלת public._debug_verify_attempts אחרי סיום האבחון
-async function logDebugAttempt(fields: Record<string, unknown>) {
-  await supabaseAdmin.from('_debug_verify_attempts').insert(fields).then(
-    () => {},
-    () => {}
-  );
-}
 
 // אימות מול "קבוצת סוחרים" במאנדיי - משתמש בפונקציה המשותפת שכבר בודקת גם טלפון וגם מייל
 // (במקום מימוש נפרד שבדק רק טלפון, וטעה לפספס מנוי שהטלפון שלו במאנדיי לא תואם בדיוק
@@ -35,7 +27,6 @@ export async function POST(request: Request) {
 
   try {
     const found = await isContactInSubscribersGroupMonday(phone, email);
-    await logDebugAttempt({ phone, email, first_name: firstName, last_name: lastName, found });
     if (!found) {
       return NextResponse.json({ verified: false, configured: true });
     }
@@ -46,7 +37,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ verified: true, configured: true });
   } catch (e) {
     console.error('שגיאה באימות מול Monday.com', e);
-    await logDebugAttempt({ phone, email, first_name: firstName, last_name: lastName, err: String(e) });
     return NextResponse.json({ verified: false, configured: false });
   }
 }
