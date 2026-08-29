@@ -34,12 +34,24 @@ function isJoinMonth(startedAt: Date, referenceDate: Date): boolean {
   return startedAt.getFullYear() === referenceDate.getFullYear() && startedAt.getMonth() === referenceDate.getMonth();
 }
 
-type Charge = { name: string | null; email: string | null; phone: string | null; chargeDate: Date; price: number };
+// מפתח קשר מנורמל - טלפון קודם (רוב המנויים בפועל לא שומרים מייל), עם נפילה חזרה למייל
+function contactKeyFor(phone: string | null, email: string | null): string | null {
+  if (phone) return `phone:${phone.replace(/\D/g, '').slice(-9)}`;
+  if (email) return `email:${email.trim().toLowerCase()}`;
+  return null;
+}
+
+function monthStartISO(referenceDate: Date): string {
+  return new Date(referenceDate.getFullYear(), referenceDate.getMonth(), 1).toISOString().slice(0, 10);
+}
+
+type Charge = { name: string | null; email: string | null; phone: string | null; contactKey: string | null; chargeDate: Date; price: number };
 
 // GET - תמונה מלאה של חיובי החודש: כמה כבר חויב עד היום, וכמה עוד אמור להיות מחויב עד סוף
 // החודש. מקור המידע היחיד הוא קבוצת "קבוצת סוחרים" ב-Monday.com (לא מוזג עם חשבונות האתר) -
 // כי זה המקום שבו כל מנוי אמיתי קיים תמיד, בין אם יש לו חשבון באתר ובין אם לא (למשל אין לו מייל).
-// זה תמיד צפי, לא הבטחה - תלוי שהחיוב בפועל יעבור
+// זה תמיד צפי, לא הבטחה - תלוי שהחיוב בפועל יעבור. אפשר לתקן ידנית פריט בודד (סעיף override) אם
+// הצפי האוטומטי לפי תאריך לא תואם את מה שבאמת קרה בפועל.
 export async function GET(request: Request) {
   const admin = await requireAdmin(request);
   if (!admin) return NextResponse.json({ error: 'אין הרשאת ניהול' }, { status: 403 });
@@ -48,6 +60,13 @@ export async function GET(request: Request) {
 
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const thisMonth = monthStartISO(now);
+
+  const { data: overridesRaw } = await supabaseAdmin
+    .from('revenue_manual_charges')
+    .select('contact_key, charged')
+    .eq('month', thisMonth);
+  const overrides = new Map((overridesRaw || []).map((o) => [o.contact_key, o.charged]));
 
   const charges: Charge[] = [];
   const missingJoinDate: string[] = [];
@@ -64,20 +83,30 @@ export async function GET(request: Request) {
       name: s.name,
       email: s.email,
       phone: s.phone,
+      contactKey: contactKeyFor(s.phone, s.email),
       chargeDate: chargeDateThisMonth(startedAt, now),
       price: isJoinMonth(startedAt, now) ? FIRST_MONTH_PRICE : (monthlyCost && !isNaN(monthlyCost) ? monthlyCost : MONTHLY_PRICE),
     });
   }
 
-  const alreadyCharged = charges.filter((c) => c.chargeDate <= today).sort((a, b) => a.chargeDate.getTime() - b.chargeDate.getTime());
-  const upcoming = charges.filter((c) => c.chargeDate > today).sort((a, b) => a.chargeDate.getTime() - b.chargeDate.getTime());
+  // תיקון ידני גובר תמיד על הניחוש האוטומטי לפי תאריך
+  const isCharged = (c: Charge) => {
+    const manual = c.contactKey ? overrides.get(c.contactKey) : undefined;
+    if (manual !== undefined) return manual;
+    return c.chargeDate <= today;
+  };
+
+  const alreadyCharged = charges.filter(isCharged).sort((a, b) => a.chargeDate.getTime() - b.chargeDate.getTime());
+  const upcoming = charges.filter((c) => !isCharged(c)).sort((a, b) => a.chargeDate.getTime() - b.chargeDate.getTime());
 
   const toResponseItem = (c: Charge) => ({
     name: c.name,
     email: c.email,
     phone: c.phone,
+    contactKey: c.contactKey,
     chargeDate: c.chargeDate.toISOString().slice(0, 10),
     price: c.price,
+    manuallySet: c.contactKey ? overrides.has(c.contactKey) : false,
   });
 
   return NextResponse.json({
@@ -94,4 +123,23 @@ export async function GET(request: Request) {
     monthTotal: charges.reduce((sum, c) => sum + c.price, 0),
     missingJoinDate,
   });
+}
+
+// POST - עדכון ידני של סטטוס חיוב לפריט בודד (בנוסף לניחוש האוטומטי לפי תאריך), לחודש הנוכחי
+export async function POST(request: Request) {
+  const admin = await requireAdmin(request);
+  if (!admin) return NextResponse.json({ error: 'אין הרשאת ניהול' }, { status: 403 });
+
+  const { contactKey, charged } = await request.json().catch(() => ({}));
+  if (!contactKey || typeof charged !== 'boolean') {
+    return NextResponse.json({ error: 'חסרים פרטים' }, { status: 400 });
+  }
+
+  const { error } = await supabaseAdmin
+    .from('revenue_manual_charges')
+    .upsert({ contact_key: contactKey, month: monthStartISO(new Date()), charged, updated_at: new Date().toISOString() }, { onConflict: 'contact_key,month' });
+
+  if (error) return NextResponse.json({ error: 'שגיאה בשמירה' }, { status: 500 });
+
+  return NextResponse.json({ ok: true });
 }

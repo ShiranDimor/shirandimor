@@ -8,8 +8,10 @@ type ChargeItem = {
   name: string | null;
   email: string | null;
   phone: string | null;
+  contactKey: string | null;
   chargeDate: string;
   price: number;
+  manuallySet: boolean;
 };
 
 type ChargeGroup = { count: number; totalAmount: number; items: ChargeItem[] };
@@ -28,6 +30,7 @@ export default function AdminRevenuePage() {
   const [upcoming, setUpcoming] = useState<ChargeGroup>({ count: 0, totalAmount: 0, items: [] });
   const [monthTotal, setMonthTotal] = useState(0);
   const [missingJoinDate, setMissingJoinDate] = useState<string[]>([]);
+  const [updatingKey, setUpdatingKey] = useState<string | null>(null);
 
   useEffect(() => {
     checkAdmin();
@@ -61,6 +64,20 @@ export default function AdminRevenuePage() {
   async function handleLogout() {
     await supabase.auth.signOut();
     window.location.href = '/';
+  }
+
+  // עדכון ידני של סטטוס חיוב - בנוסף לניחוש האוטומטי לפי תאריך, למקרה שהוא לא תואם את מה שבאמת קרה
+  async function toggleCharged(contactKey: string | null, charged: boolean) {
+    if (!contactKey) return;
+    setUpdatingKey(contactKey);
+    const { data: { session } } = await supabase.auth.getSession();
+    await fetch('/api/admin/revenue-projection', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
+      body: JSON.stringify({ contactKey, charged }),
+    }).catch(() => {});
+    await loadData();
+    setUpdatingKey(null);
   }
 
   if (checking) {
@@ -126,10 +143,21 @@ export default function AdminRevenuePage() {
           {alreadyCharged.items.map((u, i) => (
             <div key={i} className="admin-row">
               <div>
-                <div className="name">{u.name || '—'}</div>
+                <div className="name">{u.name || '—'}{u.manuallySet && <span style={{ color: 'var(--text-tertiary)', fontWeight: 400 }}> · עודכן ידנית</span>}</div>
                 <div className="email">{u.phone || u.email || '—'}</div>
               </div>
-              <div style={{ fontFamily: 'var(--font-mono)', fontSize: '13px', color: 'var(--text-secondary)' }}>{formatDate(u.chargeDate)} · ₪{u.price}</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: '13px', color: 'var(--text-secondary)' }}>{formatDate(u.chargeDate)} · ₪{u.price}</div>
+                <button
+                  className="btn-outline"
+                  style={{ width: 'auto', padding: '4px 8px', fontSize: '11px' }}
+                  onClick={() => toggleCharged(u.contactKey, false)}
+                  disabled={!u.contactKey || updatingKey === u.contactKey}
+                  title="סמן שעדיין לא חויב בפועל"
+                >
+                  {updatingKey === u.contactKey ? '...' : 'לא חויב בפועל'}
+                </button>
+              </div>
             </div>
           ))}
 
@@ -140,10 +168,21 @@ export default function AdminRevenuePage() {
           {upcoming.items.map((u, i) => (
             <div key={i} className="admin-row">
               <div>
-                <div className="name">{u.name || '—'}</div>
+                <div className="name">{u.name || '—'}{u.manuallySet && <span style={{ color: 'var(--text-tertiary)', fontWeight: 400 }}> · עודכן ידנית</span>}</div>
                 <div className="email">{u.phone || u.email || '—'}</div>
               </div>
-              <div style={{ fontFamily: 'var(--font-mono)', fontSize: '13px', color: 'var(--text-secondary)' }}>{formatDate(u.chargeDate)} · ₪{u.price}</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: '13px', color: 'var(--text-secondary)' }}>{formatDate(u.chargeDate)} · ₪{u.price}</div>
+                <button
+                  className="btn-outline"
+                  style={{ width: 'auto', padding: '4px 8px', fontSize: '11px' }}
+                  onClick={() => toggleCharged(u.contactKey, true)}
+                  disabled={!u.contactKey || updatingKey === u.contactKey}
+                  title="סמן שכבר חויב בפועל"
+                >
+                  {updatingKey === u.contactKey ? '...' : '✓ כבר חויב'}
+                </button>
+              </div>
             </div>
           ))}
 
