@@ -210,7 +210,7 @@ export default function AdminSupportBotPage() {
       {error && <p style={{ fontSize: '12px', color: 'var(--loss)', marginBottom: '10px' }}>{error}</p>}
 
       {(loadingHistory || messages.length > 0) && (
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-end' }}>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-end', marginBottom: '70px' }}>
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
