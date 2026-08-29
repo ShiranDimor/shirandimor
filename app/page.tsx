@@ -27,6 +27,7 @@ export default function HomePage() {
   const [leadSubmitting, setLeadSubmitting] = useState(false);
   const [leadError, setLeadError] = useState('');
   const [leadAlreadySubscriber, setLeadAlreadySubscriber] = useState(false);
+  const [whatsappInviteUrl, setWhatsappInviteUrl] = useState<string | null>(null);
   const [openTrades, setOpenTrades] = useState<Trade[]>([]);
   const [lastClosed, setLastClosed] = useState<Trade | null>(null);
   const [openCount, setOpenCount] = useState(0);
@@ -58,8 +59,9 @@ export default function HomePage() {
       });
       const data = await res.json().catch(() => null);
       alreadySubscriber = !!data?.alreadySubscriber;
+      if (data?.inviteUrl) setWhatsappInviteUrl(data.inviteUrl);
     } catch (e) {
-      // ממשיכים לוואטסאפ גם אם השליחה נכשלה, כדי לא לאבד את ההצטרפות
+      // ממשיכים לוואטסאפ גם אם השליחה נכשלה, כדי לא לאבד את ההצטרפות - עם קישור גיבוי במקום קישור ההצטרפות הישיר
     }
 
     setLeadSubmitting(false);
@@ -180,10 +182,19 @@ export default function HomePage() {
         {showLeadForm && leadSubmitted && !leadAlreadySubscriber && (
           <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-hairline-strong)', borderRight: '3px solid var(--profit)', borderRadius: '10px', padding: '16px', marginBottom: '10px', textAlign: 'center' }}>
             <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '14px' }}>
-              מעולה! הכפתור פותח את קבוצת הוואטסאפ, וההצטרפות משם היא כבר עניין של רגע.
+              {whatsappInviteUrl
+                ? 'מעולה! הכפתור פותח את קבוצת הוואטסאפ, וההצטרפות משם היא כבר עניין של רגע.'
+                : 'הפרטים נקלטו! לא הצלחנו לפתוח את הקבוצה אוטומטית - כדאי לשלוח לי הודעה בוואטסאפ ונצרף אותך ידנית.'}
             </p>
-            <a href="https://chat.whatsapp.com/GEf9Y4vFRDSEWKixrETWcg" target="_blank" rel="noopener noreferrer" className="btn-primary" style={{ display: 'block', textDecoration: 'none' }} onClick={() => trackFunnelEvent('whatsapp_group_open_click', { phone: leadPhone, email: leadEmail })}>
-              פתיחת קבוצת הוואטסאפ ←
+            <a
+              href={whatsappInviteUrl || 'https://wa.me/972547167419'}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn-primary"
+              style={{ display: 'block', textDecoration: 'none' }}
+              onClick={() => trackFunnelEvent('whatsapp_group_open_click', { phone: leadPhone, email: leadEmail })}
+            >
+              {whatsappInviteUrl ? 'פתיחת קבוצת הוואטסאפ ←' : 'שליחת הודעה בוואטסאפ ←'}
             </a>
           </div>
         )}
@@ -214,7 +225,7 @@ export default function HomePage() {
 
       <Link href="/lives" className="live-teaser">
         <span className="live-dot" />
-        <span className="live-teaser-text"><strong>הלייבים הקרובים</strong> - מנקים את כל הרעש: לבנות תיק השקעות אחראי ומציאותי הרבה יותר פשוט ממה שנדמה</span>
+        <span className="live-teaser-text"><strong>הלייבים הקרובים</strong> - סוחרים ביחד בזמן אמת, לא רק לומדים: לבנות תיק השקעות אחראי ומציאותי הרבה יותר פשוט ממה שנדמה</span>
         <span className="live-teaser-arrow">←</span>
       </Link>
 

@@ -3,6 +3,10 @@ import { isActiveSubscriber } from '@/lib/subscriberStatus';
 import { isContactInSubscribersGroupMonday } from '@/lib/tradingPlan/monday';
 
 const LEAD_GROUP_NAME = 'לידים חדשים';
+// קישור ההצטרפות בפועל לקבוצת הוואטסאפ החינמית - נשמר כאן (קוד צד-שרת) ולא בעמוד עצמו,
+// כדי שלא יהיה חשוף בקוד הציבורי שנשלח לדפדפן: מי שרק פותח את מקור הדף לא יכול "לגנוב" את
+// הקישור ולהצטרף לקבוצה בלי להשאיר פרטים - הוא נחשף רק בתגובת ה-API אחרי שליחה אמיתית של הטופס
+const WHATSAPP_FREE_GROUP_INVITE_URL = process.env.WHATSAPP_FREE_GROUP_INVITE_URL || 'https://chat.whatsapp.com/GEf9Y4vFRDSEWKixrETWcg';
 const CAMPAIGN_COLUMN_TITLE = 'campaign_name';
 const STATUS_COLUMN_TITLE = 'סטטוס טיפול';
 const DUPLICATE_STATUS_LABEL = 'ליד כפול';
@@ -95,7 +99,7 @@ export async function POST(request: Request) {
 
   if (!token || !boardId) {
     console.error('Monday.com לא מוגדר (חסר MONDAY_API_TOKEN או MONDAY_BOARD_ID בסביבה)');
-    return NextResponse.json({ ok: true, monday: false });
+    return NextResponse.json({ ok: true, monday: false, inviteUrl: WHATSAPP_FREE_GROUP_INVITE_URL });
   }
 
   try {
@@ -150,13 +154,13 @@ export async function POST(request: Request) {
       console.error('Monday.com לא החזיר מזהה פריט', createItemData);
     }
 
-    const response = NextResponse.json({ ok: true, monday: Boolean(itemId) });
+    const response = NextResponse.json({ ok: true, monday: Boolean(itemId), inviteUrl: WHATSAPP_FREE_GROUP_INVITE_URL });
     // מסמן את הדפדפן כמי שהצטרף לקבוצת העדכונים - פותח גישה לשכבת התוכן האמצעית בספריית השיעורים
     response.cookies.set('sd_registered', '1', { maxAge: 60 * 60 * 24 * 365, path: '/', sameSite: 'lax' });
     return response;
   } catch (e) {
     console.error('שגיאה בשליחת הליד ל-Monday.com', e);
-    const response = NextResponse.json({ ok: true, monday: false });
+    const response = NextResponse.json({ ok: true, monday: false, inviteUrl: WHATSAPP_FREE_GROUP_INVITE_URL });
     response.cookies.set('sd_registered', '1', { maxAge: 60 * 60 * 24 * 365, path: '/', sameSite: 'lax' });
     return response;
   }

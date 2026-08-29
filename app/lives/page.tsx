@@ -160,7 +160,7 @@ export default function LivesPage() {
       </header>
 
       <div className="form-title">לייבים</div>
-      <div className="form-sub">מפגשים חיים - שאלות בזמן אמת, לא עוד הקלטה</div>
+      <div className="form-sub">סוחרים ביחד בזמן אמת - לא רק לומדים או צופים מהצד</div>
 
       {(loading || checkingAuth) && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)', textAlign: 'center', marginTop: '20px' }}>טוענים...</p>}
       {!loading && lives.length === 0 && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)', textAlign: 'center', marginTop: '20px' }}>אין כרגע לייבים קרובים - שווה לחזור בקרוב</p>}
