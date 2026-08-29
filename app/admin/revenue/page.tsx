@@ -30,6 +30,7 @@ export default function AdminRevenuePage() {
   const [upcoming, setUpcoming] = useState<ChargeGroup>({ count: 0, totalAmount: 0, items: [] });
   const [monthTotal, setMonthTotal] = useState(0);
   const [missingJoinDate, setMissingJoinDate] = useState<string[]>([]);
+  const [duplicatesRemoved, setDuplicatesRemoved] = useState<string[]>([]);
   const [updatingKey, setUpdatingKey] = useState<string | null>(null);
   const [upcomingOpen, setUpcomingOpen] = useState(true);
   const [chargedOpen, setChargedOpen] = useState(true);
@@ -59,6 +60,7 @@ export default function AdminRevenuePage() {
       setUpcoming(data.upcoming || { count: 0, totalAmount: 0, items: [] });
       setMonthTotal(data.monthTotal || 0);
       setMissingJoinDate(data.missingJoinDate || []);
+      setDuplicatesRemoved(data.duplicatesRemoved || []);
     }
     setLoading(false);
   }
@@ -219,6 +221,12 @@ export default function AdminRevenuePage() {
           {missingJoinDate.length > 0 && (
             <p style={{ fontSize: '12px', color: 'var(--loss)', marginTop: '20px', lineHeight: 1.6 }}>
               לא נכללו בחישוב (אין תאריך הרשמה במאנדיי): {missingJoinDate.join(', ')}
+            </p>
+          )}
+
+          {duplicatesRemoved.length > 0 && (
+            <p style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginTop: '10px', lineHeight: 1.6 }}>
+              הוסרו מהחישוב ככפילויות (אותו טלפון/מייל מופיע כמה פעמים במאנדיי - נספר פעם אחת בלבד): {duplicatesRemoved.join(', ')}
             </p>
           )}
         </>

@@ -68,10 +68,40 @@ export async function GET(request: Request) {
     .eq('month', thisMonth);
   const overrides = new Map((overridesRaw || []).map((o) => [o.contact_key, o.charged]));
 
+  // כמה אנשים (למשל מי שנרשם בטעות פעמיים) נמצאים בקבוצת "קבוצת סוחרים" במאנדיי עם כרטיס
+  // כפול לאותו טלפון/מייל, אבל בפועל מחויבים רק פעם אחת בגרו - לכן דוחפים לפי מפתח קשר, ומשאירים
+  // רק את הכרטיס עם תאריך ההרשמה החדש ביותר (הכי קרוב למחזור החיוב האמיתי בגרו)
+  const byContact = new Map<string, typeof subscribers>();
+  const noContact: typeof subscribers = [];
+  for (const s of subscribers) {
+    const key = contactKeyFor(s.phone, s.email);
+    if (!key) {
+      noContact.push(s);
+      continue;
+    }
+    const bucket = byContact.get(key) || [];
+    bucket.push(s);
+    byContact.set(key, bucket);
+  }
+
+  const duplicatesRemoved: string[] = [];
+  const dedupedSubscribers: typeof subscribers = [...noContact];
+  for (const bucket of byContact.values()) {
+    if (bucket.length === 1) {
+      dedupedSubscribers.push(bucket[0]);
+      continue;
+    }
+    const sorted = [...bucket].sort((a, b) => new Date(b.joinDate || 0).getTime() - new Date(a.joinDate || 0).getTime());
+    dedupedSubscribers.push(sorted[0]);
+    for (const removed of sorted.slice(1)) {
+      duplicatesRemoved.push(`${removed.name || removed.phone || removed.email} (${removed.joinDate || 'ללא תאריך'})`);
+    }
+  }
+
   const charges: Charge[] = [];
   const missingJoinDate: string[] = [];
 
-  for (const s of subscribers) {
+  for (const s of dedupedSubscribers) {
     if (!s.joinDate) {
       missingJoinDate.push(s.name || s.phone || s.email || 'ללא שם');
       continue;
@@ -122,6 +152,7 @@ export async function GET(request: Request) {
     },
     monthTotal: charges.reduce((sum, c) => sum + c.price, 0),
     missingJoinDate,
+    duplicatesRemoved,
   });
 }
 
