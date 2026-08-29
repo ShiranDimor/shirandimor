@@ -135,7 +135,8 @@ export function buildRuntimeContextBlock(ctx: {
 
   if (ctx.nextLive) {
     const d = new Date(ctx.nextLive.scheduledAt);
-    const formatted = d.toLocaleString('he-IL', { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' });
+    // חייבים לציין את אזור הזמן של ישראל במפורש - השרת רץ ב-UTC, ובלי זה השעה יוצאת שגויה
+    const formatted = d.toLocaleString('he-IL', { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem' });
     lines.push(`הלייב הקרוב בפועל: "${ctx.nextLive.title}" בתאריך ${formatted}. זה נתון אמיתי ועדכני - אפשר לצטט אותו במדויק.`);
   } else if (ctx.nextLive === null) {
     lines.push('אין כרגע לייב עתידי מפורסם באתר - אם נשאלת מתי הלייב הבא, תגידי בכנות שאין כרגע תאריך קבוע ושהעדכון יבוא בקבוצה.');
