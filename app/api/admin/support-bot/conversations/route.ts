@@ -22,7 +22,7 @@ export async function GET(request: Request) {
 
   const { data: conversations, error } = await supabaseAdmin
     .from('support_bot_conversations')
-    .select('id, contact_name, contact_phone, contact_email, user_type, lead_intent, created_at, last_message_at')
+    .select('id, contact_name, contact_phone, contact_email, user_type, lead_intent, created_at, last_message_at, summary')
     .order('last_message_at', { ascending: false });
 
   if (error) return NextResponse.json({ error: 'שגיאה בטעינת השיחות' }, { status: 500 });

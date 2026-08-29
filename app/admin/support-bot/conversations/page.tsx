@@ -14,6 +14,7 @@ type Conversation = {
   created_at: string;
   last_message_at: string;
   messageCount: number;
+  summary: string | null;
 };
 
 type TranscriptMessage = { role: 'user' | 'assistant'; content: string; created_at: string };
@@ -163,6 +164,11 @@ export default function SupportBotConversationsPage() {
               <div className="email" style={{ marginTop: '2px' }}>
                 {USER_TYPE_LABELS[c.user_type || 'unknown']} · {c.messageCount} הודעות · עדכון אחרון {formatDateTime(c.last_message_at)}
               </div>
+              {c.summary && (
+                <div style={{ fontSize: '12.5px', color: 'var(--text-secondary)', marginTop: '6px', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+                  {c.summary}
+                </div>
+              )}
             </div>
             {c.contact_phone && (
               <a

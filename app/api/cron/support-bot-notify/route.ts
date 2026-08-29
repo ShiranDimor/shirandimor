@@ -90,7 +90,7 @@ export async function GET(request: Request) {
 
     const summary = await summarizeConversation(messages as { role: 'user' | 'assistant'; content: string }[]);
     await sendSummaryEmail(conversation, summary);
-    await supabaseAdmin.from('support_bot_conversations').update({ notified_at: new Date().toISOString() }).eq('id', conversation.id);
+    await supabaseAdmin.from('support_bot_conversations').update({ notified_at: new Date().toISOString(), summary }).eq('id', conversation.id);
     notified++;
   }
 
