@@ -31,6 +31,8 @@ export default function AdminRevenuePage() {
   const [monthTotal, setMonthTotal] = useState(0);
   const [missingJoinDate, setMissingJoinDate] = useState<string[]>([]);
   const [updatingKey, setUpdatingKey] = useState<string | null>(null);
+  const [upcomingOpen, setUpcomingOpen] = useState(true);
+  const [chargedOpen, setChargedOpen] = useState(true);
 
   useEffect(() => {
     checkAdmin();
@@ -136,55 +138,83 @@ export default function AdminRevenuePage() {
             <div style={{ fontSize: '13px', color: 'var(--text-tertiary)', marginTop: '4px' }}>סך הכל צפי לחודש ({alreadyCharged.count + upcoming.count} חיובים)</div>
           </div>
 
-          <div className="section-label" style={{ marginTop: '10px' }}><h2 style={{ fontSize: '15px' }}>כבר חויב החודש</h2><span className="count">₪{alreadyCharged.totalAmount.toLocaleString('he-IL')}</span></div>
-          {alreadyCharged.items.length === 0 && (
-            <p style={{ fontSize: '13px', color: 'var(--text-tertiary)', marginBottom: '16px' }}>אין עדיין חיובים החודש</p>
+          <div
+            className="section-label"
+            style={{ marginTop: '10px', cursor: 'pointer' }}
+            onClick={() => setUpcomingOpen((v) => !v)}
+          >
+            <h2 style={{ fontSize: '15px' }}>
+              <span style={{ display: 'inline-block', transition: 'transform 0.15s', transform: upcomingOpen ? 'rotate(90deg)' : 'rotate(0deg)', marginLeft: '4px' }}>›</span>
+              עוד צפוי עד סוף החודש
+            </h2>
+            <span className="count">₪{upcoming.totalAmount.toLocaleString('he-IL')}</span>
+          </div>
+          {upcomingOpen && (
+            <>
+              {upcoming.items.length === 0 && (
+                <p style={{ fontSize: '13px', color: 'var(--text-tertiary)', marginBottom: '16px' }}>אין חיובים צפויים נוספים החודש</p>
+              )}
+              {upcoming.items.map((u, i) => (
+                <div key={i} className="admin-row">
+                  <div>
+                    <div className="name">{u.name || '—'}{u.manuallySet && <span style={{ color: 'var(--text-tertiary)', fontWeight: 400 }}> · עודכן ידנית</span>}</div>
+                    <div className="email">{u.phone || u.email || '—'}</div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: '13px', color: 'var(--text-secondary)' }}>{formatDate(u.chargeDate)} · ₪{u.price}</div>
+                    <button
+                      className="btn-outline"
+                      style={{ width: 'auto', padding: '4px 8px', fontSize: '11px' }}
+                      onClick={() => toggleCharged(u.contactKey, true)}
+                      disabled={!u.contactKey || updatingKey === u.contactKey}
+                      title="סמן שכבר חויב בפועל"
+                    >
+                      {updatingKey === u.contactKey ? '...' : '✓ כבר חויב'}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </>
           )}
-          {alreadyCharged.items.map((u, i) => (
-            <div key={i} className="admin-row">
-              <div>
-                <div className="name">{u.name || '—'}{u.manuallySet && <span style={{ color: 'var(--text-tertiary)', fontWeight: 400 }}> · עודכן ידנית</span>}</div>
-                <div className="email">{u.phone || u.email || '—'}</div>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <div style={{ fontFamily: 'var(--font-mono)', fontSize: '13px', color: 'var(--text-secondary)' }}>{formatDate(u.chargeDate)} · ₪{u.price}</div>
-                <button
-                  className="btn-outline"
-                  style={{ width: 'auto', padding: '4px 8px', fontSize: '11px' }}
-                  onClick={() => toggleCharged(u.contactKey, false)}
-                  disabled={!u.contactKey || updatingKey === u.contactKey}
-                  title="סמן שעדיין לא חויב בפועל"
-                >
-                  {updatingKey === u.contactKey ? '...' : 'לא חויב בפועל'}
-                </button>
-              </div>
-            </div>
-          ))}
 
-          <div className="section-label" style={{ marginTop: '26px' }}><h2 style={{ fontSize: '15px' }}>עוד צפוי עד סוף החודש</h2><span className="count">₪{upcoming.totalAmount.toLocaleString('he-IL')}</span></div>
-          {upcoming.items.length === 0 && (
-            <p style={{ fontSize: '13px', color: 'var(--text-tertiary)', marginBottom: '16px' }}>אין חיובים צפויים נוספים החודש</p>
+          <div
+            className="section-label"
+            style={{ marginTop: '26px', cursor: 'pointer' }}
+            onClick={() => setChargedOpen((v) => !v)}
+          >
+            <h2 style={{ fontSize: '15px' }}>
+              <span style={{ display: 'inline-block', transition: 'transform 0.15s', transform: chargedOpen ? 'rotate(90deg)' : 'rotate(0deg)', marginLeft: '4px' }}>›</span>
+              כבר חויב החודש
+            </h2>
+            <span className="count">₪{alreadyCharged.totalAmount.toLocaleString('he-IL')}</span>
+          </div>
+          {chargedOpen && (
+            <>
+              {alreadyCharged.items.length === 0 && (
+                <p style={{ fontSize: '13px', color: 'var(--text-tertiary)', marginBottom: '16px' }}>אין עדיין חיובים החודש</p>
+              )}
+              {alreadyCharged.items.map((u, i) => (
+                <div key={i} className="admin-row">
+                  <div>
+                    <div className="name">{u.name || '—'}{u.manuallySet && <span style={{ color: 'var(--text-tertiary)', fontWeight: 400 }}> · עודכן ידנית</span>}</div>
+                    <div className="email">{u.phone || u.email || '—'}</div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: '13px', color: 'var(--text-secondary)' }}>{formatDate(u.chargeDate)} · ₪{u.price}</div>
+                    <button
+                      className="btn-outline"
+                      style={{ width: 'auto', padding: '4px 8px', fontSize: '11px' }}
+                      onClick={() => toggleCharged(u.contactKey, false)}
+                      disabled={!u.contactKey || updatingKey === u.contactKey}
+                      title="סמן שעדיין לא חויב בפועל"
+                    >
+                      {updatingKey === u.contactKey ? '...' : 'לא חויב בפועל'}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </>
           )}
-          {upcoming.items.map((u, i) => (
-            <div key={i} className="admin-row">
-              <div>
-                <div className="name">{u.name || '—'}{u.manuallySet && <span style={{ color: 'var(--text-tertiary)', fontWeight: 400 }}> · עודכן ידנית</span>}</div>
-                <div className="email">{u.phone || u.email || '—'}</div>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <div style={{ fontFamily: 'var(--font-mono)', fontSize: '13px', color: 'var(--text-secondary)' }}>{formatDate(u.chargeDate)} · ₪{u.price}</div>
-                <button
-                  className="btn-outline"
-                  style={{ width: 'auto', padding: '4px 8px', fontSize: '11px' }}
-                  onClick={() => toggleCharged(u.contactKey, true)}
-                  disabled={!u.contactKey || updatingKey === u.contactKey}
-                  title="סמן שכבר חויב בפועל"
-                >
-                  {updatingKey === u.contactKey ? '...' : '✓ כבר חויב'}
-                </button>
-              </div>
-            </div>
-          ))}
 
           {missingJoinDate.length > 0 && (
             <p style={{ fontSize: '12px', color: 'var(--loss)', marginTop: '20px', lineHeight: 1.6 }}>
