@@ -12,6 +12,7 @@ export default function AdminSupportBotPage() {
   const [userEmail, setUserEmail] = useState('');
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(true);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
@@ -35,6 +36,25 @@ export default function AdminSupportBotPage() {
     const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
     setIsAdmin(profile?.role === 'admin');
     setChecking(false);
+
+    if (profile?.role === 'admin') {
+      loadHistory();
+    }
+  }
+
+  // טוען את היסטוריית השיחה השמורה - כדי שרענון דף או חזרה מאוחר יותר לא יתחילו מהתחלה
+  async function loadHistory() {
+    const { data: { session } } = await supabase.auth.getSession();
+    try {
+      const res = await fetch('/api/admin/support-bot', {
+        headers: { Authorization: `Bearer ${session?.access_token}` },
+      });
+      const data = await res.json();
+      if (res.ok) setMessages(data.messages || []);
+    } catch (e) {
+      // אין צורך להציג שגיאה - פשוט נשארים עם היסטוריה ריקה
+    }
+    setLoadingHistory(false);
   }
 
   async function handleLogout() {
@@ -46,8 +66,7 @@ export default function AdminSupportBotPage() {
     const text = input.trim();
     if (!text || sending) return;
 
-    const nextMessages: ChatMessage[] = [...messages, { role: 'user', content: text }];
-    setMessages(nextMessages);
+    setMessages((prev) => [...prev, { role: 'user', content: text }]);
     setInput('');
     setSending(true);
     setError('');
@@ -57,7 +76,7 @@ export default function AdminSupportBotPage() {
       const res = await fetch('/api/admin/support-bot', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
-        body: JSON.stringify({ messages: nextMessages }),
+        body: JSON.stringify({ message: text }),
       });
       const data = await res.json();
 
@@ -131,7 +150,12 @@ export default function AdminSupportBotPage() {
         display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '14px',
         maxHeight: '55vh', overflowY: 'auto', padding: '4px',
       }}>
-        {messages.length === 0 && (
+        {loadingHistory && (
+          <p style={{ fontSize: '13px', color: 'var(--text-tertiary)', textAlign: 'center', padding: '20px 0' }}>
+            טוענים היסטוריה...
+          </p>
+        )}
+        {!loadingHistory && messages.length === 0 && (
           <p style={{ fontSize: '13px', color: 'var(--text-tertiary)', textAlign: 'center', padding: '20px 0' }}>
             עדיין אין הודעות. תתחילי לכתוב למטה.
           </p>
