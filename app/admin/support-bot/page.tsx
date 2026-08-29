@@ -215,7 +215,7 @@ export default function AdminSupportBotPage() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="כתבי שאלה כמו שמנוי היה שואל..."
+            placeholder="כתבי הודעה..."
             rows={2}
             style={{ flex: '1 1 0%', minWidth: 0, width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '14px', resize: 'vertical', fontFamily: 'inherit' }}
           />
