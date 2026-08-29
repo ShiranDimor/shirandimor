@@ -171,7 +171,7 @@ export default function AdminSupportBotPage() {
           rows={2}
           style={{ flex: '1 1 0%', minWidth: 0, width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '14px', resize: 'vertical', fontFamily: 'inherit' }}
         />
-        <button className="btn-outline" style={{ flexShrink: 0, whiteSpace: 'nowrap' }} onClick={sendMessage} disabled={sending || !input.trim()}>
+        <button className="btn-outline" style={{ width: 'auto', flexShrink: 0, whiteSpace: 'nowrap' }} onClick={sendMessage} disabled={sending || !input.trim()}>
           שליחה
         </button>
       </div>
