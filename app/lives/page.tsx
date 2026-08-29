@@ -196,6 +196,9 @@ export default function LivesPage() {
               <Link href="/subscribe" className="btn-primary" style={{ display: 'block', textAlign: 'center', textDecoration: 'none', marginBottom: '10px', background: accentColor }}>
                 להצטרפות לקבוצת הסוחרים ←
               </Link>
+              <p style={{ textAlign: 'center', marginBottom: '10px' }}>
+                <Link href="/?join=1" style={{ color: 'var(--text-tertiary)', fontSize: '12px', textDecoration: 'underline' }}>עדיין לא בטוח/ה? אפשר להתחיל מקבוצת העדכונים החינמית ←</Link>
+              </p>
               <p style={{ marginBottom: '8px' }}>יש שאלות לפני שמצטרפים? אפשר לשלוח לי הודעה בוואטסאפ:</p>
               <a href="https://wa.me/972547167419" target="_blank" rel="noopener noreferrer" style={{ display: 'block', textAlign: 'center', background: '#25D366', color: '#fff', textDecoration: 'none', fontWeight: 700, padding: '10px', borderRadius: '8px' }}>
                 שליחת הודעה בוואטסאפ ←
