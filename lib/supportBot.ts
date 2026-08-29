@@ -87,13 +87,54 @@ export const SUPPORT_BOT_SYSTEM_PROMPT = `את "דור" - העוזרת הדיג�
 
 את כרגע בכלי בדיקה פנימי - שירן עצמה מדמה שאלות של מנויים כדי לדייק את התשובות שלך. אם היא מציינת שתשובה לא מדויקת, קלוט את התיקון לשיחה הנוכחית.`;
 
-export async function callSupportBot(messages: { role: 'user' | 'assistant'; content: string }[]): Promise<string> {
+// חילוץ טלפון/מייל מתוך טקסט חופשי - לזיהוי הזדמנותי כשמישהו משתף פרטי קשר תוך כדי שיחה,
+// בלי לבקש את זה בכפייה בתחילת השיחה. תבנית הטלפון מכסה מספרים ישראליים בפורמט מקומי (05...)
+// או בינלאומי (972...), עם או בלי מקפים/רווחים.
+export function extractContactFromText(text: string): { phone: string | null; email: string | null } {
+  const phoneMatch = text.match(/(?:\+?972[-\s]?|0)5\d(?:[-\s]?\d){7}/);
+  const emailMatch = text.match(/[\w.+-]+@[\w-]+\.[\w.-]+/);
+  return {
+    phone: phoneMatch ? phoneMatch[0].replace(/[-\s]/g, '') : null,
+    email: emailMatch ? emailMatch[0].toLowerCase() : null,
+  };
+}
+
+// הקשר זמן-ריצה (runtime context) - מי בדיוק מדבר עם הבוט עכשיו, אם ידוע. זה לא חלק מהפרומפט
+// הקבוע (SUPPORT_BOT_SYSTEM_PROMPT), אלא נבנה מחדש בכל קריאה ומצורף אליו - כדי שעדכון הזיהוי
+// (לדוגמה: זיהינו שזו מנויה פעילה) לא ידרוש לגעת בטון/בידע הקבועים של הבוט.
+export function buildRuntimeContextBlock(ctx: { userType: string | null; contactName?: string | null }): string {
+  const lines: string[] = [];
+  switch (ctx.userType) {
+    case 'admin_test':
+      lines.push('הקשר זמן-ריצה: זו שירן עצמה (אדמין), מדמה שיחה כדי לבדוק ולדייק אותך. אל תציע לה להצטרף למנוי.');
+      break;
+    case 'member_active':
+      lines.push('הקשר זמן-ריצה: זו/זהו כבר מנוי/ה פעיל/ה ב"מדברים עסקאות". אסור להציע לה/לו את המנוי הקיים - להתמקד בשירות, תמיכה, הכוונה לתוכן ותשובות מקצועיות.');
+      break;
+    case 'updates_group':
+      lines.push('הקשר זמן-ריצה: זו/זה כבר נמצא/ת בקבוצת העדכונים החינמית. אפשר להיות מעט יותר ישירים, ולהסביר את ההבדל מ"מדברים עסקאות" דרך עומק התהליך - לא דרך הקטנת הערך של הקבוצה החינמית.');
+      break;
+    case 'lead_new':
+      lines.push('הקשר זמן-ריצה: זהו ליד חדש - לא נמצא/ת באף אחת מהקבוצות של שירן. לתת ערך לפני כל הצעה, לא לפתוח ישר במכירה.');
+      break;
+    default:
+      lines.push('הקשר זמן-ריצה: זהות המשתמש/ת עדיין לא ידועה. אין צורך לשאול על כך ישירות - אם וכאשר ישותפו פרטי קשר תוך כדי שיחה, הזיהוי יתעדכן אוטומטית.');
+  }
+  if (ctx.contactName) lines.push(`שם שכבר שותף: ${ctx.contactName}.`);
+  return lines.join(' ');
+}
+
+export async function callSupportBot(
+  messages: { role: 'user' | 'assistant'; content: string }[],
+  runtimeContext?: string
+): Promise<string> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     throw new Error('ANTHROPIC_API_KEY לא מוגדר');
   }
 
   const model = process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-5-20250929';
+  const system = runtimeContext ? `${SUPPORT_BOT_SYSTEM_PROMPT}\n\n${runtimeContext}` : SUPPORT_BOT_SYSTEM_PROMPT;
 
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -105,7 +146,7 @@ export async function callSupportBot(messages: { role: 'user' | 'assistant'; con
     body: JSON.stringify({
       model,
       max_tokens: 1024,
-      system: SUPPORT_BOT_SYSTEM_PROMPT,
+      system,
       messages,
     }),
   });

@@ -135,7 +135,7 @@ export default function AdminSupportBotPage() {
       <header>
         <Link href="/admin" className="brand">מסחר <span>אחראי</span> במניות</Link>
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-          <Link href="/" className="nav-link">בית</Link>
+          <Link href="/admin/support-bot/conversations" className="nav-link">מי מתכתב</Link>
           <Link href="/admin" className="nav-link">← לניהול</Link>
           <button onClick={handleLogout} className="nav-link" style={{ background: 'none', border: 'none', cursor: 'pointer', font: 'inherit', padding: 0 }}>התנתקות</button>
         </div>

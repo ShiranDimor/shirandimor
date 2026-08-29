@@ -4,6 +4,7 @@ import { findOptions } from './questions';
 
 const LEAD_GROUP_NAME = 'לידים חדשים';
 const SUBSCRIBER_GROUP_NAME = 'קבוצת סוחרים';
+const UPDATES_GROUP_NAME = 'קבוצת עדכונים';
 const CAMPAIGN_COLUMN_TITLE = 'campaign_name';
 const STATUS_COLUMN_TITLE = 'סטטוס טיפול';
 const FOLLOWUP_COLUMN_TITLE = 'תאריך פולואפ';
@@ -46,6 +47,7 @@ async function getBoardSchema(token: string, boardId: string) {
   return {
     groupId: groups.find((g) => g.title === LEAD_GROUP_NAME)?.id,
     subscriberGroupId: groups.find((g) => g.title === SUBSCRIBER_GROUP_NAME)?.id,
+    updatesGroupId: groups.find((g) => g.title === UPDATES_GROUP_NAME)?.id,
     phoneColumnId: columns.find((c) => c.type === 'phone')?.id,
     emailColumnId: columns.find((c) => c.type === 'email')?.id,
     campaignColumnId: columns.find((c) => c.title === CAMPAIGN_COLUMN_TITLE)?.id,
@@ -122,6 +124,79 @@ export async function isContactInSubscribersGroupMonday(
   } catch (e) {
     console.error('שגיאה בבדיקת קבוצת הסוחרים ב-Monday.com', e);
     return false;
+  }
+}
+
+export type MondayContactUserType = 'member_active' | 'updates_group' | 'lead_new' | 'unknown';
+
+// מסווג איש קשר (טלפון/מייל) לפי הקבוצה שהוא נמצא בה במאנדיי - לשימוש בבוט "דור" כדי לדעת אם
+// מדובר במנוי פעיל, מישהו מקבוצת העדכונים החינמית, או ליד חדש שלא נמצא באף קבוצה. בודק את שתי
+// הקבוצות במעבר יחיד על הלוח (ולא שתי בדיקות נפרדות), ומתאים לפי id של הקבוצה שהפריט נמצא בה
+// (ולא לפי מיקום במערך - אותה תקלה שכבר תוקנה בפונקציות האחרות כאן).
+export async function classifyContactMonday(
+  phone: string | null | undefined,
+  email: string | null | undefined
+): Promise<MondayContactUserType> {
+  const token = process.env.MONDAY_API_TOKEN;
+  const boardId = process.env.MONDAY_BOARD_ID;
+  if (!token || !boardId || (!phone && !email)) return 'unknown';
+
+  try {
+    const { subscriberGroupId, updatesGroupId, phoneColumnId, emailColumnId } = await getBoardSchema(token, boardId);
+    if ((!subscriberGroupId && !updatesGroupId) || (!phoneColumnId && !emailColumnId)) return 'unknown';
+
+    const targetPhone = phone && phoneColumnId ? normalizePhone(phone) : null;
+    const targetEmail = email && emailColumnId ? email.trim().toLowerCase() : null;
+    if (!targetPhone && !targetEmail) return 'unknown';
+
+    const columnIds = [phoneColumnId, emailColumnId].filter(Boolean) as string[];
+    const groupIds = [subscriberGroupId, updatesGroupId].filter(Boolean) as string[];
+
+    const matchesContact = (item: { column_values: { id: string; text: string | null }[] }) => {
+      if (targetPhone && phoneColumnId) {
+        const text = item.column_values?.find((cv) => cv.id === phoneColumnId)?.text;
+        if (text && normalizePhone(text) === targetPhone) return true;
+      }
+      if (targetEmail && emailColumnId) {
+        const text = item.column_values?.find((cv) => cv.id === emailColumnId)?.text;
+        if (text && text.trim().toLowerCase() === targetEmail) return true;
+      }
+      return false;
+    };
+
+    for (const groupId of groupIds) {
+      let cursor: string | null = null;
+      do {
+        const itemsData: any = await mondayRequest(
+          token,
+          `query ($boardId: ID!, $groupId: [String!], $cursor: String, $columnIds: [String!]) {
+            boards (ids: [$boardId]) {
+              groups (ids: $groupId) {
+                items_page (limit: 500, cursor: $cursor) {
+                  cursor
+                  items { column_values (ids: $columnIds) { id text } }
+                }
+              }
+            }
+          }`,
+          { boardId, groupId: [groupId], cursor, columnIds }
+        );
+
+        const page = itemsData?.data?.boards?.[0]?.groups?.[0]?.items_page;
+        const items: { column_values: { id: string; text: string | null }[] }[] = page?.items || [];
+
+        if (items.some(matchesContact)) {
+          return groupId === subscriberGroupId ? 'member_active' : 'updates_group';
+        }
+
+        cursor = page?.cursor || null;
+      } while (cursor);
+    }
+
+    return 'lead_new';
+  } catch (e) {
+    console.error('שגיאה בסיווג איש קשר מול מאנדיי', e);
+    return 'unknown';
   }
 }
 
