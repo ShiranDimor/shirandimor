@@ -2,36 +2,42 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/instantLogin';
 import { callSupportBot, extractContactFromText, buildRuntimeContextBlock } from '@/lib/supportBot';
 import { classifyContactMonday } from '@/lib/tradingPlan/monday';
-import { getOrCreateConversation as getOrCreateConversationShared, getNextLive, getMonthTradeStats } from '@/lib/supportBotConversation';
+import { getOrCreateConversation, getNextLive, getMonthTradeStats } from '@/lib/supportBotConversation';
 
-async function requireAdmin(request: Request) {
+// מזהה את הפונה: אם יש טוקן התחברות תקין - זה המשתמש האמיתי (וגם הפרופיל שלו נטען לסיווג מדויק).
+// אם אין טוקן (מבקר/ת אנונימי/ת באתר) - המזהה הוא anonId שנוצר ונשמר בדפדפן של המבקר עצמו,
+// ולא ניתן להשתמש בו כדי להתחזות למשתמש מחובר אמיתי כי לעולם לא מתקבל userId ישירות מהלקוח.
+async function resolveIdentity(request: Request, anonId: string | null) {
   const authHeader = request.headers.get('Authorization') || '';
   const token = authHeader.replace('Bearer ', '');
 
-  const { data: { user } } = await supabaseAdmin.auth.getUser(token);
-  if (!user) return null;
+  if (token) {
+    const { data: { user } } = await supabaseAdmin.auth.getUser(token);
+    if (user) {
+      const { data: profile } = await supabaseAdmin.from('profiles').select('role, full_name, phone, email').eq('id', user.id).single();
+      return { id: user.id, profile };
+    }
+  }
 
-  const { data: adminProfile } = await supabaseAdmin.from('profiles').select('role').eq('id', user.id).single();
-  if (adminProfile?.role !== 'admin') return null;
+  // אין הגבלת מפתח זר על user_id (זה לא בהכרח משתמש רשום), ולכן אפשר להשתמש ב-UUID
+  // האנונימי כפי שהוא כמזהה השיחה - כל עוד הוא בפורמט UUID תקין (נוצר בדפדפן, בעל אנטרופיה מספיקה)
+  if (anonId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(anonId)) {
+    return { id: anonId, profile: null };
+  }
 
-  return user;
+  return null;
 }
 
-// עטיפה דקה סביב הלוגיקה המשותפת - עבור אדמין תמיד טוענים את הפרופיל שלו כדי לסווג נכון בפעם הראשונה
-async function getOrCreateConversation(userId: string) {
-  const { data: profile } = await supabaseAdmin.from('profiles').select('role, full_name, phone, email').eq('id', userId).single();
-  return getOrCreateConversationShared(userId, profile);
-}
-
-// GET - טוען את היסטוריית השיחה השמורה, כדי שרענון/חזרה לדף לא תתחיל מהתחלה
+// GET - טוען היסטוריית שיחה קיימת (אם יש) לפי המזהה, כדי שרענון/חזרה לאתר לא יתחילו שיחה מהתחלה
 export async function GET(request: Request) {
-  const admin = await requireAdmin(request);
-  if (!admin) return NextResponse.json({ error: 'אין הרשאת ניהול' }, { status: 403 });
+  const { searchParams } = new URL(request.url);
+  const identity = await resolveIdentity(request, searchParams.get('anonId'));
+  if (!identity) return NextResponse.json({ messages: [] });
 
   const { data, error } = await supabaseAdmin
     .from('support_bot_messages')
     .select('role, content')
-    .eq('user_id', admin.id)
+    .eq('user_id', identity.id)
     .order('created_at', { ascending: true });
 
   if (error) return NextResponse.json({ error: 'שגיאה בטעינת ההיסטוריה' }, { status: 500 });
@@ -39,20 +45,25 @@ export async function GET(request: Request) {
   return NextResponse.json({ messages: data || [] });
 }
 
-// POST - שיחה עם בוט התמיכה (בדיקה פנימית לאדמין בלבד, לא חשוף למנויים) - ההיסטוריה נשמרת
-// ונטענת לפי המשתמש, ומזוהה סוג המשתמש מול מאנדיי כדי לתת הקשר-ריצה מדויק לבוט
+// POST - שיחה עם דור, פתוחה לכל מבקר/ת באתר (מחובר/ת או אנונימי/ת) - ההיסטוריה נשמרת לפי המזהה,
+// וסוג הפונה מסווג מול מאנדיי (מנוי/ת פעיל/ה, קבוצת עדכונים, ליד חדש) ברגע שיש פרטי קשר
 export async function POST(request: Request) {
-  const admin = await requireAdmin(request);
-  if (!admin) return NextResponse.json({ error: 'אין הרשאת ניהול' }, { status: 403 });
-
-  const { message } = await request.json().catch(() => ({}));
+  const { message, anonId } = await request.json().catch(() => ({}));
   if (!message || typeof message !== 'string') {
     return NextResponse.json({ error: 'חסרה הודעה' }, { status: 400 });
   }
+  if (message.length > 4000) {
+    return NextResponse.json({ error: 'ההודעה ארוכה מדי' }, { status: 400 });
+  }
 
-  const conversation = await getOrCreateConversation(admin.id);
+  const identity = await resolveIdentity(request, typeof anonId === 'string' ? anonId : null);
+  if (!identity) {
+    return NextResponse.json({ error: 'לא ניתן לזהות את השיחה - רעננו את הדף ונסו שוב' }, { status: 400 });
+  }
 
-  // זיהוי הזדמנותי: אם המשתמש שיתף טלפון/מייל תוך כדי השיחה ועדיין אין לנו את זה שמור - שומרים,
+  const conversation = await getOrCreateConversation(identity.id, identity.profile);
+
+  // זיהוי הזדמנותי: אם הפונה שיתף טלפון/מייל תוך כדי השיחה ועדיין אין לנו את זה שמור - שומרים,
   // ואם הזהות עדיין לא ידועה, מסווגים מול מאנדיי לפי הפרט החדש
   const extracted = extractContactFromText(message);
   const updates: Record<string, unknown> = {};
@@ -73,7 +84,7 @@ export async function POST(request: Request) {
   const { data: history, error: historyError } = await supabaseAdmin
     .from('support_bot_messages')
     .select('role, content')
-    .eq('user_id', admin.id)
+    .eq('user_id', identity.id)
     .order('created_at', { ascending: true });
 
   if (historyError) return NextResponse.json({ error: 'שגיאה בטעינת ההיסטוריה' }, { status: 500 });
@@ -94,8 +105,8 @@ export async function POST(request: Request) {
     const reply = await callSupportBot(fullConversation, runtimeContext);
 
     await supabaseAdmin.from('support_bot_messages').insert([
-      { user_id: admin.id, conversation_id: conversation?.id, role: 'user', content: message },
-      { user_id: admin.id, conversation_id: conversation?.id, role: 'assistant', content: reply },
+      { user_id: identity.id, conversation_id: conversation?.id, role: 'user', content: message },
+      { user_id: identity.id, conversation_id: conversation?.id, role: 'assistant', content: reply },
     ]);
 
     if (conversation) {
@@ -105,6 +116,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ reply });
   } catch (e) {
     console.error('שגיאה בבוט התמיכה', e);
-    return NextResponse.json({ error: e instanceof Error ? e.message : 'שגיאה בבוט התמיכה' }, { status: 500 });
+    return NextResponse.json({ error: 'משהו השתבש - נסו שוב עוד רגע' }, { status: 500 });
   }
 }

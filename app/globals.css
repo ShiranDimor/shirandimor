@@ -519,6 +519,93 @@
   font-size: 26px;
 }
 
+.dor-float-btn {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 100;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--teal);
+  color: var(--bg-void);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.35);
+  border: none;
+  cursor: pointer;
+  font-size: 24px;
+  font-family: inherit;
+}
+
+.dor-chat-panel {
+  position: fixed;
+  z-index: 101;
+  bottom: 0;
+  right: 0;
+  left: 0;
+  top: 12vh;
+  background: var(--bg-void);
+  border-radius: 16px 16px 0 0;
+  box-shadow: 0 -8px 32px rgba(0,0,0,0.45);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.dor-chat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-hairline-strong);
+  flex-shrink: 0;
+}
+
+.dor-chat-close {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 20px;
+  cursor: pointer;
+  line-height: 1;
+  padding: 4px;
+}
+
+.dor-chat-body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dor-chat-input-row {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+  padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--border-hairline-strong);
+  background: var(--bg-void);
+  flex-shrink: 0;
+}
+
+@media (min-width: 640px) {
+  .dor-chat-panel {
+    left: auto;
+    top: auto;
+    bottom: 88px;
+    right: 20px;
+    width: 360px;
+    height: 520px;
+    max-height: 75vh;
+    border-radius: 16px;
+  }
+}
+
 /* ===== רספונסיבי - טאבלט ומחשב ===== */
 @media (min-width: 768px) {
   .wrap { max-width: 720px; padding-left: 32px; padding-right: 32px; }
