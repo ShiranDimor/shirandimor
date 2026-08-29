@@ -33,6 +33,9 @@ export default function HomePage() {
   const [openCount, setOpenCount] = useState(0);
   const [showStickyCta, setShowStickyCta] = useState(false);
   const [hasFullAccess, setHasFullAccess] = useState(false);
+  // מבקר/ת שכבר השאיר/ה פרטים להצטרפות לקבוצת העדכונים בעבר (עוגייה מ-/api/lead) - אין טעם
+  // להציע לו/לה שוב את אותה הצטרפות חינמית; עדיף לדחוף ישר לצעד הבא, קבוצת הסוחרים
+  const [alreadyInFreeGroup, setAlreadyInFreeGroup] = useState(false);
 
   function handlePhoneChange(value: string) {
     setLeadPhone(value.replace(/\D/g, '').slice(0, 10));
@@ -75,6 +78,8 @@ export default function HomePage() {
     loadTrades();
     if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('join') === '1') {
       setShowLeadForm(true);
+    } else if (typeof document !== 'undefined' && /(?:^|;\s*)sd_registered=1(?:;|$)/.test(document.cookie)) {
+      setAlreadyInFreeGroup(true);
     }
   }, []);
 
@@ -137,11 +142,17 @@ export default function HomePage() {
         <h1>שוק ההון הרבה יותר <em>פשוט</em><br />ממה שעושים ממנו.</h1>
         <p>לא צריך לדעת הכול. צריך לדעת מה לעשות. כאן לומדים עקרונות בסיסיים, ניהול סיכון ובניית תוכנית עבודה מסודרת - בלי הבטחות תשואה, בלי "שיטת פלא", ובלי שזה יהפוך למשרה שנייה.</p>
 
-        {!showLeadForm && (
+        {!showLeadForm && !alreadyInFreeGroup && (
           <button className="cta-main" style={{ border: 'none', cursor: 'pointer', width: '100%' }} onClick={() => setShowLeadForm(true)}>
             הצטרפות לקבוצת העדכונים
             <span className="free-tag">ללא עלות</span>
           </button>
+        )}
+
+        {!showLeadForm && alreadyInFreeGroup && !hasFullAccess && (
+          <Link href="/subscribe" className="cta-main" style={{ display: 'block', textAlign: 'center', textDecoration: 'none' }}>
+            כבר בקבוצת העדכונים? להכיר את קבוצת הסוחרים
+          </Link>
         )}
 
         {showLeadForm && !leadSubmitted && (
@@ -329,13 +340,17 @@ export default function HomePage() {
           <summary>צריך ניסיון קודם בשוק ההון?</summary>
           <p>לא. הקבוצה מתאימה גם למי שמעולם לא סחר, וגם למי שכבר ניסה ולא הסתדר. מתחילים מהבסיס.</p>
         </details>
+        <details className="faq-item" style={{ borderRightColor: 'var(--orange)' }}>
+          <summary>צריך קודם לעשות קורס יקר?</summary>
+          <p>לא. אפשר לשלם אלפי שקלים על קורס ועדיין לא לדעת אם התחום בכלל מתאים לך. הדרך הכי נכונה וזולה להבין את זה לעומק היא פשוט לנסות חודש שלם בקבוצה (₪200) ולראות מבפנים מה זה תיק השקעות, איך שוק ההון עובד בפועל, ומה השיטה - במקום לצבור תיאוריה על הנייר לפני שמעיזים.</p>
+        </details>
         <details className="faq-item" style={{ borderRightColor: 'var(--lavender)' }}>
           <summary>כמה זמן ביום זה דורש?</summary>
           <p>זה נבנה בדיוק בשביל אנשים עם עבודה וחיים - לא צריך לשבת שעות מול המסך. אפשר להסתפק בהשקעה של כמה דקות כל כמה ימים. מסחר תוך-יומי הוא אופציה, לא חובה.</p>
         </details>
         <details className="faq-item" style={{ borderRightColor: 'var(--profit)' }}>
           <summary>מה קורה אם אני רוצה לבטל?</summary>
-          <p>המנוי מתחדש אוטומטית כל חודש, בתאריך ההצטרפות. אפשר לבטל בכל שלב עד יום לפני מועד החידוש - בלי קנס ובלי שאלות, פשוט שולחים הודעת וואטסאפ.</p>
+          <p>אפשר לבטל בכל רגע נתון, בלי קנס ובלי שאלות. ביטול עד יום לפני מועד החיוב הבא (כולל אותו יום) מונע את החיוב הבא. אם החיוב כבר בוצע - זה תשלום מראש על חודש נוסף, וההצטרפות ממשיכה עד סופו.</p>
         </details>
         <details className="faq-item" style={{ borderRightColor: 'var(--teal)' }}>
           <summary>זה בטוח? יש סיכון להפסיד כסף?</summary>
@@ -358,11 +373,17 @@ export default function HomePage() {
         <Link href="/terms" style={{ color: 'var(--text-tertiary)', textDecoration: 'underline' }}>תקנון</Link> · <Link href="/privacy" style={{ color: 'var(--text-tertiary)', textDecoration: 'underline' }}>מדיניות פרטיות</Link>
       </footer>
 
-      {showStickyCta && !showLeadForm && (
+      {showStickyCta && !showLeadForm && !alreadyInFreeGroup && (
         <div className="sticky-cta">
           <button onClick={() => { window.scrollTo(0, 0); setShowLeadForm(true); }}>
             הצטרפות לקבוצת העדכונים - ללא עלות
           </button>
+        </div>
+      )}
+
+      {showStickyCta && !showLeadForm && alreadyInFreeGroup && !hasFullAccess && (
+        <div className="sticky-cta">
+          <Link href="/subscribe">כבר בקבוצת העדכונים? להכיר את קבוצת הסוחרים</Link>
         </div>
       )}
     </div>

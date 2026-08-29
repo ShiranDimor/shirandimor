@@ -38,6 +38,10 @@ export default function SubscribePage() {
           <div>תיק מסחר אישי וניתוח העסקאות ע"י שירן</div>
         </div>
 
+        <p style={{ fontSize: '11.5px', color: 'var(--text-tertiary)', lineHeight: 1.6, textAlign: 'center', marginBottom: '14px' }}>
+          לא קורס יקר שאין דרך לדעת מראש אם הוא מתאים לך. חודש ניסיון אחד ב-₪200 מראה מבפנים איך זה עובד בפועל.
+        </p>
+
         <a href="https://pay.grow.link/200a7cdcb258ee6ffdea0f423a1ace0e-MzE4MDU5OA" target="_blank" className="btn-primary" style={{ display: 'block', textAlign: 'center', textDecoration: 'none' }} onClick={() => trackFunnelEvent('payment_link_click')}>
           מעבר לדף התשלום המאובטח ←
         </a>
@@ -48,7 +52,7 @@ export default function SubscribePage() {
       </div>
 
       <p style={{ fontSize: '11px', color: 'var(--text-tertiary)', textAlign: 'center' }}>
-        אפשר לבטל בכל רגע נתון. בלי קנס ובלי שאלות. לאחר התשלום, החשבון עובר לאישור ידני והגישה מתקבלת תוך זמן קצר.
+        אפשר לבטל בכל רגע נתון, בלי קנס ובלי שאלות - ביטול עד יום לפני מועד החיוב הבא מונע את החיוב הבא. לאחר התשלום, החשבון עובר לאישור ידני והגישה מתקבלת תוך זמן קצר.
       </p>
 
       <footer>מסחר בשוק ההון כרוך בסיכון. אין באמור המלצה לפעולה כלשהי.</footer>
