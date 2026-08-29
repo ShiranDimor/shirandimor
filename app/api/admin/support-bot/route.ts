@@ -53,6 +53,42 @@ async function getOrCreateConversation(userId: string) {
   return created;
 }
 
+// הלייב הקרוב הבא שמפורסם באתר - נתון אמיתי, לא מומצא, כדי שדור תדע לענות "מתי הלייב הבא" במדויק
+async function getNextLive() {
+  const { data } = await supabaseAdmin
+    .from('lives')
+    .select('title, scheduled_at')
+    .eq('published', true)
+    .gte('scheduled_at', new Date().toISOString())
+    .order('scheduled_at', { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (!data) return null;
+  return { title: data.title, scheduledAt: data.scheduled_at };
+}
+
+// נתוני התיק האמיתיים לחודש הנוכחי (עסקאות שנסגרו, אחוז רווחיות) - כדי שדור תוכל לשתף תוצאה
+// מאומתת אם רלוונטי, בלי להמציא מספרים
+async function getMonthTradeStats() {
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+
+  const { data } = await supabaseAdmin
+    .from('trades')
+    .select('realized_pnl_usd')
+    .eq('status', 'closed')
+    .gte('closed_at', monthStart);
+
+  if (!data || data.length === 0) return null;
+
+  const closedCount = data.length;
+  const winCount = data.filter((t) => (t.realized_pnl_usd || 0) > 0).length;
+  const monthLabel = now.toLocaleDateString('he-IL', { month: 'long', year: 'numeric' });
+
+  return { closedCount, winCount, monthLabel };
+}
+
 // GET - טוען את היסטוריית השיחה השמורה, כדי שרענון/חזרה לדף לא תתחיל מהתחלה
 export async function GET(request: Request) {
   const admin = await requireAdmin(request);
@@ -114,7 +150,13 @@ export async function POST(request: Request) {
   ];
 
   try {
-    const runtimeContext = buildRuntimeContextBlock({ userType: effectiveUserType, contactName: effectiveContactName });
+    const [nextLive, monthStats] = await Promise.all([getNextLive(), getMonthTradeStats()]);
+    const runtimeContext = buildRuntimeContextBlock({
+      userType: effectiveUserType,
+      contactName: effectiveContactName,
+      nextLive,
+      monthStats,
+    });
     const reply = await callSupportBot(fullConversation, runtimeContext);
 
     await supabaseAdmin.from('support_bot_messages').insert([

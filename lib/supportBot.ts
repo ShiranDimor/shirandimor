@@ -60,6 +60,12 @@ export const SUPPORT_BOT_SYSTEM_PROMPT = `את "דור" - העוזרת הדיג�
 
 10. מחיר ותנאי מנוי: ${REGULAR_MONTHLY_PRICE} ₪ לחודש, ללא התחייבות. החודש הראשון ב-${FIRST_MONTH_PRICE} ₪. כולל לייבים, עדכוני עסקאות, ספריית הקלטות, יומן מסחר גלוי וליווי בשאלות. ניסוח מומלץ להצגת המחיר: "המחיר הרגיל הוא ${REGULAR_MONTHLY_PRICE} ₪ לחודש, ואפשר להתחיל בחודש ראשון ב-${FIRST_MONTH_PRICE} ₪ - זו דרך טובה לבדוק בלי להתחייב לתקופה ארוכה."
 
+10ב. קישור הרשמה אמיתי: shirandimor.com/subscribe - זה הדף שמציג את פרטי המנוי ומוביל לתשלום מאובטח. כשמישהו מוכן להצטרף או מבקש לינק - זה הקישור לתת, לא לנחש קישור אחר.
+
+10ג. השקעה לטווח ארוך: זה לא מסלול נפרד או תוסף בתשלום נוסף - זה חלק מבניית תיק ההשקעות בתוך "מדברים עסקאות" עצמה. כל אחד בונה את התיק שלו לפי מה שמתאים לו - יש מי שבונה בעיקר תיק לטווח ארוך, יש מי שמשלב סווינג, ויש מי שמתמקד בתוך-יומי. זו בדיוק הגמישות שמייחדת את הקבוצה - אין דרך אחת שמתאימה לכולם.
+
+10ד. חוזים עתידיים ותיקים ממומנים: רלוונטי להזכיר במיוחד כשמישהו אומר שאין לו כרגע כסף פנוי לתיק השקעות, או שהוא מתעניין ספציפית במסחר בחוזים עתידיים. לא מזכירים את זה כברירת מחדל לכל אחד.
+
 11. מדיניות ביטול: אפשר לבטל בכל רגע, כל עוד החיוב הבא עוד לא בוצע (למשל: מי שחויב ב-10.8 יכול לבטל עד יום לפני החיוב הבא, כלומר עד ה-9.9). ביטול בפועל נעשה בהודעת וואטסאפ או מייל לשירן - את מסבירה את המדיניות אבל לא מבצעת ביטול בעצמך.
 
 12. חבר מביא חבר: על כל חבר שמצטרף - חודש מתנה לקבוצה, ללא הגבלת כמות. לינק: shirandimor.com/dashboard/refer.
@@ -73,8 +79,6 @@ export const SUPPORT_BOT_SYSTEM_PROMPT = `את "דור" - העוזרת הדיג�
 16. שורטים/אופציות/מניות מתחת ל-10$: לא נעשים בקבוצה הרגילה. שורטים - סיכון הפסד תיאורטית בלתי מוגבל. אופציות ומניות מתחת ל-10$ - מחוץ למיקוד.
 
 התנגדויות נפוצות - עקרונות מענה (לא תשובה מוכנה אחת, אלא כיוון): "יקר לי" - לא מתווכחים ולא מתנצלים על המחיר, בודקים אם זו מגבלת תקציב או חוסר ביטחון בערך. "אני רוצה לחשוב" - שאלה אחת כדי לבדוק אם חסר מידע, ואז עוצרים בכבוד בלי ללחוץ. "יש הכל בחינם ביוטיוב" - נכון, הערך כאן הוא הסדר, הסינון והעבודה בזמן אמת, לא המידע הגולמי. "אני רוצה רק שיגידו לי מה לקנות" - בכנות: הקבוצה לא בנויה כהעתקה עיוורת, כל אחד לומד להבין את הסיכון ולוקח אחריות על ההחלטה שלו. "מבטיחים רווח?" - לא, אין דרך מקצועית להבטיח תשואה או אחוז הצלחה קבוע.
-
-נושאים לא ברורים שיש לשאול את שירן ולא לנחש: הסטטוס הנוכחי המדויק של מסלול "השקעה לטווח ארוך" (נפרד/כלול במנוי), והאם ומתי להזכיר מסלול חוזים עתידיים/תיקים ממומנים.
 
 נושאים רגישים - להסלים לשירן ולא לענות באופן סופי:
 - בקשת ביטול בפועל / החזר כספי / חיוב כפול.
@@ -102,7 +106,12 @@ export function extractContactFromText(text: string): { phone: string | null; em
 // הקשר זמן-ריצה (runtime context) - מי בדיוק מדבר עם הבוט עכשיו, אם ידוע. זה לא חלק מהפרומפט
 // הקבוע (SUPPORT_BOT_SYSTEM_PROMPT), אלא נבנה מחדש בכל קריאה ומצורף אליו - כדי שעדכון הזיהוי
 // (לדוגמה: זיהינו שזו מנויה פעילה) לא ידרוש לגעת בטון/בידע הקבועים של הבוט.
-export function buildRuntimeContextBlock(ctx: { userType: string | null; contactName?: string | null }): string {
+export function buildRuntimeContextBlock(ctx: {
+  userType: string | null;
+  contactName?: string | null;
+  nextLive?: { title: string; scheduledAt: string } | null;
+  monthStats?: { closedCount: number; winCount: number; monthLabel: string } | null;
+}): string {
   const lines: string[] = [];
   switch (ctx.userType) {
     case 'admin_test':
@@ -121,6 +130,20 @@ export function buildRuntimeContextBlock(ctx: { userType: string | null; contact
       lines.push('הקשר זמן-ריצה: זהות המשתמש/ת עדיין לא ידועה. אין צורך לשאול על כך ישירות - אם וכאשר ישותפו פרטי קשר תוך כדי שיחה, הזיהוי יתעדכן אוטומטית.');
   }
   if (ctx.contactName) lines.push(`שם שכבר שותף: ${ctx.contactName}.`);
+
+  if (ctx.nextLive) {
+    const d = new Date(ctx.nextLive.scheduledAt);
+    const formatted = d.toLocaleString('he-IL', { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' });
+    lines.push(`הלייב הקרוב בפועל: "${ctx.nextLive.title}" בתאריך ${formatted}. זה נתון אמיתי ועדכני - אפשר לצטט אותו במדויק.`);
+  } else if (ctx.nextLive === null) {
+    lines.push('אין כרגע לייב עתידי מפורסם באתר - אם נשאלת מתי הלייב הבא, תגידי בכנות שאין כרגע תאריך קבוע ושהעדכון יבוא בקבוצה.');
+  }
+
+  if (ctx.monthStats && ctx.monthStats.closedCount > 0) {
+    const winRate = Math.round((ctx.monthStats.winCount / ctx.monthStats.closedCount) * 100);
+    lines.push(`נתון אמיתי ומאומת מהתיק החודש (${ctx.monthStats.monthLabel}): ${ctx.monthStats.closedCount} עסקאות נסגרו, ${winRate}% מהן רווחיות. אפשר לשתף את זה כשרלוונטי (למשל מישהו שואל על תוצאות), בלי להוסיף עליו ובלי להבטיח שהעתיד יחזור על עצמו.`);
+  }
+
   return lines.join(' ');
 }
 
@@ -159,4 +182,35 @@ export async function callSupportBot(
   const data = await res.json();
   const textBlock = data?.content?.find((b: { type: string }) => b.type === 'text');
   return textBlock?.text || '';
+}
+
+const SUMMARY_SYSTEM_PROMPT = `אתה מסכם שיחות בין "דור" (העוזרת הדיגיטלית של שירן דימור) לבין מי שכתב לה. תפקידך לכתוב לשירן עצמה סיכום קצר וממוקד בעברית - 2-4 משפטים - על מה שהאדם רצה, מה נענה לו, ואם יש משהו שדורש ממנה מעקב אישי (למשל: כוונת הצטרפות, בקשה לחזרה, שאלה שלא נענתה טוב, תלונה). אל תחזור על כל השיחה מילה במילה - רק תמצית שימושית. אם השיחה הייתה סתם שאלה טכנית שנענתה במלואה בלי המשך נדרש, תגיד את זה בקצרה.`;
+
+// מסכם שיחה שלמה למייל התראה לשירן - שימוש מודל קל וזול, לא אותו קול/פרומפט של דור עצמה
+export async function summarizeConversation(messages: { role: 'user' | 'assistant'; content: string }[]): Promise<string> {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) return 'אין סיכום זמין (המפתח לא מוגדר).';
+
+  const model = process.env.ANTHROPIC_SUMMARY_MODEL || process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-5-20250929';
+
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+    },
+    body: JSON.stringify({
+      model,
+      max_tokens: 300,
+      system: SUMMARY_SYSTEM_PROMPT,
+      messages: [{ role: 'user', content: `סכמי את השיחה הבאה:\n\n${messages.map((m) => `${m.role === 'user' ? 'המשתמש/ת' : 'דור'}: ${m.content}`).join('\n')}` }],
+    }),
+  });
+
+  if (!res.ok) return 'שגיאה ביצירת סיכום.';
+
+  const data = await res.json();
+  const textBlock = data?.content?.find((b: { type: string }) => b.type === 'text');
+  return textBlock?.text || 'לא הופק סיכום.';
 }
