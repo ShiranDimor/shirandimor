@@ -62,8 +62,8 @@ export default function AdminSupportBotPage() {
     window.location.href = '/';
   }
 
-  async function sendMessage() {
-    const text = input.trim();
+  async function sendMessage(overrideText?: string) {
+    const text = (overrideText ?? input).trim();
     if (!text || sending) return;
 
     setMessages((prev) => [...prev, { role: 'user', content: text }]);
@@ -156,9 +156,32 @@ export default function AdminSupportBotPage() {
           </p>
         )}
         {!loadingHistory && messages.length === 0 && (
-          <p style={{ fontSize: '13px', color: 'var(--text-tertiary)', textAlign: 'center', padding: '20px 0' }}>
-            עדיין אין הודעות. תתחילי לכתוב למטה.
-          </p>
+          <>
+            <div
+              style={{
+                alignSelf: 'flex-end',
+                maxWidth: '85%',
+                background: 'var(--teal)',
+                color: '#08131a',
+                borderRadius: '12px',
+                padding: '10px 14px',
+                fontSize: '14px',
+                lineHeight: 1.6,
+              }}
+            >
+              היי, אני דור, העוזרת הדיגיטלית של שירן 😊
+              <br />
+              לפני שממשיכים - איך נכון לי לפנות אליך?
+            </div>
+            <div style={{ display: 'flex', gap: '8px', alignSelf: 'flex-end' }}>
+              <button className="btn-outline" style={{ width: 'auto' }} onClick={() => sendMessage('בלשון זכר, בבקשה')} disabled={sending}>
+                בלשון זכר
+              </button>
+              <button className="btn-outline" style={{ width: 'auto' }} onClick={() => sendMessage('בלשון נקבה, בבקשה')} disabled={sending}>
+                בלשון נקבה
+              </button>
+            </div>
+          </>
         )}
         {messages.map((m, i) => (
           <div
@@ -186,19 +209,21 @@ export default function AdminSupportBotPage() {
 
       {error && <p style={{ fontSize: '12px', color: 'var(--loss)', marginBottom: '10px' }}>{error}</p>}
 
-      <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-end' }}>
-        <textarea
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="כתבי שאלה כמו שמנוי היה שואל..."
-          rows={2}
-          style={{ flex: '1 1 0%', minWidth: 0, width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '14px', resize: 'vertical', fontFamily: 'inherit' }}
-        />
-        <button className="btn-outline" style={{ width: 'auto', flexShrink: 0, whiteSpace: 'nowrap' }} onClick={sendMessage} disabled={sending || !input.trim()}>
-          שליחה
-        </button>
-      </div>
+      {(loadingHistory || messages.length > 0) && (
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-end' }}>
+          <textarea
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="כתבי שאלה כמו שמנוי היה שואל..."
+            rows={2}
+            style={{ flex: '1 1 0%', minWidth: 0, width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '14px', resize: 'vertical', fontFamily: 'inherit' }}
+          />
+          <button className="btn-outline" style={{ width: 'auto', flexShrink: 0, whiteSpace: 'nowrap' }} onClick={() => sendMessage()} disabled={sending || !input.trim()}>
+            שליחה
+          </button>
+        </div>
+      )}
     </div>
   );
 }
