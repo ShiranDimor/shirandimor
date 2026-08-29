@@ -118,7 +118,8 @@ export default function AdminRevenuePage() {
         <>
           <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-hairline-strong)', borderRight: '3px solid var(--profit)', borderRadius: '12px', padding: '20px', marginBottom: '20px', textAlign: 'center' }}>
             <div style={{ fontSize: '32px', fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--profit)' }}>₪{totalAmount.toLocaleString('he-IL')}</div>
-            <div style={{ fontSize: '13px', color: 'var(--text-tertiary)', marginTop: '4px' }}>{count} אנשים בקבוצת הסוחרים</div>
+            <div style={{ fontSize: '13px', color: 'var(--text-tertiary)', marginTop: '2px' }}>(אחרי מע"מ 18%: ₪{Math.round(totalAmount * 0.82).toLocaleString('he-IL')})</div>
+            <div style={{ fontSize: '13px', color: 'var(--text-tertiary)', marginTop: '6px' }}>{count} אנשים בקבוצת הסוחרים</div>
           </div>
 
           <div
