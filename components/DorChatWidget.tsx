@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabase';
 type ChatMessage = { role: 'user' | 'assistant'; content: string };
 
 const ANON_ID_KEY = 'dor_anon_id';
+const CALLOUT_SEEN_KEY = 'dor_callout_seen';
 
 function getAnonId() {
   if (typeof window === 'undefined') return '';
@@ -29,6 +30,7 @@ export default function DorChatWidget() {
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
+  const [showCallout, setShowCallout] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -38,6 +40,24 @@ export default function DorChatWidget() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, open]);
+
+  // בועת "דור פה!" ליד הכפתור - מופיעה פעם אחת לכל דפדפן (לא בכל טעינת עמוד), כדי למשוך תשומת
+  // לב למי שמגיע/ה לאתר בפעם הראשונה ולא בהכרח שם/ה לב שיש בכלל צ'אט, בלי להציק בביקורים חוזרים
+  useEffect(() => {
+    if (pathname?.startsWith('/admin')) return;
+    let seen = true;
+    try { seen = localStorage.getItem(CALLOUT_SEEN_KEY) === '1'; } catch {}
+    if (seen) return;
+    const showTimer = setTimeout(() => setShowCallout(true), 1500);
+    const hideTimer = setTimeout(() => dismissCallout(), 14000);
+    return () => { clearTimeout(showTimer); clearTimeout(hideTimer); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname]);
+
+  function dismissCallout() {
+    setShowCallout(false);
+    try { localStorage.setItem(CALLOUT_SEEN_KEY, '1'); } catch {}
+  }
 
   if (pathname?.startsWith('/admin')) return null;
 
@@ -99,8 +119,16 @@ export default function DorChatWidget() {
 
   return (
     <>
+      {!open && showCallout && (
+        <div className="dor-callout">
+          <button className="dor-callout-close" onClick={dismissCallout} aria-label="סגירה">✕</button>
+          <div>👋 היי, זו דור! יש שאלה שמסתובבת לך בראש?</div>
+          <div style={{ color: 'var(--text-tertiary)', marginTop: '2px' }}>דברו איתי, אני לא נושכת 😄</div>
+        </div>
+      )}
+
       {!open && (
-        <button className="dor-float-btn" onClick={() => setOpen(true)} aria-label="פתחו צ'אט עם דור">
+        <button className={`dor-float-btn${showCallout ? ' dor-float-btn-pulse' : ''}`} onClick={() => { setOpen(true); dismissCallout(); }} aria-label="פתחו צ'אט עם דור">
           💬
         </button>
       )}
