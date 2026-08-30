@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import Linkify from '@/components/Linkify';
 
 type ChatMessage = { role: 'user' | 'assistant'; content: string };
 
@@ -191,7 +192,7 @@ export default function DorChatWidget() {
                   whiteSpace: 'pre-wrap',
                 }}
               >
-                {m.content}
+                <Linkify text={m.content} />
               </div>
             ))}
             {sending && (

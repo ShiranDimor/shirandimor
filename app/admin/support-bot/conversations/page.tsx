@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
+import Linkify from '@/components/Linkify';
 
 type Conversation = {
   id: string;
@@ -222,7 +223,7 @@ export default function SupportBotConversationsPage() {
                     whiteSpace: 'pre-wrap',
                   }}
                 >
-                  {m.content}
+                  <Linkify text={m.content} />
                 </div>
               ))}
             </div>

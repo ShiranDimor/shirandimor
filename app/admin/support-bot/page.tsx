@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
+import Linkify from '@/components/Linkify';
 
 type ChatMessage = { role: 'user' | 'assistant'; content: string };
 
@@ -198,7 +199,7 @@ export default function AdminSupportBotPage() {
               whiteSpace: 'pre-wrap',
             }}
           >
-            {m.content}
+            <Linkify text={m.content} />
           </div>
         ))}
         {sending && (
