@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/instantLogin';
-import { callSupportBot, extractContactFromText, buildRuntimeContextBlock } from '@/lib/supportBot';
+import { callSupportBot, extractContactFromText, extractGenderFromText, buildRuntimeContextBlock } from '@/lib/supportBot';
 import { classifyContactMonday } from '@/lib/tradingPlan/monday';
 import { getOrCreateConversation, getNextLive, getMonthTradeStats } from '@/lib/supportBotConversation';
 
@@ -75,11 +75,19 @@ export async function POST(request: Request) {
       extracted.email || conversation?.contact_email || null
     );
   }
+  // זיהוי בחירת הפנייה (זכר/נקבה) - נשמר פעם אחת ומוזרק מחדש בכל תור בשיחה, כדי שהמודל
+  // לא "יסטה" חזרה לברירת מחדל אחרי כמה הודעות בלי תזכורת מפורשת
+  if (!conversation?.gender) {
+    const detectedGender = extractGenderFromText(message);
+    if (detectedGender) updates.gender = detectedGender;
+  }
+
   if (Object.keys(updates).length > 0 && conversation) {
     await supabaseAdmin.from('support_bot_conversations').update(updates).eq('id', conversation.id);
   }
   const effectiveUserType = (updates.user_type as string | undefined) ?? conversation?.user_type ?? null;
   const effectiveContactName = conversation?.contact_name ?? null;
+  const effectiveGender = (updates.gender as 'male' | 'female' | undefined) ?? conversation?.gender ?? null;
 
   const { data: history, error: historyError } = await supabaseAdmin
     .from('support_bot_messages')
@@ -99,6 +107,7 @@ export async function POST(request: Request) {
     const runtimeContext = buildRuntimeContextBlock({
       userType: effectiveUserType,
       contactName: effectiveContactName,
+      gender: effectiveGender,
       nextLive,
       monthStats,
     });

@@ -115,16 +115,31 @@ export function extractContactFromText(text: string): { phone: string | null; em
   };
 }
 
+// זיהוי בחירת הפנייה (זכר/נקבה) מכפתורי הבחירה בממשק - נשמר פעם אחת בשיחה ומוזרק מחדש
+// בכל קריאה דרך ה-runtime context (ולא רק נסמך על שהמודל "יזכור" את זה לאורך כל השיחה),
+// כי בפועל המודל נוטה לחזור לברירת מחדל אחרי כמה תורות בלי תזכורת מפורשת בכל פעם
+export function extractGenderFromText(text: string): 'male' | 'female' | null {
+  if (/בלשון זכר/.test(text)) return 'male';
+  if (/בלשון נקבה/.test(text)) return 'female';
+  return null;
+}
+
 // הקשר זמן-ריצה (runtime context) - מי בדיוק מדבר עם הבוט עכשיו, אם ידוע. זה לא חלק מהפרומפט
 // הקבוע (SUPPORT_BOT_SYSTEM_PROMPT), אלא נבנה מחדש בכל קריאה ומצורף אליו - כדי שעדכון הזיהוי
 // (לדוגמה: זיהינו שזו מנויה פעילה) לא ידרוש לגעת בטון/בידע הקבועים של הבוט.
 export function buildRuntimeContextBlock(ctx: {
   userType: string | null;
   contactName?: string | null;
+  gender?: 'male' | 'female' | null;
   nextLive?: { title: string; scheduledAt: string } | null;
   monthStats?: { closedCount: number; winCount: number; monthLabel: string } | null;
 }): string {
   const lines: string[] = [];
+  if (ctx.gender === 'male') {
+    lines.push('חובה: המשתמש ציין מפורשות שיש לפנות אליו בלשון זכר - כל התשובה, כולל כל פועל ותואר, חייבת להיות בלשון זכר. זו לא בקשה אחת - זה תקף לאורך כל השיחה מכאן ואילך.');
+  } else if (ctx.gender === 'female') {
+    lines.push('חובה: המשתמשת ציינה מפורשות שיש לפנות אליה בלשון נקבה - כל התשובה, כולל כל פועל ותואר, חייבת להיות בלשון נקבה. זו לא בקשה אחת - זה תקף לאורך כל השיחה מכאן ואילך.');
+  }
   switch (ctx.userType) {
     case 'admin_test':
       lines.push('הקשר זמן-ריצה: זו שירן עצמה (אדמין), מדמה שיחה כדי לבדוק ולדייק אותך. אל תציע לה להצטרף למנוי.');

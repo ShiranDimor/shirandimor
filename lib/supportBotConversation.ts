@@ -10,6 +10,7 @@ export type SupportBotConversation = {
   contact_phone: string | null;
   contact_email: string | null;
   user_type: string | null;
+  gender: 'male' | 'female' | null;
   lead_intent: string;
 };
 
