@@ -21,65 +21,8 @@ export default function AdminSubscribersPage() {
   const [sortBy, setSortBy] = useState<'date' | 'name'>('date');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
 
-  const [syncing, setSyncing] = useState(false);
-  const [syncMessage, setSyncMessage] = useState('');
   const [removing, setRemoving] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState<string | null>(null);
-
-  const [debugPhone, setDebugPhone] = useState('');
-  const [debugging, setDebugging] = useState(false);
-  const [debugResult, setDebugResult] = useState('');
-
-  async function handleSyncSubscribers() {
-    setSyncing(true);
-    setSyncMessage('');
-
-    const { data: { session } } = await supabase.auth.getSession();
-
-    try {
-      const res = await fetch('/api/sync-subscribers', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${session?.access_token}` },
-      });
-      const data = await res.json();
-
-      if (!res.ok) {
-        setSyncMessage('שגיאה: ' + (data.error || 'לא הצלחנו לבדוק'));
-      } else {
-        const removedText = data.removed > 0 ? ` (${data.removedNames.join(', ')})` : '';
-        setSyncMessage(
-          `נבדקו ${data.checked} מנויים · ${data.removed} הוסרו${removedText}` +
-          (data.skippedNoPhone > 0 ? ` · ${data.skippedNoPhone} לא נבדקו (אין טלפון ואין מייל בפרופיל)` : '')
-        );
-        loadApprovedSubs();
-      }
-    } catch (e) {
-      setSyncMessage('שגיאה בבדיקה מול מאנדיי');
-    }
-
-    setSyncing(false);
-  }
-
-  async function handleMondayDebug() {
-    setDebugging(true);
-    setDebugResult('');
-
-    const { data: { session } } = await supabase.auth.getSession();
-
-    try {
-      const res = await fetch('/api/admin/monday-debug', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
-        body: JSON.stringify({ phone: debugPhone }),
-      });
-      const data = await res.json();
-      setDebugResult(JSON.stringify(data, null, 2));
-    } catch (e) {
-      setDebugResult('שגיאה בבדיקה');
-    }
-
-    setDebugging(false);
-  }
 
   async function cancelSubscription(id: string, name: string) {
     if (!window.confirm(`לבטל את המנוי של ${name}? הוא יאבד גישה מיידית, אבל החשבון ונתוני היומן שלו יישארו שמורים.`)) return;
@@ -216,36 +159,6 @@ export default function AdminSubscribersPage() {
       </header>
 
       <div className="section-label"><h2>מנויים מאושרים</h2><span className="count">{approvedSubs.length}</span></div>
-
-      <button className="btn-outline" style={{ width: '100%', marginBottom: '14px' }} onClick={handleSyncSubscribers} disabled={syncing}>
-        {syncing ? 'בודקים מול מאנדיי...' : '🔄 בדיקת מנויים מול קבוצת הסוחרים במאנדיי'}
-      </button>
-      {syncMessage && (
-        <p style={{ fontSize: '12px', color: syncMessage.startsWith('שגיאה') ? 'var(--loss)' : 'var(--text-secondary)', marginBottom: '14px', textAlign: 'center' }}>
-          {syncMessage}
-        </p>
-      )}
-
-      <details style={{ marginBottom: '20px' }}>
-        <summary style={{ cursor: 'pointer', fontSize: '13px', color: 'var(--text-secondary)' }}>🔍 אבחון מול מאנדיי (למה מנוי מסוים לא מזוהה)</summary>
-        <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
-          <input
-            type="tel"
-            placeholder="מספר טלפון לבדיקה, למשל 0587020306"
-            value={debugPhone}
-            onChange={(e) => setDebugPhone(e.target.value)}
-            style={{ flex: 1, padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '13px' }}
-          />
-          <button className="btn-outline" onClick={handleMondayDebug} disabled={debugging}>
-            {debugging ? 'בודקים...' : 'בדיקה'}
-          </button>
-        </div>
-        {debugResult && (
-          <pre style={{ marginTop: '10px', padding: '10px', background: 'var(--bg-secondary)', borderRadius: '8px', fontSize: '11px', overflowX: 'auto', maxHeight: '400px', direction: 'ltr', textAlign: 'left' }}>
-            {debugResult}
-          </pre>
-        )}
-      </details>
 
       <div className="sort-header">
         <div className={`sort-col ${sortBy === 'name' ? 'active' : ''}`} onClick={() => toggleSort('name')}>

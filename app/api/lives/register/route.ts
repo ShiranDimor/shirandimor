@@ -1,139 +1,39 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/instantLogin';
 import { isActiveSubscriber } from '@/lib/subscriberStatus';
-import { isContactInSubscribersGroupMonday } from '@/lib/tradingPlan/monday';
+import { findContact, upsertContact, addNote } from '@/lib/crm';
 
-const LEAD_GROUP_NAME = 'לידים חדשים';
-const CAMPAIGN_COLUMN_TITLE = 'campaign_name';
-const STATUS_COLUMN_TITLE = 'סטטוס טיפול';
-const DUPLICATE_STATUS_LABEL = 'ליד כפול';
 const CAMPAIGN_VALUE = 'הרשמה ללייב';
+const DUPLICATE_STATUS_LABEL = 'ליד כפול';
 
-function normalizeMondayPhone(raw: string) {
-  const digits = raw.replace(/\D/g, '');
-  return digits.slice(-9);
-}
-
-async function mondayRequest(token: string, query: string, variables: Record<string, unknown>) {
-  const res = await fetch('https://api.monday.com/v2', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: token },
-    body: JSON.stringify({ query, variables }),
-  });
-  return res.json();
-}
-
-async function getBoardSchema(token: string, boardId: string) {
-  const data = await mondayRequest(
-    token,
-    `query ($boardId: ID!) {
-      boards (ids: [$boardId]) { columns { id title type } groups { id title } }
-    }`,
-    { boardId }
-  );
-  const board = data?.data?.boards?.[0];
-  const columns: { id: string; title: string; type: string }[] = board?.columns || [];
-  const groups: { id: string; title: string }[] = board?.groups || [];
-
-  return {
-    groupId: groups.find((g) => g.title === LEAD_GROUP_NAME)?.id,
-    phoneColumnId: columns.find((c) => c.type === 'phone')?.id,
-    emailColumnId: columns.find((c) => c.type === 'email')?.id,
-    campaignColumnId: columns.find((c) => c.title === CAMPAIGN_COLUMN_TITLE)?.id,
-    statusColumnId: columns.find((c) => c.title === STATUS_COLUMN_TITLE)?.id,
-  };
-}
-
-async function hasExistingPhone(token: string, boardId: string, phoneColumnId: string, targetNormalized: string) {
-  let cursor: string | null = null;
-
-  do {
-    const itemsData: any = await mondayRequest(
-      token,
-      `query ($boardId: ID!, $cursor: String, $columnIds: [String!]) {
-        boards (ids: [$boardId]) {
-          items_page (limit: 100, cursor: $cursor) {
-            cursor
-            items { column_values (ids: $columnIds) { text } }
-          }
-        }
-      }`,
-      { boardId, cursor, columnIds: [phoneColumnId] }
-    );
-
-    const page = itemsData?.data?.boards?.[0]?.items_page;
-    const items = page?.items || [];
-
-    const found = items.some((item: { column_values: { text: string | null }[] }) => {
-      const text = item.column_values?.[0]?.text;
-      return text && normalizeMondayPhone(text) === targetNormalized;
-    });
-    if (found) return true;
-
-    cursor = page?.cursor || null;
-  } while (cursor);
-
-  return false;
-}
-
-async function createMondayLiveLead(name: string, phone: string, email: string | null, liveTitle: string, liveScheduledAt: string) {
-  const token = process.env.MONDAY_API_TOKEN;
-  const boardId = process.env.MONDAY_BOARD_ID;
-  if (!token || !boardId) return;
-
+async function createCrmLiveLead(name: string, phone: string, email: string | null, liveTitle: string, liveScheduledAt: string) {
   try {
-    const { groupId, phoneColumnId, emailColumnId, campaignColumnId, statusColumnId } = await getBoardSchema(token, boardId);
-
-    const isDuplicate = phoneColumnId
-      ? await hasExistingPhone(token, boardId, phoneColumnId, normalizeMondayPhone(phone)).catch(() => false)
-      : false;
-
-    // מוסיפים את תאריך ושעת הלייב לשם הקמפיין, כדי שאפשר יהיה להבדיל בין לידים מלייבים שונים בלוח
+    // מוסיפים את תאריך ושעת הלייב למקור, כדי שאפשר יהיה להבדיל בין לידים מלייבים שונים
     const liveDate = new Date(liveScheduledAt);
     const liveDateLabel = `${liveDate.toLocaleDateString('he-IL')} ${liveDate.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}`;
-    const campaignValue = `${CAMPAIGN_VALUE} - ${liveDateLabel}`;
+    const sourceValue = `${CAMPAIGN_VALUE} - ${liveDateLabel}`;
 
-    const columnValues: Record<string, unknown> = {};
-    if (phoneColumnId) columnValues[phoneColumnId] = { phone: phone.startsWith('0') ? `972${phone.slice(1)}` : phone, countryShortName: 'IL' };
-    if (emailColumnId && email) columnValues[emailColumnId] = { email, text: email };
-    if (campaignColumnId) columnValues[campaignColumnId] = campaignValue;
+    const isDuplicate = !!(await findContact(phone, email));
 
-    const createItemData = await mondayRequest(
-      token,
-      `mutation ($boardId: ID!, $groupId: String, $itemName: String!, $columnValues: JSON) {
-        create_item (board_id: $boardId, group_id: $groupId, item_name: $itemName, column_values: $columnValues) { id }
-      }`,
-      { boardId, groupId: groupId || null, itemName: name, columnValues: JSON.stringify(columnValues) }
-    );
+    const contact = await upsertContact({
+      phone,
+      email,
+      fullName: name,
+      source: sourceValue,
+      statusLabel: isDuplicate ? DUPLICATE_STATUS_LABEL : undefined,
+    });
 
-    const itemId = createItemData?.data?.create_item?.id;
-    if (!itemId) return;
-
-    if (isDuplicate && statusColumnId) {
-      await mondayRequest(
-        token,
-        `mutation ($boardId: ID!, $itemId: ID!, $columnId: String!, $value: String!) {
-          change_simple_column_value (board_id: $boardId, item_id: $itemId, column_id: $columnId, value: $value) { id }
-        }`,
-        { boardId, itemId, columnId: statusColumnId, value: DUPLICATE_STATUS_LABEL }
-      ).catch((e) => console.error('Monday.com: נכשל סימון "ליד כפול"', e));
-    }
-
-    await mondayRequest(
-      token,
-      `mutation ($itemId: ID!, $body: String!) { create_update (item_id: $itemId, body: $body) { id } }`,
-      {
-        itemId,
-        body: `נייד: ${phone}${email ? `\nאימייל: ${email}` : ''}\nמקור: הרשמה ללייב "${liveTitle}" (${liveDateLabel}) באתר${isDuplicate ? '\n⚠ כבר קיים ליד/מנוי אחר עם אותו נייד - סומן כ"ליד כפול"' : ''}`,
-      }
+    await addNote(
+      contact.id,
+      `נייד: ${phone}${email ? `\nאימייל: ${email}` : ''}\nמקור: הרשמה ללייב "${liveTitle}" (${liveDateLabel}) באתר${isDuplicate ? '\n⚠ כבר קיים ליד/מנוי אחר עם אותו נייד - סומן כ"ליד כפול"' : ''}`
     );
   } catch (e) {
-    console.error('שגיאה בסנכרון הרשמה ללייב ל-Monday.com', e);
+    console.error('שגיאה בסנכרון הרשמה ללייב ל-CRM', e);
   }
 }
 
 // POST - הרשמה ללייב. מנוי פעיל (מזוהה לפי טוקן) נרשם ישירות ומקבל את פרטי ההצטרפות.
-// מי שאינו מנוי משאיר פרטי קשר, נהפך לליד ב-Monday.com (בדיוק כמו טופס קבוצת העדכונים), ושירן
+// מי שאינו מנוי משאיר פרטי קשר, נהפך לליד ב-CRM (בדיוק כמו טופס קבוצת העדכונים), ושירן
 // יוצרת איתו קשר ידנית עם פרטי ההצטרפות
 export async function POST(request: Request) {
   const body = await request.json().catch(() => ({}));
@@ -180,7 +80,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'חסרים פרטים' }, { status: 400 });
   }
 
-  const isSubscriberByContact = (await isActiveSubscriber(phone, email || null)) || (await isContactInSubscribersGroupMonday(phone, email || null));
+  const isSubscriberByContact = await isActiveSubscriber(phone, email || null);
   if (isSubscriberByContact) {
     // מנוי פעיל שממלא את הטופס בלי להיות מחובר - לא יוצרים לו ליד מיותר, רק שומרים שהוא נרשם
     // (כדי שיופיע ברשימת הנרשמים לשירן) ומציגים לו את הפרטים
@@ -200,12 +100,12 @@ export async function POST(request: Request) {
   });
 
   // ללייב שמסומן כפתוח לכולם, מי שאינו מנוי מקבל את פרטי ההצטרפות ישירות ולא הופך לליד
-  // מכירתי במאנדיי - אין למה "לפנות" אליו, הוא כבר קיבל גישה לוובינר הפתוח
+  // מכירתי ב-CRM - אין למה "לפנות" אליו, הוא כבר קיבל גישה לוובינר הפתוח
   if (live.open_to_all) {
     return NextResponse.json({ ok: true, isSubscriber: false, openToAll: true, joinInfo: live.join_info });
   }
 
-  await createMondayLiveLead(name, phone, email || null, live.title, live.scheduled_at).catch(() => {});
+  await createCrmLiveLead(name, phone, email || null, live.title, live.scheduled_at).catch(() => {});
 
   return NextResponse.json({ ok: true, isSubscriber: false });
 }

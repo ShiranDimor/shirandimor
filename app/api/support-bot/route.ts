@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/instantLogin';
 import { callSupportBot, extractContactFromText, extractGenderFromText, buildRuntimeContextBlock } from '@/lib/supportBot';
-import { classifyContactMonday } from '@/lib/tradingPlan/monday';
+import { classifyContact } from '@/lib/crm';
 import { getOrCreateConversation, getNextLive, getMonthTradeStats } from '@/lib/supportBotConversation';
 
 // מזהה את הפונה: אם יש טוקן התחברות תקין - זה המשתמש האמיתי (וגם הפרופיל שלו נטען לסיווג מדויק).
@@ -46,7 +46,7 @@ export async function GET(request: Request) {
 }
 
 // POST - שיחה עם דור, פתוחה לכל מבקר/ת באתר (מחובר/ת או אנונימי/ת) - ההיסטוריה נשמרת לפי המזהה,
-// וסוג הפונה מסווג מול מאנדיי (מנוי/ת פעיל/ה, קבוצת עדכונים, ליד חדש) ברגע שיש פרטי קשר
+// וסוג הפונה מסווג מול ה-CRM (מנוי/ת פעיל/ה, קבוצת עדכונים, ליד חדש) ברגע שיש פרטי קשר
 export async function POST(request: Request) {
   const { message, anonId } = await request.json().catch(() => ({}));
   if (!message || typeof message !== 'string') {
@@ -64,13 +64,13 @@ export async function POST(request: Request) {
   const conversation = await getOrCreateConversation(identity.id, identity.profile);
 
   // זיהוי הזדמנותי: אם הפונה שיתף טלפון/מייל תוך כדי השיחה ועדיין אין לנו את זה שמור - שומרים,
-  // ואם הזהות עדיין לא ידועה, מסווגים מול מאנדיי לפי הפרט החדש
+  // ואם הזהות עדיין לא ידועה, מסווגים מול ה-CRM לפי הפרט החדש
   const extracted = extractContactFromText(message);
   const updates: Record<string, unknown> = {};
   if (extracted.phone && !conversation?.contact_phone) updates.contact_phone = extracted.phone;
   if (extracted.email && !conversation?.contact_email) updates.contact_email = extracted.email;
   if ((extracted.phone || extracted.email) && (!conversation?.user_type || conversation.user_type === 'unknown')) {
-    updates.user_type = await classifyContactMonday(
+    updates.user_type = await classifyContact(
       extracted.phone || conversation?.contact_phone || null,
       extracted.email || conversation?.contact_email || null
     );
