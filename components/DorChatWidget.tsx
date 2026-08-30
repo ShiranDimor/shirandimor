@@ -122,7 +122,7 @@ export default function DorChatWidget() {
       {!open && showCallout && (
         <button className="dor-callout" onClick={() => { setOpen(true); dismissCallout(); }}>
           <span className="dor-callout-close" onClick={(e) => { e.stopPropagation(); dismissCallout(); }} role="button" aria-label="סגירה">✕</span>
-          יש שאלה? 💬 תשובה פשוטה, בלי רעש
+היי, זו דור 👋 בואו נדבר?
         </button>
       )}
 
