@@ -611,34 +611,42 @@
   bottom: 88px;
   right: 20px;
   z-index: 102;
-  max-width: 230px;
-  background: var(--bg-surface-raised);
-  border: 1px solid var(--lavender);
+  max-width: 220px;
+  background: linear-gradient(135deg, var(--lavender) 0%, var(--teal) 100%);
+  border: none;
   border-radius: 14px 14px 2px 14px;
-  padding: 12px 30px 12px 14px;
-  font-size: 13px;
-  line-height: 1.5;
-  color: var(--text-primary);
-  box-shadow: 0 6px 20px rgba(0,0,0,0.4);
-  animation: dor-callout-in 0.35s ease;
+  padding: 14px 30px 14px 16px;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.45;
+  color: var(--bg-void);
+  text-align: right;
+  font-family: inherit;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.45);
+  animation: dor-callout-in 0.35s ease, dor-callout-bounce 2.4s ease-in-out 0.6s infinite;
 }
 
 .dor-callout-close {
   position: absolute;
   top: 6px;
   left: 8px;
-  background: none;
-  border: none;
-  color: var(--text-tertiary);
+  color: rgba(8,19,26,0.6);
   font-size: 12px;
   cursor: pointer;
   padding: 2px;
   line-height: 1;
+  font-weight: 400;
 }
 
 @keyframes dor-callout-in {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; transform: translateY(8px) scale(0.95); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes dor-callout-bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
 }
 
 .dor-float-btn-pulse {

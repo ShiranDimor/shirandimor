@@ -120,11 +120,10 @@ export default function DorChatWidget() {
   return (
     <>
       {!open && showCallout && (
-        <div className="dor-callout">
-          <button className="dor-callout-close" onClick={dismissCallout} aria-label="סגירה">✕</button>
-          <div>👋 היי, זו דור! יש שאלה שמסתובבת לך בראש?</div>
-          <div style={{ color: 'var(--text-tertiary)', marginTop: '2px' }}>בואו נדבר על מה שבאמת מעסיק אותך</div>
-        </div>
+        <button className="dor-callout" onClick={() => { setOpen(true); dismissCallout(); }}>
+          <span className="dor-callout-close" onClick={(e) => { e.stopPropagation(); dismissCallout(); }} role="button" aria-label="סגירה">✕</span>
+          יש שאלה? 💬 תשובה פשוטה, בלי רעש
+        </button>
       )}
 
       {!open && (
