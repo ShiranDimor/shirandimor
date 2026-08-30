@@ -1,11 +1,10 @@
 import { NextResponse } from 'next/server';
 import { sendLoginEmail } from '@/lib/instantLogin';
 import { ensureActiveSubscriberAccount } from '@/lib/subscriberStatus';
-import { isContactInSubscribersGroupMonday } from '@/lib/tradingPlan/monday';
+import { findContact } from '@/lib/crm';
 
-// אימות מול "קבוצת סוחרים" במאנדיי - משתמש בפונקציה המשותפת שכבר בודקת גם טלפון וגם מייל
-// (במקום מימוש נפרד שבדק רק טלפון, וטעה לפספס מנוי שהטלפון שלו במאנדיי לא תואם בדיוק
-// אבל המייל כן קיים ותואם)
+// אימות עבור מי שכבר בשלב "מנוי" ב-CRM (למשל סומן ידנית שם) אבל עדיין אין לו חשבון באתר -
+// יוצר לו חשבון ושולח קישור כניסה
 export async function POST(request: Request) {
   const { phone, email, firstName, lastName } = await request.json();
 
@@ -20,14 +19,9 @@ export async function POST(request: Request) {
 
   const fullName = `${firstName} ${lastName}`.trim();
 
-  if (!process.env.MONDAY_API_TOKEN || !process.env.MONDAY_BOARD_ID) {
-    console.error('Monday.com לא מוגדר - לא ניתן לאמת מנוי');
-    return NextResponse.json({ verified: false, configured: false });
-  }
-
   try {
-    const found = await isContactInSubscribersGroupMonday(phone, email);
-    if (!found) {
+    const contact = await findContact(phone, email);
+    if (!contact || contact.stage !== 'subscriber') {
       return NextResponse.json({ verified: false, configured: true });
     }
 
@@ -36,7 +30,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ verified: true, configured: true });
   } catch (e) {
-    console.error('שגיאה באימות מול Monday.com', e);
+    console.error('שגיאה באימות מנוי מול ה-CRM', e);
     return NextResponse.json({ verified: false, configured: false });
   }
 }

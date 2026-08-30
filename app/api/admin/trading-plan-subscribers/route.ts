@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/instantLogin';
 import { getActiveSubscriberContacts, normalizePhone, normalizeEmail } from '@/lib/subscriberStatus';
-import { getMondaySubscriberContacts } from '@/lib/tradingPlan/monday';
+import { getSubscriberContactKeys } from '@/lib/crm';
 
-// GET - מנויים פעילים (גם באתר וגם ב-"קבוצת סוחרים" ב-Monday.com בלבד) שהשלימו את שאלון
+// GET - מנויים פעילים (גם באתר וגם מסומנים "מנוי" ב-CRM בלבד) שהשלימו את שאלון
 // תוכנית המסחר - כדי לראות כמה מהמנויים בפועל משתמשים בכלי, ולתת לשירן קישור ישיר
 // לעמוד המעקב האישי של כל אחד מהם.
 export async function GET(request: Request) {
@@ -20,7 +20,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'אין הרשאת ניהול' }, { status: 403 });
   }
 
-  const [{ data, error }, { phones: subscriberPhones, emails: subscriberEmails }, { phones: mondayPhones, emails: mondayEmails }] = await Promise.all([
+  const [{ data, error }, { phones: subscriberPhones, emails: subscriberEmails }, { phones: crmPhones, emails: crmEmails }] = await Promise.all([
     supabaseAdmin
       .from('trading_plan_responses')
       .select('id, name, phone, email, computed_profile, completed_at')
@@ -28,7 +28,7 @@ export async function GET(request: Request) {
       .order('completed_at', { ascending: false })
       .limit(300),
     getActiveSubscriberContacts(),
-    getMondaySubscriberContacts(),
+    getSubscriberContactKeys(),
   ]);
 
   if (error) {
@@ -39,8 +39,8 @@ export async function GET(request: Request) {
     (r) =>
       subscriberPhones.has(normalizePhone(r.phone)) ||
       subscriberEmails.has(normalizeEmail(r.email)) ||
-      mondayPhones.has(normalizePhone(r.phone)) ||
-      mondayEmails.has(normalizeEmail(r.email))
+      crmPhones.has(normalizePhone(r.phone)) ||
+      crmEmails.has(normalizeEmail(r.email))
   );
 
   const rows = subscribersOnly.map((r) => ({

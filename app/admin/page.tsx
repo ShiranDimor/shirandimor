@@ -19,6 +19,8 @@ export default function AdminDashboard() {
   const [lessonsCount, setLessonsCount] = useState(0);
   const [revenueCount, setRevenueCount] = useState(0);
   const [revenueTotal, setRevenueTotal] = useState(0);
+  const [crmCount, setCrmCount] = useState(0);
+  const [crmFollowupDue, setCrmFollowupDue] = useState(0);
 
   const [refreshing, setRefreshing] = useState(false);
   const [refreshMessage, setRefreshMessage] = useState('');
@@ -79,7 +81,7 @@ export default function AdminDashboard() {
   async function loadCounts() {
     const { data: { session } } = await supabase.auth.getSession();
 
-    const [pending, approved, openTrades, abandonedRes, livesRes, lessonsRes, revenueRes] = await Promise.all([
+    const [pending, approved, openTrades, abandonedRes, livesRes, lessonsRes, revenueRes, crmContacts] = await Promise.all([
       supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'lead'),
       supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'subscriber'),
       supabase.from('trades').select('id', { count: 'exact', head: true }).eq('status', 'open'),
@@ -87,6 +89,7 @@ export default function AdminDashboard() {
       fetch('/api/admin/lives', { headers: { Authorization: `Bearer ${session?.access_token}` } }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
       fetch('/api/admin/lessons', { headers: { Authorization: `Bearer ${session?.access_token}` } }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
       fetch('/api/admin/revenue-projection', { headers: { Authorization: `Bearer ${session?.access_token}` } }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+      supabase.from('crm_contacts').select('id, follow_up_at'),
     ]);
 
     setPendingCount(pending.count || 0);
@@ -100,6 +103,10 @@ export default function AdminDashboard() {
     setLessonsCount((lessonsRes?.lessons || []).length);
     setRevenueCount((revenueRes?.alreadyCharged?.count || 0) + (revenueRes?.upcoming?.count || 0));
     setRevenueTotal(revenueRes?.monthTotal || 0);
+    const crmRows: { follow_up_at: string | null }[] = crmContacts.data || [];
+    const today = new Date().toISOString().slice(0, 10);
+    setCrmCount(crmRows.length);
+    setCrmFollowupDue(crmRows.filter((r) => r.follow_up_at && r.follow_up_at <= today).length);
   }
 
   async function handleLogout() {
@@ -152,6 +159,12 @@ export default function AdminDashboard() {
       <div className="section-label"><h2>אזור הניהול</h2></div>
 
       <div className="admin-tiles">
+        <Link href="/admin/crm" className={`admin-tile ${crmFollowupDue > 0 ? 'attention' : ''}`}>
+          <div className="at-icon">🗂️</div>
+          <div className="at-title">CRM - לידים ומנויים</div>
+          <div className="at-count">{crmFollowupDue > 0 ? `${crmFollowupDue} פולואפ להיום · ` : ''}{crmCount} אנשי קשר</div>
+        </Link>
+
         <Link href="/admin/trades" className="admin-tile">
           <div className="at-icon">📊</div>
           <div className="at-title">תיק מסחר</div>

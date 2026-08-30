@@ -376,7 +376,7 @@ export default function AdminTradingPlanAbandonedPage() {
           <span style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>{showSubscribers ? '▲ הסתרה' : '▼ הצגה'}</span>
         </button>
         <p style={{ fontSize: '12.5px', color: 'var(--text-tertiary)', marginTop: '8px' }}>
-          מנויים פעילים (גם באתר וגם ב"קבוצת סוחרים" ב-Monday.com) שהשלימו את שאלון תוכנית המסחר.
+          מנויים פעילים (גם באתר וגם מסומנים "מנוי" ב-CRM) שהשלימו את שאלון תוכנית המסחר.
         </p>
 
         {loadingSubscriberRows && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)', marginTop: '10px' }}>טוענים...</p>}

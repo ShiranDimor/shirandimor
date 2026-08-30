@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server';
-import { parseGrowPayload, syncGrowPaymentToMonday } from '@/lib/grow';
+import { parseGrowPayload } from '@/lib/grow';
+import { syncGrowPaymentToCrm } from '@/lib/crm';
 import { ensureActiveSubscriberAccount } from '@/lib/subscriberStatus';
 import { sendLoginEmail } from '@/lib/instantLogin';
 
-// מקבל התראת תשלום מ-Grow (server-to-server callback) בכל פעם שלקוח נרשם וחויב, מעדכן את הפריט
-// שלו במאנדיי (עלות חודשית, תאריך הרשמה, הטבת חודש ראשון אם רלוונטי) ומעביר אותו לקבוצת
-// "קבוצת סוחרים" - ומאשר אותו כמנוי פעיל באתר (או יוצר לו חשבון, אם עוד אין).
+// מקבל התראת תשלום מ-Grow (server-to-server callback) בכל פעם שלקוח נרשם וחויב, מעדכן את איש
+// הקשר ב-CRM הפנימי (עלות חודשית, תאריך הרשמה, הטבת חודש ראשון אם רלוונטי) לשלב "מנוי" -
+// ומאשר אותו כמנוי פעיל באתר (או יוצר לו חשבון, אם עוד אין).
 export async function POST(request: Request) {
   const contentType = request.headers.get('content-type') || '';
   let body: Record<string, unknown> = {};
@@ -55,9 +56,9 @@ export async function POST(request: Request) {
 
   console.log('Grow webhook: התקבל תשלום', { ...payment, raw: body });
 
-  const mondayResult = await syncGrowPaymentToMonday(payment);
-  if (!mondayResult.ok) {
-    console.error('Grow webhook: סנכרון מאנדיי נכשל', mondayResult.reason);
+  const crmResult = await syncGrowPaymentToCrm(payment);
+  if (!crmResult.ok) {
+    console.error('Grow webhook: סנכרון CRM נכשל', crmResult.reason);
   }
 
   let siteAccount: 'ok' | 'skipped_no_email' | 'error' = 'skipped_no_email';
@@ -74,5 +75,5 @@ export async function POST(request: Request) {
     console.error('Grow webhook: אין מייל בבקשה - לא ניתן ליצור/לאשר חשבון באתר', body);
   }
 
-  return NextResponse.json({ ok: true, monday: mondayResult.ok, siteAccount });
+  return NextResponse.json({ ok: true, crm: crmResult.ok, siteAccount });
 }

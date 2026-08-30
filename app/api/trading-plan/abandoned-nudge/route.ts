@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/instantLogin';
 import { buildAbandonedEmailHtml } from '@/lib/tradingPlan/emailContent';
-import { syncTradingPlanLead, TRADING_PLAN_ABANDONED_STATUS_LABEL, isContactInSubscribersGroupMonday } from '@/lib/tradingPlan/monday';
+import { syncTradingPlanLead, TRADING_PLAN_ABANDONED_STATUS_LABEL } from '@/lib/crm';
 import { isActiveSubscriber } from '@/lib/subscriberStatus';
 
 async function sendEmail(apiKey: string, to: string, subject: string, html: string, from: string) {
@@ -22,7 +22,7 @@ const HOURS_BETWEEN_REMINDERS = 24;
 
 // GET - מופעל ע"י Vercel Cron. מטפל במי שהתחיל למלא את "תוכנית המסחר" ולא סיים:
 // תזכורת #1 - שעה אחרי שהפסיק לגעת בטופס. תזכורת #2 (אחרונה) - יממה אחרי תזכורת #1, אם עדיין לא השלים.
-// אחרי 2 תזכורות מפסיקים לגמרי. Monday מתעדכן לסטטוס "יצא באמצע התוכנית מסחר" בתזכורת הראשונה בלבד.
+// אחרי 2 תזכורות מפסיקים לגמרי. ה-CRM מתעדכן לסטטוס "יצא באמצע התוכנית מסחר" בתזכורת הראשונה בלבד.
 //
 // מצב תצוגה מקדימה (לא נוגע בנתונים): ?preview=1&to=<email> שולח את שתי התזכורות לכתובת שצוינה, עם נתוני דוגמה.
 export async function GET(request: Request) {
@@ -71,13 +71,12 @@ export async function GET(request: Request) {
   }
 
   let emailsSent = 0;
-  let mondaySynced = 0;
+  let crmSynced = 0;
 
   for (const row of firstBatch || []) {
-    // מנוי שכבר המיר לא צריך תזכורת "בואי נסיים כדי להצטרף" ולא כרטיס ליד חדש ב-Monday.com -
-    // מאותה סיבה שגם מייל "ליד חדש" מיותר עבור מנוי שממלא את התוכנית עד הסוף. בודקים גם מול
-    // קבוצת "קבוצת סוחרים" ב-Monday.com, למנויים שמנוהלים רק שם בלי חשבון באתר
-    const isSubscriber = (await isActiveSubscriber(row.phone, row.email)) || (await isContactInSubscribersGroupMonday(row.phone, row.email));
+    // מנוי שכבר המיר לא צריך תזכורת "בואי נסיים כדי להצטרף" ולא כרטיס ליד חדש ב-CRM - מאותה
+    // סיבה שגם מייל "ליד חדש" מיותר עבור מנוי שממלא את התוכנית עד הסוף
+    const isSubscriber = await isActiveSubscriber(row.phone, row.email);
 
     if (!isSubscriber) {
       if (apiKey && row.email) {
@@ -86,14 +85,14 @@ export async function GET(request: Request) {
       }
       if (row.phone) {
         const result = await syncTradingPlanLead(row, { statusLabel: TRADING_PLAN_ABANDONED_STATUS_LABEL, completed: false }).catch(() => null);
-        if (result?.ok) mondaySynced++;
+        if (result?.ok) crmSynced++;
       }
     }
     await supabaseAdmin.from('trading_plan_responses').update({ abandon_reminder_count: 1, abandon_email_sent_at: new Date().toISOString() }).eq('id', row.id);
   }
 
   for (const row of secondBatch || []) {
-    const isSubscriber = (await isActiveSubscriber(row.phone, row.email)) || (await isContactInSubscribersGroupMonday(row.phone, row.email));
+    const isSubscriber = await isActiveSubscriber(row.phone, row.email);
     if (!isSubscriber && apiKey && row.email) {
       const sent = await sendEmail(apiKey, row.email, 'תזכורת אחרונה - התוכנית שלך מחכה לך', buildAbandonedEmailHtml(row, 2), 'שירן דימור <noreply@shirandimor.com>').catch(() => false);
       if (sent) emailsSent++;
@@ -101,5 +100,5 @@ export async function GET(request: Request) {
     await supabaseAdmin.from('trading_plan_responses').update({ abandon_reminder_count: 2, abandon_email_sent_at: new Date().toISOString() }).eq('id', row.id);
   }
 
-  return NextResponse.json({ ok: true, firstReminders: (firstBatch || []).length, secondReminders: (secondBatch || []).length, emailsSent, mondaySynced });
+  return NextResponse.json({ ok: true, firstReminders: (firstBatch || []).length, secondReminders: (secondBatch || []).length, emailsSent, crmSynced });
 }
