@@ -42,15 +42,15 @@ export default function DorChatWidget() {
   }, [messages, open]);
 
   // בועת "דור פה!" ליד הכפתור - מופיעה פעם אחת לכל דפדפן (לא בכל טעינת עמוד), כדי למשוך תשומת
-  // לב למי שמגיע/ה לאתר בפעם הראשונה ולא בהכרח שם/ה לב שיש בכלל צ'אט, בלי להציק בביקורים חוזרים
+  // לב למי שמגיע/ה לאתר בפעם הראשונה ולא בהכרח שם/ה לב שיש בכלל צ'אט. נשארת עד שלוחצים עליה/על
+  // הכפתור או על ה-X שלה - לא נעלמת לבד, כדי לא לפספס מי שלא הספיק/ה לשים לב מיד
   useEffect(() => {
     if (pathname?.startsWith('/admin')) return;
     let seen = true;
     try { seen = localStorage.getItem(CALLOUT_SEEN_KEY) === '1'; } catch {}
     if (seen) return;
     const showTimer = setTimeout(() => setShowCallout(true), 1500);
-    const hideTimer = setTimeout(() => dismissCallout(), 14000);
-    return () => { clearTimeout(showTimer); clearTimeout(hideTimer); };
+    return () => clearTimeout(showTimer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
 
@@ -123,7 +123,7 @@ export default function DorChatWidget() {
         <div className="dor-callout">
           <button className="dor-callout-close" onClick={dismissCallout} aria-label="סגירה">✕</button>
           <div>👋 היי, זו דור! יש שאלה שמסתובבת לך בראש?</div>
-          <div style={{ color: 'var(--text-tertiary)', marginTop: '2px' }}>דברו איתי, אני לא נושכת 😄</div>
+          <div style={{ color: 'var(--text-tertiary)', marginTop: '2px' }}>בוא/י נדבר, ננקה ביחד את כל הרעשים שיש בראש</div>
         </div>
       )}
 
