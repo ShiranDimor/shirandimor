@@ -175,9 +175,34 @@ export function buildRuntimeContextBlock(ctx: {
   return lines.join(' ');
 }
 
+// כשהמגדר של הפונה כבר ידוע בוודאות, המודל בכל זאת נוטה לפעמים "לגמגם" ולהשתמש בכתיב
+// כפול עם לוכסן (כמו "את/ה", "מרגיש/ה") במקום להתחייב לצורה אחת - למרות הנחיה מפורשת
+// בפרומפט. פתרון אמין: פותרים את הלוכסן בקוד לפי המגדר הידוע, במקום להסתמך על ציות המודל.
+// שימוש ב-\b לא עובד כאן כי אותיות עבריות אינן "תווי מילה" מבחינת regex ב-JS - לכן משתמשים
+// ב-lookahead שבודק שהתו הבא הוא לא אות עברית (או סוף המחרוזת) במקום גבול מילה רגיל.
+const FINAL_LETTER_TO_REGULAR: Record<string, string> = { 'ך': 'כ', 'ם': 'מ', 'ן': 'נ', 'ף': 'פ', 'ץ': 'צ' };
+
+function resolveGenderSlashes(text: string, gender: 'male' | 'female'): string {
+  const boundary = '(?=[^א-ת]|$)';
+  let out = text.replace(new RegExp(`את\\s*/\\s*ה${boundary}`, 'g'), gender === 'male' ? 'אתה' : 'את');
+  out = out.replace(new RegExp(`אתה\\s*/\\s*את${boundary}`, 'g'), gender === 'male' ? 'אתה' : 'את');
+  // התבנית הכללית: גזע (פועל/תואר) + לוכסן + סיומת נקבה - הגזע לבדו הוא צורת הזכר,
+  // גזע+סיומת הוא צורת הנקבה (למשל "מרגיש/ה" -> מרגיש / מרגישה, "עומד/ת" -> עומד / עומדת).
+  // אם הגזע מסתיים באות סופית (ך/ם/ן/ף/ץ) צריך להחזיר אותה לצורה הרגילה לפני הוספת הסיומת
+  // (מוכן+ה -> מוכנה, לא מוכןה)
+  out = out.replace(new RegExp(`([א-ת]{2,})/(ה|ת|ית|יה|י)${boundary}`, 'g'), (_match, stem: string, suffix: string) => {
+    if (gender === 'male') return stem;
+    const lastChar = stem.slice(-1);
+    const normalizedStem = FINAL_LETTER_TO_REGULAR[lastChar] ? stem.slice(0, -1) + FINAL_LETTER_TO_REGULAR[lastChar] : stem;
+    return normalizedStem + suffix;
+  });
+  return out;
+}
+
 export async function callSupportBot(
   messages: { role: 'user' | 'assistant'; content: string }[],
-  runtimeContext?: string
+  runtimeContext?: string,
+  gender?: 'male' | 'female' | null
 ): Promise<string> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
@@ -209,7 +234,9 @@ export async function callSupportBot(
 
   const data = await res.json();
   const textBlock = data?.content?.find((b: { type: string }) => b.type === 'text');
-  return stripMarkdown(textBlock?.text || '');
+  let reply = stripMarkdown(textBlock?.text || '');
+  if (gender) reply = resolveGenderSlashes(reply, gender);
+  return reply;
 }
 
 // מסיר עיצוב markdown מהתשובה - למרות ההנחיה בפרומפט, המודל עדיין נוטה לפעמים להוסיף

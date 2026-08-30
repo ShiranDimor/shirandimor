@@ -111,7 +111,7 @@ export async function POST(request: Request) {
       nextLive,
       monthStats,
     });
-    const reply = await callSupportBot(fullConversation, runtimeContext);
+    const reply = await callSupportBot(fullConversation, runtimeContext, effectiveGender);
 
     await supabaseAdmin.from('support_bot_messages').insert([
       { user_id: identity.id, conversation_id: conversation?.id, role: 'user', content: message },
