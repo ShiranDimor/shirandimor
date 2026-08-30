@@ -25,6 +25,10 @@
       "schedule": "0 7 * * 4"
     },
     {
+      "path": "/api/cron-sync-monday-subscribers",
+      "schedule": "0 4 * * *"
+    },
+    {
       "path": "/api/cron/support-bot-notify",
       "schedule": "0 18 * * *"
     }

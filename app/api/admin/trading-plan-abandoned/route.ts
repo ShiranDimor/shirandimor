@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/instantLogin';
 import { visibleSteps } from '@/lib/tradingPlan/questions';
 import { getActiveSubscriberContacts, normalizePhone, normalizeEmail } from '@/lib/subscriberStatus';
-import { getSubscriberContactKeys } from '@/lib/crm';
+import { getMondaySubscriberContacts } from '@/lib/tradingPlan/monday';
 
 // GET - כל מי שמילא את "תוכנית המסחר", גם מי שהשלים וגם מי שננטש באמצע -
 // כדי שיהיה מקום אחד לראות מי חדש (סיים או לא) וליזום קשר עם מי שהשאיר נייד/מייל.
@@ -33,17 +33,18 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'שגיאה בשליפת נתונים' }, { status: 500 });
   }
 
-  const [{ phones: subscriberPhones, emails: subscriberEmails }, { phones: crmPhones, emails: crmEmails }] = await Promise.all([
+  const [{ phones: subscriberPhones, emails: subscriberEmails }, { phones: mondayPhones, emails: mondayEmails }] = await Promise.all([
     getActiveSubscriberContacts(),
-    getSubscriberContactKeys(),
+    getMondaySubscriberContacts(),
   ]);
 
   const isSubscriber = (r: { phone: string | null; email: string | null }) =>
     subscriberPhones.has(normalizePhone(r.phone)) ||
     subscriberEmails.has(normalizeEmail(r.email)) ||
-    // גם מנוי שמסומן כ"מנוי" ב-CRM בלי חשבון תואם באתר - לפי טלפון או מייל, כי לרוב אין טלפון שמור
-    crmPhones.has(normalizePhone(r.phone)) ||
-    crmEmails.has(normalizeEmail(r.email));
+    // גם מנוי שמנוהל רק ב-Monday.com (בקבוצת "קבוצת סוחרים"), בלי חשבון תואם באתר -
+    // לפי טלפון או מייל, כי לרוב אין טלפון שמור
+    mondayPhones.has(normalizePhone(r.phone)) ||
+    mondayEmails.has(normalizeEmail(r.email));
   const hasContact = (r: { name: string | null; phone: string | null; email: string | null }) => !!(r.name || r.phone || r.email);
 
   const allRows = data || [];

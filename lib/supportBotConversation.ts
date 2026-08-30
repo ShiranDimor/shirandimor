@@ -1,7 +1,7 @@
 // לוגיקת שיחה משותפת לבוט התמיכה "דור" - משמשת גם את דף הבדיקה הפנימי לאדמין
 // וגם את הווידג'ט הציבורי באתר, כדי שלא תהיה כפילות בין שני נתיבי ה-API.
 import { supabaseAdmin } from '@/lib/instantLogin';
-import { classifyContact } from '@/lib/crm';
+import { classifyContactMonday } from '@/lib/tradingPlan/monday';
 
 export type SupportBotConversation = {
   id: string;
@@ -16,7 +16,7 @@ export type SupportBotConversation = {
 
 // מוצא שיחה קיימת לפי מזהה (userId אמיתי של משתמש מחובר, או מזהה אנונימי שנוצר בדפדפן), או יוצר אחת חדשה -
 // ומזהה את סוג המשתמש (user_type) בפעם הראשונה: אדמין = admin_test, מנוי לפי הפרופיל = member_active,
-// אחרת נבדק מול ה-CRM אם יש פרטי קשר בפרופיל, ואם אין - נשאר "unknown" עד שישותפו פרטים בשיחה עצמה.
+// אחרת נבדק מול מאנדיי אם יש פרטי קשר בפרופיל, ואם אין - נשאר "unknown" עד שישותפו פרטים בשיחה עצמה.
 export async function getOrCreateConversation(
   identityId: string,
   profile?: { role?: string | null; full_name?: string | null; phone?: string | null; email?: string | null } | null
@@ -35,7 +35,7 @@ export async function getOrCreateConversation(
   } else if (profile?.role === 'subscriber') {
     userType = 'member_active';
   } else if (profile?.phone || profile?.email) {
-    userType = await classifyContact(profile.phone, profile.email);
+    userType = await classifyContactMonday(profile.phone, profile.email);
   }
 
   const { data: created } = await supabaseAdmin

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/instantLogin';
 import { callSupportBot, extractContactFromText, extractGenderFromText, buildRuntimeContextBlock } from '@/lib/supportBot';
-import { classifyContact } from '@/lib/crm';
+import { classifyContactMonday } from '@/lib/tradingPlan/monday';
 import { getOrCreateConversation as getOrCreateConversationShared, getNextLive, getMonthTradeStats } from '@/lib/supportBotConversation';
 
 async function requireAdmin(request: Request) {
@@ -40,7 +40,7 @@ export async function GET(request: Request) {
 }
 
 // POST - שיחה עם בוט התמיכה (בדיקה פנימית לאדמין בלבד, לא חשוף למנויים) - ההיסטוריה נשמרת
-// ונטענת לפי המשתמש, ומזוהה סוג המשתמש מול ה-CRM כדי לתת הקשר-ריצה מדויק לבוט
+// ונטענת לפי המשתמש, ומזוהה סוג המשתמש מול מאנדיי כדי לתת הקשר-ריצה מדויק לבוט
 export async function POST(request: Request) {
   const admin = await requireAdmin(request);
   if (!admin) return NextResponse.json({ error: 'אין הרשאת ניהול' }, { status: 403 });
@@ -53,13 +53,13 @@ export async function POST(request: Request) {
   const conversation = await getOrCreateConversation(admin.id);
 
   // זיהוי הזדמנותי: אם המשתמש שיתף טלפון/מייל תוך כדי השיחה ועדיין אין לנו את זה שמור - שומרים,
-  // ואם הזהות עדיין לא ידועה, מסווגים מול ה-CRM לפי הפרט החדש
+  // ואם הזהות עדיין לא ידועה, מסווגים מול מאנדיי לפי הפרט החדש
   const extracted = extractContactFromText(message);
   const updates: Record<string, unknown> = {};
   if (extracted.phone && !conversation?.contact_phone) updates.contact_phone = extracted.phone;
   if (extracted.email && !conversation?.contact_email) updates.contact_email = extracted.email;
   if ((extracted.phone || extracted.email) && (!conversation?.user_type || conversation.user_type === 'unknown')) {
-    updates.user_type = await classifyContact(
+    updates.user_type = await classifyContactMonday(
       extracted.phone || conversation?.contact_phone || null,
       extracted.email || conversation?.contact_email || null
     );
