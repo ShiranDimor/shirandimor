@@ -23,8 +23,16 @@ export type CrmContact = {
   first_month_discount: boolean;
   joined_at: string | null;
   profile_id: string | null;
+  tags: string[];
   created_at: string;
   updated_at: string;
+};
+
+const STAGE_LABEL_HE: Record<CrmStage, string> = {
+  lead_new: 'ליד חדש',
+  updates_group: 'קבוצת עדכונים',
+  subscriber: 'מנוי',
+  churned: 'נטש',
 };
 
 export async function findContact(phone: string | null | undefined, email: string | null | undefined): Promise<CrmContact | null> {
@@ -55,10 +63,14 @@ export type UpsertContactInput = {
   firstMonthDiscount?: boolean;
   joinedAt?: string | null;
   profileId?: string | null;
+  tags?: string[];
+  /** להוסיף תגיות לרשימה הקיימת בלי למחוק מה שכבר יש (במקום להחליף את המערך כולו) */
+  addTags?: string[];
 };
 
 // מוצא-או-יוצר איש קשר לפי טלפון/מייל מנורמלים - מעדכן רק שדות שסופקו בפועל, לא דורס ערך קיים
-// בערך ריק. מקביל להתנהגות "find or create item" שהייתה מול הלוח במאנדיי.
+// בערך ריק. מקביל להתנהגות "find or create item" שהייתה מול הלוח במאנדיי. כששלב איש קשר קיים
+// משתנה, מתועד אוטומטית ציר הזמן (crm_notes) - כדי שכל שינוי stage, מכל מקור בקוד, יישאר גלוי.
 export async function upsertContact(input: UpsertContactInput): Promise<CrmContact> {
   const phone = normalizePhone(input.phone) || null;
   const email = normalizeEmail(input.email) || null;
@@ -78,6 +90,12 @@ export async function upsertContact(input: UpsertContactInput): Promise<CrmConta
   if (input.firstMonthDiscount) fields.first_month_discount = true;
   if (input.joinedAt !== undefined) fields.joined_at = input.joinedAt;
   if (input.profileId !== undefined) fields.profile_id = input.profileId;
+  if (input.tags !== undefined) fields.tags = input.tags;
+  if (input.addTags?.length) {
+    const base = new Set(existing?.tags || []);
+    for (const t of input.addTags) base.add(t);
+    fields.tags = Array.from(base);
+  }
 
   if (existing) {
     const { data, error } = await supabaseAdmin
@@ -87,6 +105,11 @@ export async function upsertContact(input: UpsertContactInput): Promise<CrmConta
       .select('*')
       .single();
     if (error) throw error;
+
+    if (input.stage && input.stage !== existing.stage) {
+      await addNote(existing.id, `שלב שונה: ${STAGE_LABEL_HE[existing.stage]} ← ${STAGE_LABEL_HE[input.stage]}`, 'system');
+    }
+
     return data as CrmContact;
   }
 
@@ -118,8 +141,73 @@ export async function classifyContact(phone: string | null | undefined, email: s
   return 'lead_new';
 }
 
-export async function markContactChurned(contactId: string): Promise<void> {
-  await supabaseAdmin.from('crm_contacts').update({ stage: 'churned', updated_at: new Date().toISOString() }).eq('id', contactId);
+export type ContactFieldUpdate = {
+  fullName?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  stage?: CrmStage;
+  statusLabel?: string | null;
+  followUpAt?: string | null;
+  monthlyCost?: number | null;
+  tags?: string[];
+  profileId?: string | null;
+  joinedAt?: string | null;
+};
+
+// מעדכן איש קשר קיים לפי מזהה (בניגוד ל-upsertContact, שמוצא/יוצר לפי טלפון/מייל) - משמש את מסך
+// ה-CRM עצמו. כל שינוי בשלב/סטטוס טיפול/תאריך פולואפ מתועד אוטומטית כהערה בציר הזמן, כדי
+// שהיסטוריית הטיפול באיש הקשר תישאר גלויה גם כשהעריכה נעשית ידנית ולא דרך סנכרון אוטומטי
+export async function updateContactById(id: string, update: ContactFieldUpdate, actor?: string | null): Promise<CrmContact> {
+  const { data: existing, error: fetchError } = await supabaseAdmin.from('crm_contacts').select('*').eq('id', id).single();
+  if (fetchError || !existing) throw new Error('איש קשר לא נמצא');
+
+  const fields: Record<string, unknown> = { updated_at: new Date().toISOString() };
+  if (update.fullName !== undefined) fields.full_name = update.fullName || null;
+  if (update.phone !== undefined) fields.phone = normalizePhone(update.phone) || null;
+  if (update.email !== undefined) fields.email = normalizeEmail(update.email) || null;
+  if (update.stage !== undefined) fields.stage = update.stage;
+  if (update.statusLabel !== undefined) fields.status_label = update.statusLabel || null;
+  if (update.followUpAt !== undefined) fields.follow_up_at = update.followUpAt || null;
+  if (update.monthlyCost !== undefined) fields.monthly_cost_paid = update.monthlyCost;
+  if (update.tags !== undefined) fields.tags = update.tags;
+  if (update.profileId !== undefined) fields.profile_id = update.profileId;
+  if (update.joinedAt !== undefined) fields.joined_at = update.joinedAt;
+
+  const { data, error } = await supabaseAdmin.from('crm_contacts').update(fields).eq('id', id).select('*').single();
+  if (error) throw error;
+
+  const changeNotes: string[] = [];
+  if (update.stage !== undefined && update.stage !== existing.stage) {
+    changeNotes.push(`שלב שונה: ${STAGE_LABEL_HE[existing.stage as CrmStage]} ← ${STAGE_LABEL_HE[update.stage]}`);
+  }
+  if (update.statusLabel !== undefined && (update.statusLabel || null) !== existing.status_label) {
+    changeNotes.push(`סטטוס טיפול עודכן ל: ${update.statusLabel || '—'}`);
+  }
+  if (update.followUpAt !== undefined && (update.followUpAt || null) !== existing.follow_up_at) {
+    changeNotes.push(`תאריך פולואפ עודכן ל: ${update.followUpAt || '—'}`);
+  }
+  if (changeNotes.length) {
+    await addNote(id, changeNotes.join('\n'), actor || 'admin');
+  }
+
+  return data as CrmContact;
+}
+
+// יוצר איש קשר חדש ידנית ממסך ה-CRM, עם הערת פתיחה אוטומטית בציר הזמן
+export async function createContact(input: { fullName: string; phone?: string | null; email?: string | null; stage?: CrmStage }, actor?: string | null): Promise<CrmContact> {
+  const phone = normalizePhone(input.phone) || null;
+  const email = normalizeEmail(input.email) || null;
+  if (!phone && !email) throw new Error('צריך טלפון או מייל');
+
+  const { data, error } = await supabaseAdmin
+    .from('crm_contacts')
+    .insert({ full_name: input.fullName, phone, email, stage: input.stage || 'lead_new' })
+    .select('*')
+    .single();
+  if (error) throw error;
+
+  await addNote(data.id, `איש קשר נוצר ידנית${actor ? ` ע"י ${actor}` : ''}`, actor || 'admin');
+  return data as CrmContact;
 }
 
 // כל אנשי הקשר בשלב "מנוי" - לשימוש בחישוב צפי ההכנסה (מחליף את שליפת "קבוצת סוחרים" ממאנדיי)

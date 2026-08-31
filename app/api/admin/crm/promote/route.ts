@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin, sendLoginEmail } from '@/lib/instantLogin';
 import { ensureActiveSubscriberAccount } from '@/lib/subscriberStatus';
+import { updateContactById, addNote } from '@/lib/crm';
 
 async function requireAdmin(request: Request) {
   const authHeader = request.headers.get('Authorization') || '';
@@ -29,15 +30,12 @@ export async function POST(request: Request) {
     await ensureActiveSubscriberAccount(contact.email, contact.phone || '', contact.full_name || contact.email);
     const { data: profile } = await supabaseAdmin.from('profiles').select('id').eq('email', contact.email).maybeSingle();
 
-    await supabaseAdmin
-      .from('crm_contacts')
-      .update({
-        stage: 'subscriber',
-        profile_id: profile?.id || null,
-        joined_at: contact.joined_at || new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', contactId);
+    await updateContactById(
+      contactId,
+      { stage: 'subscriber', profileId: profile?.id || null, joinedAt: contact.joined_at || new Date().toISOString() },
+      admin.email || 'admin'
+    );
+    await addNote(contactId, `נוצר/אושר חשבון באתר ונשלח מייל כניסה (קידום ידני ע"י ${admin.email || 'אדמין'})`, admin.email || 'admin');
 
     await sendLoginEmail(contact.email).catch((e) => console.error('שגיאה בשליחת מייל כניסה בקידום מה-CRM', e));
 

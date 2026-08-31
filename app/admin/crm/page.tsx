@@ -19,6 +19,7 @@ type CrmContact = {
   monthly_cost_paid: number | null;
   joined_at: string | null;
   profile_id: string | null;
+  tags: string[];
   created_at: string;
   updated_at: string;
 };
@@ -69,6 +70,7 @@ export default function AdminCrmPage() {
   const [loadingContacts, setLoadingContacts] = useState(false);
   const [search, setSearch] = useState('');
   const [stageFilter, setStageFilter] = useState<CrmStage | 'all' | 'followup'>('all');
+  const [tagFilter, setTagFilter] = useState<string | null>(null);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [notes, setNotes] = useState<CrmNote[]>([]);
@@ -79,6 +81,7 @@ export default function AdminCrmPage() {
   const [promoting, setPromoting] = useState(false);
 
   const [editForm, setEditForm] = useState<Partial<CrmContact>>({});
+  const [tagsInput, setTagsInput] = useState('');
 
   const [showNewForm, setShowNewForm] = useState(false);
   const [newContact, setNewContact] = useState({ fullName: '', phone: '', email: '', stage: 'lead_new' as CrmStage });
@@ -131,6 +134,7 @@ export default function AdminCrmPage() {
       follow_up_at: c.follow_up_at,
       monthly_cost_paid: c.monthly_cost_paid,
     });
+    setTagsInput((c.tags || []).join(', '));
     setNewNote('');
     loadNotes(c.id);
   }
@@ -140,24 +144,40 @@ export default function AdminCrmPage() {
     setNotes([]);
   }
 
+  async function callCrmApi(path: string, body: Record<string, unknown>) {
+    const { data: { session } } = await supabase.auth.getSession();
+    const res = await fetch(path, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'שגיאה');
+    return data;
+  }
+
   async function saveContact() {
     if (!selectedId) return;
     setSavingContact(true);
-    const { error } = await supabase
-      .from('crm_contacts')
-      .update({
-        full_name: editForm.full_name || null,
-        phone: editForm.phone || null,
-        email: editForm.email || null,
+    try {
+      const tags = tagsInput.split(',').map((t) => t.trim()).filter(Boolean);
+      await callCrmApi('/api/admin/crm/update', {
+        contactId: selectedId,
+        fullName: editForm.full_name,
+        phone: editForm.phone,
+        email: editForm.email,
         stage: editForm.stage,
-        status_label: editForm.status_label || null,
-        follow_up_at: editForm.follow_up_at || null,
-        monthly_cost_paid: editForm.monthly_cost_paid ?? null,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', selectedId);
+        statusLabel: editForm.status_label,
+        followUpAt: editForm.follow_up_at,
+        monthlyCost: editForm.monthly_cost_paid,
+        tags,
+      });
+      loadContacts();
+      loadNotes(selectedId);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'שגיאה בשמירה');
+    }
     setSavingContact(false);
-    if (!error) loadContacts();
   }
 
   async function addNote() {
@@ -175,9 +195,14 @@ export default function AdminCrmPage() {
   async function markChurned() {
     if (!selectedId) return;
     if (!window.confirm('לסמן את איש הקשר כ"נטש"?')) return;
-    await supabase.from('crm_contacts').update({ stage: 'churned', updated_at: new Date().toISOString() }).eq('id', selectedId);
-    setEditForm((f) => ({ ...f, stage: 'churned' }));
-    loadContacts();
+    try {
+      await callCrmApi('/api/admin/crm/update', { contactId: selectedId, stage: 'churned' });
+      setEditForm((f) => ({ ...f, stage: 'churned' }));
+      loadContacts();
+      loadNotes(selectedId);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'שגיאה');
+    }
   }
 
   async function deleteContact() {
@@ -215,18 +240,39 @@ export default function AdminCrmPage() {
       return;
     }
     setCreating(true);
-    const { error } = await supabase.from('crm_contacts').insert({
-      full_name: newContact.fullName,
-      phone: newContact.phone || null,
-      email: newContact.email || null,
-      stage: newContact.stage,
-    });
-    setCreating(false);
-    if (!error) {
+    try {
+      await callCrmApi('/api/admin/crm/create', newContact);
       setNewContact({ fullName: '', phone: '', email: '', stage: 'lead_new' });
       setShowNewForm(false);
       loadContacts();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'שגיאה ביצירה');
     }
+    setCreating(false);
+  }
+
+  function exportCsv() {
+    const headers = ['שם', 'טלפון', 'מייל', 'שלב', 'סטטוס טיפול', 'מקור', 'תאריך פולואפ', 'עלות חודשית', 'תאריך הצטרפות', 'תגיות'];
+    const rows = filteredContacts.map((c) => [
+      c.full_name || '',
+      c.phone || '',
+      c.email || '',
+      STAGE_LABEL[c.stage],
+      c.status_label || '',
+      c.source || '',
+      c.follow_up_at || '',
+      c.monthly_cost_paid ?? '',
+      c.joined_at ? formatDate(c.joined_at) : '',
+      (c.tags || []).join('; '),
+    ]);
+    const csv = '﻿' + [headers, ...rows].map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\r\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `crm-אנשי-קשר-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
   async function handleImportFromMonday() {
@@ -264,6 +310,9 @@ export default function AdminCrmPage() {
     } else if (stageFilter !== 'all') {
       list = list.filter((c) => c.stage === stageFilter);
     }
+    if (tagFilter) {
+      list = list.filter((c) => (c.tags || []).includes(tagFilter));
+    }
     const q = search.trim().toLowerCase();
     if (q) {
       list = list.filter(
@@ -274,9 +323,10 @@ export default function AdminCrmPage() {
       );
     }
     return list;
-  }, [contacts, stageFilter, search]);
+  }, [contacts, stageFilter, tagFilter, search]);
 
   const followupDueCount = useMemo(() => contacts.filter((c) => isOverdue(c.follow_up_at)).length, [contacts]);
+  const allTags = useMemo(() => Array.from(new Set(contacts.flatMap((c) => c.tags || []))).sort(), [contacts]);
 
   if (checking) return <div className="wrap"><p style={{ padding: '40px', textAlign: 'center' }}>בודקים הרשאות...</p></div>;
 
@@ -322,6 +372,11 @@ export default function AdminCrmPage() {
       <div className="section-label">
         <h2>CRM - לידים ומנויים</h2>
         <span className="count">{contacts.length}</span>
+      </div>
+
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
+        <Link href="/admin/crm-dashboard" className="btn-outline" style={{ flex: 1, display: 'block', textAlign: 'center', textDecoration: 'none' }}>📊 לוח בקרה עסקי</Link>
+        <button className="btn-outline" style={{ flex: 1 }} onClick={exportCsv} disabled={filteredContacts.length === 0}>⇩ ייצוא ל-CSV</button>
       </div>
 
       <button className="btn-outline" style={{ width: '100%', marginBottom: '10px' }} onClick={() => setShowNewForm((v) => !v)}>
@@ -381,6 +436,30 @@ export default function AdminCrmPage() {
         ))}
       </div>
 
+      {allTags.length > 0 && (
+        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '16px', alignItems: 'center' }}>
+          <span style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>תגיות:</span>
+          {allTags.map((t) => (
+            <button
+              key={t}
+              onClick={() => setTagFilter((cur) => (cur === t ? null : t))}
+              style={{
+                padding: '4px 10px',
+                borderRadius: '999px',
+                fontSize: '11.5px',
+                fontWeight: 600,
+                border: `1px solid ${tagFilter === t ? 'var(--lavender)' : 'var(--border-hairline-strong)'}`,
+                background: tagFilter === t ? 'var(--lavender)' : 'transparent',
+                color: tagFilter === t ? 'var(--bg-void)' : 'var(--text-secondary)',
+                cursor: 'pointer',
+              }}
+            >
+              #{t}
+            </button>
+          ))}
+        </div>
+      )}
+
       {loadingContacts && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>טוענים...</p>}
       {!loadingContacts && filteredContacts.length === 0 && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)', marginBottom: '20px' }}>אין אנשי קשר מתאימים</p>}
 
@@ -397,6 +476,13 @@ export default function AdminCrmPage() {
             {c.follow_up_at && (
               <div className="email" style={{ marginTop: '2px', color: isOverdue(c.follow_up_at) ? 'var(--loss)' : undefined }}>
                 פולואפ: {formatDate(c.follow_up_at)}
+              </div>
+            )}
+            {c.tags?.length > 0 && (
+              <div style={{ marginTop: '3px', display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                {c.tags.map((t) => (
+                  <span key={t} style={{ fontSize: '10px', color: 'var(--lavender)' }}>#{t}</span>
+                ))}
               </div>
             )}
           </div>
@@ -428,6 +514,7 @@ export default function AdminCrmPage() {
               <div className="field"><label>סטטוס טיפול</label><ClearableInput style={fieldStyle} value={editForm.status_label || ''} onChange={(e) => setEditForm((f) => ({ ...f, status_label: e.target.value }))} onClear={() => setEditForm((f) => ({ ...f, status_label: '' }))} /></div>
               <div className="field"><label>עלות חודשית (₪)</label><ClearableInput type="number" style={fieldStyle} value={editForm.monthly_cost_paid ?? ''} onChange={(e) => setEditForm((f) => ({ ...f, monthly_cost_paid: e.target.value ? Number(e.target.value) : null }))} onClear={() => setEditForm((f) => ({ ...f, monthly_cost_paid: null }))} /></div>
             </div>
+            <div className="field"><label>תגיות (מופרדות בפסיק)</label><ClearableInput style={fieldStyle} placeholder="למשל: VIP, חוזר, מחכה לתשלום" value={tagsInput} onChange={(e) => setTagsInput(e.target.value)} onClear={() => setTagsInput('')} /></div>
 
             <div className="qp-row" style={{ marginBottom: '10px' }}>
               <button className="qp-confirm" onClick={saveContact} disabled={savingContact}>{savingContact ? 'שומרים...' : 'שמירה'}</button>
