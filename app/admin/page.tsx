@@ -98,8 +98,8 @@ export default function AdminDashboard() {
     setLivesCount(lives.length);
     setLiveRegistrationsTotal(lives.reduce((sum, l) => sum + (l.registrationsCount || 0), 0));
     setLessonsCount((lessonsRes?.lessons || []).length);
-    setRevenueCount((revenueRes?.alreadyCharged?.count || 0) + (revenueRes?.upcoming?.count || 0));
-    setRevenueTotal(revenueRes?.monthTotal || 0);
+    setRevenueCount(revenueRes?.count || 0);
+    setRevenueTotal(revenueRes?.totalAmount || 0);
   }
 
   async function handleLogout() {
@@ -196,8 +196,8 @@ export default function AdminDashboard() {
 
         <Link href="/admin/revenue" className="admin-tile">
           <div className="at-icon">💰</div>
-          <div className="at-title">צפי הכנסה החודש</div>
-          <div className="at-count">₪{revenueTotal.toLocaleString('he-IL')} · {revenueCount} חיובים</div>
+          <div className="at-title">הכנסה מקבוצת הסוחרים</div>
+          <div className="at-count">₪{revenueTotal.toLocaleString('he-IL')} · {revenueCount} אנשים</div>
         </Link>
 
         <Link href="/admin/support-bot" className="admin-tile">
