@@ -118,7 +118,7 @@ export default function AdminRevenuePage() {
 
       <div className="section-label"><h2>הכנסה מקבוצת הסוחרים{month ? ` - ${formatMonthLabel(month)}` : ''}</h2></div>
       <p style={{ fontSize: '12.5px', color: 'var(--text-tertiary)', marginBottom: '18px', lineHeight: 1.6 }}>
-        תמונת מצב שנקבעת בתחילת כל חודש (כמו אצל גרו) - כמות האנשים וסך העלות החודשית שהיו רשומים בקבוצת "קבוצת סוחרים" במאנדיי כשהחודש הזה התחיל. לא מתעדכן שוב באמצע החודש עד לחודש הבא, אלא אם לוחצים "חישוב מחדש" למטה.
+        כמות האנשים וסך העלות החודשית שרשומים עכשיו בקבוצת "קבוצת סוחרים" במאנדיי, עבור החודש הנוכחי - מתעדכן חי לאורך כל החודש (כולל הרשמות חדשות באמצע החודש), ומתחיל להתייחס לחודש הבא ברגע שהוא מתחיל, בדיוק כמו אצל גרו.
       </p>
 
       {loading && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>טוענים...</p>}
@@ -130,7 +130,7 @@ export default function AdminRevenuePage() {
             <div style={{ fontSize: '13px', color: 'var(--text-tertiary)', marginTop: '2px' }}>(אחרי מע"מ 18%: ₪{Math.round(totalAmount * 0.82).toLocaleString('he-IL')})</div>
             <div style={{ fontSize: '13px', color: 'var(--text-tertiary)', marginTop: '6px' }}>{count} אנשים בקבוצת הסוחרים</div>
             <button className="btn-outline" style={{ width: 'auto', marginTop: '14px', fontSize: '12px', padding: '6px 14px' }} onClick={() => loadData(true)} disabled={recomputing}>
-              {recomputing ? 'מחשב מחדש...' : 'חישוב מחדש עכשיו'}
+              {recomputing ? 'מרעננים...' : 'רענון'}
             </button>
           </div>
 

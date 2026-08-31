@@ -75,16 +75,11 @@ function firstOfCurrentMonthIsrael(): string {
   return `${nowIsrael.getFullYear()}-${String(nowIsrael.getMonth() + 1).padStart(2, '0')}-01`;
 }
 
-// מחזיר את תמונת ההכנסה של החודש הנוכחי: אם כבר חושבה החודש - מחזיר אותה כמו שהיא ("מתאפס"
-// רק בתחילת החודש, בדיוק כמו אצל גרו) - ואם לא, מחשב עכשיו ושומר כתמונת המצב הקבועה לחודש הזה
-export async function getOrComputeMonthlySnapshot(forceRecompute = false): Promise<RevenueSnapshotData & { month: string }> {
+// מחזיר את הכנסת החודש הנוכחי: מחושב חי בכל קריאה (כדי שהרשמות חדשות באמצע החודש ייספרו מיד),
+// ומשויך לתווית של החודש הנוכחי - כך שברגע שמתחיל חודש חדש, החישוב "מתאפס" ומתחיל להתייחס אליו
+// (בדיוק כמו אצל גרו) בלי לנעול מספר אחד לכל החודש. גם נשמר בטבלה כתיעוד של איך נראה כל חודש.
+export async function getOrComputeMonthlySnapshot(_forceRecompute = false): Promise<RevenueSnapshotData & { month: string }> {
   const month = firstOfCurrentMonthIsrael();
-
-  if (!forceRecompute) {
-    const { data: existing } = await supabaseAdmin.from('monthly_revenue_snapshots').select('data').eq('month', month).maybeSingle();
-    if (existing) return { ...(existing.data as RevenueSnapshotData), month };
-  }
-
   const data = await computeRevenueNow();
   await supabaseAdmin.from('monthly_revenue_snapshots').upsert({ month, data, computed_at: new Date().toISOString() });
   return { ...data, month };
