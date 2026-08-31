@@ -17,6 +17,11 @@ function formatDate(iso: string | null) {
   return new Date(iso).toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric' });
 }
 
+function formatMonthLabel(month: string) {
+  if (!month) return '';
+  return new Date(`${month}T12:00:00`).toLocaleDateString('he-IL', { month: 'long', year: 'numeric' });
+}
+
 export default function AdminRevenuePage() {
   const [checking, setChecking] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -29,6 +34,8 @@ export default function AdminRevenuePage() {
   const [duplicatesRemoved, setDuplicatesRemoved] = useState<string[]>([]);
   const [missingMonthlyCost, setMissingMonthlyCost] = useState<string[]>([]);
   const [listOpen, setListOpen] = useState(true);
+  const [month, setMonth] = useState('');
+  const [recomputing, setRecomputing] = useState(false);
 
   useEffect(() => {
     checkAdmin();
@@ -45,10 +52,10 @@ export default function AdminRevenuePage() {
     if (profile?.role === 'admin') loadData();
   }
 
-  async function loadData() {
-    setLoading(true);
+  async function loadData(force = false) {
+    force ? setRecomputing(true) : setLoading(true);
     const { data: { session } } = await supabase.auth.getSession();
-    const res = await fetch('/api/admin/revenue-projection', { headers: { Authorization: `Bearer ${session?.access_token}` } });
+    const res = await fetch(`/api/admin/revenue-projection${force ? '?force=1' : ''}`, { headers: { Authorization: `Bearer ${session?.access_token}` } });
     if (res.ok) {
       const data = await res.json();
       setCount(data.count || 0);
@@ -56,8 +63,10 @@ export default function AdminRevenuePage() {
       setItems(data.items || []);
       setDuplicatesRemoved(data.duplicatesRemoved || []);
       setMissingMonthlyCost(data.missingMonthlyCost || []);
+      setMonth(data.month || '');
     }
     setLoading(false);
+    setRecomputing(false);
   }
 
   async function handleLogout() {
@@ -107,9 +116,9 @@ export default function AdminRevenuePage() {
         </div>
       </header>
 
-      <div className="section-label"><h2>הכנסה מקבוצת הסוחרים</h2></div>
+      <div className="section-label"><h2>הכנסה מקבוצת הסוחרים{month ? ` - ${formatMonthLabel(month)}` : ''}</h2></div>
       <p style={{ fontSize: '12.5px', color: 'var(--text-tertiary)', marginBottom: '18px', lineHeight: 1.6 }}>
-        כמות האנשים וסך העלות החודשית כפי שרשומים ממש עכשיו בקבוצת "קבוצת סוחרים" במאנדיי - מי שלא נמצא בקבוצה הזו לא נכלל בכלל.
+        תמונת מצב שנקבעת בתחילת כל חודש (כמו אצל גרו) - כמות האנשים וסך העלות החודשית שהיו רשומים בקבוצת "קבוצת סוחרים" במאנדיי כשהחודש הזה התחיל. לא מתעדכן שוב באמצע החודש עד לחודש הבא, אלא אם לוחצים "חישוב מחדש" למטה.
       </p>
 
       {loading && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>טוענים...</p>}
@@ -120,6 +129,9 @@ export default function AdminRevenuePage() {
             <div style={{ fontSize: '32px', fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--profit)' }}>₪{totalAmount.toLocaleString('he-IL')}</div>
             <div style={{ fontSize: '13px', color: 'var(--text-tertiary)', marginTop: '2px' }}>(אחרי מע"מ 18%: ₪{Math.round(totalAmount * 0.82).toLocaleString('he-IL')})</div>
             <div style={{ fontSize: '13px', color: 'var(--text-tertiary)', marginTop: '6px' }}>{count} אנשים בקבוצת הסוחרים</div>
+            <button className="btn-outline" style={{ width: 'auto', marginTop: '14px', fontSize: '12px', padding: '6px 14px' }} onClick={() => loadData(true)} disabled={recomputing}>
+              {recomputing ? 'מחשב מחדש...' : 'חישוב מחדש עכשיו'}
+            </button>
           </div>
 
           <div
