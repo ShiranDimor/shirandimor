@@ -52,9 +52,12 @@ async function computeRevenueNow(): Promise<RevenueSnapshotData> {
 
   const missingMonthlyCost: string[] = [];
   const items = deduped.map((s) => {
-    const monthlyCost = s.monthlyCost ? Number(s.monthlyCost) : null;
-    const price = monthlyCost && !isNaN(monthlyCost) ? monthlyCost : DEFAULT_MONTHLY_PRICE;
-    if (!monthlyCost || isNaN(monthlyCost)) missingMonthlyCost.push(s.name || s.phone || s.email || 'ללא שם');
+    // חשוב: 0 הוא ערך "falsy" ב-JS - צריך לבדוק במפורש שהערך קיים ומספר תקין, אחרת מי שרשום
+    // אצלו עלות חודשית של 0 (למשל מנוי בחינם) יתחלף בטעות בברירת המחדל של 400
+    const raw = s.monthlyCost != null && s.monthlyCost !== '' ? Number(s.monthlyCost) : NaN;
+    const hasValidCost = !isNaN(raw);
+    const price = hasValidCost ? raw : DEFAULT_MONTHLY_PRICE;
+    if (!hasValidCost) missingMonthlyCost.push(s.name || s.phone || s.email || 'ללא שם');
     return { name: s.name, email: s.email, phone: s.phone, joinDate: s.joinDate, price };
   });
 
