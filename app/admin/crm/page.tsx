@@ -20,11 +20,15 @@ type CrmContact = {
   joined_at: string | null;
   profile_id: string | null;
   tags: string[];
+  lead_intent: string | null;
+  lead_intent_note: string | null;
+  lead_intent_updated_at: string | null;
   created_at: string;
   updated_at: string;
 };
 
 type CrmNote = { id: string; body: string; author: string | null; created_at: string };
+type DuplicateGroup = { key: string; contacts: CrmContact[] };
 
 const STAGE_LABEL: Record<CrmStage, string> = {
   lead_new: 'ליד חדש',
@@ -39,6 +43,26 @@ const STAGE_COLOR: Record<CrmStage, string> = {
   subscriber: 'var(--profit)',
   churned: 'var(--loss)',
 };
+
+const INTENT_LABEL: Record<string, string> = {
+  hot: '🔥 חם',
+  warm: '🌤️ פושר',
+  engaged: '👀 מעורב',
+  curious: '🤔 סקרן',
+  cold: '❄️ קר',
+  support: '🛟 תמיכה',
+};
+
+const INTENT_COLOR: Record<string, string> = {
+  hot: 'var(--loss)',
+  warm: 'var(--orange)',
+  engaged: 'var(--lavender)',
+  curious: 'var(--text-secondary)',
+  cold: 'var(--text-tertiary)',
+  support: 'var(--teal)',
+};
+
+const HOT_INTENTS = ['hot', 'warm'];
 
 const fieldStyle: CSSProperties = {
   width: '100%',
@@ -71,6 +95,16 @@ export default function AdminCrmPage() {
   const [search, setSearch] = useState('');
   const [stageFilter, setStageFilter] = useState<CrmStage | 'all' | 'followup'>('all');
   const [tagFilter, setTagFilter] = useState<string | null>(null);
+  const [hotOnly, setHotOnly] = useState(false);
+  const [viewMode, setViewMode] = useState<'list' | 'kanban'>('list');
+
+  const [syncing, setSyncing] = useState(false);
+  const [syncResult, setSyncResult] = useState('');
+
+  const [showDuplicates, setShowDuplicates] = useState(false);
+  const [duplicateGroups, setDuplicateGroups] = useState<DuplicateGroup[]>([]);
+  const [loadingDuplicates, setLoadingDuplicates] = useState(false);
+  const [merging, setMerging] = useState<string | null>(null);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [notes, setNotes] = useState<CrmNote[]>([]);
@@ -275,6 +309,49 @@ export default function AdminCrmPage() {
     URL.revokeObjectURL(url);
   }
 
+  async function handleSyncSources() {
+    setSyncing(true);
+    setSyncResult('');
+    try {
+      const data = await callCrmApi('/api/admin/crm/sync-sources', {});
+      setSyncResult(`${data.liveSynced} מהרשמות ללייבים · ${data.referralsSynced} מהפניות · ${data.intentUpdated} עודכנו עם סיווג AI מ"דור"`);
+      loadContacts();
+    } catch (e) {
+      setSyncResult(e instanceof Error ? e.message : 'שגיאה בסנכרון');
+    }
+    setSyncing(false);
+  }
+
+  async function loadDuplicates() {
+    setLoadingDuplicates(true);
+    const { data: { session } } = await supabase.auth.getSession();
+    const res = await fetch('/api/admin/crm/merge-duplicates', { headers: { Authorization: `Bearer ${session?.access_token}` } });
+    const data = await res.json();
+    setDuplicateGroups(data.groups || []);
+    setLoadingDuplicates(false);
+  }
+
+  async function handleMerge(keepId: string, mergeId: string) {
+    setMerging(mergeId);
+    try {
+      await callCrmApi('/api/admin/crm/merge-duplicates', { keepId, mergeId });
+      loadContacts();
+      loadDuplicates();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'שגיאה במיזוג');
+    }
+    setMerging(null);
+  }
+
+  async function moveToStage(contactId: string, stage: CrmStage) {
+    try {
+      await callCrmApi('/api/admin/crm/update', { contactId, stage });
+      loadContacts();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'שגיאה בהעברת שלב');
+    }
+  }
+
   async function handleImportFromMonday() {
     if (!window.confirm('לייבא עכשיו את כל אנשי הקשר מהלוח במאנדיי לתוך ה-CRM כאן? זו פעולה חד-פעמית - מומלץ להריץ פעם אחת בלבד, לפני שמבטלים את המנוי במאנדיי.')) return;
     setImporting(true);
@@ -313,6 +390,9 @@ export default function AdminCrmPage() {
     if (tagFilter) {
       list = list.filter((c) => (c.tags || []).includes(tagFilter));
     }
+    if (hotOnly) {
+      list = list.filter((c) => c.lead_intent && HOT_INTENTS.includes(c.lead_intent));
+    }
     const q = search.trim().toLowerCase();
     if (q) {
       list = list.filter(
@@ -323,9 +403,10 @@ export default function AdminCrmPage() {
       );
     }
     return list;
-  }, [contacts, stageFilter, tagFilter, search]);
+  }, [contacts, stageFilter, tagFilter, hotOnly, search]);
 
   const followupDueCount = useMemo(() => contacts.filter((c) => isOverdue(c.follow_up_at)).length, [contacts]);
+  const hotCount = useMemo(() => contacts.filter((c) => c.lead_intent && HOT_INTENTS.includes(c.lead_intent)).length, [contacts]);
   const allTags = useMemo(() => Array.from(new Set(contacts.flatMap((c) => c.tags || []))).sort(), [contacts]);
 
   if (checking) return <div className="wrap"><p style={{ padding: '40px', textAlign: 'center' }}>בודקים הרשאות...</p></div>;
@@ -374,6 +455,27 @@ export default function AdminCrmPage() {
         <span className="count">{contacts.length}</span>
       </div>
 
+      {hotCount > 0 && (
+        <button
+          onClick={() => setHotOnly(true)}
+          style={{
+            width: '100%',
+            textAlign: 'right',
+            background: 'rgba(239,68,68,0.08)',
+            border: '1px solid var(--loss)',
+            borderRadius: '10px',
+            padding: '10px 14px',
+            marginBottom: '10px',
+            fontSize: '13px',
+            fontWeight: 600,
+            color: 'var(--loss)',
+            cursor: 'pointer',
+          }}
+        >
+          🔥 {hotCount} לידים חמים/פושרים ממתינים - לחיצה כדי לראות
+        </button>
+      )}
+
       <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
         <Link href="/admin/crm-dashboard" className="btn-outline" style={{ flex: 1, display: 'block', textAlign: 'center', textDecoration: 'none' }}>📊 לוח בקרה עסקי</Link>
         <button className="btn-outline" style={{ flex: 1 }} onClick={exportCsv} disabled={filteredContacts.length === 0}>⇩ ייצוא ל-CSV</button>
@@ -392,6 +494,45 @@ export default function AdminCrmPage() {
           {importing ? 'מייבאים...' : 'ייבוא עכשיו'}
         </button>
         {importResult && <p style={{ fontSize: '12px', color: importResult.startsWith('שגיאה') ? 'var(--loss)' : 'var(--text-secondary)', marginTop: '8px' }}>{importResult}</p>}
+      </details>
+
+      <details style={{ marginBottom: '14px' }}>
+        <summary style={{ cursor: 'pointer', fontSize: '13px', color: 'var(--text-secondary)' }}>🔄 סנכרון ממקורות באתר</summary>
+        <p style={{ fontSize: '12px', color: 'var(--text-tertiary)', margin: '8px 0' }}>
+          מביא לתוך ה-CRM הרשמות ללייבים והפניות (חבר מביא חבר) שלא זורמות לכאן אוטומטית, ומרענן
+          עבור כל איש קשר את סיווג "דור" (חם/פושר/סקרן/קר) מתוך שיחות בוט התמיכה. מומלץ להריץ מדי כמה ימים.
+        </p>
+        <button className="btn-outline" style={{ width: '100%' }} onClick={handleSyncSources} disabled={syncing}>
+          {syncing ? 'מסנכרנים...' : 'סנכרון עכשיו'}
+        </button>
+        {syncResult && <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '8px' }}>{syncResult}</p>}
+      </details>
+
+      <details style={{ marginBottom: '14px' }} onToggle={(e) => { if ((e.target as HTMLDetailsElement).open) { setShowDuplicates(true); loadDuplicates(); } }}>
+        <summary style={{ cursor: 'pointer', fontSize: '13px', color: 'var(--text-secondary)' }}>🧩 כפילויות אפשריות</summary>
+        {loadingDuplicates && <p style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginTop: '8px' }}>בודקים...</p>}
+        {!loadingDuplicates && showDuplicates && duplicateGroups.length === 0 && <p style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginTop: '8px' }}>לא נמצאו כפילויות (לפי שם מלא זהה)</p>}
+        {duplicateGroups.map((g) => (
+          <div key={g.key} style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-hairline)', borderRadius: '10px', padding: '10px', marginTop: '8px' }}>
+            <div style={{ fontSize: '12.5px', fontWeight: 600, marginBottom: '6px' }}>{g.contacts[0].full_name}</div>
+            {g.contacts.map((c) => (
+              <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11.5px', color: 'var(--text-tertiary)', padding: '4px 0' }}>
+                <span>{c.phone || c.email || '—'} · {STAGE_LABEL[c.stage]}</span>
+                <button
+                  className="btn-outline"
+                  style={{ padding: '3px 8px', fontSize: '11px', width: 'auto' }}
+                  disabled={merging === c.id}
+                  onClick={() => {
+                    const other = g.contacts.find((x) => x.id !== c.id);
+                    if (other) handleMerge(c.id, other.id);
+                  }}
+                >
+                  {merging === c.id ? '...' : `שמור את זה, מזג לתוכו`}
+                </button>
+              </div>
+            ))}
+          </div>
+        ))}
       </details>
 
       {showNewForm && (
@@ -434,6 +575,36 @@ export default function AdminCrmPage() {
             {s === 'all' ? 'הכל' : s === 'followup' ? `📌 פולואפ (${followupDueCount})` : STAGE_LABEL[s]}
           </button>
         ))}
+        <button
+          onClick={() => setHotOnly((v) => !v)}
+          style={{
+            padding: '6px 12px',
+            borderRadius: '999px',
+            fontSize: '12px',
+            fontWeight: 600,
+            border: `1px solid ${hotOnly ? 'var(--loss)' : 'var(--border-hairline-strong)'}`,
+            background: hotOnly ? 'var(--loss)' : 'transparent',
+            color: hotOnly ? '#fff' : 'var(--text-secondary)',
+            cursor: 'pointer',
+          }}
+        >
+          🔥 חם/פושר ({hotCount})
+        </button>
+      </div>
+
+      <div style={{ display: 'flex', gap: '6px', marginBottom: '16px' }}>
+        <button
+          onClick={() => setViewMode('list')}
+          style={{ flex: 1, padding: '7px', borderRadius: '8px', fontSize: '12.5px', fontWeight: 600, border: `1px solid ${viewMode === 'list' ? 'var(--teal)' : 'var(--border-hairline-strong)'}`, background: viewMode === 'list' ? 'var(--teal)' : 'transparent', color: viewMode === 'list' ? 'var(--bg-void)' : 'var(--text-secondary)', cursor: 'pointer' }}
+        >
+          ☰ רשימה
+        </button>
+        <button
+          onClick={() => setViewMode('kanban')}
+          style={{ flex: 1, padding: '7px', borderRadius: '8px', fontSize: '12.5px', fontWeight: 600, border: `1px solid ${viewMode === 'kanban' ? 'var(--teal)' : 'var(--border-hairline-strong)'}`, background: viewMode === 'kanban' ? 'var(--teal)' : 'transparent', color: viewMode === 'kanban' ? 'var(--bg-void)' : 'var(--text-secondary)', cursor: 'pointer' }}
+        >
+          🗂️ קנבן
+        </button>
       </div>
 
       {allTags.length > 0 && (
@@ -463,7 +634,7 @@ export default function AdminCrmPage() {
       {loadingContacts && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>טוענים...</p>}
       {!loadingContacts && filteredContacts.length === 0 && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)', marginBottom: '20px' }}>אין אנשי קשר מתאימים</p>}
 
-      {filteredContacts.map((c) => (
+      {viewMode === 'list' && filteredContacts.map((c) => (
         <button
           key={c.id}
           onClick={() => selectContact(c)}
@@ -471,7 +642,12 @@ export default function AdminCrmPage() {
           style={{ width: '100%', textAlign: 'right', border: selectedId === c.id ? '1px solid var(--teal)' : undefined, cursor: 'pointer' }}
         >
           <div>
-            <div className="name">{c.full_name || 'ללא שם'}</div>
+            <div className="name" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              {c.full_name || 'ללא שם'}
+              {c.lead_intent && (
+                <span style={{ fontSize: '10px', fontWeight: 700, color: INTENT_COLOR[c.lead_intent] }}>{INTENT_LABEL[c.lead_intent] || c.lead_intent}</span>
+              )}
+            </div>
             <div className="email">{c.phone || c.email || '—'}</div>
             {c.follow_up_at && (
               <div className="email" style={{ marginTop: '2px', color: isOverdue(c.follow_up_at) ? 'var(--loss)' : undefined }}>
@@ -490,11 +666,56 @@ export default function AdminCrmPage() {
         </button>
       ))}
 
+      {viewMode === 'kanban' && (
+        <div style={{ display: 'flex', gap: '10px', overflowX: 'auto', paddingBottom: '10px', marginBottom: '20px' }}>
+          {(Object.keys(STAGE_LABEL) as CrmStage[]).map((stage) => (
+            <div
+              key={stage}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => {
+                e.preventDefault();
+                const contactId = e.dataTransfer.getData('text/contact-id');
+                if (contactId) moveToStage(contactId, stage);
+              }}
+              style={{ flex: '0 0 220px', background: 'var(--bg-surface)', border: '1px solid var(--border-hairline)', borderRadius: '10px', padding: '10px', minHeight: '120px' }}
+            >
+              <div style={{ fontSize: '12px', fontWeight: 700, color: STAGE_COLOR[stage], marginBottom: '8px' }}>
+                {STAGE_LABEL[stage]} · {filteredContacts.filter((c) => c.stage === stage).length}
+              </div>
+              {filteredContacts.filter((c) => c.stage === stage).map((c) => (
+                <div
+                  key={c.id}
+                  draggable
+                  onDragStart={(e) => e.dataTransfer.setData('text/contact-id', c.id)}
+                  onClick={() => selectContact(c)}
+                  style={{ background: 'var(--bg-void)', border: '1px solid var(--border-hairline)', borderRadius: '8px', padding: '8px 10px', marginBottom: '6px', cursor: 'grab', fontSize: '12px' }}
+                >
+                  <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: '5px' }}>
+                    {c.full_name || 'ללא שם'}
+                    {c.lead_intent && HOT_INTENTS.includes(c.lead_intent) && <span style={{ fontSize: '10px' }}>{INTENT_LABEL[c.lead_intent]}</span>}
+                  </div>
+                  <div style={{ color: 'var(--text-tertiary)', fontSize: '10.5px' }}>{c.phone || c.email || '—'}</div>
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      )}
+
       {selected && (
         <>
           <div className="qa-popover-backdrop" onClick={closeDetail} />
           <div className="qa-popover" style={{ top: '5vh', left: '50%', transform: 'translateX(-50%)', maxWidth: '480px', width: '92vw', maxHeight: '90vh', overflowY: 'auto' }}>
             <div className="qp-title">{selected.full_name || 'ללא שם'}</div>
+
+            {selected.lead_intent && (
+              <div style={{ background: 'var(--bg-void)', border: `1px solid ${INTENT_COLOR[selected.lead_intent]}`, borderRadius: '8px', padding: '8px 10px', marginBottom: '12px', fontSize: '12px' }}>
+                <div style={{ color: INTENT_COLOR[selected.lead_intent], fontWeight: 700, marginBottom: selected.lead_intent_note ? '4px' : 0 }}>
+                  {INTENT_LABEL[selected.lead_intent] || selected.lead_intent} (מתוך שיחה עם "דור")
+                </div>
+                {selected.lead_intent_note && <div style={{ color: 'var(--text-secondary)' }}>{selected.lead_intent_note}</div>}
+              </div>
+            )}
 
             <div className="field"><label>שם</label><ClearableInput style={fieldStyle} value={editForm.full_name || ''} onChange={(e) => setEditForm((f) => ({ ...f, full_name: e.target.value }))} onClear={() => setEditForm((f) => ({ ...f, full_name: '' }))} /></div>
             <div className="form-row">

@@ -24,9 +24,16 @@ export type CrmContact = {
   joined_at: string | null;
   profile_id: string | null;
   tags: string[];
+  lead_intent: string | null;
+  lead_intent_note: string | null;
+  lead_intent_updated_at: string | null;
   created_at: string;
   updated_at: string;
 };
+
+function defaultFollowUpDate(daysAhead = 3): string {
+  return new Date(Date.now() + daysAhead * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+}
 
 const STAGE_LABEL_HE: Record<CrmStage, string> = {
   lead_new: 'ליד חדש',
@@ -113,6 +120,13 @@ export async function upsertContact(input: UpsertContactInput): Promise<CrmConta
     return data as CrmContact;
   }
 
+  // ליד חדש בלי תאריך פולואפ מפורש מקבל אוטומטית עוד 3 ימים - כדי שאף ליד לא "יישכח" בלי מעקב
+  // (מנוי פעיל לא זקוק לתזכורת פולואפ)
+  const resolvedStage = (fields.stage as CrmStage) || 'lead_new';
+  if (fields.follow_up_at === undefined && resolvedStage !== 'subscriber') {
+    fields.follow_up_at = defaultFollowUpDate();
+  }
+
   const { data, error } = await supabaseAdmin
     .from('crm_contacts')
     .insert({ stage: 'lead_new', ...fields })
@@ -193,21 +207,140 @@ export async function updateContactById(id: string, update: ContactFieldUpdate, 
   return data as CrmContact;
 }
 
-// יוצר איש קשר חדש ידנית ממסך ה-CRM, עם הערת פתיחה אוטומטית בציר הזמן
+// יוצר איש קשר חדש ידנית ממסך ה-CRM, עם הערת פתיחה אוטומטית בציר הזמן ותאריך פולואפ ברירת מחדל
 export async function createContact(input: { fullName: string; phone?: string | null; email?: string | null; stage?: CrmStage }, actor?: string | null): Promise<CrmContact> {
   const phone = normalizePhone(input.phone) || null;
   const email = normalizeEmail(input.email) || null;
   if (!phone && !email) throw new Error('צריך טלפון או מייל');
 
+  const stage = input.stage || 'lead_new';
   const { data, error } = await supabaseAdmin
     .from('crm_contacts')
-    .insert({ full_name: input.fullName, phone, email, stage: input.stage || 'lead_new' })
+    .insert({ full_name: input.fullName, phone, email, stage, follow_up_at: stage !== 'subscriber' ? defaultFollowUpDate() : null })
     .select('*')
     .single();
   if (error) throw error;
 
   await addNote(data.id, `איש קשר נוצר ידנית${actor ? ` ע"י ${actor}` : ''}`, actor || 'admin');
   return data as CrmContact;
+}
+
+export type DuplicateGroup = { key: string; contacts: CrmContact[] };
+
+// מאתר קבוצות של אנשי קשר עם אותו שם מלא (מנורמל) - חשוד לכפילות, למשל אחרי ייבוא ממאנדיי או
+// סנכרון ממספר מקורות (לייבים/הפניות) שיצרו רשומה נפרדת לאותו אדם עם פרטי קשר שונים
+export async function findPotentialDuplicates(): Promise<DuplicateGroup[]> {
+  const { data } = await supabaseAdmin.from('crm_contacts').select('*');
+  const groups = new Map<string, CrmContact[]>();
+  for (const c of (data || []) as CrmContact[]) {
+    const key = (c.full_name || '').trim().toLowerCase().replace(/\s+/g, ' ');
+    if (!key) continue;
+    const arr = groups.get(key) || [];
+    arr.push(c);
+    groups.set(key, arr);
+  }
+  return Array.from(groups.entries())
+    .filter(([, contacts]) => contacts.length > 1)
+    .map(([key, contacts]) => ({ key, contacts }));
+}
+
+// ממזג שני אנשי קשר: משלים שדות ריקים ב-keep מתוך merge, מאחד תגיות, מעביר את כל ההערות של
+// merge אל keep (כדי לא לאבד היסטוריה), ומוחק את הרשומה הכפולה
+export async function mergeContacts(keepId: string, mergeId: string): Promise<void> {
+  if (keepId === mergeId) throw new Error('לא ניתן למזג איש קשר עם עצמו');
+
+  const [{ data: keep }, { data: merge }] = await Promise.all([
+    supabaseAdmin.from('crm_contacts').select('*').eq('id', keepId).single(),
+    supabaseAdmin.from('crm_contacts').select('*').eq('id', mergeId).single(),
+  ]);
+  if (!keep || !merge) throw new Error('איש קשר לא נמצא');
+
+  const fields: Record<string, unknown> = {};
+  if (!keep.phone && merge.phone) fields.phone = merge.phone;
+  if (!keep.email && merge.email) fields.email = merge.email;
+  if (!keep.follow_up_at && merge.follow_up_at) fields.follow_up_at = merge.follow_up_at;
+  if (!keep.status_label && merge.status_label) fields.status_label = merge.status_label;
+  if (!keep.monthly_cost_paid && merge.monthly_cost_paid) fields.monthly_cost_paid = merge.monthly_cost_paid;
+  if (!keep.joined_at && merge.joined_at) fields.joined_at = merge.joined_at;
+  if (!keep.profile_id && merge.profile_id) fields.profile_id = merge.profile_id;
+  const mergedTags = Array.from(new Set([...(keep.tags || []), ...(merge.tags || [])]));
+  if (mergedTags.length) fields.tags = mergedTags;
+
+  if (Object.keys(fields).length) {
+    await supabaseAdmin.from('crm_contacts').update({ ...fields, updated_at: new Date().toISOString() }).eq('id', keepId);
+  }
+  await supabaseAdmin.from('crm_notes').update({ contact_id: keepId }).eq('contact_id', mergeId);
+  await addNote(keepId, `מוזג עם רשומה כפולה (${merge.full_name || merge.phone || merge.email || mergeId})`, 'system');
+  await supabaseAdmin.from('crm_contacts').delete().eq('id', mergeId);
+}
+
+// מסנכרן הרשמות ללייבים (live_registrations) לתוך ה-CRM - אלה לא זורמות לשם היום בכלל
+export async function syncLiveRegistrationsToCrm(): Promise<{ synced: number }> {
+  const { data } = await supabaseAdmin.from('live_registrations').select('name, phone, email');
+  let synced = 0;
+  for (const r of data || []) {
+    if (!r.phone && !r.email) continue;
+    const existing = await findContact(r.phone, r.email);
+    const contact = await upsertContact({ phone: r.phone, email: r.email, fullName: r.name, source: existing ? undefined : 'הרשמה ללייב', addTags: ['לייב'] });
+    if (!existing) await addNote(contact.id, 'נרשם/ה ללייב באתר', 'system');
+    synced++;
+  }
+  return { synced };
+}
+
+// מסנכרן הפניות (חבר מביא חבר - referrals) לתוך ה-CRM, לפי פרטי המומלץ/ת
+export async function syncReferralsToCrm(): Promise<{ synced: number }> {
+  const { data } = await supabaseAdmin.from('referrals').select('recommended_name, recommended_phone, recommended_email, referrer_name');
+  let synced = 0;
+  for (const r of data || []) {
+    if (!r.recommended_phone && !r.recommended_email) continue;
+    const existing = await findContact(r.recommended_phone, r.recommended_email);
+    const contact = await upsertContact({
+      phone: r.recommended_phone,
+      email: r.recommended_email,
+      fullName: r.recommended_name,
+      source: existing ? undefined : `הפניה${r.referrer_name ? ` מ-${r.referrer_name}` : ''}`,
+      addTags: ['הפניה'],
+    });
+    if (!existing) await addNote(contact.id, `הופנה/תה ע"י ${r.referrer_name || 'מנוי'} (חבר מביא חבר)`, 'system');
+    synced++;
+  }
+  return { synced };
+}
+
+// מרענן lead_intent/סיכום מ"דור" (support_bot_conversations) לכל אנשי הקשר - זה בפועל ה-"AI lead
+// score" שהעסק כבר מייצר בפועל (cold/curious/engaged/warm/hot/support), פשוט לא הוצג עד היום
+// ב-CRM. הטבלאות קטנות (עשרות-מאות שורות) אז השוואה מלאה בזיכרון פשוטה ומספיק מהירה.
+export async function refreshLeadIntentForAll(): Promise<{ updated: number }> {
+  const [{ data: contacts }, { data: conversations }] = await Promise.all([
+    supabaseAdmin.from('crm_contacts').select('id, phone, email'),
+    supabaseAdmin
+      .from('support_bot_conversations')
+      .select('contact_phone, contact_email, lead_intent, summary, last_message_at')
+      .not('lead_intent', 'is', null),
+  ]);
+
+  let updated = 0;
+  for (const c of contacts || []) {
+    const p = normalizePhone(c.phone);
+    const e = normalizeEmail(c.email);
+    if (!p && !e) continue;
+
+    const matches = (conversations || []).filter(
+      (conv) => (p && normalizePhone(conv.contact_phone) === p) || (e && normalizeEmail(conv.contact_email) === e)
+    );
+    if (matches.length === 0) continue;
+
+    matches.sort((a, b) => new Date(b.last_message_at).getTime() - new Date(a.last_message_at).getTime());
+    const best = matches[0];
+
+    await supabaseAdmin
+      .from('crm_contacts')
+      .update({ lead_intent: best.lead_intent, lead_intent_note: best.summary, lead_intent_updated_at: best.last_message_at })
+      .eq('id', c.id);
+    updated++;
+  }
+  return { updated };
 }
 
 // כל אנשי הקשר בשלב "מנוי" - לשימוש בחישוב צפי ההכנסה (מחליף את שליפת "קבוצת סוחרים" ממאנדיי)
