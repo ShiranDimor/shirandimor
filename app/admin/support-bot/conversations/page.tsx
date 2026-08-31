@@ -51,6 +51,8 @@ export default function SupportBotConversationsPage() {
   const [openId, setOpenId] = useState<string | null>(null);
   const [transcript, setTranscript] = useState<TranscriptMessage[]>([]);
   const [loadingTranscript, setLoadingTranscript] = useState(false);
+  const [sendingDigest, setSendingDigest] = useState(false);
+  const [digestMessage, setDigestMessage] = useState('');
 
   useEffect(() => {
     checkAdmin();
@@ -75,6 +77,13 @@ export default function SupportBotConversationsPage() {
       setConversations(data.conversations || []);
     }
     setLoading(false);
+
+    // תמיכה בקישור ישיר לשיחה ספציפית (?open=<id>), כדי שאפשר יהיה לקשר אליה ישירות ממייל
+    const openParam = new URLSearchParams(window.location.search).get('open');
+    if (openParam) {
+      toggleTranscript(openParam);
+      setTimeout(() => document.getElementById(`conv-${openParam}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300);
+    }
   }
 
   async function toggleTranscript(id: string) {
@@ -106,6 +115,24 @@ export default function SupportBotConversationsPage() {
   async function handleLogout() {
     await supabase.auth.signOut();
     window.location.href = '/';
+  }
+
+  async function sendDigest() {
+    setSendingDigest(true);
+    setDigestMessage('');
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch('/api/admin/support-bot/send-digest', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session?.access_token}` },
+      });
+      const data = await res.json();
+      setDigestMessage(res.ok ? `נשלח מייל עם ${data.sent} שיחות ✓` : data.error || 'שגיאה בשליחה');
+      if (res.ok) loadConversations();
+    } catch (e) {
+      setDigestMessage('שגיאת רשת');
+    }
+    setSendingDigest(false);
   }
 
   if (checking) {
@@ -151,13 +178,18 @@ export default function SupportBotConversationsPage() {
 
       <div className="section-label"><h2>מי מתכתב עם דור</h2><span className="count">{conversations.length}</span></div>
 
+      <button className="btn-outline" style={{ width: 'auto', marginBottom: '14px' }} onClick={sendDigest} disabled={sendingDigest || conversations.length === 0}>
+        {sendingDigest ? 'שולח...' : 'שליחת סיכום כל השיחות במייל'}
+      </button>
+      {digestMessage && <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', marginBottom: '14px', marginTop: '-8px' }}>{digestMessage}</p>}
+
       {loading && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>טוענים...</p>}
       {!loading && conversations.length === 0 && (
         <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>אין עדיין שיחות</p>
       )}
 
       {conversations.map((c) => (
-        <div key={c.id} className="admin-row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '8px' }}>
+        <div key={c.id} id={`conv-${c.id}`} className="admin-row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '8px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', cursor: 'pointer' }} onClick={() => toggleTranscript(c.id)}>
             <div>
               <div className="name">{c.contact_name || 'ללא שם'}</div>
