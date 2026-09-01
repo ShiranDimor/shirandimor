@@ -1,11 +1,13 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/instantLogin';
-import { getMondaySubscriberContacts } from '@/lib/tradingPlan/monday';
-import { normalizePhone, normalizeEmail } from '@/lib/subscriberStatus';
+import { getMondaySubscriberContacts, getMondaySubscriberDetails } from '@/lib/tradingPlan/monday';
+import { normalizePhone, normalizeEmail, ensureActiveSubscriberAccount } from '@/lib/subscriberStatus';
 
-// עובר על כל המנויים המאושרים, ובודק שהם עדיין נמצאים בקבוצת "קבוצת סוחרים" במאנדיי -
-// לפי טלפון או מייל (לרוב המנויים בפועל אין טלפון שמור, רק מייל) - מי שכבר לא שם מורד
-// מ"מנוי" ל"ליד", ומאבד את הכניסה המיידית
+// דו-כיווני: (1) עובר על כל המנויים המאושרים באתר, ובודק שהם עדיין נמצאים בקבוצת "קבוצת סוחרים"
+// במאנדיי - לפי טלפון או מייל (לרוב המנויים בפועל אין טלפון שמור, רק מייל) - מי שכבר לא שם
+// מורד מ"מנוי" ל"ליד", ומאבד את הכניסה המיידית. (2) הכיוון ההפוך - מי שנמצא/ת בקבוצת הסוחרים
+// במאנדיי אבל עדיין אין לו/ה פרופיל מנוי/ה באתר (למשל כי מעולם לא נכנס/ה בעצמו/ה כדי "להירשם")
+// מקבל/ת חשבון מנוי/ה עכשיו - כדי שהספירה באתר תמיד תשקף במדויק את מה שבאמת קיים במאנדיי
 export async function POST(request: Request) {
   const authHeader = request.headers.get('Authorization') || '';
   const token = authHeader.replace('Bearer ', '');
@@ -39,10 +41,6 @@ export async function POST(request: Request) {
   const withContact = (subscribers || []).filter((s) => s.phone || s.email);
   const skippedNoPhone = (subscribers || []).length - withContact.length;
 
-  if (withContact.length === 0) {
-    return NextResponse.json({ checked: 0, removed: 0, removedNames: [], skippedNoPhone });
-  }
-
   const { phones: activePhones, emails: activeEmails } = await getMondaySubscriberContacts();
 
   if (activePhones.size === 0 && activeEmails.size === 0) {
@@ -62,10 +60,44 @@ export async function POST(request: Request) {
       .in('id', toRemove.map((s) => s.id));
   }
 
+  // כיוון הפוך: מי שכן בקבוצת הסוחרים במאנדיי אבל אין לו/ה עדיין שום פרופיל באתר (בכל role,
+  // לא רק subscriber - כדי לא ליצור כפילות למישהו שכבר קיים כליד/אדמין) מקבל/ת חשבון מנוי/ה עכשיו
+  const { data: allProfiles } = await supabaseAdmin.from('profiles').select('phone, email');
+  const existingPhones = new Set((allProfiles || []).map((p) => normalizePhone(p.phone || '')).filter(Boolean));
+  const existingEmails = new Set((allProfiles || []).map((p) => normalizeEmail(p.email || '')).filter(Boolean));
+
+  const mondaySubscribers = await getMondaySubscriberDetails();
+  const createdNames: string[] = [];
+  const skippedNoEmail: string[] = [];
+
+  for (const s of mondaySubscribers) {
+    const normPhone = s.phone ? normalizePhone(s.phone) : '';
+    const normEmail = s.email ? normalizeEmail(s.email) : '';
+    const alreadyHasProfile = (normPhone && existingPhones.has(normPhone)) || (normEmail && existingEmails.has(normEmail));
+    if (alreadyHasProfile) continue;
+
+    if (!s.email) {
+      skippedNoEmail.push(s.name || s.phone || 'ללא שם');
+      continue;
+    }
+
+    try {
+      await ensureActiveSubscriberAccount(s.email, s.phone || '', s.name || 'מנוי חדש', s.joinDate || undefined);
+      createdNames.push(s.name || s.email);
+      if (normPhone) existingPhones.add(normPhone);
+      if (normEmail) existingEmails.add(normEmail);
+    } catch (e) {
+      console.error('שגיאה ביצירת פרופיל מנוי חסר מתוך מאנדיי', s, e);
+    }
+  }
+
   return NextResponse.json({
     checked: withContact.length,
     removed: toRemove.length,
     removedNames: toRemove.map((s) => s.full_name || s.email),
     skippedNoPhone,
+    created: createdNames.length,
+    createdNames,
+    skippedNoEmail,
   });
 }

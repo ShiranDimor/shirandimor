@@ -47,9 +47,14 @@ export default function AdminSubscribersPage() {
         setSyncMessage('שגיאה: ' + (data.error || 'לא הצלחנו לבדוק'));
       } else {
         const removedText = data.removed > 0 ? ` (${data.removedNames.join(', ')})` : '';
+        const createdText = data.created > 0 ? ` · ${data.created} נוספו ממאנדיי (${data.createdNames.join(', ')})` : '';
+        const skippedNoEmailText = data.skippedNoEmail?.length > 0
+          ? ` · ${data.skippedNoEmail.length} בקבוצת הסוחרים במאנדיי בלי מייל, לא ניתן ליצור להם חשבון באתר (${data.skippedNoEmail.join(', ')})`
+          : '';
         setSyncMessage(
-          `נבדקו ${data.checked} מנויים · ${data.removed} הוסרו${removedText}` +
-          (data.skippedNoPhone > 0 ? ` · ${data.skippedNoPhone} לא נבדקו (אין טלפון ואין מייל בפרופיל)` : '')
+          `נבדקו ${data.checked} מנויים · ${data.removed} הוסרו${removedText}${createdText}` +
+          (data.skippedNoPhone > 0 ? ` · ${data.skippedNoPhone} לא נבדקו (אין טלפון ואין מייל בפרופיל)` : '') +
+          skippedNoEmailText
         );
         loadApprovedSubs();
       }
@@ -218,7 +223,7 @@ export default function AdminSubscribersPage() {
       <div className="section-label"><h2>מנויים מאושרים</h2><span className="count">{approvedSubs.length}</span></div>
 
       <button className="btn-outline" style={{ width: '100%', marginBottom: '14px' }} onClick={handleSyncSubscribers} disabled={syncing}>
-        {syncing ? 'בודקים מול מאנדיי...' : '🔄 בדיקת מנויים מול קבוצת הסוחרים במאנדיי'}
+        {syncing ? 'מסנכרנים מול מאנדיי...' : '🔄 סנכרון מלא מול קבוצת הסוחרים במאנדיי'}
       </button>
       {syncMessage && (
         <p style={{ fontSize: '12px', color: syncMessage.startsWith('שגיאה') ? 'var(--loss)' : 'var(--text-secondary)', marginBottom: '14px', textAlign: 'center' }}>
