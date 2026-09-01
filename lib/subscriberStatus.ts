@@ -66,14 +66,23 @@ export async function ensureActiveSubscriberAccount(email: string, phone: string
   const subscriptionStartedAt = startedAt || new Date().toISOString();
   const { data: existing } = await supabaseAdmin.from('profiles').select('id, role').eq('email', email).maybeSingle();
 
-  if (existing) {
+  // אם לא נמצא חשבון לפי המייל, בודקים גם לפי טלפון - כדי שמי שכבר רשום (למשל שילם בעבר
+  // עם מייל אחר) לא יקבל בטעות חשבון מנוי כפול כשהוא משלם שוב עם מייל חדש
+  let matched = existing;
+  const normalizedNewPhone = normalizePhone(phone);
+  if (!matched && normalizedNewPhone) {
+    const { data: withPhone } = await supabaseAdmin.from('profiles').select('id, role, phone').not('phone', 'is', null);
+    matched = (withPhone || []).find((p) => normalizePhone(p.phone) === normalizedNewPhone) || null;
+  }
+
+  if (matched) {
     const updates: Record<string, unknown> = { phone, full_name: fullName };
-    if (existing.role !== 'admin' && existing.role !== 'subscriber') {
+    if (matched.role !== 'admin' && matched.role !== 'subscriber') {
       updates.role = 'subscriber';
       updates.subscription_status = 'active';
       updates.subscription_started_at = subscriptionStartedAt;
     }
-    await supabaseAdmin.from('profiles').update(updates).eq('id', existing.id);
+    await supabaseAdmin.from('profiles').update(updates).eq('id', matched.id);
     return;
   }
 
