@@ -245,12 +245,14 @@ export default function TradingPlanPage() {
           body: JSON.stringify({ id, action: 'complete' }),
         }).catch(() => null);
 
-        // שליחת המיילים (למשתמש + לשירן) - לא חוסמים את הצגת התוכנית על המסך אם זה נכשל
-        fetch('/api/trading-plan/send-summary', {
+        // שליחת המיילים (למשתמש + לשירן) וסנכרון הליד למאנדיי - חייבים await, לא fire-and-forget:
+        // בלי זה, המעבר המיידי למסך הסיכום (setPhase למטה) יכול לגרום לדפדפן (בעיקר במובייל)
+        // לבטל את הבקשה באמצע לפני שהיא בכלל הספיקה ליצור את כרטיס הליד במאנדיי
+        await fetch('/api/trading-plan/send-summary', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ id }),
-        }).catch(() => {});
+        }).catch(() => null);
 
         trackFunnelEvent('trading_plan_completed', { phone: answers.phone as string, email: answers.email as string });
       }

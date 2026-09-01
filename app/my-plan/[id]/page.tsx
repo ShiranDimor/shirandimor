@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { Suspense, useEffect, useState } from 'react';
+import { useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
 type Outcome = 'followed' | 'broke' | 'no_activity';
@@ -118,8 +118,18 @@ function ProgressRing({ dayNumber, totalDays, unitLabel }: { dayNumber: number; 
 }
 
 export default function MyPlanProgressPage() {
+  return (
+    <Suspense fallback={<div className="wrap"><p style={{ padding: '40px', textAlign: 'center' }}>טוענים...</p></div>}>
+      <MyPlanProgressPageInner />
+    </Suspense>
+  );
+}
+
+// useSearchParams דורש Suspense boundary מסביבו ב-Next.js App Router, אחרת ה-build נכשל
+function MyPlanProgressPageInner() {
   const params = useParams();
   const id = typeof params.id === 'string' ? params.id : Array.isArray(params.id) ? params.id[0] : '';
+  const isAdminView = useSearchParams().get('admin') === '1';
 
   const [data, setData] = useState<ProgressData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -164,6 +174,7 @@ export default function MyPlanProgressPage() {
       <header>
         <Link href="/" className="brand">מסחר <span>אחראי</span> במניות</Link>
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+          {isAdminView && <Link href="/admin/trading-plan" className="nav-link">← לרשימת הלידים</Link>}
           {data?.isSubscriber && <Link href="/portfolio" className="nav-link">לתיק שלי</Link>}
           <Link href="/" className="nav-link">בית</Link>
         </div>
