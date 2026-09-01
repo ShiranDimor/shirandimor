@@ -143,13 +143,6 @@ export default function PortfolioPage() {
     return (trade.current_price - trade.entry_price) * trade.shares_calculated * (trade.direction === 'short' ? -1 : 1);
   }
 
-  // בלונג הכניסה כבר לא רלוונטית אם המחיר עלה מעל התקרה, ובשורט - אם ירד מתחת לרצפה
-  function isEntryStillRelevant(trade: Trade) {
-    if (trade.max_entry_price === null) return true;
-    const current = trade.current_price ?? trade.entry_price;
-    return trade.direction === 'short' ? current >= trade.max_entry_price : current <= trade.max_entry_price;
-  }
-
   const availableOpenMonths = Array.from(
     new Set(openTrades.map((t) => monthKey(t.opened_at)))
   ).sort().reverse();
@@ -376,7 +369,6 @@ export default function PortfolioPage() {
                 {filteredOpenTrades.map((trade) => {
                   const p = pct(trade);
                   const u = unrealizedUsd(trade);
-                  const stillRelevant = isEntryStillRelevant(trade);
                   return (
                     <tr key={trade.id}>
                       <td className="sym-cell">
@@ -390,16 +382,7 @@ export default function PortfolioPage() {
                       <td>${trade.entry_price}</td>
                       <td>${trade.current_price ?? trade.entry_price}</td>
                       <td>${trade.stop_loss}</td>
-                      <td>
-                        {trade.max_entry_price !== null ? (
-                          <>
-                            ${trade.max_entry_price}{' '}
-                            <span style={{ color: stillRelevant ? 'var(--profit)' : 'var(--loss)', fontSize: '11.5px' }}>
-                              {stillRelevant ? '(עדיין רלוונטי)' : '(עבר את הטווח)'}
-                            </span>
-                          </>
-                        ) : '—'}
-                      </td>
+                      <td>{trade.max_entry_price !== null ? `עד $${trade.max_entry_price}` : '—'}</td>
                       <td className="pnl-cell" style={{ color: p >= 0 ? 'var(--profit)' : 'var(--loss)' }}>
                         {p >= 0 ? '+' : ''}{p.toFixed(2)}%
                         {u !== null && <span className="usd-sub">{u >= 0 ? '+' : '-'}${Math.abs(u).toFixed(0)}</span>}

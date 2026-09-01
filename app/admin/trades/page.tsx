@@ -701,7 +701,7 @@ export default function AdminTradesPage() {
                   {isClosed && <td>{formatDate(trade.closed_at)}</td>}
                   <td>${trade.entry_price.toFixed(2)}</td>
                   <td>{isClosed ? `$${trade.exit_price?.toFixed(2)}` : `$${trade.stop_loss}`}</td>
-                  {!isClosed && <td>{trade.max_entry_price !== null ? `$${trade.max_entry_price}` : '—'}</td>}
+                  {!isClosed && <td>{trade.max_entry_price !== null ? `עד $${trade.max_entry_price}` : '—'}</td>}
                   {!isClosed && <td>${trade.current_price ?? trade.entry_price}</td>}
                   <td style={{ color: pct === null ? undefined : pct >= 0 ? 'var(--profit)' : 'var(--loss)' }}>
                     {pct === null ? '—' : `${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%`}
