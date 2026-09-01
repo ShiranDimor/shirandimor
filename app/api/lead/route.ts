@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
+import { isContactInSubscribersGroupMonday, isContactInUpdatesGroupMonday } from '@/lib/tradingPlan/monday';
 
 const LEAD_GROUP_NAME = 'לידים חדשים';
+const DEFAULT_SOURCE = 'טופס הצטרפות לקבוצת העדכונים באתר';
 const CAMPAIGN_COLUMN_TITLE = 'campaign_name';
 const STATUS_COLUMN_TITLE = 'סטטוס טיפול';
 const DUPLICATE_STATUS_LABEL = 'ליד כפול';
@@ -74,7 +76,7 @@ async function hasExistingPhone(token: string, boardId: string, phoneColumnId: s
 }
 
 export async function POST(request: Request) {
-  const { name, phone, email } = await request.json();
+  const { name, phone, email, source } = await request.json();
 
   if (!name || !phone) {
     return NextResponse.json({ error: 'חסרים פרטים' }, { status: 400 });
@@ -86,6 +88,18 @@ export async function POST(request: Request) {
   if (!token || !boardId) {
     console.error('Monday.com לא מוגדר (חסר MONDAY_API_TOKEN או MONDAY_BOARD_ID בסביבה)');
     return NextResponse.json({ ok: true, monday: false });
+  }
+
+  // מי שכבר קיים כמנוי או כחבר קבוצת העדכונים לא צריך ליד חדש - רק לפתוח לו גישה
+  const [alreadySubscriber, alreadyUpdates] = await Promise.all([
+    isContactInSubscribersGroupMonday(phone, email).catch(() => false),
+    isContactInUpdatesGroupMonday(phone, email).catch(() => false),
+  ]);
+
+  if (alreadySubscriber || alreadyUpdates) {
+    const response = NextResponse.json({ ok: true, monday: true, matched: alreadySubscriber ? 'subscriber' : 'updates' });
+    response.cookies.set('sd_registered', '1', { maxAge: 60 * 60 * 24 * 365, path: '/', sameSite: 'lax' });
+    return response;
   }
 
   try {
@@ -133,7 +147,7 @@ export async function POST(request: Request) {
         }`,
         {
           itemId,
-          body: `נייד: ${phone}${email ? `\nאימייל: ${email}` : ''}\nמקור: טופס הצטרפות לקבוצת העדכונים באתר${isDuplicate ? '\n⚠ כבר קיים ליד/מנוי אחר עם אותו נייד - סומן כ"ליד כפול"' : ''}`,
+          body: `נייד: ${phone}${email ? `\nאימייל: ${email}` : ''}\nמקור: ${source || DEFAULT_SOURCE}${isDuplicate ? '\n⚠ כבר קיים ליד/מנוי אחר עם אותו נייד - סומן כ"ליד כפול"' : ''}`,
         }
       );
     } else {

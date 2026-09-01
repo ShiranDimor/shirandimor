@@ -4,6 +4,7 @@ import { findOptions } from './questions';
 
 const LEAD_GROUP_NAME = 'לידים חדשים';
 const SUBSCRIBER_GROUP_NAME = 'קבוצת סוחרים';
+const UPDATES_GROUP_NAME = 'קבוצת עדכונים';
 const CAMPAIGN_COLUMN_TITLE = 'campaign_name';
 const STATUS_COLUMN_TITLE = 'סטטוס טיפול';
 const FOLLOWUP_COLUMN_TITLE = 'תאריך פולואפ';
@@ -41,6 +42,7 @@ async function getBoardSchema(token: string, boardId: string) {
   return {
     groupId: groups.find((g) => g.title === LEAD_GROUP_NAME)?.id,
     subscriberGroupId: groups.find((g) => g.title === SUBSCRIBER_GROUP_NAME)?.id,
+    updatesGroupId: groups.find((g) => g.title === UPDATES_GROUP_NAME)?.id,
     phoneColumnId: columns.find((c) => c.type === 'phone')?.id,
     emailColumnId: columns.find((c) => c.type === 'email')?.id,
     campaignColumnId: columns.find((c) => c.title === CAMPAIGN_COLUMN_TITLE)?.id,
@@ -127,6 +129,36 @@ export async function isContactInSubscribersGroupMonday(
 // תאימות לאחור
 export async function isPhoneInSubscribersGroupMonday(phone: string | null | undefined): Promise<boolean> {
   return isContactInSubscribersGroupMonday(phone, null);
+}
+
+// בדיקה מקבילה ל-isContactInSubscribersGroupMonday, אבל מול קבוצת "קבוצת עדכונים" - לשער הכניסה
+// היחיד של ספריית השיעורים (מי שכבר רשום לעדכונים לא צריך להשאיר פרטים שוב כדי להיכנס)
+export async function isContactInUpdatesGroupMonday(
+  phone: string | null | undefined,
+  email: string | null | undefined
+): Promise<boolean> {
+  const token = process.env.MONDAY_API_TOKEN;
+  const boardId = process.env.MONDAY_BOARD_ID;
+  if (!token || !boardId || (!phone && !email)) return false;
+
+  try {
+    const { updatesGroupId, phoneColumnId, emailColumnId } = await getBoardSchema(token, boardId);
+    if (!updatesGroupId || (!phoneColumnId && !emailColumnId)) return false;
+
+    if (phone && phoneColumnId) {
+      const found = await isTextInGroup(token, boardId, updatesGroupId, phoneColumnId, normalizePhone(phone), normalizePhone);
+      if (found) return true;
+    }
+    if (email && emailColumnId) {
+      const target = email.trim().toLowerCase();
+      const found = await isTextInGroup(token, boardId, updatesGroupId, emailColumnId, target, (raw) => raw.trim().toLowerCase());
+      if (found) return true;
+    }
+    return false;
+  } catch (e) {
+    console.error('שגיאה בבדיקת קבוצת העדכונים ב-Monday.com', e);
+    return false;
+  }
 }
 
 // כל הטלפונים והמיילים המנורמלים בקבוצת "קבוצת סוחרים" ב-Monday.com בקריאה אחת (לא לכל שורה

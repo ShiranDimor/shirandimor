@@ -9,7 +9,6 @@ type Lesson = {
   title: string;
   description: string | null;
   category: string | null;
-  tier: 'public' | 'registered' | 'subscriber';
   video_id: string;
   duration_minutes: number | null;
   published: boolean;
@@ -17,17 +16,10 @@ type Lesson = {
   created_at: string;
 };
 
-const TIER_LABELS: Record<Lesson['tier'], string> = {
-  public: 'פתוח לכולם',
-  registered: 'מי שנרשם/התחבר',
-  subscriber: 'מנויים בלבד',
-};
-
 const emptyForm = {
   title: '',
   description: '',
   category: '',
-  tier: 'public' as Lesson['tier'],
   videoUrl: '',
   durationMinutes: '',
   published: true,
@@ -84,7 +76,6 @@ export default function AdminLessonsPage() {
       title: lesson.title,
       description: lesson.description || '',
       category: lesson.category || '',
-      tier: lesson.tier,
       videoUrl: `https://www.youtube.com/watch?v=${lesson.video_id}`,
       durationMinutes: lesson.duration_minutes ? String(lesson.duration_minutes) : '',
       published: lesson.published,
@@ -111,7 +102,6 @@ export default function AdminLessonsPage() {
       title: form.title.trim(),
       description: form.description.trim() || null,
       category: form.category.trim() || null,
-      tier: form.tier,
       videoUrl: form.videoUrl.trim() || undefined,
       durationMinutes: form.durationMinutes ? Number(form.durationMinutes) : null,
       published: form.published,
@@ -204,14 +194,7 @@ export default function AdminLessonsPage() {
         <input className="tp-text-input" style={{ minHeight: 'auto', marginBottom: '10px' }} placeholder="קטגוריה (למשל: ניתוח טכני, פסיכולוגיה של מסחר)" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} />
         <input className="tp-text-input" style={{ minHeight: 'auto', marginBottom: '10px' }} placeholder={editingId ? 'לינק YouTube חדש (רק אם רוצים להחליף סרטון)' : 'לינק YouTube'} value={form.videoUrl} onChange={(e) => setForm({ ...form, videoUrl: e.target.value })} />
 
-        <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
-          <select className="tp-text-input" style={{ minHeight: 'auto' }} value={form.tier} onChange={(e) => setForm({ ...form, tier: e.target.value as Lesson['tier'] })}>
-            <option value="public">פתוח לכולם</option>
-            <option value="registered">מי שנרשם/התחבר</option>
-            <option value="subscriber">מנויים בלבד</option>
-          </select>
-          <input className="tp-text-input" style={{ minHeight: 'auto' }} type="number" placeholder="אורך בדקות" value={form.durationMinutes} onChange={(e) => setForm({ ...form, durationMinutes: e.target.value })} />
-        </div>
+        <input className="tp-text-input" style={{ minHeight: 'auto', marginBottom: '10px' }} type="number" placeholder="אורך בדקות" value={form.durationMinutes} onChange={(e) => setForm({ ...form, durationMinutes: e.target.value })} />
 
         <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', marginBottom: '14px', cursor: 'pointer' }}>
           <input type="checkbox" checked={form.published} onChange={(e) => setForm({ ...form, published: e.target.checked })} />
@@ -238,7 +221,7 @@ export default function AdminLessonsPage() {
               {lesson.title}
               {!lesson.published && <span style={{ marginRight: '8px', fontSize: '10.5px', color: '#E8A33D', border: '1px solid #E8A33D', borderRadius: '5px', padding: '2px 6px' }}>טיוטה</span>}
             </div>
-            <div className="email">{TIER_LABELS[lesson.tier]}{lesson.category ? ` · ${lesson.category}` : ''}{lesson.duration_minutes ? ` · ${lesson.duration_minutes} דק'` : ''}</div>
+            <div className="email">{lesson.category || 'ללא קטגוריה'}{lesson.duration_minutes ? ` · ${lesson.duration_minutes} דק'` : ''}</div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <button type="button" className="btn-outline" style={{ padding: '8px 12px', fontSize: '12.5px' }} onClick={() => startEdit(lesson)}>עריכה</button>
