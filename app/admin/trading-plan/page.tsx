@@ -175,6 +175,7 @@ export default function AdminTradingPlanAbandonedPage() {
   }
 
   async function handleResync(id: string) {
+    if (resyncingId) return; // הגנה מפני לחיצה כפולה מהירה לפני שהכפתור מספיק להיחסם ויזואלית
     setResyncingId(id);
     setResyncMessage((prev) => ({ ...prev, [id]: '' }));
 
