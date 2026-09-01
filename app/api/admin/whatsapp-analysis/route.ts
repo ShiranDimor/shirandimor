@@ -46,7 +46,7 @@ export async function POST(request: Request) {
   }
 
   const { text, truncated } = truncateForAnalysis(rawText);
-  const messageCount = (rawText.match(/^\d{1,2}\/\d{1,2}\/\d{2,4},/gm) || []).length;
+  const messageCount = (rawText.match(/^\[?\d{1,2}\/\d{1,2}\/\d{2,4},/gm) || []).length;
 
   try {
     const analysis = await analyzeWhatsappExport(text, groupType);

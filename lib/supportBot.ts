@@ -245,7 +245,7 @@ export async function callSupportBot(
 // מסיר עיצוב markdown מהתשובה - למרות ההנחיה בפרומפט, המודל עדיין נוטה לפעמים להוסיף
 // **הדגשות** או כותרות עם #, וממשק הצ'אט מציג טקסט רגיל בלבד בלי רינדור - כך שבלי הניקוי
 // הזה הכוכביות/הסולמיות היו מוצגות למשתמש/ת פשוטו כמשמעו ונראות כמו תקלה
-function stripMarkdown(text: string): string {
+export function stripMarkdown(text: string): string {
   return text
     .replace(/\*\*(.+?)\*\*/g, '$1')
     .replace(/(?<!\*)\*(?!\*)(.+?)\*(?!\*)/g, '$1')

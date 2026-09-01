@@ -1,6 +1,7 @@
 // מנתח ייצוא צ'אט וואטסאפ (קובץ טקסט שמופק מ"ייצוא צ'אט" בוואטסאפ) עבור אחת משתי הקבוצות של
 // שירן - כדי שהיא תקבל תמונה על מה קורה בקבוצה בלי לעבור על הכל ידנית, וגם כדי שהניתוחים
 // האלה ישמשו בהמשך ללמידת השפה והטון שלה (למשל לכיוונון "דור")
+import { stripMarkdown } from '@/lib/supportBot';
 
 const WHATSAPP_ANALYSIS_SYSTEM_PROMPT = `אתה עוזר ניתוח עסקי לשירן דימור, מנטורית למסחר אחראי במניות וחוזים עתידיים שמנהלת שתי קבוצות וואטסאפ: "מדברים עסקאות" (קבוצת הסוחרים, בתשלום) ו"מדברים עסקאות - קבוצת עדכונים" (חינמית). היא מעבירה לך קובץ ייצוא צ'אט גולמי מוואטסאפ (שורות בפורמט כמו "12/3/25, 14:02 - שם: תוכן ההודעה"), ואתה מנתח אותו עבורה.
 
@@ -39,7 +40,7 @@ export async function analyzeWhatsappExport(rawText: string, groupType: 'סוח�
     },
     body: JSON.stringify({
       model,
-      max_tokens: 2000,
+      max_tokens: 4096,
       system: WHATSAPP_ANALYSIS_SYSTEM_PROMPT,
       messages: [{ role: 'user', content: `זהו ייצוא של קבוצת "${groupType === 'סוחרים' ? 'מדברים עסקאות (קבוצת הסוחרים, בתשלום)' : 'מדברים עסקאות - קבוצת עדכונים (חינמית)'}":\n\n${rawText}` }],
     }),
@@ -52,5 +53,5 @@ export async function analyzeWhatsappExport(rawText: string, groupType: 'סוח�
 
   const data = await res.json();
   const textBlock = data?.content?.find((b: { type: string }) => b.type === 'text');
-  return textBlock?.text || 'לא הופק ניתוח.';
+  return stripMarkdown(textBlock?.text || 'לא הופק ניתוח.');
 }
