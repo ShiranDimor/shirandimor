@@ -28,6 +28,7 @@ export default function AdminWhatsappAnalysisPage() {
   const [groupType, setGroupType] = useState<GroupType>('סוחרים');
   const [rawText, setRawText] = useState('');
   const [fileName, setFileName] = useState('');
+  const [processingFile, setProcessingFile] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [error, setError] = useState('');
   const [result, setResult] = useState<Analysis | null>(null);
@@ -68,30 +69,46 @@ export default function AdminWhatsappAnalysisPage() {
     if (!file) return;
     setFileName(file.name);
     setError('');
+    setRawText('');
+    setProcessingFile(true);
 
     // ייצוא צ׳אט מוואטסאפ דסקטופ יוצא כקובץ zip שמכיל בפנים את קובץ הטקסט של השיחה -
-    // מחלצים אותו ישירות בדפדפן כדי שלא יהיה צורך לפתוח/לחלץ אותו ידנית
+    // מחלצים אותו ישירות בדפדפן כדי שלא יהיה צורך לפתוח/לחלץ אותו ידנית. קובץ גדול (למשל
+    // קבוצה עמוסה עם הרבה היסטוריה) יכול לקחת רגע לחילוץ - processingFile חוסם את כפתור
+    // הניתוח באותו זמן, כדי שלא ילחצו עליו לפני שהטקסט בכלל נטען לתוך rawText
     if (file.name.toLowerCase().endsWith('.zip')) {
       try {
         const zip = await JSZip.loadAsync(file);
         const txtEntry = Object.values(zip.files).find((f) => !f.dir && f.name.toLowerCase().endsWith('.txt'));
         if (!txtEntry) {
           setError('לא נמצא קובץ טקסט של השיחה בתוך קובץ ה-zip');
-          return;
+        } else {
+          setRawText(await txtEntry.async('string'));
         }
-        setRawText(await txtEntry.async('string'));
       } catch {
         setError('לא הצלחנו לפתוח את קובץ ה-zip');
       }
+      setProcessingFile(false);
       return;
     }
 
     const reader = new FileReader();
-    reader.onload = () => setRawText(String(reader.result || ''));
+    reader.onload = () => {
+      setRawText(String(reader.result || ''));
+      setProcessingFile(false);
+    };
+    reader.onerror = () => {
+      setError('לא הצלחנו לקרוא את הקובץ');
+      setProcessingFile(false);
+    };
     reader.readAsText(file);
   }
 
   async function handleAnalyze() {
+    if (processingFile) {
+      setError('רגע, עדיין מעבדים את הקובץ...');
+      return;
+    }
     if (rawText.trim().length < 20) {
       setError('צריך להעלות קובץ או להדביק טקסט של הצ׳אט קודם');
       return;
@@ -128,6 +145,8 @@ export default function AdminWhatsappAnalysisPage() {
     await supabase.auth.signOut();
     window.location.href = '/';
   }
+
+  const filteredHistory = history.filter((h) => h.group_type === groupType);
 
   if (checking) {
     return <div className="wrap"><p style={{ padding: '40px', textAlign: 'center' }}>בודקים הרשאות...</p></div>;
@@ -185,7 +204,11 @@ export default function AdminWhatsappAnalysisPage() {
         <div className="field">
           <label>קובץ ייצוא הצ׳אט (.txt או .zip כמו שיוצא מוואטסאפ דסקטופ)</label>
           <input ref={fileInputRef} type="file" accept=".txt,.zip" onChange={handleFileChange} style={{ fontSize: '13px' }} />
-          {fileName && <p style={{ fontSize: '11.5px', color: 'var(--text-tertiary)', marginTop: '4px' }}>נטען: {fileName}</p>}
+          {fileName && (
+            <p style={{ fontSize: '11.5px', color: processingFile ? 'var(--text-tertiary)' : 'var(--profit)', marginTop: '4px' }}>
+              {processingFile ? `מעבדים את ${fileName}...` : `נטען: ${fileName}`}
+            </p>
+          )}
         </div>
 
         <div className="field">
@@ -199,7 +222,9 @@ export default function AdminWhatsappAnalysisPage() {
           />
         </div>
 
-        <button className="btn-primary" onClick={handleAnalyze} disabled={analyzing}>{analyzing ? 'מנתחים... זה יכול לקחת דקה' : 'ניתוח'}</button>
+        <button className="btn-primary" onClick={handleAnalyze} disabled={analyzing || processingFile}>
+          {analyzing ? 'מנתחים... זה יכול לקחת דקה' : processingFile ? 'מעבדים את הקובץ...' : 'ניתוח'}
+        </button>
         {error && <p style={{ marginTop: '10px', fontSize: '13px', color: 'var(--loss)' }}>{error}</p>}
       </div>
 
@@ -213,10 +238,10 @@ export default function AdminWhatsappAnalysisPage() {
         </div>
       )}
 
-      <div className="section-label" style={{ marginTop: '30px' }}><h2>ניתוחים קודמים</h2><span className="count">{history.length}</span></div>
+      <div className="section-label" style={{ marginTop: '30px' }}><h2>ניתוחים קודמים · {groupType === 'סוחרים' ? 'קבוצת הסוחרים' : 'קבוצת עדכונים'}</h2><span className="count">{filteredHistory.length}</span></div>
       {loadingHistory && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>טוענים...</p>}
-      {!loadingHistory && history.length === 0 && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>עדיין אין ניתוחים שמורים</p>}
-      {history.map((h) => (
+      {!loadingHistory && filteredHistory.length === 0 && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>עדיין אין ניתוחים שמורים לקבוצה הזו</p>}
+      {filteredHistory.map((h) => (
         <details key={h.id} className="section-collapse" style={{ marginBottom: '10px' }}>
           <summary>
             <h2 style={{ fontSize: '14px' }}>{h.group_type === 'סוחרים' ? 'קבוצת הסוחרים' : 'קבוצת עדכונים'} · {formatDateTime(h.created_at)}</h2>
