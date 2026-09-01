@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import JSZip from 'jszip';
 import { supabase } from '@/lib/supabase';
 
 type GroupType = 'סוחרים' | 'עדכונים';
@@ -62,10 +63,29 @@ export default function AdminWhatsappAnalysisPage() {
     setLoadingHistory(false);
   }
 
-  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
     setFileName(file.name);
+    setError('');
+
+    // ייצוא צ׳אט מוואטסאפ דסקטופ יוצא כקובץ zip שמכיל בפנים את קובץ הטקסט של השיחה -
+    // מחלצים אותו ישירות בדפדפן כדי שלא יהיה צורך לפתוח/לחלץ אותו ידנית
+    if (file.name.toLowerCase().endsWith('.zip')) {
+      try {
+        const zip = await JSZip.loadAsync(file);
+        const txtEntry = Object.values(zip.files).find((f) => !f.dir && f.name.toLowerCase().endsWith('.txt'));
+        if (!txtEntry) {
+          setError('לא נמצא קובץ טקסט של השיחה בתוך קובץ ה-zip');
+          return;
+        }
+        setRawText(await txtEntry.async('string'));
+      } catch {
+        setError('לא הצלחנו לפתוח את קובץ ה-zip');
+      }
+      return;
+    }
+
     const reader = new FileReader();
     reader.onload = () => setRawText(String(reader.result || ''));
     reader.readAsText(file);
@@ -153,7 +173,7 @@ export default function AdminWhatsappAnalysisPage() {
 
       <div className="section-label"><h2>ניתוח קבוצות ווטסאפ</h2></div>
       <p style={{ fontSize: '12.5px', color: 'var(--text-tertiary)', marginBottom: '18px', lineHeight: 1.6 }}>
-        בוואטסאפ: נכנסים לקבוצה ← שלוש נקודות/הגדרות קבוצה ← עוד ← ייצוא צ׳אט ← בלי מדיה. זה יוצר קובץ טקסט עם כל ההודעות. מעלים אותו כאן ולוחצים ניתוח - הניתוח כולל את הסגנון והשפה שלך, מעורבות בקבוצה, והזדמנויות המרה/שימור.
+        בוואטסאפ: נכנסים לקבוצה ← שלוש נקודות/הגדרות קבוצה ← עוד ← ייצוא צ׳אט ← בלי מדיה. זה בדרך כלל יוריד קובץ zip (בוואטסאפ דסקטופ) - אפשר להעלות אותו ישירות כמו שהוא, בלי לחלץ אותו ידנית. מעלים אותו כאן ולוחצים ניתוח - הניתוח כולל את הסגנון והשפה שלך, מעורבות בקבוצה, והזדמנויות המרה/שימור.
       </p>
 
       <div className="journal-form">
@@ -163,8 +183,8 @@ export default function AdminWhatsappAnalysisPage() {
         </div>
 
         <div className="field">
-          <label>קובץ ייצוא הצ׳אט (.txt)</label>
-          <input ref={fileInputRef} type="file" accept=".txt" onChange={handleFileChange} style={{ fontSize: '13px' }} />
+          <label>קובץ ייצוא הצ׳אט (.txt או .zip כמו שיוצא מוואטסאפ דסקטופ)</label>
+          <input ref={fileInputRef} type="file" accept=".txt,.zip" onChange={handleFileChange} style={{ fontSize: '13px' }} />
           {fileName && <p style={{ fontSize: '11.5px', color: 'var(--text-tertiary)', marginTop: '4px' }}>נטען: {fileName}</p>}
         </div>
 
