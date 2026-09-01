@@ -60,11 +60,14 @@ export async function POST(request: Request) {
       .in('id', toRemove.map((s) => s.id));
   }
 
-  // כיוון הפוך: מי שכן בקבוצת הסוחרים במאנדיי אבל אין לו/ה עדיין שום פרופיל באתר (בכל role,
-  // לא רק subscriber - כדי לא ליצור כפילות למישהו שכבר קיים כליד/אדמין) מקבל/ת חשבון מנוי/ה עכשיו
-  const { data: allProfiles } = await supabaseAdmin.from('profiles').select('phone, email');
-  const existingPhones = new Set((allProfiles || []).map((p) => normalizePhone(p.phone || '')).filter(Boolean));
-  const existingEmails = new Set((allProfiles || []).map((p) => normalizeEmail(p.email || '')).filter(Boolean));
+  // כיוון הפוך: מי שכן בקבוצת הסוחרים במאנדיי אבל אין לו/ה עדיין פרופיל "מנוי" באתר - מקבל/ת
+  // אחד עכשיו. חשוב: מדלגים רק על מי שכבר subscriber/admin בפועל - מי שיש לו/ה פרופיל אחר
+  // (למשל "ליד" ממילוי שאלון בעבר) חייב/ת עדיין לעבור דרך ensureActiveSubscriberAccount, כי
+  // היא זו שמשדרגת "ליד" קיים ל"מנוי" - סינון מוקדם לפי "יש כבר איזשהו פרופיל" היה מדלג
+  // בטעות גם על המקרה הזה ומשאיר את המנוי בלי שדרוג
+  const { data: subscriberProfiles } = await supabaseAdmin.from('profiles').select('phone, email').in('role', ['subscriber', 'admin']);
+  const existingSubscriberPhones = new Set((subscriberProfiles || []).map((p) => normalizePhone(p.phone || '')).filter(Boolean));
+  const existingSubscriberEmails = new Set((subscriberProfiles || []).map((p) => normalizeEmail(p.email || '')).filter(Boolean));
 
   const mondaySubscribers = await getMondaySubscriberDetails();
   const createdNames: string[] = [];
@@ -73,8 +76,8 @@ export async function POST(request: Request) {
   for (const s of mondaySubscribers) {
     const normPhone = s.phone ? normalizePhone(s.phone) : '';
     const normEmail = s.email ? normalizeEmail(s.email) : '';
-    const alreadyHasProfile = (normPhone && existingPhones.has(normPhone)) || (normEmail && existingEmails.has(normEmail));
-    if (alreadyHasProfile) continue;
+    const alreadySubscriber = (normPhone && existingSubscriberPhones.has(normPhone)) || (normEmail && existingSubscriberEmails.has(normEmail));
+    if (alreadySubscriber) continue;
 
     if (!s.email) {
       skippedNoEmail.push(s.name || s.phone || 'ללא שם');
@@ -84,10 +87,10 @@ export async function POST(request: Request) {
     try {
       await ensureActiveSubscriberAccount(s.email, s.phone || '', s.name || 'מנוי חדש', s.joinDate || undefined);
       createdNames.push(s.name || s.email);
-      if (normPhone) existingPhones.add(normPhone);
-      if (normEmail) existingEmails.add(normEmail);
+      if (normPhone) existingSubscriberPhones.add(normPhone);
+      if (normEmail) existingSubscriberEmails.add(normEmail);
     } catch (e) {
-      console.error('שגיאה ביצירת פרופיל מנוי חסר מתוך מאנדיי', s, e);
+      console.error('שגיאה ביצירת/שדרוג פרופיל מנוי מתוך מאנדיי', s, e);
     }
   }
 
