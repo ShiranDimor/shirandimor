@@ -45,7 +45,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'קובץ הייצוא ריק מדי או חסר' }, { status: 400 });
   }
 
-  const { text, truncated } = truncateForAnalysis(rawText);
+  // clientTruncated: הלקוח כבר מקצץ לפני השליחה (כדי לא לחרוג ממגבלת גודל הבקשה של Vercel) -
+  // לכן truncateForAnalysis כאן כמעט תמיד יראה טקסט שכבר בתוך הגבול, ולא יזהה שהיה קיצוץ בכלל
+  const clientTruncated = body?.clientTruncated === true;
+  const { text, truncated: serverTruncated } = truncateForAnalysis(rawText);
+  const truncated = clientTruncated || serverTruncated;
   const messageCount = (rawText.match(/^\[?\d{1,2}\/\d{1,2}\/\d{2,4},/gm) || []).length;
 
   try {

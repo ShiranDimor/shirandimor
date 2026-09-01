@@ -7,6 +7,9 @@ import { supabase } from '@/lib/supabase';
 
 type GroupType = 'סוחרים' | 'עדכונים';
 
+// תואם ל-MAX_CHARS בlib/whatsappAnalysis.ts - מקוצר כאן כדי לא לשלוח לשרת יותר ממה שהוא ינתח בפועל
+const MAX_UPLOAD_CHARS = 300000;
+
 type Analysis = {
   id: string;
   group_type: GroupType;
@@ -117,15 +120,23 @@ export default function AdminWhatsappAnalysisPage() {
     setError('');
     setResult(null);
 
+    // שולחים לשרת רק עד MAX_UPLOAD_CHARS - בלי זה, קבוצה עמוסה כמו קבוצת הסוחרים יכולה ליצור
+    // גוף בקשה גדול מדי (Vercel חוסם בקשות מעל כמה MB), והבקשה נכשלת עוד לפני שהשרת בכלל
+    // מגיע לקיצוץ שלו. ממילא רק ה-MAX_CHARS האחרונים נכנסים לניתוח, אז אין הפסד תוכן.
+    const clientTruncated = rawText.length > MAX_UPLOAD_CHARS;
+    const bodyToSend = clientTruncated ? rawText.slice(rawText.length - MAX_UPLOAD_CHARS) : rawText;
+
     const { data: { session } } = await supabase.auth.getSession();
     try {
       const res = await fetch('/api/admin/whatsapp-analysis', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
-        body: JSON.stringify({ groupType, rawText }),
+        body: JSON.stringify({ groupType, rawText: bodyToSend, clientTruncated }),
       });
-      const data = await res.json();
-      if (!res.ok) {
+      const data = await res.json().catch(() => null);
+      if (!data) {
+        setError(`שגיאה בשרת (סטטוס ${res.status}) - ייתכן שהקובץ גדול מדי לשליחה`);
+      } else if (!res.ok) {
         setError(data.error || 'שגיאה בניתוח');
       } else {
         setResult(data.analysis);
