@@ -69,7 +69,7 @@ export default function LessonDetailPage() {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name.trim(), phone: phone.trim(), email: email.trim() || undefined }),
+        body: JSON.stringify({ name: name.trim(), phone: phone.trim(), email: email.trim() || undefined, source: 'הגיע משיעור נעול - עדכונים' }),
       });
     } catch {}
 

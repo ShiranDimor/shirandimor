@@ -405,9 +405,11 @@ function buildInsightsNote(row: Record<string, any>, completed: boolean) {
   return lines.join('\n');
 }
 
-// יוצר/מעדכן ליד CRM ממילוי "תוכנית המסחר ל-30 יום" (הושלם או ננטש), עם הערת תובנות ותאריך
-// פולואפ - מחליף את syncTradingPlanLead שהייתה כותבת ל-Monday.com
-export async function syncTradingPlanLead(
+// יוצר/מעדכן ליד ב-CRM הפיילוט (לא במאנדיי!) ממילוי "תוכנית המסחר ל-30 יום" (הושלם או ננטש),
+// עם הערת תובנות ותאריך פולואפ. שם שונה בכוונה מ-syncTradingPlanLead ב-lib/tradingPlan/monday.ts
+// (הפונקציה האמיתית שכן כותבת למאנדיי, ושכל הזרימות החיות באתר משתמשות בה) - כדי שאי אפשר יהיה
+// לבלבל ביניהן ולחבר בטעות את הגרסה הזו לזרימה אמיתית
+export async function syncTradingPlanLeadToCrm(
   row: Record<string, any>,
   opts: { statusLabel?: string; completed?: boolean } = {}
 ): Promise<{ ok: boolean; reason?: string; contactId?: string; created?: boolean }> {

@@ -79,12 +79,18 @@ async function hasExistingPhone(token: string, boardId: string, phoneColumnId: s
   return false;
 }
 
+const DEFAULT_SOURCE_LABEL = 'הגיע מהאתר - עדכונים';
+
 export async function POST(request: Request) {
-  const { name, phone, email } = await request.json();
+  const { name, phone, email, source } = await request.json();
 
   if (!name || !phone) {
     return NextResponse.json({ error: 'חסרים פרטים' }, { status: 400 });
   }
+
+  // מזהה מאיזה טופס/עמוד ספציפי הגיע הליד (למשל דף בית מול שיעור נעול) - כדי שיהיה אפשר להבדיל
+  // בין המקורות במאנדיי במקום שכולם ייראו זהים
+  const sourceLabel = typeof source === 'string' && source.trim() ? source.trim() : DEFAULT_SOURCE_LABEL;
 
   // מי שכבר מנוי פעיל (באתר או בקבוצת הסוחרים ב-Monday) לא צריך להצטרף לקבוצת העדכונים -
   // הוא כבר מקבל את כל מה שיש שם ועוד הרבה יותר. בלי הבדיקה הזו כל הרשמה כזו יוצרת ליד מיותר
@@ -115,7 +121,7 @@ export async function POST(request: Request) {
     const columnValues: Record<string, unknown> = {};
     if (phoneColumnId) columnValues[phoneColumnId] = { phone: phone.startsWith('0') ? `972${phone.slice(1)}` : phone, countryShortName: 'IL' };
     if (emailColumnId && email) columnValues[emailColumnId] = { email, text: email };
-    if (campaignColumnId) columnValues[campaignColumnId] = 'הגיע מהאתר - עדכונים';
+    if (campaignColumnId) columnValues[campaignColumnId] = sourceLabel;
 
     const createItemData = await mondayRequest(
       token,
@@ -147,7 +153,7 @@ export async function POST(request: Request) {
         }`,
         {
           itemId,
-          body: `נייד: ${phone}${email ? `\nאימייל: ${email}` : ''}\nמקור: טופס הצטרפות לקבוצת העדכונים באתר${isDuplicate ? '\n⚠ כבר קיים ליד/מנוי אחר עם אותו נייד - סומן כ"ליד כפול"' : ''}`,
+          body: `נייד: ${phone}${email ? `\nאימייל: ${email}` : ''}\nמקור: ${sourceLabel}${isDuplicate ? '\n⚠ כבר קיים ליד/מנוי אחר עם אותו נייד - סומן כ"ליד כפול"' : ''}`,
         }
       );
     } else {

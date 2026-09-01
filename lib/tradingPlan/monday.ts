@@ -474,7 +474,9 @@ export async function syncTradingPlanLead(
     const columnValues: Record<string, unknown> = {};
     if (phoneColumnId) columnValues[phoneColumnId] = { phone: row.phone.startsWith('0') ? `972${row.phone.slice(1)}` : row.phone, countryShortName: 'IL' };
     if (emailColumnId && row.email) columnValues[emailColumnId] = { email: row.email, text: row.email };
-    if (campaignColumnId) columnValues[campaignColumnId] = CAMPAIGN_VALUE;
+    // מוסיפים את מקור התנועה האמיתי (מ-?source=/?utm_source=, אם נתפס) לתוך אותה עמודה - כדי
+    // שיהיה אפשר להבדיל בין קמפיינים שונים שהובילו לתוכנית מסחר, ולא רק לדעת שזה "תוכנית מסחר"
+    if (campaignColumnId) columnValues[campaignColumnId] = row.source ? `${CAMPAIGN_VALUE} (${row.source})` : CAMPAIGN_VALUE;
     if (statusColumnId) columnValues[statusColumnId] = { label: statusLabel };
     if (followupColumnId) columnValues[followupColumnId] = { date: followupDateValue() };
 
@@ -498,6 +500,71 @@ export async function syncTradingPlanLead(
     return { ok: true, itemId: newItemId, created: true };
   } catch (e) {
     console.error('שגיאה בסנכרון ליד תוכנית המסחר ל-Monday.com', e);
+    return { ok: false, reason: 'error' };
+  }
+}
+
+// סנכרון ליד גנרי למאנדיי - לשימוש בכל מקום שאדם משאיר טלפון/מייל בלי תבנית ייעודית משלו (כרגע:
+// שיחה עם דור, וניסיון התחברות שלא נמצא במאנדיי). כמו syncTradingPlanLead - מזהה כרטיס קיים
+// לפי טלפון ומעדכן אותו במקום ליצור כפילות, ותמיד כותב source לעמודת הקמפיין כדי שיהיה ברור
+// מאיפה הליד הגיע.
+export async function syncGenericLead(params: {
+  phone: string | null | undefined;
+  email?: string | null;
+  name?: string | null;
+  source: string;
+  note?: string;
+}): Promise<{ ok: boolean; reason?: string; itemId?: string; created?: boolean }> {
+  const token = process.env.MONDAY_API_TOKEN;
+  const boardId = process.env.MONDAY_BOARD_ID;
+
+  if (!token || !boardId) return { ok: false, reason: 'not_configured' };
+  if (!params.phone) return { ok: false, reason: 'no_phone' };
+
+  try {
+    const { groupId, phoneColumnId, emailColumnId, campaignColumnId } = await getBoardSchema(token, boardId);
+    const normalized = normalizePhone(params.phone);
+
+    const existingItemId = phoneColumnId
+      ? await findItemIdByPhone(token, boardId, phoneColumnId, normalized).catch(() => null)
+      : null;
+
+    if (existingItemId) {
+      if (params.note) {
+        await mondayRequest(
+          token,
+          `mutation ($itemId: ID!, $body: String!) { create_update (item_id: $itemId, body: $body) { id } }`,
+          { itemId: existingItemId, body: params.note }
+        ).catch((e) => console.error('Monday.com: נכשל הוספת עדכון לליד קיים (ליד גנרי)', e));
+      }
+      return { ok: true, itemId: existingItemId, created: false };
+    }
+
+    const columnValues: Record<string, unknown> = {};
+    if (phoneColumnId) columnValues[phoneColumnId] = { phone: params.phone.startsWith('0') ? `972${params.phone.slice(1)}` : params.phone, countryShortName: 'IL' };
+    if (emailColumnId && params.email) columnValues[emailColumnId] = { email: params.email, text: params.email };
+    if (campaignColumnId) columnValues[campaignColumnId] = params.source;
+
+    const createData: any = await mondayRequest(
+      token,
+      `mutation ($boardId: ID!, $groupId: String, $itemName: String!, $columnValues: JSON) {
+        create_item (board_id: $boardId, group_id: $groupId, item_name: $itemName, column_values: $columnValues) { id }
+      }`,
+      { boardId, groupId: groupId || null, itemName: params.name || 'ליד חדש', columnValues: JSON.stringify(columnValues) }
+    );
+
+    const newItemId = createData?.data?.create_item?.id;
+    if (newItemId && params.note) {
+      await mondayRequest(
+        token,
+        `mutation ($itemId: ID!, $body: String!) { create_update (item_id: $itemId, body: $body) { id } }`,
+        { itemId: newItemId, body: params.note }
+      ).catch((e) => console.error('Monday.com: נכשל הוספת עדכון לליד חדש (ליד גנרי)', e));
+    }
+
+    return { ok: true, itemId: newItemId, created: true };
+  } catch (e) {
+    console.error('שגיאה בסנכרון ליד גנרי ל-Monday.com', e);
     return { ok: false, reason: 'error' };
   }
 }

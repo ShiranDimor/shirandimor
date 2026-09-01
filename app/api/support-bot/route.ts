@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/instantLogin';
 import { callSupportBot, extractContactFromText, extractGenderFromText, buildRuntimeContextBlock } from '@/lib/supportBot';
-import { classifyContactMonday } from '@/lib/tradingPlan/monday';
+import { classifyContactMonday, syncGenericLead } from '@/lib/tradingPlan/monday';
 import { getOrCreateConversation, getNextLive, getMonthTradeStats } from '@/lib/supportBotConversation';
 
 // מזהה את הפונה: אם יש טוקן התחברות תקין - זה המשתמש האמיתי (וגם הפרופיל שלו נטען לסיווג מדויק).
@@ -69,11 +69,13 @@ export async function POST(request: Request) {
   const updates: Record<string, unknown> = {};
   if (extracted.phone && !conversation?.contact_phone) updates.contact_phone = extracted.phone;
   if (extracted.email && !conversation?.contact_email) updates.contact_email = extracted.email;
+  let newlyClassifiedType: string | null = null;
   if ((extracted.phone || extracted.email) && (!conversation?.user_type || conversation.user_type === 'unknown')) {
-    updates.user_type = await classifyContactMonday(
+    newlyClassifiedType = await classifyContactMonday(
       extracted.phone || conversation?.contact_phone || null,
       extracted.email || conversation?.contact_email || null
     );
+    updates.user_type = newlyClassifiedType;
   }
   // זיהוי בחירת הפנייה (זכר/נקבה) - נשמר פעם אחת ומוזרק מחדש בכל תור בשיחה, כדי שהמודל
   // לא "יסטה" חזרה לברירת מחדל אחרי כמה הודעות בלי תזכורת מפורשת
@@ -88,6 +90,19 @@ export async function POST(request: Request) {
   const effectiveUserType = (updates.user_type as string | undefined) ?? conversation?.user_type ?? null;
   const effectiveContactName = conversation?.contact_name ?? null;
   const effectiveGender = (updates.gender as 'male' | 'female' | undefined) ?? conversation?.gender ?? null;
+
+  // ליד חדש (לא מנוי/ה, לא בקבוצת עדכונים) ששיתף/ה פרטי קשר לראשונה בשיחה עם דור - מסונכרן
+  // למאנדיי כדי שלא יישאר רק בטבלת השיחות/במייל סיכום שאפשר לפספס. רצה במקביל לתשובת ה-AI
+  // למטה (לא ברצף) כדי לא להוסיף זמן המתנה לתשובה של דור בצ'אט
+  const genericLeadSyncPromise = newlyClassifiedType === 'lead_new'
+    ? syncGenericLead({
+        phone: extracted.phone || conversation?.contact_phone || null,
+        email: extracted.email || conversation?.contact_email || null,
+        name: effectiveContactName,
+        source: "שיחה עם דור (הבוט)",
+        note: `ליד חדש משיחה עם דור באתר.${effectiveContactName ? ` שם: ${effectiveContactName}.` : ''}`,
+      }).catch((e) => { console.error('שגיאה בסנכרון ליד מדור למאנדיי', e); return null; })
+    : Promise.resolve(null);
 
   const { data: history, error: historyError } = await supabaseAdmin
     .from('support_bot_messages')
@@ -111,7 +126,7 @@ export async function POST(request: Request) {
       nextLive,
       monthStats,
     });
-    const reply = await callSupportBot(fullConversation, runtimeContext, effectiveGender);
+    const [reply] = await Promise.all([callSupportBot(fullConversation, runtimeContext, effectiveGender), genericLeadSyncPromise]);
 
     await supabaseAdmin.from('support_bot_messages').insert([
       { user_id: identity.id, conversation_id: conversation?.id, role: 'user', content: message },

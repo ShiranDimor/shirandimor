@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { trackFunnelEvent } from '@/lib/trackEvent';
-import { captureSourceFromUrl } from '@/lib/attribution';
+import { captureSourceFromUrl, getStoredSource } from '@/lib/attribution';
 import { supabase } from '@/lib/supabase';
 import { visibleSteps, visibleQuestions } from '@/lib/tradingPlan/questions';
 import { classifyProfile } from '@/lib/tradingPlan/profile';
@@ -56,8 +56,10 @@ export default function TradingPlanPage() {
     let params: URLSearchParams;
     try {
       params = new URLSearchParams(window.location.search);
-      setSource(params.get('source'));
       captureSourceFromUrl();
+      // אם אין ?source= ישירות בקישור הזה - נופלים חזרה למקור שנשמר בביקור (שנתפס בכל עמוד
+      // כניסה אפשרי, כולל דף הבית) - כדי לא לאבד את המקור האמיתי רק כי הפנייה הגיעה דרך עמוד ביניים
+      setSource(params.get('source') || getStoredSource());
     } catch {
       params = new URLSearchParams();
     }

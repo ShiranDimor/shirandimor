@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { sendLoginEmail } from '@/lib/instantLogin';
 import { ensureActiveSubscriberAccount } from '@/lib/subscriberStatus';
-import { isContactInSubscribersGroupMonday } from '@/lib/tradingPlan/monday';
+import { isContactInSubscribersGroupMonday, syncGenericLead } from '@/lib/tradingPlan/monday';
 
 // אימות מול "קבוצת סוחרים" במאנדיי - משתמש בפונקציה המשותפת שכבר בודקת גם טלפון וגם מייל
 // (במקום מימוש נפרד שבדק רק טלפון, וטעה לפספס מנוי שהטלפון שלו במאנדיי לא תואם בדיוק
@@ -28,6 +28,17 @@ export async function POST(request: Request) {
   try {
     const found = await isContactInSubscribersGroupMonday(phone, email);
     if (!found) {
+      // מישהו/י שניסה/תה להתחבר כמנוי/ה אבל הפרטים לא נמצאו במאנדיי - זה עלול להיות אי-התאמת
+      // נתונים אמיתית (למשל טלפון שונה ממה שרשום) או מישהו/י שחושב/ת בטעות שהוא/היא מנוי/ה.
+      // בלי הסנכרון הזה הפרטים היו פשוט נעלמים בלי שום תיעוד
+      await syncGenericLead({
+        phone,
+        email,
+        name: fullName,
+        source: 'ניסיון התחברות - לא נמצא/ה במאנדיי',
+        note: `ניסה/תה להתחבר כמנוי/ה בעמוד ההתחברות, אבל הטלפון/מייל לא נמצאו בקבוצת הסוחרים במאנדיי. ייתכן שזו אי-התאמת פרטים אמיתית שכדאי לבדוק.`,
+      }).catch((e) => console.error('שגיאה בסנכרון ליד מניסיון התחברות שנכשל', e));
+
       return NextResponse.json({ verified: false, configured: true });
     }
 
