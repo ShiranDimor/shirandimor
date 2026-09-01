@@ -361,7 +361,7 @@ export default function PortfolioPage() {
                   <th>כניסה</th>
                   <th>נוכחי</th>
                   <th>סטופ</th>
-                  <th>עד איזה מחיר להיכנס</th>
+                  <th style={{ whiteSpace: 'normal', maxWidth: '80px', lineHeight: 1.3 }}>עד איזה מחיר אפשר להיכנס לעסקה</th>
                   <th>רווח/הפסד</th>
                 </tr>
               </thead>
