@@ -75,12 +75,18 @@ export default function AdminWhatsappAnalysisPage() {
     setRawText('');
     setProcessingFile(true);
 
-    // ייצוא צ׳אט מוואטסאפ דסקטופ יוצא כקובץ zip שמכיל בפנים את קובץ הטקסט של השיחה -
-    // מחלצים אותו ישירות בדפדפן כדי שלא יהיה צורך לפתוח/לחלץ אותו ידנית. קובץ גדול (למשל
-    // קבוצה עמוסה עם הרבה היסטוריה) יכול לקחת רגע לחילוץ - processingFile חוסם את כפתור
-    // הניתוח באותו זמן, כדי שלא ילחצו עליו לפני שהטקסט בכלל נטען לתוך rawText
-    if (file.name.toLowerCase().endsWith('.zip')) {
-      try {
+    // ייצוא צ׳אט מוואטסאפ דסקטופ יוצא כקובץ zip שמכיל בפנים את קובץ הטקסט של השיחה - מחלצים
+    // אותו ישירות בדפדפן כדי שלא יהיה צורך לפתוח/לחלץ אותו ידנית. קובץ גדול (למשל קבוצה עמוסה
+    // עם הרבה היסטוריה) יכול לקחת רגע לחילוץ - processingFile חוסם את כפתור הניתוח באותו זמן.
+    //
+    // מזהים zip לפי תוכן הקובץ (חתימת "PK" בתחילת הקובץ) ולא לפי סיומת השם - כי שם הקובץ
+    // שמגיע מוואטסאפ לפעמים מגיע עם סיומת מוזרה/משובשת (למשל בגלל תערובת עברית+אנגלית),
+    // וזיהוי לפי סיומת בלבד החמיץ קבצי zip אמיתיים וגרם להם להיקרא (בטעות) כטקסט גולמי
+    try {
+      const headerBytes = new Uint8Array(await file.slice(0, 4).arrayBuffer());
+      const isZip = headerBytes[0] === 0x50 && headerBytes[1] === 0x4b; // "PK"
+
+      if (isZip) {
         const zip = await JSZip.loadAsync(file);
         const txtEntry = Object.values(zip.files).find((f) => !f.dir && f.name.toLowerCase().endsWith('.txt'));
         if (!txtEntry) {
@@ -88,23 +94,14 @@ export default function AdminWhatsappAnalysisPage() {
         } else {
           setRawText(await txtEntry.async('string'));
         }
-      } catch {
-        setError('לא הצלחנו לפתוח את קובץ ה-zip');
+      } else {
+        setRawText(await file.text());
       }
-      setProcessingFile(false);
-      return;
+    } catch {
+      setError('לא הצלחנו לקרוא את הקובץ');
     }
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      setRawText(String(reader.result || ''));
-      setProcessingFile(false);
-    };
-    reader.onerror = () => {
-      setError('לא הצלחנו לקרוא את הקובץ');
-      setProcessingFile(false);
-    };
-    reader.readAsText(file);
+    setProcessingFile(false);
   }
 
   async function handleAnalyze() {
