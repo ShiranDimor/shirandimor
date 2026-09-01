@@ -38,8 +38,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  const withContact = (subscribers || []).filter((s) => s.phone || s.email);
-  const skippedNoPhone = (subscribers || []).length - withContact.length;
+  // חריגים קבועים - אנשים עם חשבון מנוי אמיתי שהוענק ידנית מחוץ למאנדיי לגמרי (למשל בני משפחה),
+  // ולכן תמיד "לא ימצאו" שם בבדיקה - זה לא באג, זה מצב קבוע ומכוון. בלי הרשימה הזו הם תמיד
+  // יסומנו כמועמדים להסרה, ויתפסו אותנו לחשוב שיש בעיה אמיתית בכל פעם
+  const MANUAL_EXEMPT_EMAILS = new Set(['sivandimor@gmail.com']);
+
+  const nonExempted = (subscribers || []).filter((s) => !MANUAL_EXEMPT_EMAILS.has(normalizeEmail(s.email)));
+  const withContact = nonExempted.filter((s) => s.phone || s.email);
+  const skippedNoPhone = nonExempted.length - withContact.length;
 
   const { phones: activePhones, emails: activeEmails } = await getMondaySubscriberContacts();
 
@@ -55,12 +61,16 @@ export async function POST(request: Request) {
 
   // רשת ביטחון: הסרה של חלק גדול ופתאומי מהמנויים כמעט תמיד אומרת שהשליפה ממאנדיי הייתה
   // חלקית/נכשלה (למשל rate limit באמצע pagination) ולא שבאמת כולם עזבו בבת אחת - בדיוק מה
-  // שקרה בפועל ב-1.9.2026 (48 ירדו ל-31). לא מבצעים הסרה אוטומטית במקרה חריג כזה - רק מדווחים
+  // שקרה בפועל ב-1.9.2026 (48 ירדו ל-31). לא מבצעים הסרה אוטומטית במקרה חריג כזה - רק מדווחים.
+  // activePhones/activeEmails.size מוחזרים גם כדי שיהיה אפשר לראות אם השליפה ממאנדיי עצמה
+  // חשודה בגודלה (למשל הרבה יותר קטנה מהמצופה) - זה יעזור לאבחן אם התקלה חוזרת שוב
   const REMOVAL_SAFETY_LIMIT = Math.max(5, Math.ceil(withContact.length * 0.15));
   if (toRemove.length > REMOVAL_SAFETY_LIMIT) {
     return NextResponse.json({
       error: `בטיחות: השליפה ממאנדיי הציעה להסיר ${toRemove.length} מתוך ${withContact.length} מנויים בבת אחת - זה חריג מדי ונראה כמו תקלה בשליפה, לא ירידה אמיתית. שום מנוי לא הוסר. בדקי ידנית מול מאנדיי לפני שמריצים שוב.`,
       proposedRemovals: toRemove.map((s) => s.full_name || s.email),
+      mondayPhonesCount: activePhones.size,
+      mondayEmailsCount: activeEmails.size,
     }, { status: 500 });
   }
 
@@ -127,5 +137,8 @@ export async function POST(request: Request) {
     createdNames,
     placeholderEmailNames,
     skippedNoContact,
+    mondayPhonesCount: activePhones.size,
+    mondayEmailsCount: activeEmails.size,
+    mondayTotalContacts: mondaySubscribers.length,
   });
 }

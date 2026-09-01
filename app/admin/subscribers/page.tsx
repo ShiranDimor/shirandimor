@@ -44,7 +44,11 @@ export default function AdminSubscribersPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        setSyncMessage('שגיאה: ' + (data.error || 'לא הצלחנו לבדוק'));
+        const diagText = (data.mondayPhonesCount !== undefined)
+          ? ` [אבחון: מאנדיי החזיר ${data.mondayPhonesCount} טלפונים ו-${data.mondayEmailsCount} מיילים]`
+          : '';
+        const proposedText = data.proposedRemovals?.length > 0 ? ` מועמדים להסרה: ${data.proposedRemovals.join(', ')}` : '';
+        setSyncMessage('שגיאה: ' + (data.error || 'לא הצלחנו לבדוק') + diagText + proposedText);
       } else {
         const removedText = data.removed > 0 ? ` (${data.removedNames.join(', ')})` : '';
         const createdText = data.created > 0 ? ` · ${data.created} נוספו ממאנדיי (${data.createdNames.join(', ')})` : '';
@@ -54,10 +58,11 @@ export default function AdminSubscribersPage() {
         const skippedNoContactText = data.skippedNoContact?.length > 0
           ? ` · ${data.skippedNoContact.length} בקבוצת הסוחרים במאנדיי בלי מייל ובלי טלפון בכלל, לא ניתן ליצור להם חשבון (${data.skippedNoContact.join(', ')})`
           : '';
+        const diagText = ` [אבחון: מאנדיי - ${data.mondayTotalContacts} אנשים בקבוצה, ${data.mondayPhonesCount} טלפונים, ${data.mondayEmailsCount} מיילים]`;
         setSyncMessage(
           `נבדקו ${data.checked} מנויים · ${data.removed} הוסרו${removedText}${createdText}${placeholderText}` +
           (data.skippedNoPhone > 0 ? ` · ${data.skippedNoPhone} לא נבדקו (אין טלפון ואין מייל בפרופיל)` : '') +
-          skippedNoContactText
+          skippedNoContactText + diagText
         );
         loadApprovedSubs();
       }
