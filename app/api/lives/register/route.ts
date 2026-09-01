@@ -14,13 +14,19 @@ function normalizeMondayPhone(raw: string) {
   return digits.slice(-9);
 }
 
+// זורק על שגיאת GraphQL (json.errors) ולא רק שגיאת HTTP - מאנדיי לרוב מחזיר 200 גם כששאילתה
+// נכשלה (rate limit/מכסת מורכבות), ובלי הבדיקה הזו pagination שנכשל באמצע נראה כמו "אין עוד תוצאות"
 async function mondayRequest(token: string, query: string, variables: Record<string, unknown>) {
   const res = await fetch('https://api.monday.com/v2', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: token },
     body: JSON.stringify({ query, variables }),
   });
-  return res.json();
+  const json = await res.json();
+  if (!res.ok || json.errors) {
+    throw new Error(`Monday API error (${res.status}): ${JSON.stringify(json.errors || json)}`);
+  }
+  return json;
 }
 
 async function getBoardSchema(token: string, boardId: string) {

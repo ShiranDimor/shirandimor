@@ -53,6 +53,17 @@ export async function POST(request: Request) {
       !(s.email && activeEmails.has(normalizeEmail(s.email)))
   );
 
+  // רשת ביטחון: הסרה של חלק גדול ופתאומי מהמנויים כמעט תמיד אומרת שהשליפה ממאנדיי הייתה
+  // חלקית/נכשלה (למשל rate limit באמצע pagination) ולא שבאמת כולם עזבו בבת אחת - בדיוק מה
+  // שקרה בפועל ב-1.9.2026 (48 ירדו ל-31). לא מבצעים הסרה אוטומטית במקרה חריג כזה - רק מדווחים
+  const REMOVAL_SAFETY_LIMIT = Math.max(5, Math.ceil(withContact.length * 0.15));
+  if (toRemove.length > REMOVAL_SAFETY_LIMIT) {
+    return NextResponse.json({
+      error: `בטיחות: השליפה ממאנדיי הציעה להסיר ${toRemove.length} מתוך ${withContact.length} מנויים בבת אחת - זה חריג מדי ונראה כמו תקלה בשליפה, לא ירידה אמיתית. שום מנוי לא הוסר. בדקי ידנית מול מאנדיי לפני שמריצים שוב.`,
+      proposedRemovals: toRemove.map((s) => s.full_name || s.email),
+    }, { status: 500 });
+  }
+
   if (toRemove.length > 0) {
     await supabaseAdmin
       .from('profiles')

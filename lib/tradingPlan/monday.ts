@@ -23,13 +23,21 @@ function normalizePhone(raw: string) {
   return digits.slice(-9);
 }
 
+// קריטי: חייבים לזרוק על שגיאת GraphQL (json.errors) ולא רק על שגיאת HTTP - מאנדיי לרוב מחזיר
+// 200 גם כשהשאילתה נכשלה (למשל חריגה ממכסת המורכבות/rate limit באמצע pagination). בלי הבדיקה
+// הזו, לולאת pagination הייתה מפרשת עמוד שנכשל כ"אין עוד תוצאות" ומחזירה רשימה חלקית בלי
+// שום שגיאה - בדיוק מה שגרם ביום הזה להוריד בטעות מנויים אמיתיים שהיו קיימים בפועל במאנדיי
 async function mondayRequest(token: string, query: string, variables: Record<string, unknown>) {
   const res = await fetch('https://api.monday.com/v2', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: token },
     body: JSON.stringify({ query, variables }),
   });
-  return res.json();
+  const json = await res.json();
+  if (!res.ok || json.errors) {
+    throw new Error(`Monday API error (${res.status}): ${JSON.stringify(json.errors || json)}`);
+  }
+  return json;
 }
 
 async function getBoardSchema(token: string, boardId: string) {
