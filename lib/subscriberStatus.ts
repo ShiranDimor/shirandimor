@@ -64,15 +64,19 @@ export async function findCompletedTradingPlanIdByContact(phone: string | null |
 // כי תאריך ההצטרפות קובע את יום החיוב החודשי וחשוב לדיוק בחישובים כמו צפי הכנסה
 export async function ensureActiveSubscriberAccount(email: string, phone: string, fullName: string, startedAt?: string) {
   const subscriptionStartedAt = startedAt || new Date().toISOString();
-  const { data: existing } = await supabaseAdmin.from('profiles').select('id, role').eq('email', email).maybeSingle();
 
-  // אם לא נמצא חשבון לפי המייל, בודקים גם לפי טלפון - כדי שמי שכבר רשום (למשל שילם בעבר
-  // עם מייל אחר) לא יקבל בטעות חשבון מנוי כפול כשהוא משלם שוב עם מייל חדש
-  let matched = existing;
+  // טלפון קודם, מייל רק כגיבוי: לכל אדם יש נייד אחד ויחיד, אבל אותו אדם יכול להופיע עם כמה
+  // מיילים שונים (למשל שילם פעם עם מייל אחר) - התאמה לפי מייל קודם הייתה מפספסת את זה ויוצרת
+  // בטעות חשבון מנוי כפול
+  let matched: { id: string; role: string } | null = null;
   const normalizedNewPhone = normalizePhone(phone);
-  if (!matched && normalizedNewPhone) {
+  if (normalizedNewPhone) {
     const { data: withPhone } = await supabaseAdmin.from('profiles').select('id, role, phone').not('phone', 'is', null);
     matched = (withPhone || []).find((p) => normalizePhone(p.phone) === normalizedNewPhone) || null;
+  }
+  if (!matched) {
+    const { data: existing } = await supabaseAdmin.from('profiles').select('id, role').eq('email', email).maybeSingle();
+    matched = existing;
   }
 
   if (matched) {

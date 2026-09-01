@@ -48,13 +48,16 @@ export default function AdminSubscribersPage() {
       } else {
         const removedText = data.removed > 0 ? ` (${data.removedNames.join(', ')})` : '';
         const createdText = data.created > 0 ? ` · ${data.created} נוספו ממאנדיי (${data.createdNames.join(', ')})` : '';
-        const skippedNoEmailText = data.skippedNoEmail?.length > 0
-          ? ` · ${data.skippedNoEmail.length} בקבוצת הסוחרים במאנדיי בלי מייל, לא ניתן ליצור להם חשבון באתר (${data.skippedNoEmail.join(', ')})`
+        const placeholderText = data.placeholderEmailNames?.length > 0
+          ? ` · מתוכם ${data.placeholderEmailNames.length} בלי מייל במאנדיי (${data.placeholderEmailNames.join(', ')}) - נספרים כמנויים אבל לא יוכלו להתחבר בעצמם עד שיהיה להם מייל אמיתי`
+          : '';
+        const skippedNoContactText = data.skippedNoContact?.length > 0
+          ? ` · ${data.skippedNoContact.length} בקבוצת הסוחרים במאנדיי בלי מייל ובלי טלפון בכלל, לא ניתן ליצור להם חשבון (${data.skippedNoContact.join(', ')})`
           : '';
         setSyncMessage(
-          `נבדקו ${data.checked} מנויים · ${data.removed} הוסרו${removedText}${createdText}` +
+          `נבדקו ${data.checked} מנויים · ${data.removed} הוסרו${removedText}${createdText}${placeholderText}` +
           (data.skippedNoPhone > 0 ? ` · ${data.skippedNoPhone} לא נבדקו (אין טלפון ואין מייל בפרופיל)` : '') +
-          skippedNoEmailText
+          skippedNoContactText
         );
         loadApprovedSubs();
       }

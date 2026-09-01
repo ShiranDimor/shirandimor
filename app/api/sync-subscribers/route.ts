@@ -80,9 +80,18 @@ export async function POST(request: Request) {
   const existingSubscriberPhones = new Set((subscriberProfiles || []).map((p) => normalizePhone(p.phone || '')).filter(Boolean));
   const existingSubscriberEmails = new Set((subscriberProfiles || []).map((p) => normalizeEmail(p.email || '')).filter(Boolean));
 
+  // מייל הוא לא הזיהוי החשוב - נייד הוא (יש רק אחד לכל אדם) - אבל מייל כן נחוץ טכנית כדי
+  // ליצור חשבון התחברות אמיתי (ההתחברות באתר כולה מבוססת על קישור למייל, אין דרך אחרת).
+  // מי שיש לו/ה נייד בלי מייל בכלל במאנדיי עדיין מקבל/ת חשבון "מנוי" באתר (כדי שהספירה תהיה
+  // מדויקת) עם מייל-placeholder פנימי שלא הולך לאף אחד - רק כדי שהמערכת תוכל ליצור את החשבון.
+  // אם ירצו להתחבר בפועל, יצטרכו למסור מייל אמיתי (למשל בעמוד ההתחברות), ואז ההתאמה לפי נייד
+  // תזהה את אותו חשבון קיים במקום ליצור כפילות.
+  const PLACEHOLDER_EMAIL_DOMAIN = 'no-email.shirandimor.internal';
+
   const mondaySubscribers = await getMondaySubscriberDetails();
   const createdNames: string[] = [];
-  const skippedNoEmail: string[] = [];
+  const placeholderEmailNames: string[] = [];
+  const skippedNoContact: string[] = [];
 
   for (const s of mondaySubscribers) {
     const normPhone = s.phone ? normalizePhone(s.phone) : '';
@@ -90,14 +99,18 @@ export async function POST(request: Request) {
     const alreadySubscriber = (normPhone && existingSubscriberPhones.has(normPhone)) || (normEmail && existingSubscriberEmails.has(normEmail));
     if (alreadySubscriber) continue;
 
-    if (!s.email) {
-      skippedNoEmail.push(s.name || s.phone || 'ללא שם');
+    if (!s.email && !normPhone) {
+      skippedNoContact.push(s.name || 'ללא שם');
       continue;
     }
 
+    const usingPlaceholder = !s.email;
+    const emailToUse = s.email || `p${normPhone}@${PLACEHOLDER_EMAIL_DOMAIN}`;
+
     try {
-      await ensureActiveSubscriberAccount(s.email, s.phone || '', s.name || 'מנוי חדש', s.joinDate || undefined);
-      createdNames.push(s.name || s.email);
+      await ensureActiveSubscriberAccount(emailToUse, s.phone || '', s.name || 'מנוי חדש', s.joinDate || undefined);
+      createdNames.push(s.name || s.email || s.phone || '');
+      if (usingPlaceholder) placeholderEmailNames.push(s.name || s.phone || '');
       if (normPhone) existingSubscriberPhones.add(normPhone);
       if (normEmail) existingSubscriberEmails.add(normEmail);
     } catch (e) {
@@ -112,6 +125,7 @@ export async function POST(request: Request) {
     skippedNoPhone,
     created: createdNames.length,
     createdNames,
-    skippedNoEmail,
+    placeholderEmailNames,
+    skippedNoContact,
   });
 }
