@@ -205,6 +205,12 @@ export default function AdminDashboard() {
           <div className="at-title">בוט תמיכה - בדיקה</div>
           <div className="at-count">כלי פנימי</div>
         </Link>
+
+        <Link href="/admin/whatsapp-analysis" className="admin-tile">
+          <div className="at-icon">💬</div>
+          <div className="at-title">ניתוח קבוצות ווטסאפ</div>
+          <div className="at-count">כלי פנימי</div>
+        </Link>
       </div>
 
       <button className="btn-outline" style={{ width: '100%', marginTop: '8px' }} onClick={handleRefreshAllPrices} disabled={refreshing}>
