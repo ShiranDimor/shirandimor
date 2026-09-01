@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { sendLoginEmail } from '@/lib/instantLogin';
-import { ensureActiveSubscriberAccount } from '@/lib/subscriberStatus';
+import { ensureActiveSubscriberAccount, isActiveSubscriber } from '@/lib/subscriberStatus';
 import { isContactInSubscribersGroupMonday, syncGenericLead } from '@/lib/tradingPlan/monday';
 
 // אימות מול "קבוצת סוחרים" במאנדיי - משתמש בפונקציה המשותפת שכבר בודקת גם טלפון וגם מייל
@@ -28,10 +28,15 @@ export async function POST(request: Request) {
   try {
     const found = await isContactInSubscribersGroupMonday(phone, email);
     if (!found) {
+      // מנוי/ה אמיתי/ת לא צריך/ה לחזור כליד - בודקים גם מול טבלת המנויים באתר (isActiveSubscriber),
+      // לא רק מול הבדיקה הספציפית הזו של מאנדיי, כדי לא ליצור ליד מיותר למישהו/י שכבר מנוי/ה
+      // בפועל (למשל אם הטלפון/מייל שלו/ה במאנדיי לא תואמים בדיוק מסיבה כלשהי)
+      const alreadySubscriber = await isActiveSubscriber(phone, email);
+
       // מישהו/י שניסה/תה להתחבר כמנוי/ה אבל הפרטים לא נמצאו במאנדיי - זה עלול להיות אי-התאמת
       // נתונים אמיתית (למשל טלפון שונה ממה שרשום) או מישהו/י שחושב/ת בטעות שהוא/היא מנוי/ה.
       // בלי הסנכרון הזה הפרטים היו פשוט נעלמים בלי שום תיעוד
-      await syncGenericLead({
+      if (!alreadySubscriber) await syncGenericLead({
         phone,
         email,
         name: fullName,
