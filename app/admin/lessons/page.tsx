@@ -219,32 +219,51 @@ export default function AdminLessonsPage() {
       {loadingLessons && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>טוענים...</p>}
       {!loadingLessons && lessons.length === 0 && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>עדיין לא נוספו שיעורים</p>}
 
-      {lessons.map((lesson) => (
-        <div className="admin-row" key={lesson.id}>
-          <div>
-            <div className="name">
-              {lesson.title}
-              {!lesson.published && <span style={{ marginRight: '8px', fontSize: '10.5px', color: '#E8A33D', border: '1px solid #E8A33D', borderRadius: '5px', padding: '2px 6px' }}>טיוטה</span>}
+      {!loadingLessons && [...LESSON_CATEGORIES, 'ללא קטגוריה מוכרת'].map((c) => {
+        const inGroup = c === 'ללא קטגוריה מוכרת'
+          ? lessons.filter((l) => !LESSON_CATEGORIES.includes(l.category as (typeof LESSON_CATEGORIES)[number]))
+          : lessons.filter((l) => l.category === c);
+        if (inGroup.length === 0) return null;
+
+        return (
+          <div key={c} style={{ marginBottom: '28px' }}>
+            <div style={{ fontSize: '14px', fontWeight: 700, color: '#E8A33D', marginBottom: '10px' }}>{c}</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '16px' }}>
+              {inGroup.map((lesson) => (
+                <div key={lesson.id} style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-hairline)', borderRadius: '10px', overflow: 'hidden' }}>
+                  <div style={{ position: 'relative', aspectRatio: '16 / 9', background: '#000' }}>
+                    <img src={`https://img.youtube.com/vi/${lesson.video_id}/hqdefault.jpg`} alt={lesson.title} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                    {!lesson.published && (
+                      <span style={{ position: 'absolute', top: '8px', right: '8px', fontSize: '10.5px', color: '#E8A33D', background: 'rgba(8,19,26,0.85)', border: '1px solid #E8A33D', borderRadius: '5px', padding: '2px 6px' }}>טיוטה</span>
+                    )}
+                  </div>
+                  <div style={{ padding: '12px' }}>
+                    <div style={{ fontSize: '13.5px', fontWeight: 700, marginBottom: '4px' }}>{lesson.title}</div>
+                    <div style={{ fontSize: '11.5px', color: 'var(--text-tertiary)', marginBottom: '10px' }}>
+                      {lesson.duration_minutes ? `${lesson.duration_minutes} דק'` : 'ללא משך מוגדר'}
+                    </div>
+                    <div style={{ display: 'flex', gap: '6px' }}>
+                      <button type="button" className="btn-outline" style={{ flex: 1, padding: '8px 12px', fontSize: '12.5px' }} onClick={() => startEdit(lesson)}>עריכה</button>
+                      <button
+                        className="row-delete-btn"
+                        onClick={() => handleDelete(lesson.id, lesson.title)}
+                        disabled={deletingId === lesson.id}
+                        title="מחיקת שיעור"
+                      >
+                        {deletingId === lesson.id ? '…' : (
+                          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--loss)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M3 6h18" /><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /><line x1="10" y1="11" x2="10" y2="17" /><line x1="14" y1="11" x2="14" y2="17" />
+                          </svg>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
-            <div className="email">{lesson.category || 'ללא קטגוריה'}{lesson.duration_minutes ? ` · ${lesson.duration_minutes} דק'` : ''}</div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <button type="button" className="btn-outline" style={{ padding: '8px 12px', fontSize: '12.5px' }} onClick={() => startEdit(lesson)}>עריכה</button>
-            <button
-              className="row-delete-btn"
-              onClick={() => handleDelete(lesson.id, lesson.title)}
-              disabled={deletingId === lesson.id}
-              title="מחיקת שיעור"
-            >
-              {deletingId === lesson.id ? '…' : (
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--loss)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M3 6h18" /><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /><line x1="10" y1="11" x2="10" y2="17" /><line x1="14" y1="11" x2="14" y2="17" />
-                </svg>
-              )}
-            </button>
-          </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
