@@ -14,6 +14,19 @@ export default function AuthCallbackPage() {
   }, []);
 
   async function handleCallback() {
+    // קישורי כניסה שנוצרים דרך supabaseAdmin.auth.admin.generateLink חוזרים לכאן עם ?code=...
+    // (זרימת PKCE) - בלי exchangeCodeForSession מפורש הקוד הזה פשוט לא נוצל, ו-getSession
+    // תמיד מחזירה session ריקה, בלי שום שגיאה ברורה - זה מה שגרם לכניסה מקישור המייל להיכשל
+    const code = new URL(window.location.href).searchParams.get('code');
+    if (code) {
+      const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+      if (exchangeError) {
+        setStatus('הכניסה נכשלה. אפשר לנסות שוב.');
+        setTimeout(() => router.push('/login'), 2000);
+        return;
+      }
+    }
+
     const { data: { session } } = await supabase.auth.getSession();
 
     if (!session) {

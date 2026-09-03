@@ -11,7 +11,7 @@ export async function POST(request: Request) {
   const { data: profile } = await supabaseAdmin
     .from('profiles')
     .select('id, role')
-    .eq('email', email)
+    .ilike('email', email.trim())
     .maybeSingle();
 
   if (!profile || (profile.role !== 'admin' && profile.role !== 'subscriber')) {
