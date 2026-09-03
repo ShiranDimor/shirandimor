@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
-import { LESSONS_LIBRARY_PUBLIC } from '@/lib/lessonsConfig';
+import { LESSONS_LIBRARY_PUBLIC, LESSON_CATEGORIES } from '@/lib/lessonsConfig';
 
 type LessonSummary = {
   id: string;
@@ -95,8 +95,36 @@ export default function LessonsLibraryPage() {
     setEntering(false);
   }
 
-  const categories = Array.from(new Set(lessons.map((l) => l.category).filter(Boolean))) as string[];
+  // רק נושאים שיש בהם בפועל שיעורים, בסדר הקבוע מ-LESSON_CATEGORIES (ולא לפי סדר הופעה מקרי)
+  const presentCategories = LESSON_CATEGORIES.filter((c) => lessons.some((l) => l.category === c));
   const visibleLessons = activeCategory ? lessons.filter((l) => l.category === activeCategory) : lessons;
+
+  function renderGrid(list: LessonSummary[]) {
+    return (
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '16px' }}>
+        {list.map((lesson) => (
+          <Link key={lesson.id} href={`/lessons/${lesson.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+            <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-hairline)', borderRadius: '10px', overflow: 'hidden' }}>
+              <div style={{ position: 'relative', aspectRatio: '16 / 9', background: '#000' }}>
+                <img src={lesson.thumbnailUrl} alt={lesson.title} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <span style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(79,201,196,0.9)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#08131a', fontSize: '16px' }}>▶</span>
+                </div>
+              </div>
+              <div style={{ padding: '12px' }}>
+                <div style={{ fontSize: '13.5px', fontWeight: 700, marginBottom: '4px' }}>{lesson.title}</div>
+                <div style={{ fontSize: '11.5px', color: 'var(--text-tertiary)' }}>
+                  {lesson.category && <span style={{ color: '#E8A33D', fontWeight: 600 }}>{lesson.category}</span>}
+                  {lesson.category && lesson.durationMinutes ? ' · ' : ''}
+                  {lesson.durationMinutes ? `${lesson.durationMinutes} דק'` : ''}
+                </div>
+              </div>
+            </div>
+          </Link>
+        ))}
+      </div>
+    );
+  }
 
   if (checkingAccess) {
     return <div className="wrap"><p style={{ padding: '40px', textAlign: 'center' }}>טוענים...</p></div>;
@@ -149,10 +177,10 @@ export default function LessonsLibraryPage() {
 
       {!gateNeeded && (
         <>
-          {categories.length > 0 && (
+          {presentCategories.length > 1 && (
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '20px' }}>
               <button type="button" className={`filter-chip ${!activeCategory ? 'active' : ''}`} onClick={() => setActiveCategory(null)}>הכל</button>
-              {categories.map((c) => (
+              {presentCategories.map((c) => (
                 <button key={c} type="button" className={`filter-chip ${activeCategory === c ? 'active' : ''}`} onClick={() => setActiveCategory(c)}>{c}</button>
               ))}
             </div>
@@ -161,28 +189,14 @@ export default function LessonsLibraryPage() {
           {loading && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>טוענים...</p>}
           {!loading && visibleLessons.length === 0 && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>עדיין אין כאן שיעורים</p>}
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '16px' }}>
-            {visibleLessons.map((lesson) => (
-              <Link key={lesson.id} href={`/lessons/${lesson.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-hairline)', borderRadius: '10px', overflow: 'hidden' }}>
-                  <div style={{ position: 'relative', aspectRatio: '16 / 9', background: '#000' }}>
-                    <img src={lesson.thumbnailUrl} alt={lesson.title} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-                    <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <span style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(79,201,196,0.9)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#08131a', fontSize: '16px' }}>▶</span>
-                    </div>
-                  </div>
-                  <div style={{ padding: '12px' }}>
-                    <div style={{ fontSize: '13.5px', fontWeight: 700, marginBottom: '4px' }}>{lesson.title}</div>
-                    <div style={{ fontSize: '11.5px', color: 'var(--text-tertiary)' }}>
-                      {lesson.category && <span style={{ color: '#E8A33D', fontWeight: 600 }}>{lesson.category}</span>}
-                      {lesson.category && lesson.durationMinutes ? ' · ' : ''}
-                      {lesson.durationMinutes ? `${lesson.durationMinutes} דק'` : ''}
-                    </div>
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </div>
+          {!loading && activeCategory && renderGrid(visibleLessons)}
+
+          {!loading && !activeCategory && presentCategories.map((c) => (
+            <div key={c} style={{ marginBottom: '28px' }}>
+              <div style={{ fontSize: '14px', fontWeight: 700, color: '#E8A33D', marginBottom: '10px' }}>{c}</div>
+              {renderGrid(lessons.filter((l) => l.category === c))}
+            </div>
+          ))}
         </>
       )}
 

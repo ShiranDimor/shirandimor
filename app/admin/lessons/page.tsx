@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
+import { LESSON_CATEGORIES } from '@/lib/lessonsConfig';
 
 type Lesson = {
   id: string;
@@ -19,7 +20,7 @@ type Lesson = {
 const emptyForm = {
   title: '',
   description: '',
-  category: '',
+  category: LESSON_CATEGORIES[0] as string,
   videoUrl: '',
   durationMinutes: '',
   published: true,
@@ -75,7 +76,7 @@ export default function AdminLessonsPage() {
     setForm({
       title: lesson.title,
       description: lesson.description || '',
-      category: lesson.category || '',
+      category: lesson.category || LESSON_CATEGORIES[0],
       videoUrl: `https://www.youtube.com/watch?v=${lesson.video_id}`,
       durationMinutes: lesson.duration_minutes ? String(lesson.duration_minutes) : '',
       published: lesson.published,
@@ -191,7 +192,11 @@ export default function AdminLessonsPage() {
 
         <input className="tp-text-input" style={{ minHeight: 'auto', marginBottom: '10px' }} placeholder="כותרת" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
         <textarea className="tp-text-input" style={{ marginBottom: '10px' }} placeholder="תיאור קצר" rows={2} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
-        <input className="tp-text-input" style={{ minHeight: 'auto', marginBottom: '10px' }} placeholder="קטגוריה (למשל: ניתוח טכני, פסיכולוגיה של מסחר)" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} />
+        <select className="tp-text-input" style={{ minHeight: 'auto', marginBottom: '10px' }} value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>
+          {LESSON_CATEGORIES.map((c) => (
+            <option key={c} value={c}>{c}</option>
+          ))}
+        </select>
         <input className="tp-text-input" style={{ minHeight: 'auto', marginBottom: '10px' }} placeholder={editingId ? 'לינק YouTube חדש (רק אם רוצים להחליף סרטון)' : 'לינק YouTube'} value={form.videoUrl} onChange={(e) => setForm({ ...form, videoUrl: e.target.value })} />
 
         <input className="tp-text-input" style={{ minHeight: 'auto', marginBottom: '10px' }} type="number" placeholder="אורך בדקות" value={form.durationMinutes} onChange={(e) => setForm({ ...form, durationMinutes: e.target.value })} />
