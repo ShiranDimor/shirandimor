@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
+import ClearableInput from '@/components/ClearableInput';
 
 type ApprovedSub = {
   id: string;
@@ -30,6 +31,13 @@ export default function AdminSubscribersPage() {
   const [debugging, setDebugging] = useState(false);
   const [debugResult, setDebugResult] = useState('');
 
+  const [showGrantForm, setShowGrantForm] = useState(false);
+  const [grantName, setGrantName] = useState('');
+  const [grantPhone, setGrantPhone] = useState('');
+  const [grantEmail, setGrantEmail] = useState('');
+  const [granting, setGranting] = useState(false);
+  const [grantMessage, setGrantMessage] = useState('');
+
   async function handleSyncSubscribers() {
     setSyncing(true);
     setSyncMessage('');
@@ -44,12 +52,25 @@ export default function AdminSubscribersPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        setSyncMessage('שגיאה: ' + (data.error || 'לא הצלחנו לבדוק'));
+        const diagText = (data.mondayPhonesCount !== undefined)
+          ? ` [אבחון: מאנדיי החזיר ${data.mondayPhonesCount} טלפונים ו-${data.mondayEmailsCount} מיילים]`
+          : '';
+        const proposedText = data.proposedRemovals?.length > 0 ? ` מועמדים להסרה: ${data.proposedRemovals.join(', ')}` : '';
+        setSyncMessage('שגיאה: ' + (data.error || 'לא הצלחנו לבדוק') + diagText + proposedText);
       } else {
         const removedText = data.removed > 0 ? ` (${data.removedNames.join(', ')})` : '';
+        const createdText = data.created > 0 ? ` · ${data.created} נוספו ממאנדיי (${data.createdNames.join(', ')})` : '';
+        const placeholderText = data.placeholderEmailNames?.length > 0
+          ? ` · מתוכם ${data.placeholderEmailNames.length} בלי מייל במאנדיי (${data.placeholderEmailNames.join(', ')}) - נספרים כמנויים אבל לא יוכלו להתחבר בעצמם עד שיהיה להם מייל אמיתי`
+          : '';
+        const skippedNoContactText = data.skippedNoContact?.length > 0
+          ? ` · ${data.skippedNoContact.length} בקבוצת הסוחרים במאנדיי בלי מייל ובלי טלפון בכלל, לא ניתן ליצור להם חשבון (${data.skippedNoContact.join(', ')})`
+          : '';
+        const diagText = ` [אבחון: מאנדיי - ${data.mondayTotalContacts} אנשים בקבוצה, ${data.mondayPhonesCount} טלפונים, ${data.mondayEmailsCount} מיילים]`;
         setSyncMessage(
-          `נבדקו ${data.checked} מנויים · ${data.removed} הוסרו${removedText}` +
-          (data.skippedNoPhone > 0 ? ` · ${data.skippedNoPhone} לא נבדקו (אין טלפון ואין מייל בפרופיל)` : '')
+          `נבדקו ${data.checked} מנויים · ${data.removed} הוסרו${removedText}${createdText}${placeholderText}` +
+          (data.skippedNoPhone > 0 ? ` · ${data.skippedNoPhone} לא נבדקו (אין טלפון ואין מייל בפרופיל)` : '') +
+          skippedNoContactText + diagText
         );
         loadApprovedSubs();
       }
@@ -58,6 +79,35 @@ export default function AdminSubscribersPage() {
     }
 
     setSyncing(false);
+  }
+
+  async function handleGrantSubscriber() {
+    if (!grantName.trim() || !grantEmail.trim()) {
+      setGrantMessage('חסר שם או מייל');
+      return;
+    }
+    setGranting(true);
+    setGrantMessage('');
+
+    const { data: { session } } = await supabase.auth.getSession();
+    const res = await fetch('/api/admin/grant-subscriber', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
+      body: JSON.stringify({ name: grantName.trim(), phone: grantPhone.trim(), email: grantEmail.trim() }),
+    });
+    const data = await res.json().catch(() => null);
+
+    setGranting(false);
+
+    if (res.ok) {
+      setGrantMessage(`${grantName} נוסף/ה כמנוי/ה בהצלחה`);
+      setGrantName('');
+      setGrantPhone('');
+      setGrantEmail('');
+      loadApprovedSubs();
+    } else {
+      setGrantMessage('שגיאה: ' + (data?.error || 'לא הצלחנו להוסיף'));
+    }
   }
 
   async function handleMondayDebug() {
@@ -218,13 +268,28 @@ export default function AdminSubscribersPage() {
       <div className="section-label"><h2>מנויים מאושרים</h2><span className="count">{approvedSubs.length}</span></div>
 
       <button className="btn-outline" style={{ width: '100%', marginBottom: '14px' }} onClick={handleSyncSubscribers} disabled={syncing}>
-        {syncing ? 'בודקים מול מאנדיי...' : '🔄 בדיקת מנויים מול קבוצת הסוחרים במאנדיי'}
+        {syncing ? 'מסנכרנים מול מאנדיי...' : '🔄 סנכרון מלא מול קבוצת הסוחרים במאנדיי'}
       </button>
       {syncMessage && (
         <p style={{ fontSize: '12px', color: syncMessage.startsWith('שגיאה') ? 'var(--loss)' : 'var(--text-secondary)', marginBottom: '14px', textAlign: 'center' }}>
           {syncMessage}
         </p>
       )}
+
+      <details style={{ marginBottom: '20px' }} open={showGrantForm}>
+        <summary style={{ cursor: 'pointer', fontSize: '13px', color: 'var(--text-secondary)' }} onClick={(e) => { e.preventDefault(); setShowGrantForm((v) => !v); }}>
+          ➕ הוספת מנוי/ה ידנית (לא דרך מאנדיי - למשל לניסיון)
+        </summary>
+        <div className="journal-form" style={{ marginTop: '10px' }}>
+          <div className="field"><label>שם מלא</label><ClearableInput type="text" value={grantName} onChange={(e) => setGrantName(e.target.value)} onClear={() => setGrantName('')} placeholder="גיל דיקסטרו" /></div>
+          <div className="form-row">
+            <div className="field"><label>טלפון</label><ClearableInput type="tel" value={grantPhone} onChange={(e) => setGrantPhone(e.target.value)} onClear={() => setGrantPhone('')} placeholder="0542000214" /></div>
+            <div className="field"><label>מייל</label><ClearableInput type="email" value={grantEmail} onChange={(e) => setGrantEmail(e.target.value)} onClear={() => setGrantEmail('')} placeholder="name@example.com" /></div>
+          </div>
+          <button className="btn-primary" onClick={handleGrantSubscriber} disabled={granting}>{granting ? 'מוסיפים...' : 'הוספה כמנוי/ה'}</button>
+          {grantMessage && <p style={{ marginTop: '10px', fontSize: '13px', color: grantMessage.startsWith('שגיאה') ? 'var(--loss)' : 'var(--profit)' }}>{grantMessage}</p>}
+        </div>
+      </details>
 
       <details style={{ marginBottom: '20px' }}>
         <summary style={{ cursor: 'pointer', fontSize: '13px', color: 'var(--text-secondary)' }}>🔍 אבחון מול מאנדיי (למה מנוי מסוים לא מזוהה)</summary>

@@ -230,40 +230,6 @@ export function buildFollowupUserEmailHtml(r: FollowupRow): string {
   </div>`);
 }
 
-// המייל היומי המרוכז לשירן - כל מי שמילא את השאלון לפני שבוע בדיוק, כדי לפנות בפולואפ
-export function buildFollowupDigestEmailHtml(rows: FollowupRow[]): string {
-  const cards = rows.map((r) => {
-    const content = getProfileContent(classifyProfile(r as unknown as Record<string, unknown>));
-    const weekOneWin = labelsJoined(r.week_one_win, 'week_one_win');
-    const waLink = r.phone ? `https://wa.me/972${r.phone.replace(/\D/g, '').replace(/^0/, '')}` : null;
-
-    return `
-      <div style="border:1px solid #eee;border-radius:12px;padding:16px 18px;margin-bottom:14px;">
-        <div style="font-size:15px;font-weight:700;color:#111;margin-bottom:2px;">${r.name || 'ללא שם'}</div>
-        <div style="font-size:12px;color:#888;margin-bottom:10px;">${r.phone || '—'} · ${r.email || '—'} · פרופיל: ${content.title}</div>
-        ${weekOneWin !== '—' ? `<div style="font-size:13px;color:#0f766e;margin-bottom:8px;"><b>איך ידעו שהתחילו נכון:</b> ${weekOneWin}</div>` : ''}
-        <div style="font-size:13px;color:#444;margin-bottom:8px;"><b>הכלל האישי:</b> ${r.personal_rule || content.defaultRule}</div>
-        <div style="font-size:12.5px;color:#666;">
-          <b>3 ההתחייבויות לשבוע הראשון:</b>
-          ${content.threeThings.map((t) => `<div style="margin-top:2px;">• ${t}</div>`).join('')}
-        </div>
-        ${waLink ? `<a href="${waLink}" style="display:inline-block;margin-top:12px;background:#25D366;color:#fff;text-decoration:none;font-size:12.5px;font-weight:700;padding:8px 14px;border-radius:8px;">שליחת הודעה בוואטסאפ ←</a>` : ''}
-      </div>`;
-  }).join('');
-
-  return wrapEmail(`
-  <div dir="rtl" style="font-family: Arial, Helvetica, sans-serif; background:#f4f4f5; padding:24px 12px;">
-    <div style="max-width:600px;margin:0 auto;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #e5e5e5;">
-      <div style="background:#111318;padding:20px 24px;">
-        <div style="color:#fff;font-size:16px;font-weight:700;">תזכורת פולואפ - ${rows.length} ${rows.length === 1 ? 'אדם שמילא' : 'אנשים שמילאו'} תוכנית מסחר לפני שבוע</div>
-      </div>
-      <div style="padding:20px 24px;">
-        ${cards}
-      </div>
-    </div>
-  </div>`);
-}
-
 // המייל האוטומטי שנשלח למי שהתחיל למלא את "תוכנית המסחר" ולא סיים - עם לינק להמשך בדיוק מהנקודה שנעצר בה
 // reminderNumber 1 = תזכורת ראשונה (יום אחרי הנטישה), 2 = תזכורת אחרונה (יום אחרי התזכורת הראשונה, ואז מפסיקים)
 export function buildAbandonedEmailHtml(r: AbandonedRow, reminderNumber: 1 | 2 = 1): string {

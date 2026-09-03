@@ -18,7 +18,23 @@
     },
     {
       "path": "/api/trading-plan/daily-checkin-reminder",
-      "schedule": "0 7 * * 1,4"
+      "schedule": "0 17 * * 1"
+    },
+    {
+      "path": "/api/trading-plan/daily-checkin-reminder",
+      "schedule": "0 7 * * 4"
+    },
+    {
+      "path": "/api/cron-sync-monday-subscribers",
+      "schedule": "0 4 * * *"
+    },
+    {
+      "path": "/api/cron/support-bot-notify",
+      "schedule": "0 18 * * *"
+    },
+    {
+      "path": "/api/cron/monthly-revenue-snapshot",
+      "schedule": "0 3 1 * *"
     }
   ]
 }

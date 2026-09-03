@@ -59,25 +59,43 @@ export async function findCompletedTradingPlanIdByContact(phone: string | null |
 
 // מוודא שיש פרופיל מנוי פעיל לאימייל הזה - יוצר חשבון אם אין, או משדרג ל"מנוי" אם היה "ליד" בלבד.
 // שומר גם את הטלפון והשם המלא על הפרופיל, כדי שאפשר יהיה בעתיד לבדוק שוב מול מאנדיי אם המנוי עדיין בקבוצה.
-// משותף בין אימות מנוי ידני (verify-membership) לבין סנכרון תשלום מ-Grow.
-export async function ensureActiveSubscriberAccount(email: string, phone: string, fullName: string) {
-  const { data: existing } = await supabaseAdmin.from('profiles').select('id, role').eq('email', email).maybeSingle();
+// משותף בין אימות מנוי ידני (verify-membership), סנכרון תשלום מ-Grow, וסנכרון מנויים ממאנדיי.
+// startedAt אופציונלי - מאפשר להעביר את תאריך ההצטרפות האמיתי (למשל ממאנדיי) במקום "עכשיו",
+// כי תאריך ההצטרפות קובע את יום החיוב החודשי וחשוב לדיוק בחישובים כמו צפי הכנסה
+export async function ensureActiveSubscriberAccount(email: string, phone: string, fullName: string, startedAt?: string) {
+  const subscriptionStartedAt = startedAt || new Date().toISOString();
 
-  if (existing) {
+  // טלפון קודם, מייל רק כגיבוי: לכל אדם יש נייד אחד ויחיד, אבל אותו אדם יכול להופיע עם כמה
+  // מיילים שונים (למשל שילם פעם עם מייל אחר) - התאמה לפי מייל קודם הייתה מפספסת את זה ויוצרת
+  // בטעות חשבון מנוי כפול
+  let matched: { id: string; role: string } | null = null;
+  const normalizedNewPhone = normalizePhone(phone);
+  if (normalizedNewPhone) {
+    const { data: withPhone } = await supabaseAdmin.from('profiles').select('id, role, phone').not('phone', 'is', null);
+    matched = (withPhone || []).find((p) => normalizePhone(p.phone) === normalizedNewPhone) || null;
+  }
+  if (!matched) {
+    const { data: existing } = await supabaseAdmin.from('profiles').select('id, role').eq('email', email).maybeSingle();
+    matched = existing;
+  }
+
+  if (matched) {
     const updates: Record<string, unknown> = { phone, full_name: fullName };
-    if (existing.role !== 'admin' && existing.role !== 'subscriber') {
+    if (matched.role !== 'admin' && matched.role !== 'subscriber') {
       updates.role = 'subscriber';
       updates.subscription_status = 'active';
-      updates.subscription_started_at = new Date().toISOString();
+      updates.subscription_started_at = subscriptionStartedAt;
     }
-    await supabaseAdmin.from('profiles').update(updates).eq('id', existing.id);
+    await supabaseAdmin.from('profiles').update(updates).eq('id', matched.id);
     return;
   }
 
+  // role/subscription_status מועברים כבר כאן ב-metadata, כדי שהטריגר שיוצר את הפרופיל (handle_new_user)
+  // ייצור אותו ישר כמנוי פעיל - בלי לעבור דרך "ליד" רגעי שמפעיל בטעות את מייל "בקשת הצטרפות לאישור"
   const { data: created, error } = await supabaseAdmin.auth.admin.createUser({
     email,
     email_confirm: true,
-    user_metadata: { phone, full_name: fullName },
+    user_metadata: { phone, full_name: fullName, role: 'subscriber', subscription_status: 'active' },
   });
 
   let userId = created.user?.id;
@@ -96,7 +114,7 @@ export async function ensureActiveSubscriberAccount(email: string, phone: string
 
   await supabaseAdmin
     .from('profiles')
-    .upsert({ id: userId, email, full_name: fullName, role: 'subscriber', subscription_status: 'active', subscription_started_at: new Date().toISOString(), phone });
+    .upsert({ id: userId, email, full_name: fullName, role: 'subscriber', subscription_status: 'active', subscription_started_at: subscriptionStartedAt, phone });
 }
 
 export { normalizePhone, normalizeEmail };

@@ -6,25 +6,61 @@ export const supabaseAdmin = createClient(
 );
 
 // שולח מייל כניסה אמיתי (קישור קסם) לכתובת שכבר אושרה כמנוי/אדמין -
-// הכניסה בפועל מותנית בלחיצה על הקישור מתוך תיבת המייל, לא רק בידיעת הכתובת
+// הכניסה בפועל מותנית בלחיצה על הקישור מתוך תיבת המייל, לא רק בידיעת הכתובת.
+// הקישור עצמו נוצר דרך Supabase, אבל המייל נשלח דרך Resend (כמו כל שאר המיילים באתר) ולא
+// דרך שרת המייל המובנה של Supabase - זה האחרון נוטה להיתקע בהגבלות קצב נמוכות מאוד או
+// להיתפס כספאם, מה שגרם למנויים לא לקבל את קישור הכניסה בפועל
 export async function sendLoginEmail(email: string) {
-  const { error } = await supabaseAdmin.auth.signInWithOtp({
+  const { data, error } = await supabaseAdmin.auth.admin.generateLink({
+    type: 'magiclink',
     email,
-    options: {
-      shouldCreateUser: false,
-      emailRedirectTo: 'https://shirandimor.com/auth/callback',
-    },
+    options: { redirectTo: 'https://shirandimor.com/auth/callback' },
   });
 
-  if (error) {
-    // אם מדובר רק בהגבלת קצב של Supabase (ניסיון חוזר תוך פחות מדקה) - כבר נשלח קישור תקף לפני רגע,
-    // אז זו לא כשל אמיתי; לא זורקים שגיאה כדי שהמשתמש לא ייראה "לא מזוהה" בגלל ניסיון חוזר מהיר מדי
-    const isRateLimit = (error as { status?: number; code?: string }).status === 429
-      || (error as { code?: string }).code === 'over_email_send_rate_limit'
-      || /security purposes/i.test(error.message || '');
+  const actionLink = data?.properties?.action_link;
+  if (error || !actionLink) {
+    throw new Error(error?.message || 'לא ניתן היה ליצור קישור כניסה');
+  }
 
-    if (!isRateLimit) {
-      throw new Error(error.message || 'לא ניתן היה לשלוח מייל כניסה');
-    }
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    console.error('RESEND_API_KEY לא מוגדר - לא ניתן לשלוח מייל כניסה');
+    throw new Error('לא ניתן היה לשלוח מייל כניסה');
+  }
+
+  const siteUrl = 'https://www.shirandimor.com';
+  const html = `<!doctype html><html dir="rtl" lang="he"><head><meta charset="utf-8" /></head><body style="margin:0;padding:0;">
+    <div dir="rtl" style="font-family: Arial, Helvetica, sans-serif; background:#f4f4f5; padding:24px 12px;">
+      <div style="max-width:520px;margin:0 auto;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #e5e5e5;">
+        <div style="background:#111318;padding:24px;text-align:center;">
+          <img src="${siteUrl}/shiran-photo.jpg" width="56" height="56" alt="שירן דימור" style="width:56px;height:56px;border-radius:50%;object-fit:cover;border:2px solid #4fc9c4;margin-bottom:12px;" />
+          <div style="color:#fff;font-size:18px;font-weight:700;">מסחר <span style="color:#4fc9c4;">אחראי</span> במניות</div>
+          <div style="color:#9C8FD9;font-size:12px;margin-top:8px;">שירן דימור</div>
+        </div>
+        <div style="padding:28px 24px;">
+          <p style="font-size:14px;color:#222;line-height:1.7;margin:0 0 16px;">היי, זה קישור כניסה לחשבון שלך באתר - בלי סיסמה, בתוקף לשעה:</p>
+          <a href="${actionLink}" style="display:block;text-align:center;background:#4fc9c4;color:#08131a;text-decoration:none;font-weight:700;padding:13px;border-radius:10px;margin-bottom:20px;">כניסה לאתר ←</a>
+          <p style="font-size:12.5px;color:#888;line-height:1.6;margin:0;">לא ביקשת קישור כניסה? כדאי לספר לי - פשוט משיבים למייל הזה.</p>
+        </div>
+      </div>
+    </div>
+  </body></html>`;
+
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+    body: JSON.stringify({
+      from: 'שירן דימור - מסחר אחראי במניות <noreply@shirandimor.com>',
+      to: email,
+      reply_to: 'shiran@shirandimor.com',
+      subject: 'קישור כניסה לאתר שלך',
+      text: `היי, זה קישור כניסה לחשבון שלך באתר - בלי סיסמה, בתוקף לשעה:\n${actionLink}\n\nלא ביקשת קישור כניסה? כדאי לספר לי - פשוט משיבים למייל הזה.`,
+      html,
+    }),
+  });
+
+  if (!res.ok) {
+    console.error('שגיאה בשליחת מייל כניסה דרך Resend', await res.text().catch(() => ''));
+    throw new Error('לא ניתן היה לשלוח מייל כניסה');
   }
 }

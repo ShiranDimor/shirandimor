@@ -7,6 +7,8 @@ const EVENT_NAMES = [
   'trading_plan_started',
   'trading_plan_completed',
   'payment_link_click',
+  'live_registered',
+  'live_registration_lead',
 ] as const;
 
 async function requireAdmin(request: Request) {

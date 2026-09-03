@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { trackFunnelEvent } from '@/lib/trackEvent';
-import { captureSourceFromUrl } from '@/lib/attribution';
+import { captureSourceFromUrl, getStoredSource } from '@/lib/attribution';
 import { supabase } from '@/lib/supabase';
 import { visibleSteps, visibleQuestions } from '@/lib/tradingPlan/questions';
 import { classifyProfile } from '@/lib/tradingPlan/profile';
@@ -56,8 +56,10 @@ export default function TradingPlanPage() {
     let params: URLSearchParams;
     try {
       params = new URLSearchParams(window.location.search);
-      setSource(params.get('source'));
       captureSourceFromUrl();
+      // אם אין ?source= ישירות בקישור הזה - נופלים חזרה למקור שנשמר בביקור (שנתפס בכל עמוד
+      // כניסה אפשרי, כולל דף הבית) - כדי לא לאבד את המקור האמיתי רק כי הפנייה הגיעה דרך עמוד ביניים
+      setSource(params.get('source') || getStoredSource());
     } catch {
       params = new URLSearchParams();
     }
@@ -245,12 +247,14 @@ export default function TradingPlanPage() {
           body: JSON.stringify({ id, action: 'complete' }),
         }).catch(() => null);
 
-        // שליחת המיילים (למשתמש + לשירן) - לא חוסמים את הצגת התוכנית על המסך אם זה נכשל
-        fetch('/api/trading-plan/send-summary', {
+        // שליחת המיילים (למשתמש + לשירן) וסנכרון הליד למאנדיי - חייבים await, לא fire-and-forget:
+        // בלי זה, המעבר המיידי למסך הסיכום (setPhase למטה) יכול לגרום לדפדפן (בעיקר במובייל)
+        // לבטל את הבקשה באמצע לפני שהיא בכלל הספיקה ליצור את כרטיס הליד במאנדיי
+        await fetch('/api/trading-plan/send-summary', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ id }),
-        }).catch(() => {});
+        }).catch(() => null);
 
         trackFunnelEvent('trading_plan_completed', { phone: answers.phone as string, email: answers.email as string });
       }

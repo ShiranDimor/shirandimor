@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import { Analytics } from '@vercel/analytics/react';
 import MetaPixel from '@/components/MetaPixel';
+import WhatsAppFloatButton from '@/components/WhatsAppFloatButton';
+import DorChatWidget from '@/components/DorChatWidget';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -18,9 +20,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="he" dir="rtl">
       <body>
         {children}
-        <a href="https://wa.me/972547167419" target="_blank" rel="noopener noreferrer" className="wa-float-btn">
-          <img src="/whatsapp-icon.svg" alt="וואטסאפ" width="26" height="26" />
-        </a>
+        <WhatsAppFloatButton />
+        <DorChatWidget />
         <Analytics />
         <MetaPixel />
       </body>

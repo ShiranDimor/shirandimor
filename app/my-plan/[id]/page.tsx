@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { Suspense, useEffect, useState } from 'react';
+import { useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
 type Outcome = 'followed' | 'broke' | 'no_activity';
@@ -118,9 +118,18 @@ function ProgressRing({ dayNumber, totalDays, unitLabel }: { dayNumber: number; 
 }
 
 export default function MyPlanProgressPage() {
+  return (
+    <Suspense fallback={<div className="wrap"><p style={{ padding: '40px', textAlign: 'center' }}>טוענים...</p></div>}>
+      <MyPlanProgressPageInner />
+    </Suspense>
+  );
+}
+
+// useSearchParams דורש Suspense boundary מסביבו ב-Next.js App Router, אחרת ה-build נכשל
+function MyPlanProgressPageInner() {
   const params = useParams();
-  const router = useRouter();
   const id = typeof params.id === 'string' ? params.id : Array.isArray(params.id) ? params.id[0] : '';
+  const isAdminView = useSearchParams().get('admin') === '1';
 
   const [data, setData] = useState<ProgressData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -165,7 +174,7 @@ export default function MyPlanProgressPage() {
       <header>
         <Link href="/" className="brand">מסחר <span>אחראי</span> במניות</Link>
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-          <button onClick={() => router.back()} className="nav-link" style={{ background: 'none', border: 'none', cursor: 'pointer', font: 'inherit', padding: 0 }}>→ חזרה</button>
+          {isAdminView && <Link href="/admin/trading-plan" className="nav-link">← לרשימת הלידים</Link>}
           {data?.isSubscriber && <Link href="/portfolio" className="nav-link">לתיק שלי</Link>}
           <Link href="/" className="nav-link">בית</Link>
         </div>
@@ -427,7 +436,7 @@ export default function MyPlanProgressPage() {
             >
               <div style={{ fontSize: '13.5px', color: 'var(--text-primary)', fontWeight: 600, marginBottom: '6px' }}>וזה עוד לפני שהצטרפת לקבוצת הסוחרים</div>
               <p style={{ fontSize: '12.5px', color: 'var(--text-tertiary)', lineHeight: 1.6, marginBottom: '14px' }}>
-                המעקב האישי הזה חינמי לגמרי. מי שכבר בקבוצה מקבל את כל זה - ועוד ליווי, תשובות בזמן אמת ואנשים שעוברים בדיוק את השלב הזה עכשיו.
+                המעקב האישי הזה חינמי לגמרי. מי שכבר בקבוצה מקבל את כל זה - ועוד ליווי, תשובות בזמן אמת ואנשים שעוברים בדיוק את השלב הזה עכשיו. לא צריך קורס יקר כדי לדעת אם זה בשבילך - חודש ניסיון אחד מראה את זה הרבה יותר טוב.
               </p>
               <a
                 href="https://pay.grow.link/200a7cdcb258ee6ffdea0f423a1ace0e-MzE4MDU5OA"

@@ -14,6 +14,11 @@ export default function AdminDashboard() {
   const [openTradesCount, setOpenTradesCount] = useState(0);
   const [abandonedTotal, setAbandonedTotal] = useState(0);
   const [abandonedUnread, setAbandonedUnread] = useState(0);
+  const [livesCount, setLivesCount] = useState(0);
+  const [liveRegistrationsTotal, setLiveRegistrationsTotal] = useState(0);
+  const [lessonsCount, setLessonsCount] = useState(0);
+  const [revenueCount, setRevenueCount] = useState(0);
+  const [revenueTotal, setRevenueTotal] = useState(0);
 
   const [refreshing, setRefreshing] = useState(false);
   const [refreshMessage, setRefreshMessage] = useState('');
@@ -74,11 +79,14 @@ export default function AdminDashboard() {
   async function loadCounts() {
     const { data: { session } } = await supabase.auth.getSession();
 
-    const [pending, approved, openTrades, abandonedRes] = await Promise.all([
+    const [pending, approved, openTrades, abandonedRes, livesRes, lessonsRes, revenueRes] = await Promise.all([
       supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'lead'),
       supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'subscriber'),
       supabase.from('trades').select('id', { count: 'exact', head: true }).eq('status', 'open'),
       fetch('/api/admin/trading-plan-abandoned/count', { headers: { Authorization: `Bearer ${session?.access_token}` } }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+      fetch('/api/admin/lives', { headers: { Authorization: `Bearer ${session?.access_token}` } }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+      fetch('/api/admin/lessons', { headers: { Authorization: `Bearer ${session?.access_token}` } }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+      fetch('/api/admin/revenue-projection', { headers: { Authorization: `Bearer ${session?.access_token}` } }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
     ]);
 
     setPendingCount(pending.count || 0);
@@ -86,6 +94,12 @@ export default function AdminDashboard() {
     setOpenTradesCount(openTrades.count || 0);
     setAbandonedTotal(abandonedRes?.total || 0);
     setAbandonedUnread(abandonedRes?.unread || 0);
+    const lives: { registrationsCount: number }[] = livesRes?.lives || [];
+    setLivesCount(lives.length);
+    setLiveRegistrationsTotal(lives.reduce((sum, l) => sum + (l.registrationsCount || 0), 0));
+    setLessonsCount((lessonsRes?.lessons || []).length);
+    setRevenueCount(revenueRes?.count || 0);
+    setRevenueTotal(revenueRes?.totalAmount || 0);
   }
 
   async function handleLogout() {
@@ -165,13 +179,37 @@ export default function AdminDashboard() {
         <Link href="/admin/lessons" className="admin-tile">
           <div className="at-icon">🎥</div>
           <div className="at-title">ספריית שיעורים</div>
-          <div className="at-count">ניהול תוכן</div>
+          <div className="at-count">{lessonsCount} שיעורים</div>
+        </Link>
+
+        <Link href="/admin/lives" className="admin-tile">
+          <div className="at-icon">📡</div>
+          <div className="at-title">לייבים</div>
+          <div className="at-count">{liveRegistrationsTotal} נרשמים · {livesCount} לייבים</div>
         </Link>
 
         <Link href="/admin/analytics" className="admin-tile">
           <div className="at-icon">📈</div>
           <div className="at-title">משפך המרה</div>
           <div className="at-count">אנליטיקס</div>
+        </Link>
+
+        <Link href="/admin/revenue" className="admin-tile">
+          <div className="at-icon">💰</div>
+          <div className="at-title">הכנסה מקבוצת הסוחרים</div>
+          <div className="at-count">₪{revenueTotal.toLocaleString('he-IL')} · {revenueCount} אנשים</div>
+        </Link>
+
+        <Link href="/admin/support-bot" className="admin-tile">
+          <div className="at-icon">🤖</div>
+          <div className="at-title">בוט תמיכה - בדיקה</div>
+          <div className="at-count">כלי פנימי</div>
+        </Link>
+
+        <Link href="/admin/whatsapp-analysis" className="admin-tile">
+          <div className="at-icon">💬</div>
+          <div className="at-title">ניתוח קבוצות ווטסאפ</div>
+          <div className="at-count">כלי פנימי</div>
         </Link>
       </div>
 

@@ -63,6 +63,8 @@ export default function AdminTradingPlanAbandonedPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [handlingId, setHandlingId] = useState<string | null>(null);
   const [showHandled, setShowHandled] = useState(false);
+  const [resyncingId, setResyncingId] = useState<string | null>(null);
+  const [resyncMessage, setResyncMessage] = useState<Record<string, string>>({});
 
   const [subscriberRows, setSubscriberRows] = useState<SubscriberRow[]>([]);
   const [loadingSubscriberRows, setLoadingSubscriberRows] = useState(false);
@@ -172,6 +174,23 @@ export default function AdminTradingPlanAbandonedPage() {
     }
   }
 
+  async function handleResync(id: string) {
+    if (resyncingId) return; // הגנה מפני לחיצה כפולה מהירה לפני שהכפתור מספיק להיחסם ויזואלית
+    setResyncingId(id);
+    setResyncMessage((prev) => ({ ...prev, [id]: '' }));
+
+    const { data: { session } } = await supabase.auth.getSession();
+    const res = await fetch('/api/admin/trading-plan-resync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
+      body: JSON.stringify({ id }),
+    });
+    const data = await res.json().catch(() => null);
+
+    setResyncingId(null);
+    setResyncMessage((prev) => ({ ...prev, [id]: res.ok ? 'סונכרן למאנדיי ✓' : `שגיאה: ${data?.error || 'לא הצלחנו לסנכרן'}` }));
+  }
+
   async function handleLogout() {
     await supabase.auth.signOut();
     window.location.href = '/';
@@ -263,7 +282,7 @@ export default function AdminTradingPlanAbandonedPage() {
           </button>
           {r.status === 'completed' && (
             <a
-              href={`/my-plan/${r.id}`}
+              href={`/my-plan/${r.id}?admin=1`}
               target="_blank"
               rel="noopener noreferrer"
               style={{ textDecoration: 'none', display: 'inline-block', padding: '8px 12px', fontSize: '12.5px', fontWeight: 700, color: '#E8A33D', background: 'rgba(232,163,61,0.1)', border: '1px solid rgba(232,163,61,0.3)', borderRadius: '8px', flex: '0 0 auto' }}
@@ -276,6 +295,18 @@ export default function AdminTradingPlanAbandonedPage() {
               וואטסאפ ←
             </a>
           )}
+          {r.phone && (
+            <button
+              type="button"
+              className="btn-outline"
+              style={{ padding: '8px 12px', fontSize: '12.5px', flex: '0 0 auto' }}
+              onClick={() => handleResync(r.id)}
+              disabled={resyncingId === r.id}
+              title="אם הליד לא נראה במאנדיי - לחיצה כאן שולחת/מעדכנת אותו שם שוב"
+            >
+              {resyncingId === r.id ? '…' : '🔄 סנכרון למאנדיי'}
+            </button>
+          )}
           <button
             type="button"
             className="btn-outline"
@@ -286,6 +317,12 @@ export default function AdminTradingPlanAbandonedPage() {
             {handlingId === r.id ? '…' : r.handledAt ? 'ביטול סימון טופל' : '✓ סימון כטופל'}
           </button>
         </div>
+
+        {resyncMessage[r.id] && (
+          <p style={{ fontSize: '12px', color: resyncMessage[r.id].startsWith('שגיאה') ? 'var(--loss)' : 'var(--profit)', margin: 0 }}>
+            {resyncMessage[r.id]}
+          </p>
+        )}
 
         {isExpanded && (
           <div style={{ marginTop: '14px', paddingTop: '14px', borderTop: '1px solid var(--border, #2a2e37)' }}>
@@ -412,7 +449,7 @@ export default function AdminTradingPlanAbandonedPage() {
                   </button>
                 </div>
                 <a
-                  href={`/my-plan/${r.id}`}
+                  href={`/my-plan/${r.id}?admin=1`}
                   target="_blank"
                   rel="noopener noreferrer"
                   style={{ textDecoration: 'none', display: 'inline-block', padding: '8px 12px', fontSize: '12.5px', fontWeight: 700, color: '#E8A33D', background: 'rgba(232,163,61,0.1)', border: '1px solid rgba(232,163,61,0.3)', borderRadius: '8px', alignSelf: 'flex-start' }}

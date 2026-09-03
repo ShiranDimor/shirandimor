@@ -1,0 +1,263 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { supabase } from '@/lib/supabase';
+import { trackFunnelEvent } from '@/lib/trackEvent';
+import { buildGoogleCalendarUrl, buildIcsDataUri } from '@/lib/calendar';
+import ClearableInput from '@/components/ClearableInput';
+
+type Live = {
+  id: string;
+  title: string;
+  description: string | null;
+  scheduledAt: string;
+  joinInfo: string | null;
+  registered: boolean;
+  openToAll: boolean;
+};
+
+// כל לייב מקבל צבע שונה מהרשימה הזו לפי סדר הופעתו, כדי שיהיה קל להבדיל בין כמה לייבים ברשימה
+const LIVE_ACCENT_COLORS = ['var(--teal)', 'var(--lavender)', 'var(--orange)', 'var(--profit)'];
+
+function formatDateTime(iso: string) {
+  return new Date(iso).toLocaleString('he-IL', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
+}
+
+export default function LivesPage() {
+  const [lives, setLives] = useState<Live[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [viewerIsSubscriber, setViewerIsSubscriber] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(true);
+
+  const [openFormId, setOpenFormId] = useState<string | null>(null);
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
+  const [submittingId, setSubmittingId] = useState<string | null>(null);
+  const [error, setError] = useState('');
+  const [confirmedLeadIds, setConfirmedLeadIds] = useState<Set<string>>(new Set());
+  // גישה שהתקבלה בלי חשבון מחובר (מנוי שמילא טופס בלי להתחבר, או הרשמה ללייב "פתוח לכולם") -
+  // נשמר בדפדפן כי לשרת אין דרך לזהות מבקר כזה בביקור הבא (אין user_id)
+  const [guestAccess, setGuestAccess] = useState<Record<string, string | null>>({});
+
+  useEffect(() => {
+    loadLives();
+    // שחזור מצב מהדפדפן הזה: לידים שהושארו בעבר, וגישה שהתקבלה בלי חשבון מחובר
+    try {
+      const stored = new Set<string>();
+      const access: Record<string, string | null> = {};
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key?.startsWith('live_lead_')) stored.add(key.replace('live_lead_', ''));
+        if (key?.startsWith('live_access_')) {
+          const liveId = key.replace('live_access_', '');
+          try { access[liveId] = JSON.parse(localStorage.getItem(key) || 'null')?.joinInfo ?? null; } catch (e) {}
+        }
+      }
+      setConfirmedLeadIds(stored);
+      setGuestAccess(access);
+    } catch (e) {
+      // localStorage לא זמין (למשל גלישה פרטית) - לא קריטי, פשוט לא ישוחזר המצב
+    }
+  }, []);
+
+  async function loadLives() {
+    setLoading(true);
+    setCheckingAuth(true);
+    const { data: { session } } = await supabase.auth.getSession();
+    const res = await fetch('/api/lives', {
+      headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {},
+    });
+    if (res.ok) {
+      const data = await res.json();
+      setLives(data.lives || []);
+      setViewerIsSubscriber(!!data.viewerIsSubscriber);
+    }
+    setLoading(false);
+    setCheckingAuth(false);
+  }
+
+  function handlePhoneChange(value: string) {
+    setPhone(value.replace(/\D/g, '').slice(0, 10));
+  }
+
+  async function registerSubscriber(liveId: string) {
+    setSubmittingId(liveId);
+    setError('');
+    const { data: { session } } = await supabase.auth.getSession();
+    const res = await fetch('/api/lives/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}) },
+      body: JSON.stringify({ liveId }),
+    });
+    setSubmittingId(null);
+    if (res.ok) {
+      trackFunnelEvent('live_registered');
+      loadLives();
+    } else {
+      setError('משהו השתבש - כדאי לנסות שוב בעוד רגע');
+    }
+  }
+
+  async function cancelRegistration(liveId: string) {
+    if (!window.confirm('לבטל את ההרשמה ללייב הזה?')) return;
+    setSubmittingId(liveId);
+    setError('');
+    const { data: { session } } = await supabase.auth.getSession();
+    const res = await fetch(`/api/lives/register?liveId=${liveId}`, {
+      method: 'DELETE',
+      headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {},
+    });
+    setSubmittingId(null);
+    if (res.ok) {
+      loadLives();
+    } else {
+      setError('משהו השתבש - כדאי לנסות שוב בעוד רגע');
+    }
+  }
+
+  async function submitLead(liveId: string) {
+    if (!name || !phone) {
+      setError('צריך למלא שם ומספר נייד');
+      return;
+    }
+    if (!/^05\d{8}$/.test(phone)) {
+      setError('מספר נייד לא תקין - לדוגמה 0501234567');
+      return;
+    }
+    setSubmittingId(liveId);
+    setError('');
+    try {
+      const res = await fetch('/api/lives/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ liveId, name, phone, email }),
+      });
+      const data = await res.json().catch(() => null);
+      if (data?.isSubscriber || data?.openToAll) {
+        // מנוי שמילא את הטופס בלי להיות מחובר, או הרשמה ללייב שפתוח לכולם - מציגים ישר את
+        // פרטי ההצטרפות, ושומרים בדפדפן כדי שזה יישאר גם אחרי רענון (אין חשבון מחובר לזהות לפיו)
+        setGuestAccess((prev) => ({ ...prev, [liveId]: data.joinInfo ?? null }));
+        try { localStorage.setItem(`live_access_${liveId}`, JSON.stringify({ joinInfo: data.joinInfo ?? null })); } catch (e) {}
+      } else {
+        trackFunnelEvent('live_registration_lead', { phone, email });
+        setConfirmedLeadIds((prev) => new Set(prev).add(liveId));
+        try { localStorage.setItem(`live_lead_${liveId}`, '1'); } catch (e) {}
+      }
+      setOpenFormId(null);
+    } catch (e) {
+      setError('משהו השתבש - כדאי לנסות שוב בעוד רגע');
+    }
+    setSubmittingId(null);
+  }
+
+  return (
+    <div className="wrap">
+      <header>
+        <Link href="/" className="brand">מסחר <span>אחראי</span> במניות</Link>
+        <Link href="/" className="nav-link">בית</Link>
+      </header>
+
+      <div className="form-title">לייבים</div>
+      <div className="form-sub">סוחרים ביחד בזמן אמת - לא רק לומדים או צופים מהצד</div>
+
+      {(loading || checkingAuth) && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)', textAlign: 'center', marginTop: '20px' }}>טוענים...</p>}
+      {!loading && lives.length === 0 && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)', textAlign: 'center', marginTop: '20px' }}>אין כרגע לייבים קרובים - שווה לחזור בקרוב</p>}
+
+      {!loading && lives.map((live, i) => {
+        const accentColor = LIVE_ACCENT_COLORS[i % LIVE_ACCENT_COLORS.length];
+        // גישה שהתקבלה בלי חשבון מחובר (מנוי שמילא טופס בלי להתחבר, או לייב "פתוח לכולם") -
+        // מטופלת כמו הרשמה, אבל האמת המלאה (registered/joinInfo) קיימת רק בשרת למי שיש לו חשבון
+        const isGuestAccess = live.id in guestAccess;
+        const hasAccess = live.registered || isGuestAccess;
+        const effectiveJoinInfo = live.registered ? live.joinInfo : guestAccess[live.id];
+        const calendarTitle = `${live.title} - עם שירן דימור, מדברים עסקאות`;
+        const calendarDescription = [live.description, effectiveJoinInfo ? `קישור הצטרפות: ${effectiveJoinInfo}` : ''].filter(Boolean).join('\n\n');
+        return (
+        <div key={live.id} style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-hairline-strong)', borderRight: `3px solid ${accentColor}`, borderRadius: '10px', padding: '16px', marginBottom: '14px' }}>
+          <div style={{ fontSize: '15px', fontWeight: 700, marginBottom: '4px' }}>{live.title}</div>
+          <div style={{ fontSize: '12.5px', color: accentColor, fontFamily: 'var(--font-mono)', marginBottom: '8px' }}>{formatDateTime(live.scheduledAt)}</div>
+          {live.description && <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: '12px' }}>{live.description}</p>}
+
+          {hasAccess && effectiveJoinInfo && (
+            <div style={{ background: 'var(--profit-bg)', border: '1px solid var(--profit)', borderRadius: '8px', padding: '10px 12px', marginBottom: '10px', fontSize: '13px', whiteSpace: 'pre-line' }}>
+              ✓ נרשמת! פרטי ההצטרפות: {effectiveJoinInfo}
+            </div>
+          )}
+          {hasAccess && !effectiveJoinInfo && (
+            <div style={{ background: 'var(--profit-bg)', border: '1px solid var(--profit)', borderRadius: '8px', padding: '10px 12px', marginBottom: '10px', fontSize: '13px' }}>
+              ✓ נרשמת! פרטי ההצטרפות יישלחו בקרוב.
+            </div>
+          )}
+          {confirmedLeadIds.has(live.id) && (
+            <div style={{ background: 'var(--profit-bg)', border: '1px solid var(--profit)', borderRadius: '8px', padding: '12px 14px', marginBottom: '10px', fontSize: '13px', lineHeight: 1.6 }}>
+              <p style={{ marginBottom: '10px' }}>✓ הפרטים נקלטו! הלייבים האלה פתוחים למנויי קבוצת הסוחרים &quot;מדברים עסקאות&quot;. אפשר להצטרף עכשיו לחודש ניסיון ב-50% הנחה ולקבל גישה מיידית:</p>
+              <Link href="/subscribe" className="btn-primary" style={{ display: 'block', textAlign: 'center', textDecoration: 'none', marginBottom: '10px', background: accentColor }}>
+                להצטרפות לקבוצת הסוחרים ←
+              </Link>
+              <p style={{ textAlign: 'center', marginBottom: '10px' }}>
+                <Link href="/?join=1" style={{ color: 'var(--text-tertiary)', fontSize: '12px', textDecoration: 'underline' }}>עדיין לא בטוח/ה? אפשר להתחיל מקבוצת העדכונים החינמית ←</Link>
+              </p>
+              <p style={{ marginBottom: '8px' }}>יש שאלות לפני שמצטרפים? אפשר לשלוח לי הודעה בוואטסאפ:</p>
+              <a href="https://wa.me/972547167419" target="_blank" rel="noopener noreferrer" style={{ display: 'block', textAlign: 'center', background: '#25D366', color: '#fff', textDecoration: 'none', fontWeight: 700, padding: '10px', borderRadius: '8px' }}>
+                שליחת הודעה בוואטסאפ ←
+              </a>
+            </div>
+          )}
+
+          {hasAccess && (
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              <a href={buildGoogleCalendarUrl(calendarTitle, calendarDescription, live.scheduledAt)} target="_blank" rel="noopener noreferrer" className="btn-outline" style={{ fontSize: '12.5px', padding: '8px 12px', textDecoration: 'none' }}>
+                הוספה ליומן Google
+              </a>
+              <a href={buildIcsDataUri(calendarTitle, calendarDescription, live.scheduledAt)} download={`${live.title}.ics`} className="btn-outline" style={{ fontSize: '12.5px', padding: '8px 12px', textDecoration: 'none' }}>
+                הורדה ליומן אחר
+              </a>
+              {live.registered && viewerIsSubscriber && (
+                <button type="button" onClick={() => cancelRegistration(live.id)} disabled={submittingId === live.id} style={{ fontSize: '12.5px', padding: '8px 12px', background: 'none', border: '1px solid var(--loss)', color: 'var(--loss)', borderRadius: '8px', cursor: 'pointer' }}>
+                  {submittingId === live.id ? '...' : 'ביטול הרשמה'}
+                </button>
+              )}
+            </div>
+          )}
+
+          {!hasAccess && !confirmedLeadIds.has(live.id) && (
+            <>
+              {viewerIsSubscriber ? (
+                <button type="button" className="btn-primary" style={{ background: accentColor }} onClick={() => registerSubscriber(live.id)} disabled={submittingId === live.id}>
+                  {submittingId === live.id ? 'נרשמים...' : 'הרשמה ללייב ←'}
+                </button>
+              ) : openFormId === live.id ? (
+                <div>
+                  <div className="field" style={{ marginBottom: '8px' }}>
+                    <ClearableInput type="text" value={name} onChange={(e) => setName(e.target.value)} onClear={() => setName('')} placeholder="שם מלא" />
+                  </div>
+                  <div className="field" style={{ marginBottom: '8px' }}>
+                    <ClearableInput type="tel" inputMode="numeric" value={phone} onChange={(e) => handlePhoneChange(e.target.value)} onClear={() => setPhone('')} placeholder="0501234567" maxLength={10} />
+                  </div>
+                  <div className="field" style={{ marginBottom: '10px' }}>
+                    <ClearableInput type="email" value={email} onChange={(e) => setEmail(e.target.value)} onClear={() => setEmail('')} placeholder="אימייל (לא חובה)" />
+                  </div>
+                  {error && <p style={{ color: 'var(--loss)', fontSize: '12px', marginBottom: '8px' }}>{error}</p>}
+                  <button type="button" className="btn-primary" style={{ background: accentColor }} onClick={() => submitLead(live.id)} disabled={submittingId === live.id}>
+                    {submittingId === live.id ? 'שולחים...' : 'הרשמה ←'}
+                  </button>
+                </div>
+              ) : (
+                <button type="button" className="btn-primary" style={{ background: accentColor }} onClick={() => { setOpenFormId(live.id); setError(''); }}>
+                  הרשמה ללייב ←
+                </button>
+              )}
+            </>
+          )}
+        </div>
+        );
+      })}
+
+      <Link className="cta-sub-link" href="/subscribe">מנויים נרשמים ללייבים בלחיצה אחת - להכיר את קבוצת הסוחרים <span>←</span></Link>
+
+      <footer>מסחר בשוק ההון כרוך בסיכון. אין באמור המלצה לפעולה כלשהי.</footer>
+    </div>
+  );
+}
