@@ -41,7 +41,9 @@ export async function POST(request: Request) {
   // חריגים קבועים - אנשים עם חשבון מנוי אמיתי שהוענק ידנית מחוץ למאנדיי לגמרי (למשל בני משפחה),
   // ולכן תמיד "לא ימצאו" שם בבדיקה - זה לא באג, זה מצב קבוע ומכוון. בלי הרשימה הזו הם תמיד
   // יסומנו כמועמדים להסרה, ויתפסו אותנו לחשוב שיש בעיה אמיתית בכל פעם
-  const MANUAL_EXEMPT_EMAILS = new Set(['sivandimor@gmail.com']);
+  // כולל גם מי שקיבל/ה מנוי ידני דרך "הוספת מנוי/ה ידנית" (לא דרך מאנדיי) - למשל קבוצת ניסיון
+  // של 7 ימים - כדי שהם לא ייראו כמועמדים להסרה רק כי הם לא בקבוצת הסוחרים במאנדיי בכלל
+  const MANUAL_EXEMPT_EMAILS = new Set(['sivandimor@gmail.com', 'gil_dicastro@icloud.com']);
 
   const nonExempted = (subscribers || []).filter((s) => !MANUAL_EXEMPT_EMAILS.has(normalizeEmail(s.email)));
   const withContact = nonExempted.filter((s) => s.phone || s.email);
