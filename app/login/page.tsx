@@ -30,7 +30,9 @@ export default function LoginPage() {
     setLoading(false);
 
     if (authError || !data.user) {
-      setError('מייל או סיסמה שגויים.');
+      // מציגים את הודעת השגיאה האמיתית מ-Supabase (למשל rate limit, בעיית רשת) ולא רק
+      // "מייל או סיסמה שגויים" גורף - כדי שאפשר יהיה לאבחן תקלות אמיתיות ולא לנחש בעיוורון
+      setError(authError?.message ? `שגיאה: ${authError.message}` : 'מייל או סיסמה שגויים.');
       return;
     }
 
