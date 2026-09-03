@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
+import ClearableInput from '@/components/ClearableInput';
 
 type ApprovedSub = {
   id: string;
@@ -29,6 +30,13 @@ export default function AdminSubscribersPage() {
   const [debugPhone, setDebugPhone] = useState('');
   const [debugging, setDebugging] = useState(false);
   const [debugResult, setDebugResult] = useState('');
+
+  const [showGrantForm, setShowGrantForm] = useState(false);
+  const [grantName, setGrantName] = useState('');
+  const [grantPhone, setGrantPhone] = useState('');
+  const [grantEmail, setGrantEmail] = useState('');
+  const [granting, setGranting] = useState(false);
+  const [grantMessage, setGrantMessage] = useState('');
 
   async function handleSyncSubscribers() {
     setSyncing(true);
@@ -71,6 +79,35 @@ export default function AdminSubscribersPage() {
     }
 
     setSyncing(false);
+  }
+
+  async function handleGrantSubscriber() {
+    if (!grantName.trim() || !grantEmail.trim()) {
+      setGrantMessage('חסר שם או מייל');
+      return;
+    }
+    setGranting(true);
+    setGrantMessage('');
+
+    const { data: { session } } = await supabase.auth.getSession();
+    const res = await fetch('/api/admin/grant-subscriber', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
+      body: JSON.stringify({ name: grantName.trim(), phone: grantPhone.trim(), email: grantEmail.trim() }),
+    });
+    const data = await res.json().catch(() => null);
+
+    setGranting(false);
+
+    if (res.ok) {
+      setGrantMessage(`${grantName} נוסף/ה כמנוי/ה בהצלחה`);
+      setGrantName('');
+      setGrantPhone('');
+      setGrantEmail('');
+      loadApprovedSubs();
+    } else {
+      setGrantMessage('שגיאה: ' + (data?.error || 'לא הצלחנו להוסיף'));
+    }
   }
 
   async function handleMondayDebug() {
@@ -238,6 +275,21 @@ export default function AdminSubscribersPage() {
           {syncMessage}
         </p>
       )}
+
+      <details style={{ marginBottom: '20px' }} open={showGrantForm}>
+        <summary style={{ cursor: 'pointer', fontSize: '13px', color: 'var(--text-secondary)' }} onClick={(e) => { e.preventDefault(); setShowGrantForm((v) => !v); }}>
+          ➕ הוספת מנוי/ה ידנית (לא דרך מאנדיי - למשל לניסיון)
+        </summary>
+        <div className="journal-form" style={{ marginTop: '10px' }}>
+          <div className="field"><label>שם מלא</label><ClearableInput type="text" value={grantName} onChange={(e) => setGrantName(e.target.value)} onClear={() => setGrantName('')} placeholder="גיל דיקסטרו" /></div>
+          <div className="form-row">
+            <div className="field"><label>טלפון</label><ClearableInput type="tel" value={grantPhone} onChange={(e) => setGrantPhone(e.target.value)} onClear={() => setGrantPhone('')} placeholder="0542000214" /></div>
+            <div className="field"><label>מייל</label><ClearableInput type="email" value={grantEmail} onChange={(e) => setGrantEmail(e.target.value)} onClear={() => setGrantEmail('')} placeholder="name@example.com" /></div>
+          </div>
+          <button className="btn-primary" onClick={handleGrantSubscriber} disabled={granting}>{granting ? 'מוסיפים...' : 'הוספה כמנוי/ה'}</button>
+          {grantMessage && <p style={{ marginTop: '10px', fontSize: '13px', color: grantMessage.startsWith('שגיאה') ? 'var(--loss)' : 'var(--profit)' }}>{grantMessage}</p>}
+        </div>
+      </details>
 
       <details style={{ marginBottom: '20px' }}>
         <summary style={{ cursor: 'pointer', fontSize: '13px', color: 'var(--text-secondary)' }}>🔍 אבחון מול מאנדיי (למה מנוי מסוים לא מזוהה)</summary>
