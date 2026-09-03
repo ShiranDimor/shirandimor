@@ -48,6 +48,7 @@ function currentMonthKey() {
 
 export default function PortfolioPage() {
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [loggedIn, setLoggedIn] = useState(false);
   const [hasFullAccess, setHasFullAccess] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -79,57 +80,64 @@ export default function PortfolioPage() {
   }, []);
 
   async function load() {
-    fetch('/api/refresh-prices').catch(() => {});
+    try {
+      fetch('/api/refresh-prices').catch(() => {});
 
-    const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } } = await supabase.auth.getUser();
 
-    if (user) {
-      setLoggedIn(true);
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('role, full_name, phone, email')
-        .eq('id', user.id)
-        .single();
-      setHasFullAccess(profile?.role === 'admin' || profile?.role === 'subscriber');
-      setIsAdmin(profile?.role === 'admin');
+      if (user) {
+        setLoggedIn(true);
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role, full_name, phone, email')
+          .eq('id', user.id)
+          .single();
+        setHasFullAccess(profile?.role === 'admin' || profile?.role === 'subscriber');
+        setIsAdmin(profile?.role === 'admin');
 
-      const prefillParams = new URLSearchParams();
-      if (profile?.full_name) prefillParams.set('prefillName', profile.full_name);
-      if (profile?.phone) prefillParams.set('prefillPhone', profile.phone);
-      if (profile?.email) prefillParams.set('prefillEmail', profile.email);
-      setTradingPlanHref(`/trading-plan?${prefillParams.toString()}`);
+        const prefillParams = new URLSearchParams();
+        if (profile?.full_name) prefillParams.set('prefillName', profile.full_name);
+        if (profile?.phone) prefillParams.set('prefillPhone', profile.phone);
+        if (profile?.email) prefillParams.set('prefillEmail', profile.email);
+        setTradingPlanHref(`/trading-plan?${prefillParams.toString()}`);
 
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.access_token) {
-        fetch('/api/trading-plan/my-link', { headers: { Authorization: `Bearer ${session.access_token}` } })
-          .then((res) => (res.ok ? res.json() : null))
-          .then((data) => { if (data?.id) setTradingPlanHref(`/my-plan/${data.id}`); })
-          .catch(() => {});
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.access_token) {
+          fetch('/api/trading-plan/my-link', { headers: { Authorization: `Bearer ${session.access_token}` } })
+            .then((res) => (res.ok ? res.json() : null))
+            .then((data) => { if (data?.id) setTradingPlanHref(`/my-plan/${data.id}`); })
+            .catch(() => {});
+        }
       }
+
+      const { data: open } = await supabase
+        .from('trades')
+        .select('*')
+        .eq('status', 'open')
+        .order('opened_at', { ascending: false });
+
+      const { data: closed } = await supabase
+        .from('trades')
+        .select('*')
+        .eq('status', 'closed')
+        .order('closed_at', { ascending: false });
+
+      const { data: settings } = await supabase
+        .from('portfolio_settings')
+        .select('initial_balance')
+        .eq('id', 1)
+        .single();
+
+      if (open) setOpenTrades(open);
+      if (closed) setClosedTrades(closed);
+      if (settings) setInitialBalance(Number(settings.initial_balance));
+    } catch (e) {
+      // בלי try/catch כאן, כל שגיאה (רשת, מפתח שגוי וכו') הייתה משאירה את הדף תקוע על "טוענים..." לנצח בלי שום הודעה
+      console.error('portfolio load failed', e);
+      setLoadError(e instanceof Error ? e.message : 'שגיאה לא ידועה');
+    } finally {
+      setLoading(false);
     }
-
-    const { data: open } = await supabase
-      .from('trades')
-      .select('*')
-      .eq('status', 'open')
-      .order('opened_at', { ascending: false });
-
-    const { data: closed } = await supabase
-      .from('trades')
-      .select('*')
-      .eq('status', 'closed')
-      .order('closed_at', { ascending: false });
-
-    const { data: settings } = await supabase
-      .from('portfolio_settings')
-      .select('initial_balance')
-      .eq('id', 1)
-      .single();
-
-    if (open) setOpenTrades(open);
-    if (closed) setClosedTrades(closed);
-    if (settings) setInitialBalance(Number(settings.initial_balance));
-    setLoading(false);
   }
 
   function pct(trade: Trade) {
@@ -239,6 +247,21 @@ export default function PortfolioPage() {
 
   if (loading) {
     return <div className="wrap"><p style={{ padding: '40px', textAlign: 'center' }}>טוענים...</p></div>;
+  }
+
+  if (loadError) {
+    return (
+      <div className="wrap">
+        <header>
+          <Link href="/" className="brand">מסחר <span>אחראי</span> במניות</Link>
+          <Link href="/" className="nav-link">בית</Link>
+        </header>
+        <div style={{ padding: '40px 16px', textAlign: 'center' }}>
+          <p style={{ marginBottom: '10px' }}>לא הצלחנו לטעון את התיק כרגע.</p>
+          <p style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>{loadError}</p>
+        </div>
+      </div>
+    );
   }
 
   return (

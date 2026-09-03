@@ -92,30 +92,35 @@ export default function HomePage() {
   }, []);
 
   async function loadTrades() {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
-      setHasFullAccess(profile?.role === 'admin' || profile?.role === 'subscriber');
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+        setHasFullAccess(profile?.role === 'admin' || profile?.role === 'subscriber');
+      }
+
+      const { data: open } = await supabase
+        .from('trades')
+        .select('*')
+        .eq('status', 'open')
+        .order('opened_at', { ascending: false });
+
+      const { data: closed } = await supabase
+        .from('trades')
+        .select('*')
+        .eq('status', 'closed')
+        .order('closed_at', { ascending: false })
+        .limit(1);
+
+      if (open) {
+        setOpenTrades(open.slice(0, 2));
+        setOpenCount(open.length);
+      }
+      if (closed && closed.length > 0) setLastClosed(closed[0]);
+    } catch (e) {
+      // בלי try/catch כאן, שגיאה הייתה משאירה את התצוגה בשקט על 0 עסקאות בלי שום סימן לבעיה
+      console.error('homepage loadTrades failed', e);
     }
-
-    const { data: open } = await supabase
-      .from('trades')
-      .select('*')
-      .eq('status', 'open')
-      .order('opened_at', { ascending: false });
-
-    const { data: closed } = await supabase
-      .from('trades')
-      .select('*')
-      .eq('status', 'closed')
-      .order('closed_at', { ascending: false })
-      .limit(1);
-
-    if (open) {
-      setOpenTrades(open.slice(0, 2));
-      setOpenCount(open.length);
-    }
-    if (closed && closed.length > 0) setLastClosed(closed[0]);
   }
 
   function pctChange(trade: Trade) {
