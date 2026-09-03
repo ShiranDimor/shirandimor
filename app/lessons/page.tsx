@@ -26,6 +26,7 @@ export default function LessonsLibraryPage() {
   const [phone, setPhone] = useState('');
   const [entering, setEntering] = useState(false);
   const [gateError, setGateError] = useState('');
+  const [enterResult, setEnterResult] = useState<'subscriber' | 'updates' | null>(null);
 
   useEffect(() => {
     init();
@@ -74,6 +75,8 @@ export default function LessonsLibraryPage() {
     return /^05\d{8}$/.test(v.replace(/\D/g, ''));
   }
 
+  // אם הטלפון כבר משויך למנוי/חברת עדכונים במאנדיי - /api/lead לא יוצר ליד, ורק מחזיר matched.
+  // מציגים לכל אחד מהם הודעה מתאימה במקום לזרוק ישר לתוך הספרייה בלי שום ציון.
   async function handleEnter() {
     if (!name.trim() || !isValidPhone(phone)) {
       setGateError('צריך שם ומספר נייד תקין (לדוגמה 0501234567)');
@@ -82,17 +85,31 @@ export default function LessonsLibraryPage() {
     setEntering(true);
     setGateError('');
 
+    let matched: string | undefined;
     try {
-      await fetch('/api/lead', {
+      const res = await fetch('/api/lead', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: name.trim(), phone: phone.trim(), source: 'ספריית שיעורים' }),
       });
+      const data = await res.json().catch(() => ({}));
+      matched = data.matched;
     } catch {}
 
-    await load();
     setEntering(false);
+
+    if (matched === 'subscriber' || matched === 'updates') {
+      setEnterResult(matched);
+      return;
+    }
+
+    await load();
+  }
+
+  async function continueToLibrary() {
+    setEnterResult(null);
+    await load();
   }
 
   // רק נושאים שיש בהם בפועל שיעורים, בסדר הקבוע מ-LESSON_CATEGORIES (ולא לפי סדר הופעה מקרי)
@@ -157,7 +174,7 @@ export default function LessonsLibraryPage() {
         וובינרים, הרצאות ומצגות על מסחר - פתוחות לצפייה לכל מי שמחובר לקהילה שלנו.
       </p>
 
-      {gateNeeded && !loading && (
+      {gateNeeded && !loading && !enterResult && (
         <div className="tp-question-card">
           <div className="tp-question-title">כמה פרטים ונכנסים</div>
           <div className="tp-step-intro" style={{ marginBottom: '14px' }}>
@@ -172,6 +189,35 @@ export default function LessonsLibraryPage() {
           <button type="button" className="btn-primary" onClick={handleEnter} disabled={entering}>
             {entering ? 'נכנסים...' : 'כניסה לספרייה'}
           </button>
+        </div>
+      )}
+
+      {gateNeeded && enterResult === 'subscriber' && (
+        <div className="tp-question-card">
+          <div className="tp-question-title">כבר יש לך גישה מלאה 🎉</div>
+          <div className="tp-step-intro" style={{ marginBottom: '14px' }}>
+            את/ה כבר חלק מקבוצת הסוחרים - אין צורך להשאיר שום פרטים, הכל כבר פתוח לך כמנוי/ה.
+          </div>
+          <button type="button" className="btn-primary" onClick={continueToLibrary}>כניסה לספרייה</button>
+        </div>
+      )}
+
+      {gateNeeded && enterResult === 'updates' && (
+        <div className="tp-question-card">
+          <div className="tp-question-title">כבר את/ה בקבוצת העדכונים 👋</div>
+          <div className="tp-step-intro" style={{ marginBottom: '14px' }}>
+            הספרייה פתוחה לך. רוצה גישה גם לתוכן הבלעדי ולליווי של קבוצת הסוחרים?
+          </div>
+          <a
+            href="https://pay.grow.link/200a7cdcb258ee6ffdea0f423a1ace0e-MzE4MDU5OA"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn-outline"
+            style={{ display: 'block', textAlign: 'center', textDecoration: 'none', marginBottom: '10px' }}
+          >
+            הצטרפות לקבוצת הסוחרים ←
+          </a>
+          <button type="button" className="btn-primary" onClick={continueToLibrary}>כניסה לספרייה</button>
         </div>
       )}
 

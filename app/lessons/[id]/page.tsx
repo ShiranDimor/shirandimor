@@ -28,6 +28,7 @@ export default function LessonDetailPage() {
   const [phone, setPhone] = useState('');
   const [entering, setEntering] = useState(false);
   const [gateError, setGateError] = useState('');
+  const [enterResult, setEnterResult] = useState<'subscriber' | 'updates' | null>(null);
 
   useEffect(() => {
     if (id) load();
@@ -62,17 +63,31 @@ export default function LessonDetailPage() {
     setEntering(true);
     setGateError('');
 
+    let matched: string | undefined;
     try {
-      await fetch('/api/lead', {
+      const res = await fetch('/api/lead', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: name.trim(), phone: phone.trim(), source: 'ספריית שיעורים' }),
       });
+      const data = await res.json().catch(() => ({}));
+      matched = data.matched;
     } catch {}
 
-    await load();
     setEntering(false);
+
+    if (matched === 'subscriber' || matched === 'updates') {
+      setEnterResult(matched);
+      return;
+    }
+
+    await load();
+  }
+
+  async function continueToLesson() {
+    setEnterResult(null);
+    await load();
   }
 
   return (
@@ -108,7 +123,7 @@ export default function LessonDetailPage() {
             </div>
           )}
 
-          {lesson.locked && (
+          {lesson.locked && !enterResult && (
             <div className="tp-question-card">
               <div className="tp-question-title">כמה פרטים ונכנסים</div>
               <div className="tp-step-intro" style={{ marginBottom: '14px' }}>
@@ -123,6 +138,35 @@ export default function LessonDetailPage() {
               <button type="button" className="btn-primary" onClick={handleEnter} disabled={entering}>
                 {entering ? 'נכנסים...' : 'כניסה לספרייה'}
               </button>
+            </div>
+          )}
+
+          {lesson.locked && enterResult === 'subscriber' && (
+            <div className="tp-question-card">
+              <div className="tp-question-title">כבר יש לך גישה מלאה 🎉</div>
+              <div className="tp-step-intro" style={{ marginBottom: '14px' }}>
+                את/ה כבר חלק מקבוצת הסוחרים - אין צורך להשאיר שום פרטים, הכל כבר פתוח לך כמנוי/ה.
+              </div>
+              <button type="button" className="btn-primary" onClick={continueToLesson}>צפייה בשיעור</button>
+            </div>
+          )}
+
+          {lesson.locked && enterResult === 'updates' && (
+            <div className="tp-question-card">
+              <div className="tp-question-title">כבר את/ה בקבוצת העדכונים 👋</div>
+              <div className="tp-step-intro" style={{ marginBottom: '14px' }}>
+                השיעור פתוח לך. רוצה גישה גם לתוכן הבלעדי ולליווי של קבוצת הסוחרים?
+              </div>
+              <a
+                href="https://pay.grow.link/200a7cdcb258ee6ffdea0f423a1ace0e-MzE4MDU5OA"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn-outline"
+                style={{ display: 'block', textAlign: 'center', textDecoration: 'none', marginBottom: '10px' }}
+              >
+                הצטרפות לקבוצת הסוחרים ←
+              </a>
+              <button type="button" className="btn-primary" onClick={continueToLesson}>צפייה בשיעור</button>
             </div>
           )}
 
