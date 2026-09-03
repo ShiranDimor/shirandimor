@@ -3,13 +3,13 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
+import { LESSON_CATEGORIES } from '@/lib/lessonsConfig';
 
 type Lesson = {
   id: string;
   title: string;
   description: string | null;
   category: string | null;
-  tier: 'public' | 'registered' | 'subscriber';
   video_id: string;
   duration_minutes: number | null;
   published: boolean;
@@ -17,17 +17,10 @@ type Lesson = {
   created_at: string;
 };
 
-const TIER_LABELS: Record<Lesson['tier'], string> = {
-  public: 'פתוח לכולם',
-  registered: 'מי שנרשם/התחבר',
-  subscriber: 'מנויים בלבד',
-};
-
 const emptyForm = {
   title: '',
   description: '',
-  category: '',
-  tier: 'public' as Lesson['tier'],
+  category: LESSON_CATEGORIES[0] as string,
   videoUrl: '',
   durationMinutes: '',
   published: true,
@@ -83,8 +76,7 @@ export default function AdminLessonsPage() {
     setForm({
       title: lesson.title,
       description: lesson.description || '',
-      category: lesson.category || '',
-      tier: lesson.tier,
+      category: lesson.category || LESSON_CATEGORIES[0],
       videoUrl: `https://www.youtube.com/watch?v=${lesson.video_id}`,
       durationMinutes: lesson.duration_minutes ? String(lesson.duration_minutes) : '',
       published: lesson.published,
@@ -111,7 +103,6 @@ export default function AdminLessonsPage() {
       title: form.title.trim(),
       description: form.description.trim() || null,
       category: form.category.trim() || null,
-      tier: form.tier,
       videoUrl: form.videoUrl.trim() || undefined,
       durationMinutes: form.durationMinutes ? Number(form.durationMinutes) : null,
       published: form.published,
@@ -201,17 +192,14 @@ export default function AdminLessonsPage() {
 
         <input className="tp-text-input" style={{ minHeight: 'auto', marginBottom: '10px' }} placeholder="כותרת" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
         <textarea className="tp-text-input" style={{ marginBottom: '10px' }} placeholder="תיאור קצר" rows={2} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
-        <input className="tp-text-input" style={{ minHeight: 'auto', marginBottom: '10px' }} placeholder="קטגוריה (למשל: ניתוח טכני, פסיכולוגיה של מסחר)" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} />
+        <select className="tp-text-input" style={{ minHeight: 'auto', marginBottom: '10px' }} value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>
+          {LESSON_CATEGORIES.map((c) => (
+            <option key={c} value={c}>{c}</option>
+          ))}
+        </select>
         <input className="tp-text-input" style={{ minHeight: 'auto', marginBottom: '10px' }} placeholder={editingId ? 'לינק YouTube חדש (רק אם רוצים להחליף סרטון)' : 'לינק YouTube'} value={form.videoUrl} onChange={(e) => setForm({ ...form, videoUrl: e.target.value })} />
 
-        <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
-          <select className="tp-text-input" style={{ minHeight: 'auto' }} value={form.tier} onChange={(e) => setForm({ ...form, tier: e.target.value as Lesson['tier'] })}>
-            <option value="public">פתוח לכולם</option>
-            <option value="registered">מי שנרשם/התחבר</option>
-            <option value="subscriber">מנויים בלבד</option>
-          </select>
-          <input className="tp-text-input" style={{ minHeight: 'auto' }} type="number" placeholder="אורך בדקות" value={form.durationMinutes} onChange={(e) => setForm({ ...form, durationMinutes: e.target.value })} />
-        </div>
+        <input className="tp-text-input" style={{ minHeight: 'auto', marginBottom: '10px' }} type="number" placeholder="אורך בדקות" value={form.durationMinutes} onChange={(e) => setForm({ ...form, durationMinutes: e.target.value })} />
 
         <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', marginBottom: '14px', cursor: 'pointer' }}>
           <input type="checkbox" checked={form.published} onChange={(e) => setForm({ ...form, published: e.target.checked })} />
@@ -231,32 +219,51 @@ export default function AdminLessonsPage() {
       {loadingLessons && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>טוענים...</p>}
       {!loadingLessons && lessons.length === 0 && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>עדיין לא נוספו שיעורים</p>}
 
-      {lessons.map((lesson) => (
-        <div className="admin-row" key={lesson.id}>
-          <div>
-            <div className="name">
-              {lesson.title}
-              {!lesson.published && <span style={{ marginRight: '8px', fontSize: '10.5px', color: '#E8A33D', border: '1px solid #E8A33D', borderRadius: '5px', padding: '2px 6px' }}>טיוטה</span>}
+      {!loadingLessons && [...LESSON_CATEGORIES, 'ללא קטגוריה מוכרת'].map((c) => {
+        const inGroup = c === 'ללא קטגוריה מוכרת'
+          ? lessons.filter((l) => !LESSON_CATEGORIES.includes(l.category as (typeof LESSON_CATEGORIES)[number]))
+          : lessons.filter((l) => l.category === c);
+        if (inGroup.length === 0) return null;
+
+        return (
+          <div key={c} style={{ marginBottom: '28px' }}>
+            <div style={{ fontSize: '14px', fontWeight: 700, color: '#E8A33D', marginBottom: '10px' }}>{c}</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '16px' }}>
+              {inGroup.map((lesson) => (
+                <div key={lesson.id} style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-hairline)', borderRadius: '10px', overflow: 'hidden' }}>
+                  <div style={{ position: 'relative', aspectRatio: '16 / 9', background: '#000' }}>
+                    <img src={`https://img.youtube.com/vi/${lesson.video_id}/hqdefault.jpg`} alt={lesson.title} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                    {!lesson.published && (
+                      <span style={{ position: 'absolute', top: '8px', right: '8px', fontSize: '10.5px', color: '#E8A33D', background: 'rgba(8,19,26,0.85)', border: '1px solid #E8A33D', borderRadius: '5px', padding: '2px 6px' }}>טיוטה</span>
+                    )}
+                  </div>
+                  <div style={{ padding: '12px' }}>
+                    <div style={{ fontSize: '13.5px', fontWeight: 700, marginBottom: '4px' }}>{lesson.title}</div>
+                    <div style={{ fontSize: '11.5px', color: 'var(--text-tertiary)', marginBottom: '10px' }}>
+                      {lesson.duration_minutes ? `${lesson.duration_minutes} דק'` : 'ללא משך מוגדר'}
+                    </div>
+                    <div style={{ display: 'flex', gap: '6px' }}>
+                      <button type="button" className="btn-outline" style={{ flex: 1, padding: '8px 12px', fontSize: '12.5px' }} onClick={() => startEdit(lesson)}>עריכה</button>
+                      <button
+                        className="row-delete-btn"
+                        onClick={() => handleDelete(lesson.id, lesson.title)}
+                        disabled={deletingId === lesson.id}
+                        title="מחיקת שיעור"
+                      >
+                        {deletingId === lesson.id ? '…' : (
+                          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--loss)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M3 6h18" /><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /><line x1="10" y1="11" x2="10" y2="17" /><line x1="14" y1="11" x2="14" y2="17" />
+                          </svg>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
-            <div className="email">{TIER_LABELS[lesson.tier]}{lesson.category ? ` · ${lesson.category}` : ''}{lesson.duration_minutes ? ` · ${lesson.duration_minutes} דק'` : ''}</div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <button type="button" className="btn-outline" style={{ padding: '8px 12px', fontSize: '12.5px' }} onClick={() => startEdit(lesson)}>עריכה</button>
-            <button
-              className="row-delete-btn"
-              onClick={() => handleDelete(lesson.id, lesson.title)}
-              disabled={deletingId === lesson.id}
-              title="מחיקת שיעור"
-            >
-              {deletingId === lesson.id ? '…' : (
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--loss)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M3 6h18" /><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /><line x1="10" y1="11" x2="10" y2="17" /><line x1="14" y1="11" x2="14" y2="17" />
-                </svg>
-              )}
-            </button>
-          </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

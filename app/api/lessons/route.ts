@@ -13,7 +13,9 @@ export async function GET(request: Request) {
   const cookieHeader = request.headers.get('cookie') || '';
   const hasRegisteredCookie = /(?:^|;\s*)sd_registered=1(?:;|$)/.test(cookieHeader);
 
-  let viewerTier: 'public' | 'registered' | 'subscriber' = hasRegisteredCookie ? 'registered' : 'public';
+  // אין יותר נעילה לפי שיעור בודד - מי שעבר את שער הכניסה של הספרייה (עזב פרטים, כבר מנוי,
+  // או כבר בקבוצת העדכונים) רואה את כל השיעורים, בלי תלות ב-tier שנקבע לשיעור עצמו
+  let viewerTier: 'public' | 'registered' | 'subscriber' = hasRegisteredCookie ? 'subscriber' : 'public';
   let isAdmin = false;
 
   if (token) {

@@ -10,7 +10,6 @@ type LessonDetail = {
   title: string;
   description: string | null;
   category: string | null;
-  tier: 'public' | 'registered' | 'subscriber';
   durationMinutes: number | null;
   thumbnailUrl: string;
   videoId: string | null;
@@ -27,9 +26,9 @@ export default function LessonDetailPage() {
 
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
-  const [email, setEmail] = useState('');
-  const [joining, setJoining] = useState(false);
-  const [joinError, setJoinError] = useState('');
+  const [entering, setEntering] = useState(false);
+  const [gateError, setGateError] = useState('');
+  const [enterResult, setEnterResult] = useState<'subscriber' | 'updates' | null>(null);
 
   useEffect(() => {
     if (id) load();
@@ -56,25 +55,39 @@ export default function LessonDetailPage() {
     return /^05\d{8}$/.test(v.replace(/\D/g, ''));
   }
 
-  async function handleJoin() {
+  async function handleEnter() {
     if (!name.trim() || !isValidPhone(phone)) {
-      setJoinError('צריך שם ומספר נייד תקין (לדוגמה 0501234567)');
+      setGateError('צריך שם ומספר נייד תקין (לדוגמה 0501234567)');
       return;
     }
-    setJoining(true);
-    setJoinError('');
+    setEntering(true);
+    setGateError('');
 
+    let matched: string | undefined;
     try {
-      await fetch('/api/lead', {
+      const res = await fetch('/api/lead', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name.trim(), phone: phone.trim(), email: email.trim() || undefined, source: 'הגיע משיעור נעול - עדכונים' }),
+        body: JSON.stringify({ name: name.trim(), phone: phone.trim(), source: 'ספריית שיעורים' }),
       });
+      const data = await res.json().catch(() => ({}));
+      matched = data.matched;
     } catch {}
 
+    setEntering(false);
+
+    if (matched === 'subscriber' || matched === 'updates') {
+      setEnterResult(matched);
+      return;
+    }
+
     await load();
-    setJoining(false);
+  }
+
+  async function continueToLesson() {
+    setEnterResult(null);
+    await load();
   }
 
   return (
@@ -110,33 +123,50 @@ export default function LessonDetailPage() {
             </div>
           )}
 
-          {lesson.locked && lesson.tier === 'subscriber' && (
-            <div className="lock-banner">
-              <div className="lb-icon">🔒</div>
-              <div className="lb-text">
-                <p className="lb-title">השיעור הזה שמור למנויים</p>
-                <p className="lb-sub">הצטרפות לקבוצת הסוחרים פותחת גישה לכל ספריית השיעורים, כולל התוכן החדש ביותר.</p>
-              </div>
-              <div className="lb-cta-row">
-                <a href="https://pay.grow.link/200a7cdcb258ee6ffdea0f423a1ace0e-MzE4MDU5OA" className="lb-cta">הצטרפות לקבוצת הסוחרים ←</a>
-              </div>
-            </div>
-          )}
-
-          {lesson.locked && lesson.tier === 'registered' && (
+          {lesson.locked && !enterResult && (
             <div className="tp-question-card">
-              <div className="tp-question-title">כמה פרטים ופותחים גישה חינם</div>
-              <div className="tp-step-intro" style={{ marginBottom: '14px' }}>השיעור הזה פתוח לחברי קבוצת העדכונים - ההצטרפות חינמית ולוקחת רגע.</div>
+              <div className="tp-question-title">כמה פרטים ונכנסים</div>
+              <div className="tp-step-intro" style={{ marginBottom: '14px' }}>
+                הספרייה פתוחה לחברי הקהילה - אם כבר קיימים אצלנו (מנויים או קבוצת העדכונים) תיכנסו ישר, ואם לא, ההצטרפות חינמית ולוקחת רגע.
+              </div>
 
               <input className="tp-text-input" style={{ minHeight: 'auto', marginBottom: '10px' }} placeholder="שם" value={name} onChange={(e) => setName(e.target.value)} />
               <input className="tp-text-input" style={{ minHeight: 'auto', marginBottom: '10px' }} type="tel" placeholder="נייד" value={phone} onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))} />
-              <input className="tp-text-input" style={{ minHeight: 'auto', marginBottom: '10px' }} type="email" placeholder="אימייל (לא חובה)" value={email} onChange={(e) => setEmail(e.target.value)} />
 
-              {joinError && <p style={{ color: 'var(--loss)', fontSize: '13px', marginBottom: '10px' }}>{joinError}</p>}
+              {gateError && <p style={{ color: 'var(--loss)', fontSize: '13px', marginBottom: '10px' }}>{gateError}</p>}
 
-              <button type="button" className="btn-primary" onClick={handleJoin} disabled={joining}>
-                {joining ? 'פותחים גישה...' : 'הצטרפות חינם - פתיחת השיעור'}
+              <button type="button" className="btn-primary" onClick={handleEnter} disabled={entering}>
+                {entering ? 'נכנסים...' : 'כניסה לספרייה'}
               </button>
+            </div>
+          )}
+
+          {lesson.locked && enterResult === 'subscriber' && (
+            <div className="tp-question-card">
+              <div className="tp-question-title">כבר יש לך גישה מלאה 🎉</div>
+              <div className="tp-step-intro" style={{ marginBottom: '14px' }}>
+                את/ה כבר חלק מקבוצת הסוחרים - אין צורך להשאיר שום פרטים, הכל כבר פתוח לך כמנוי/ה.
+              </div>
+              <button type="button" className="btn-primary" onClick={continueToLesson}>צפייה בשיעור</button>
+            </div>
+          )}
+
+          {lesson.locked && enterResult === 'updates' && (
+            <div className="tp-question-card">
+              <div className="tp-question-title">כבר את/ה בקבוצת העדכונים 👋</div>
+              <div className="tp-step-intro" style={{ marginBottom: '14px' }}>
+                השיעור פתוח לך. רוצה גישה גם לתוכן הבלעדי ולליווי של קבוצת הסוחרים?
+              </div>
+              <a
+                href="https://pay.grow.link/200a7cdcb258ee6ffdea0f423a1ace0e-MzE4MDU5OA"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn-outline"
+                style={{ display: 'block', textAlign: 'center', textDecoration: 'none', marginBottom: '10px' }}
+              >
+                הצטרפות לקבוצת הסוחרים ←
+              </a>
+              <button type="button" className="btn-primary" onClick={continueToLesson}>צפייה בשיעור</button>
             </div>
           )}
 

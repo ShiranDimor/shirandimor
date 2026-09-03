@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { isActiveSubscriber } from '@/lib/subscriberStatus';
-import { isContactInSubscribersGroupMonday } from '@/lib/tradingPlan/monday';
+import { classifyContactMonday } from '@/lib/tradingPlan/monday';
 
 const LEAD_GROUP_NAME = 'לידים חדשים';
 // קישור ההצטרפות בפועל לקבוצת הוואטסאפ החינמית - נשמר כאן (קוד צד-שרת) ולא בעמוד עצמו,
@@ -10,6 +10,7 @@ const WHATSAPP_FREE_GROUP_INVITE_URL = process.env.WHATSAPP_FREE_GROUP_INVITE_UR
 const CAMPAIGN_COLUMN_TITLE = 'campaign_name';
 const STATUS_COLUMN_TITLE = 'סטטוס טיפול';
 const DUPLICATE_STATUS_LABEL = 'ליד כפול';
+const DEFAULT_SOURCE_LABEL = 'הגיע מהאתר - עדכונים';
 
 function normalizePhone(raw: string) {
   const digits = raw.replace(/\D/g, '');
@@ -85,8 +86,6 @@ async function hasExistingPhone(token: string, boardId: string, phoneColumnId: s
   return false;
 }
 
-const DEFAULT_SOURCE_LABEL = 'הגיע מהאתר - עדכונים';
-
 export async function POST(request: Request) {
   const { name, phone, email, source } = await request.json();
 
@@ -94,16 +93,29 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'חסרים פרטים' }, { status: 400 });
   }
 
-  // מזהה מאיזה טופס/עמוד ספציפי הגיע הליד (למשל דף בית מול שיעור נעול) - כדי שיהיה אפשר להבדיל
-  // בין המקורות במאנדיי במקום שכולם ייראו זהים
+  // מזהה מאיזה טופס/עמוד ספציפי הגיע הליד (למשל דף בית מול ספריית שיעורים) - כדי שיהיה אפשר
+  // להבדיל בין המקורות במאנדיי במקום שכולם ייראו זהים
   const sourceLabel = typeof source === 'string' && source.trim() ? source.trim() : DEFAULT_SOURCE_LABEL;
 
-  // מי שכבר מנוי פעיל (באתר או בקבוצת הסוחרים ב-Monday) לא צריך להצטרף לקבוצת העדכונים -
-  // הוא כבר מקבל את כל מה שיש שם ועוד הרבה יותר. בלי הבדיקה הזו כל הרשמה כזו יוצרת ליד מיותר
-  // ב-Monday שצריך לזהות ולמחוק ידנית
-  const isSubscriber = (await isActiveSubscriber(phone, email)) || (await isContactInSubscribersGroupMonday(phone, email));
-  if (isSubscriber) {
-    return NextResponse.json({ ok: true, alreadySubscriber: true });
+  // מי שכבר מנוי פעיל (באתר, או בקבוצת הסוחרים ב-Monday) או כבר בקבוצת העדכונים ב-Monday -
+  // לא צריך ליד חדש, רק לפתוח לו גישה. בלי הבדיקה הזו כל כניסה כזו יוצרת ליד מיותר ב-Monday
+  // שצריך לזהות ולמחוק ידנית. classifyContactMonday בודק את שתי הקבוצות במעבר יחיד על הלוח
+  const [isSiteSubscriber, mondayClass] = await Promise.all([
+    isActiveSubscriber(phone, email),
+    classifyContactMonday(phone, email).catch(() => 'unknown' as const),
+  ]);
+  const isSubscriber = isSiteSubscriber || mondayClass === 'member_active';
+  const isMondayUpdates = mondayClass === 'updates_group';
+
+  if (isSubscriber || isMondayUpdates) {
+    const response = NextResponse.json({
+      ok: true,
+      alreadySubscriber: isSubscriber,
+      matched: isSubscriber ? 'subscriber' : 'updates',
+      inviteUrl: WHATSAPP_FREE_GROUP_INVITE_URL,
+    });
+    response.cookies.set('sd_registered', '1', { maxAge: 60 * 60 * 24 * 365, path: '/', sameSite: 'lax' });
+    return response;
   }
 
   const token = process.env.MONDAY_API_TOKEN;
@@ -111,7 +123,9 @@ export async function POST(request: Request) {
 
   if (!token || !boardId) {
     console.error('Monday.com לא מוגדר (חסר MONDAY_API_TOKEN או MONDAY_BOARD_ID בסביבה)');
-    return NextResponse.json({ ok: true, monday: false, inviteUrl: WHATSAPP_FREE_GROUP_INVITE_URL });
+    const response = NextResponse.json({ ok: true, monday: false, inviteUrl: WHATSAPP_FREE_GROUP_INVITE_URL });
+    response.cookies.set('sd_registered', '1', { maxAge: 60 * 60 * 24 * 365, path: '/', sameSite: 'lax' });
+    return response;
   }
 
   try {
@@ -167,7 +181,7 @@ export async function POST(request: Request) {
     }
 
     const response = NextResponse.json({ ok: true, monday: Boolean(itemId), inviteUrl: WHATSAPP_FREE_GROUP_INVITE_URL });
-    // מסמן את הדפדפן כמי שהצטרף לקבוצת העדכונים - פותח גישה לשכבת התוכן האמצעית בספריית השיעורים
+    // מסמן את הדפדפן כמי שהצטרף לקבוצת העדכונים - פותח גישה לספריית השיעורים
     response.cookies.set('sd_registered', '1', { maxAge: 60 * 60 * 24 * 365, path: '/', sameSite: 'lax' });
     return response;
   } catch (e) {
