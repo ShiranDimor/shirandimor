@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/instantLogin';
+import { extractYoutubeId, extractGammaEmbedSrc } from '@/lib/lessonMedia';
 
 async function requireAdmin(request: Request) {
   const authHeader = request.headers.get('Authorization') || '';
@@ -12,23 +13,6 @@ async function requireAdmin(request: Request) {
   if (adminProfile?.role !== 'admin') return null;
 
   return user;
-}
-
-// מחלץ YouTube video id מכל צורת לינק נפוצה (youtu.be, watch?v=, embed/, shorts/) - או מקבל id גולמי כמו שהוא
-function extractYoutubeId(input: string): string | null {
-  const trimmed = input.trim();
-  if (/^[\w-]{11}$/.test(trimmed)) return trimmed;
-
-  try {
-    const url = new URL(trimmed);
-    if (url.hostname.includes('youtu.be')) return url.pathname.slice(1) || null;
-    if (url.searchParams.get('v')) return url.searchParams.get('v');
-    const match = url.pathname.match(/\/(embed|shorts)\/([\w-]{11})/);
-    if (match) return match[2];
-  } catch {
-    return null;
-  }
-  return null;
 }
 
 // GET - כל השיעורים (כולל טיוטות ולא-מפורסמים) - לתצוגת ניהול
@@ -48,18 +32,23 @@ export async function POST(request: Request) {
   if (!admin) return NextResponse.json({ error: 'אין הרשאת ניהול' }, { status: 403 });
 
   const body = await request.json().catch(() => ({}));
-  const { title, description, category, tier, videoUrl, durationMinutes, published, sortOrder } = body as Record<string, unknown>;
+  const { title, description, category, tier, provider, videoUrl, durationMinutes, published, sortOrder } = body as Record<string, unknown>;
 
   if (!title || typeof title !== 'string') {
     return NextResponse.json({ error: 'חסרה כותרת' }, { status: 400 });
   }
   if (!videoUrl || typeof videoUrl !== 'string') {
-    return NextResponse.json({ error: 'חסר לינק וידאו' }, { status: 400 });
+    return NextResponse.json({ error: provider === 'gamma' ? 'חסר לינק למצגת' : 'חסר לינק וידאו' }, { status: 400 });
   }
 
-  const videoId = extractYoutubeId(videoUrl);
+  const isGamma = provider === 'gamma';
+  const videoId = isGamma ? extractGammaEmbedSrc(videoUrl) : extractYoutubeId(videoUrl);
   if (!videoId) {
-    return NextResponse.json({ error: 'לא הצלחתי לזהות מזהה סרטון מהלינק - ודאי שזה לינק YouTube תקין' }, { status: 400 });
+    return NextResponse.json({
+      error: isGamma
+        ? 'לא הצלחתי לזהות לינק תקין ל-Gamma - הדביקו את הלינק לשיתוף, או את קוד ה-embed המלא'
+        : 'לא הצלחתי לזהות מזהה סרטון מהלינק - ודאי שזה לינק YouTube תקין',
+    }, { status: 400 });
   }
 
   const { data, error } = await supabaseAdmin
@@ -69,7 +58,7 @@ export async function POST(request: Request) {
       description: description || null,
       category: category || null,
       tier: tier === 'registered' || tier === 'subscriber' ? tier : 'public',
-      video_provider: 'youtube',
+      video_provider: isGamma ? 'gamma' : 'youtube',
       video_id: videoId,
       duration_minutes: typeof durationMinutes === 'number' ? durationMinutes : null,
       published: published !== false,

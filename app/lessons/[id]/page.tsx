@@ -10,8 +10,9 @@ type LessonDetail = {
   title: string;
   description: string | null;
   category: string | null;
+  videoProvider: string;
   durationMinutes: number | null;
-  thumbnailUrl: string;
+  thumbnailUrl: string | null;
   videoId: string | null;
   locked: boolean;
 };
@@ -111,7 +112,19 @@ export default function LessonDetailPage() {
             {lesson.durationMinutes ? `${lesson.durationMinutes} דק'` : ''}
           </div>
 
-          {!lesson.locked && lesson.videoId && (
+          {!lesson.locked && lesson.videoId && lesson.videoProvider === 'gamma' && (
+            <div style={{ position: 'relative', aspectRatio: '16 / 9', borderRadius: '12px', overflow: 'hidden', marginBottom: '18px' }}>
+              <iframe
+                src={lesson.videoId}
+                title={lesson.title}
+                allow="fullscreen"
+                allowFullScreen
+                style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 'none' }}
+              />
+            </div>
+          )}
+
+          {!lesson.locked && lesson.videoId && lesson.videoProvider !== 'gamma' && (
             <div style={{ position: 'relative', aspectRatio: '16 / 9', borderRadius: '12px', overflow: 'hidden', marginBottom: '18px' }}>
               <iframe
                 src={`https://www.youtube.com/embed/${lesson.videoId}`}

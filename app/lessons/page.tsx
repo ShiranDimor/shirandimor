@@ -10,8 +10,9 @@ type LessonSummary = {
   title: string;
   description: string | null;
   category: string | null;
+  videoProvider: string;
   durationMinutes: number | null;
-  thumbnailUrl: string;
+  thumbnailUrl: string | null;
 };
 
 export default function LessonsLibraryPage() {
@@ -122,8 +123,14 @@ export default function LessonsLibraryPage() {
         {list.map((lesson) => (
           <Link key={lesson.id} href={`/lessons/${lesson.id}`} className="lesson-card" style={{ textDecoration: 'none', color: 'inherit' }}>
             <div className="lesson-card-thumb">
-              <img src={lesson.thumbnailUrl} alt={lesson.title} />
-              <div className="lesson-card-play"><span>▶</span></div>
+              {lesson.thumbnailUrl ? (
+                <>
+                  <img src={lesson.thumbnailUrl} alt={lesson.title} />
+                  <div className="lesson-card-play"><span>▶</span></div>
+                </>
+              ) : (
+                <div className="lesson-card-presentation"><span>📊</span>מצגת</div>
+              )}
               {lesson.durationMinutes && <div className="lesson-card-duration">{lesson.durationMinutes} דק'</div>}
             </div>
             <div className="lesson-card-body">
