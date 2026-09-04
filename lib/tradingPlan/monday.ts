@@ -5,6 +5,10 @@ import { findOptions } from './questions';
 const LEAD_GROUP_NAME = 'לידים חדשים';
 const SUBSCRIBER_GROUP_NAME = 'קבוצת סוחרים';
 const UPDATES_GROUP_NAME = 'קבוצת עדכונים';
+// מי שנמצא/ת בקבוצה הזו (ימי ניסיון) מקבל/ת יחס של מנוי/ה מלא/ה לכל דבר - כל עוד היא/הוא
+// עדיין בקבוצה הזו במאנדיי. בלי זה, מי שבתקופת ניסיון נתקל/ת בשערים שפתוחים רק למנויים
+// (למשל הרשמה ללייב) כאילו היא/הוא ליד חדש
+const TRIAL_GROUP_NAME = 'בעדכונים ובימי ניסיון';
 const CAMPAIGN_COLUMN_TITLE = 'campaign_name';
 const STATUS_COLUMN_TITLE = 'סטטוס טיפול';
 const FOLLOWUP_COLUMN_TITLE = 'תאריך פולואפ';
@@ -56,6 +60,7 @@ async function getBoardSchema(token: string, boardId: string) {
     groupId: groups.find((g) => g.title === LEAD_GROUP_NAME)?.id,
     subscriberGroupId: groups.find((g) => g.title === SUBSCRIBER_GROUP_NAME)?.id,
     updatesGroupId: groups.find((g) => g.title === UPDATES_GROUP_NAME)?.id,
+    trialGroupId: groups.find((g) => g.title === TRIAL_GROUP_NAME)?.id,
     phoneColumnId: columns.find((c) => c.type === 'phone')?.id,
     emailColumnId: columns.find((c) => c.type === 'email')?.id,
     campaignColumnId: columns.find((c) => c.title === CAMPAIGN_COLUMN_TITLE)?.id,
@@ -80,8 +85,9 @@ export async function isContactInSubscribersGroupMonday(
   if (!token || !boardId || (!phone && !email)) return false;
 
   try {
-    const { subscriberGroupId, phoneColumnId, emailColumnId } = await getBoardSchema(token, boardId);
-    if (!subscriberGroupId || (!phoneColumnId && !emailColumnId)) return false;
+    const { subscriberGroupId, trialGroupId, phoneColumnId, emailColumnId } = await getBoardSchema(token, boardId);
+    const groupIds = [subscriberGroupId, trialGroupId].filter(Boolean) as string[];
+    if (groupIds.length === 0 || (!phoneColumnId && !emailColumnId)) return false;
 
     const targetPhone = phone && phoneColumnId ? normalizePhone(phone) : null;
     const targetEmail = email && emailColumnId ? email.trim().toLowerCase() : null;
@@ -89,44 +95,46 @@ export async function isContactInSubscribersGroupMonday(
 
     const columnIds = [phoneColumnId, emailColumnId].filter(Boolean) as string[];
 
-    let cursor: string | null = null;
-    do {
-      const itemsData: any = await mondayRequest(
-        token,
-        `query ($boardId: ID!, $groupId: [String!], $cursor: String, $columnIds: [String!]) {
-          boards (ids: [$boardId]) {
-            groups (ids: $groupId) {
-              items_page (limit: 500, cursor: $cursor) {
-                cursor
-                items { column_values (ids: $columnIds) { id text } }
+    for (const groupId of groupIds) {
+      let cursor: string | null = null;
+      do {
+        const itemsData: any = await mondayRequest(
+          token,
+          `query ($boardId: ID!, $groupId: [String!], $cursor: String, $columnIds: [String!]) {
+            boards (ids: [$boardId]) {
+              groups (ids: $groupId) {
+                items_page (limit: 500, cursor: $cursor) {
+                  cursor
+                  items { column_values (ids: $columnIds) { id text } }
+                }
               }
             }
+          }`,
+          { boardId, groupId: [groupId], cursor, columnIds }
+        );
+
+        const page = itemsData?.data?.boards?.[0]?.groups?.[0]?.items_page;
+        // Monday.com לא בהכרח מחזיר את column_values בסדר של columnIds שביקשנו - אלא בסדר הפנימי
+        // של הלוח - לכן חייבים להתאים לפי id ולא לפי מיקום במערך (זה מה שגרם לתקרית שבה
+        // "המייל" בפועל היה תאריך הצטרפות, ו"תאריך ההצטרפות" היה עלות חודשית)
+        const items: { column_values: { id: string; text: string | null }[] }[] = page?.items || [];
+
+        const found = items.some((item) => {
+          if (targetPhone && phoneColumnId) {
+            const text = item.column_values?.find((cv) => cv.id === phoneColumnId)?.text;
+            if (text && normalizePhone(text) === targetPhone) return true;
           }
-        }`,
-        { boardId, groupId: [subscriberGroupId], cursor, columnIds }
-      );
+          if (targetEmail && emailColumnId) {
+            const text = item.column_values?.find((cv) => cv.id === emailColumnId)?.text;
+            if (text && text.trim().toLowerCase() === targetEmail) return true;
+          }
+          return false;
+        });
+        if (found) return true;
 
-      const page = itemsData?.data?.boards?.[0]?.groups?.[0]?.items_page;
-      // Monday.com לא בהכרח מחזיר את column_values בסדר של columnIds שביקשנו - אלא בסדר הפנימי
-      // של הלוח - לכן חייבים להתאים לפי id ולא לפי מיקום במערך (זה מה שגרם לתקרית שבה
-      // "המייל" בפועל היה תאריך הצטרפות, ו"תאריך ההצטרפות" היה עלות חודשית)
-      const items: { column_values: { id: string; text: string | null }[] }[] = page?.items || [];
-
-      const found = items.some((item) => {
-        if (targetPhone && phoneColumnId) {
-          const text = item.column_values?.find((cv) => cv.id === phoneColumnId)?.text;
-          if (text && normalizePhone(text) === targetPhone) return true;
-        }
-        if (targetEmail && emailColumnId) {
-          const text = item.column_values?.find((cv) => cv.id === emailColumnId)?.text;
-          if (text && text.trim().toLowerCase() === targetEmail) return true;
-        }
-        return false;
-      });
-      if (found) return true;
-
-      cursor = page?.cursor || null;
-    } while (cursor);
+        cursor = page?.cursor || null;
+      } while (cursor);
+    }
 
     return false;
   } catch (e) {
@@ -150,15 +158,15 @@ export async function classifyContactMonday(
   if (!token || !boardId || (!phone && !email)) return 'unknown';
 
   try {
-    const { subscriberGroupId, updatesGroupId, phoneColumnId, emailColumnId } = await getBoardSchema(token, boardId);
-    if ((!subscriberGroupId && !updatesGroupId) || (!phoneColumnId && !emailColumnId)) return 'unknown';
+    const { subscriberGroupId, updatesGroupId, trialGroupId, phoneColumnId, emailColumnId } = await getBoardSchema(token, boardId);
+    if ((!subscriberGroupId && !updatesGroupId && !trialGroupId) || (!phoneColumnId && !emailColumnId)) return 'unknown';
 
     const targetPhone = phone && phoneColumnId ? normalizePhone(phone) : null;
     const targetEmail = email && emailColumnId ? email.trim().toLowerCase() : null;
     if (!targetPhone && !targetEmail) return 'unknown';
 
     const columnIds = [phoneColumnId, emailColumnId].filter(Boolean) as string[];
-    const groupIds = [subscriberGroupId, updatesGroupId].filter(Boolean) as string[];
+    const groupIds = [subscriberGroupId, trialGroupId, updatesGroupId].filter(Boolean) as string[];
 
     const matchesContact = (item: { column_values: { id: string; text: string | null }[] }) => {
       if (targetPhone && phoneColumnId) {
@@ -194,7 +202,7 @@ export async function classifyContactMonday(
         const items: { column_values: { id: string; text: string | null }[] }[] = page?.items || [];
 
         if (items.some(matchesContact)) {
-          return groupId === subscriberGroupId ? 'member_active' : 'updates_group';
+          return groupId === subscriberGroupId || groupId === trialGroupId ? 'member_active' : 'updates_group';
         }
 
         cursor = page?.cursor || null;
