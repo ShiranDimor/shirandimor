@@ -89,7 +89,7 @@ async function hasExistingPhone(token: string, boardId: string, phoneColumnId: s
 export async function POST(request: Request) {
   const { name, phone, email, source } = await request.json();
 
-  if (!name || !phone) {
+  if (!phone) {
     return NextResponse.json({ error: 'חסרים פרטים' }, { status: 400 });
   }
 
@@ -116,6 +116,13 @@ export async function POST(request: Request) {
     });
     response.cookies.set('sd_registered', '1', { maxAge: 60 * 60 * 24 * 365, path: '/', sameSite: 'lax' });
     return response;
+  }
+
+  // הגענו לכאן רק אחרי שהתברר שהאדם לא כבר מנוי/בקבוצת העדכונים - עכשיו באמת יוצרים ליד חדש
+  // ב-Monday, ולזה כן צריך שם. עד עכשיו הבדיקה הסתמכה רק על נייד, כדי שלא נבקש שם ממי שכבר
+  // מזוהה אצלנו סתם כדי "לוודא מי זה" - זה מבוזבז ומרגיש כמו איסוף פרטים מיותר
+  if (!name) {
+    return NextResponse.json({ ok: true, needsName: true });
   }
 
   const token = process.env.MONDAY_API_TOKEN;
