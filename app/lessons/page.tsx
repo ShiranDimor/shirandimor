@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
-import { LESSONS_LIBRARY_PUBLIC, LESSON_CATEGORIES } from '@/lib/lessonsConfig';
+import { LESSONS_LIBRARY_PUBLIC, LESSON_CATEGORIES, LESSON_CATEGORY_ICONS } from '@/lib/lessonsConfig';
 
 type LessonSummary = {
   id: string;
@@ -12,14 +12,6 @@ type LessonSummary = {
   category: string | null;
   durationMinutes: number | null;
   thumbnailUrl: string;
-};
-
-const CATEGORY_ICONS: Record<string, string> = {
-  'איך תכלס מתחילים?': '🧭',
-  'אסטרטגיה': '♟️',
-  'ניהול סיכונים': '🛡️',
-  'מסחר לייב - חלק ראשון': '🎥',
-  'מסחר לייב - חלק שני': '🎬',
 };
 
 export default function LessonsLibraryPage() {
@@ -261,7 +253,7 @@ export default function LessonsLibraryPage() {
           {!loading && !activeCategory && presentCategories.map((c) => (
             <div key={c} className="lesson-folder">
               <div className="lesson-folder-header">
-                <div className="lesson-folder-icon">{CATEGORY_ICONS[c] || '📁'}</div>
+                <div className="lesson-folder-icon">{LESSON_CATEGORY_ICONS[c] || '📁'}</div>
                 <div className="lesson-folder-title">{c}</div>
                 <div className="lesson-folder-count">{lessons.filter((l) => l.category === c).length}</div>
               </div>

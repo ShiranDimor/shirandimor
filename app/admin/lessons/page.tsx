@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
-import { LESSON_CATEGORIES } from '@/lib/lessonsConfig';
+import { LESSON_CATEGORIES, LESSON_CATEGORY_ICONS } from '@/lib/lessonsConfig';
 
 type Lesson = {
   id: string;
@@ -226,9 +226,13 @@ export default function AdminLessonsPage() {
         if (inGroup.length === 0) return null;
 
         return (
-          <div key={c} style={{ marginBottom: '28px' }}>
-            <div style={{ fontSize: '14px', fontWeight: 700, color: '#E8A33D', marginBottom: '10px' }}>{c}</div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '16px' }}>
+          <div key={c} className="lesson-folder">
+            <div className="lesson-folder-header">
+              <div className="lesson-folder-icon">{LESSON_CATEGORY_ICONS[c] || '📁'}</div>
+              <div className="lesson-folder-title">{c}</div>
+              <div className="lesson-folder-count">{inGroup.length}</div>
+            </div>
+            <div className="lesson-grid">
               {inGroup.map((lesson) => (
                 <div key={lesson.id} style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-hairline)', borderRadius: '10px', overflow: 'hidden' }}>
                   <Link href={`/lessons/${lesson.id}`} target="_blank" className="lesson-card-thumb" style={{ display: 'block', position: 'relative', aspectRatio: '16 / 9', background: '#000' }}>

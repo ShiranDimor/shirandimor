@@ -49,10 +49,12 @@
   .page.active { display: block; }
 
   header {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 14px 0 20px; border-bottom: 1px solid var(--border-hairline); margin-bottom: 28px;
+    display: flex; flex-direction: column; align-items: center; gap: 10px;
+    padding: 12px 0 14px; border-bottom: 1px solid var(--border-hairline); margin-bottom: 28px;
     position: sticky; top: 0; z-index: 20; background: var(--bg-void);
   }
+  /* השורה השנייה בכותרת (כפתורי הניווט) - עוטפת ומרוכזת, כדי שלא תיחתך במסכים צרים */
+  header > div { display: flex; flex-wrap: wrap; justify-content: center; }
   .brand { font-family: var(--font-display); font-size: 20px; font-weight: 700; text-decoration: none; color: inherit; }
   .brand span { color: var(--teal); }
   .nav-link { font-size: 13px; color: var(--text-secondary); text-decoration: none; }
