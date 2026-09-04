@@ -21,7 +21,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
   if (!admin) return NextResponse.json({ error: 'אין הרשאת ניהול' }, { status: 403 });
 
   const body = await request.json().catch(() => ({}));
-  const { title, description, category, tier, provider, videoUrl, durationMinutes, published, sortOrder } = body as Record<string, unknown>;
+  const { title, description, category, tier, provider, videoUrl, thumbnailUrl: manualThumbnailUrl, durationMinutes, published, sortOrder } = body as Record<string, unknown>;
 
   const fields: Record<string, unknown> = { updated_at: new Date().toISOString() };
   if (typeof title === 'string') fields.title = title;
@@ -31,6 +31,9 @@ export async function PATCH(request: Request, { params }: { params: { id: string
   if (typeof durationMinutes === 'number' || durationMinutes === null) fields.duration_minutes = durationMinutes;
   if (typeof published === 'boolean') fields.published = published;
   if (typeof sortOrder === 'number') fields.sort_order = sortOrder;
+
+  const manualThumbnail = typeof manualThumbnailUrl === 'string' && manualThumbnailUrl.trim() ? manualThumbnailUrl.trim() : null;
+  if (manualThumbnailUrl === null || manualThumbnail) fields.thumbnail_url = manualThumbnail;
 
   const isGamma = provider === 'gamma';
   if (typeof videoUrl === 'string' && videoUrl.trim()) {
@@ -44,8 +47,9 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     }
     fields.video_id = videoId;
     fields.video_provider = isGamma ? 'gamma' : 'youtube';
-    // best-effort - אם זה נכשל השדה פשוט לא מתעדכן, בלי להפיל את השמירה
-    if (isGamma) fields.thumbnail_url = await fetchOgImage(videoId);
+    // עדיפות לתמונה שהוזנה ידנית (מטופל למעלה) - רק אם אין כזו מנסים best-effort לשלוף
+    // og:image. אם זה נכשל השדה פשוט לא מתעדכן, בלי להפיל את השמירה
+    if (isGamma && !manualThumbnail) fields.thumbnail_url = await fetchOgImage(videoId);
   } else if (provider === 'gamma' || provider === 'youtube') {
     fields.video_provider = provider;
   }

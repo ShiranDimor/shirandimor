@@ -25,6 +25,7 @@ const emptyForm = {
   category: LESSON_CATEGORIES[0] as string,
   provider: 'youtube' as 'youtube' | 'gamma',
   videoUrl: '',
+  thumbnailUrl: '',
   durationMinutes: '',
   published: true,
   sortOrder: '0',
@@ -83,6 +84,7 @@ export default function AdminLessonsPage() {
       category: lesson.category || LESSON_CATEGORIES[0],
       provider: isGamma ? 'gamma' : 'youtube',
       videoUrl: isGamma ? lesson.video_id : `https://www.youtube.com/watch?v=${lesson.video_id}`,
+      thumbnailUrl: lesson.thumbnail_url || '',
       durationMinutes: lesson.duration_minutes ? String(lesson.duration_minutes) : '',
       published: lesson.published,
       sortOrder: String(lesson.sort_order),
@@ -110,6 +112,7 @@ export default function AdminLessonsPage() {
       category: form.category.trim() || null,
       provider: form.provider,
       videoUrl: form.videoUrl.trim() || undefined,
+      thumbnailUrl: form.thumbnailUrl.trim() || null,
       durationMinutes: form.durationMinutes ? Number(form.durationMinutes) : null,
       published: form.published,
       sortOrder: form.sortOrder ? Number(form.sortOrder) : 0,
@@ -267,6 +270,16 @@ export default function AdminLessonsPage() {
           value={form.videoUrl}
           onChange={(e) => setForm({ ...form, videoUrl: e.target.value })}
         />
+
+        {form.provider === 'gamma' && (
+          <input
+            className="tp-text-input"
+            style={{ minHeight: 'auto', marginBottom: '10px' }}
+            placeholder="כתובת תמונה לתצוגה מקדימה (לא חובה - בלי זה יופיע פלייסהולדר)"
+            value={form.thumbnailUrl}
+            onChange={(e) => setForm({ ...form, thumbnailUrl: e.target.value })}
+          />
+        )}
 
         <input className="tp-text-input" style={{ minHeight: 'auto', marginBottom: '10px' }} type="number" placeholder="אורך בדקות" value={form.durationMinutes} onChange={(e) => setForm({ ...form, durationMinutes: e.target.value })} />
 
