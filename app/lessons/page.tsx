@@ -191,9 +191,9 @@ export default function LessonsLibraryPage() {
 
       {gateNeeded && !loading && !enterResult && (
         <div className="tp-question-card">
-          <div className="tp-question-title">כמה פרטים ונכנסים</div>
+          <div className="tp-question-title">רק שם ונייד, וזה שלך</div>
           <div className="tp-step-intro" style={{ marginBottom: '14px' }}>
-            הספרייה פתוחה לחברי הקהילה - אם כבר קיימים אצלנו (מנויים או קבוצת העדכונים) תיכנסו ישר, ואם לא, ההצטרפות חינמית ולוקחת רגע.
+            בלי שאלונים, בלי מייל - רק ככה נדע איך למצוא אתכם, ופותחים לכם את כל השיעורים. לוקח כמה שניות.
           </div>
 
           <input className="tp-text-input" style={{ minHeight: 'auto', marginBottom: '10px' }} placeholder="שם" value={name} onChange={(e) => setName(e.target.value)} />
