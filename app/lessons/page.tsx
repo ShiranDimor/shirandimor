@@ -10,8 +10,9 @@ type LessonSummary = {
   title: string;
   description: string | null;
   category: string | null;
+  videoProvider: string;
   durationMinutes: number | null;
-  thumbnailUrl: string;
+  thumbnailUrl: string | null;
 };
 
 export default function LessonsLibraryPage() {
@@ -122,8 +123,14 @@ export default function LessonsLibraryPage() {
         {list.map((lesson) => (
           <Link key={lesson.id} href={`/lessons/${lesson.id}`} className="lesson-card" style={{ textDecoration: 'none', color: 'inherit' }}>
             <div className="lesson-card-thumb">
-              <img src={lesson.thumbnailUrl} alt={lesson.title} />
-              <div className="lesson-card-play"><span>▶</span></div>
+              {lesson.thumbnailUrl ? (
+                <>
+                  <img src={lesson.thumbnailUrl} alt={lesson.title} />
+                  <div className="lesson-card-play"><span>▶</span></div>
+                </>
+              ) : (
+                <div className="lesson-card-presentation"><span>📊</span>מצגת</div>
+              )}
               {lesson.durationMinutes && <div className="lesson-card-duration">{lesson.durationMinutes} דק'</div>}
             </div>
             <div className="lesson-card-body">
@@ -184,9 +191,9 @@ export default function LessonsLibraryPage() {
 
       {gateNeeded && !loading && !enterResult && (
         <div className="tp-question-card">
-          <div className="tp-question-title">כמה פרטים ונכנסים</div>
+          <div className="tp-question-title">רק שם ונייד, וזה שלך</div>
           <div className="tp-step-intro" style={{ marginBottom: '14px' }}>
-            הספרייה פתוחה לחברי הקהילה - אם כבר קיימים אצלנו (מנויים או קבוצת העדכונים) תיכנסו ישר, ואם לא, ההצטרפות חינמית ולוקחת רגע.
+            בלי שאלונים, בלי מייל - רק ככה נדע איך למצוא אתכם, ופותחים לכם את כל השיעורים. לוקח כמה שניות.
           </div>
 
           <input className="tp-text-input" style={{ minHeight: 'auto', marginBottom: '10px' }} placeholder="שם" value={name} onChange={(e) => setName(e.target.value)} />

@@ -10,8 +10,9 @@ type LessonDetail = {
   title: string;
   description: string | null;
   category: string | null;
+  videoProvider: string;
   durationMinutes: number | null;
-  thumbnailUrl: string;
+  thumbnailUrl: string | null;
   videoId: string | null;
   locked: boolean;
 };
@@ -111,7 +112,19 @@ export default function LessonDetailPage() {
             {lesson.durationMinutes ? `${lesson.durationMinutes} דק'` : ''}
           </div>
 
-          {!lesson.locked && lesson.videoId && (
+          {!lesson.locked && lesson.videoId && lesson.videoProvider === 'gamma' && (
+            <div style={{ position: 'relative', aspectRatio: '16 / 9', borderRadius: '12px', overflow: 'hidden', marginBottom: '18px' }}>
+              <iframe
+                src={lesson.videoId}
+                title={lesson.title}
+                allow="fullscreen"
+                allowFullScreen
+                style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 'none' }}
+              />
+            </div>
+          )}
+
+          {!lesson.locked && lesson.videoId && lesson.videoProvider !== 'gamma' && (
             <div style={{ position: 'relative', aspectRatio: '16 / 9', borderRadius: '12px', overflow: 'hidden', marginBottom: '18px' }}>
               <iframe
                 src={`https://www.youtube.com/embed/${lesson.videoId}`}
@@ -125,9 +138,9 @@ export default function LessonDetailPage() {
 
           {lesson.locked && !enterResult && (
             <div className="tp-question-card">
-              <div className="tp-question-title">כמה פרטים ונכנסים</div>
+              <div className="tp-question-title">רק שם ונייד, וזה שלך</div>
               <div className="tp-step-intro" style={{ marginBottom: '14px' }}>
-                הספרייה פתוחה לחברי הקהילה - אם כבר קיימים אצלנו (מנויים או קבוצת העדכונים) תיכנסו ישר, ואם לא, ההצטרפות חינמית ולוקחת רגע.
+                בלי שאלונים, בלי מייל - רק ככה נדע איך למצוא אתכם, ופותחים לכם את כל השיעורים. לוקח כמה שניות.
               </div>
 
               <input className="tp-text-input" style={{ minHeight: 'auto', marginBottom: '10px' }} placeholder="שם" value={name} onChange={(e) => setName(e.target.value)} />

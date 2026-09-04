@@ -10,6 +10,7 @@ type Lesson = {
   title: string;
   description: string | null;
   category: string | null;
+  video_provider: string;
   video_id: string;
   duration_minutes: number | null;
   published: boolean;
@@ -21,6 +22,7 @@ const emptyForm = {
   title: '',
   description: '',
   category: LESSON_CATEGORIES[0] as string,
+  provider: 'youtube' as 'youtube' | 'gamma',
   videoUrl: '',
   durationMinutes: '',
   published: true,
@@ -73,11 +75,13 @@ export default function AdminLessonsPage() {
 
   function startEdit(lesson: Lesson) {
     setEditingId(lesson.id);
+    const isGamma = lesson.video_provider === 'gamma';
     setForm({
       title: lesson.title,
       description: lesson.description || '',
       category: lesson.category || LESSON_CATEGORIES[0],
-      videoUrl: `https://www.youtube.com/watch?v=${lesson.video_id}`,
+      provider: isGamma ? 'gamma' : 'youtube',
+      videoUrl: isGamma ? lesson.video_id : `https://www.youtube.com/watch?v=${lesson.video_id}`,
       durationMinutes: lesson.duration_minutes ? String(lesson.duration_minutes) : '',
       published: lesson.published,
       sortOrder: String(lesson.sort_order),
@@ -94,7 +98,7 @@ export default function AdminLessonsPage() {
 
   async function handleSubmit() {
     if (!form.title.trim()) { setFormError('חסרה כותרת'); return; }
-    if (!editingId && !form.videoUrl.trim()) { setFormError('חסר לינק וידאו'); return; }
+    if (!editingId && !form.videoUrl.trim()) { setFormError(form.provider === 'gamma' ? 'חסר לינק למצגת' : 'חסר לינק וידאו'); return; }
 
     setSaving(true);
     setFormError('');
@@ -103,6 +107,7 @@ export default function AdminLessonsPage() {
       title: form.title.trim(),
       description: form.description.trim() || null,
       category: form.category.trim() || null,
+      provider: form.provider,
       videoUrl: form.videoUrl.trim() || undefined,
       durationMinutes: form.durationMinutes ? Number(form.durationMinutes) : null,
       published: form.published,
@@ -197,7 +202,21 @@ export default function AdminLessonsPage() {
             <option key={c} value={c}>{c}</option>
           ))}
         </select>
-        <input className="tp-text-input" style={{ minHeight: 'auto', marginBottom: '10px' }} placeholder={editingId ? 'לינק YouTube חדש (רק אם רוצים להחליף סרטון)' : 'לינק YouTube'} value={form.videoUrl} onChange={(e) => setForm({ ...form, videoUrl: e.target.value })} />
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
+          <button type="button" className={`filter-chip ${form.provider === 'youtube' ? 'active' : ''}`} onClick={() => setForm({ ...form, provider: 'youtube' })}>🎬 סרטון YouTube</button>
+          <button type="button" className={`filter-chip ${form.provider === 'gamma' ? 'active' : ''}`} onClick={() => setForm({ ...form, provider: 'gamma' })}>📊 מצגת Gamma</button>
+        </div>
+        <input
+          className="tp-text-input"
+          style={{ minHeight: 'auto', marginBottom: '10px' }}
+          placeholder={
+            form.provider === 'gamma'
+              ? (editingId ? 'לינק Gamma חדש (רק אם רוצים להחליף מצגת)' : 'לינק לשיתוף מ-Gamma, או קוד ה-embed')
+              : (editingId ? 'לינק YouTube חדש (רק אם רוצים להחליף סרטון)' : 'לינק YouTube')
+          }
+          value={form.videoUrl}
+          onChange={(e) => setForm({ ...form, videoUrl: e.target.value })}
+        />
 
         <input className="tp-text-input" style={{ minHeight: 'auto', marginBottom: '10px' }} type="number" placeholder="אורך בדקות" value={form.durationMinutes} onChange={(e) => setForm({ ...form, durationMinutes: e.target.value })} />
 
@@ -236,8 +255,14 @@ export default function AdminLessonsPage() {
               {inGroup.map((lesson) => (
                 <div key={lesson.id} style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-hairline)', borderRadius: '10px', overflow: 'hidden' }}>
                   <Link href={`/lessons/${lesson.id}`} target="_blank" className="lesson-card-thumb" style={{ display: 'block', position: 'relative', aspectRatio: '16 / 9', background: '#000' }}>
-                    <img src={`https://img.youtube.com/vi/${lesson.video_id}/hqdefault.jpg`} alt={lesson.title} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-                    <div className="lesson-card-play"><span>▶</span></div>
+                    {lesson.video_provider === 'gamma' ? (
+                      <div className="lesson-card-presentation"><span>📊</span>מצגת</div>
+                    ) : (
+                      <>
+                        <img src={`https://img.youtube.com/vi/${lesson.video_id}/hqdefault.jpg`} alt={lesson.title} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                        <div className="lesson-card-play"><span>▶</span></div>
+                      </>
+                    )}
                     {!lesson.published && (
                       <span style={{ position: 'absolute', top: '8px', right: '8px', fontSize: '10.5px', color: '#E8A33D', background: 'rgba(8,19,26,0.85)', border: '1px solid #E8A33D', borderRadius: '5px', padding: '2px 6px' }}>טיוטה</span>
                     )}
