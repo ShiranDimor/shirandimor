@@ -128,9 +128,15 @@ export default function LessonsLibraryPage() {
     await load();
   }
 
+  // מצגות מקבלות תיקייה נפרדת משלהן, בלי חלוקה לפי נושא - הן לא משתתפות בסינון/בקיבוץ לפי
+  // LESSON_CATEGORIES בכלל, גם אם יש להן ערך category שמור (נשמר רק לצרכי ניהול).
+  const presentationLessons = lessons.filter((l) => l.videoProvider === 'gamma');
+  const videoLessons = lessons.filter((l) => l.videoProvider !== 'gamma');
+
   // רק נושאים שיש בהם בפועל שיעורים, בסדר הקבוע מ-LESSON_CATEGORIES (ולא לפי סדר הופעה מקרי)
-  const presentCategories = LESSON_CATEGORIES.filter((c) => lessons.some((l) => l.category === c));
-  const visibleLessons = activeCategory ? lessons.filter((l) => l.category === activeCategory) : lessons;
+  const presentCategories = LESSON_CATEGORIES.filter((c) => videoLessons.some((l) => l.category === c));
+  const visibleLessons = activeCategory ? videoLessons.filter((l) => l.category === activeCategory) : videoLessons;
+  const nothingToShow = activeCategory ? visibleLessons.length === 0 : presentationLessons.length === 0 && presentCategories.length === 0;
 
   function renderGrid(list: LessonSummary[]) {
     return (
@@ -279,7 +285,7 @@ export default function LessonsLibraryPage() {
           )}
 
           {loading && renderSkeleton()}
-          {!loading && visibleLessons.length === 0 && (
+          {!loading && nothingToShow && (
             <div className="lessons-empty">
               <div className="lessons-empty-icon">🎬</div>
               עדיין אין כאן שיעורים
@@ -288,14 +294,25 @@ export default function LessonsLibraryPage() {
 
           {!loading && activeCategory && renderGrid(visibleLessons)}
 
+          {!loading && !activeCategory && presentationLessons.length > 0 && (
+            <div className="lesson-folder">
+              <div className="lesson-folder-header">
+                <div className="lesson-folder-icon">📊</div>
+                <div className="lesson-folder-title">מצגות</div>
+                <div className="lesson-folder-count">{presentationLessons.length}</div>
+              </div>
+              {renderGrid(presentationLessons)}
+            </div>
+          )}
+
           {!loading && !activeCategory && presentCategories.map((c) => (
             <div key={c} className="lesson-folder">
               <div className="lesson-folder-header">
                 <div className="lesson-folder-icon">{LESSON_CATEGORY_ICONS[c] || '📁'}</div>
                 <div className="lesson-folder-title">{c}</div>
-                <div className="lesson-folder-count">{lessons.filter((l) => l.category === c).length}</div>
+                <div className="lesson-folder-count">{videoLessons.filter((l) => l.category === c).length}</div>
               </div>
-              {renderGrid(lessons.filter((l) => l.category === c))}
+              {renderGrid(videoLessons.filter((l) => l.category === c))}
             </div>
           ))}
         </>

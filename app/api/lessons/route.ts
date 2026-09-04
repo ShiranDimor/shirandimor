@@ -40,7 +40,7 @@ export async function GET(request: Request) {
 
   let query = supabaseAdmin
     .from('lessons')
-    .select('id, title, description, category, tier, video_provider, video_id, duration_minutes, sort_order')
+    .select('id, title, description, category, tier, video_provider, video_id, thumbnail_url, duration_minutes, sort_order')
     .eq('published', true);
 
   query = singleId ? query.eq('id', singleId) : query.order('sort_order', { ascending: true }).order('created_at', { ascending: false });
@@ -64,7 +64,7 @@ export async function GET(request: Request) {
       tier: l.tier,
       videoProvider: l.video_provider,
       durationMinutes: l.duration_minutes,
-      thumbnailUrl: isYoutube ? `https://img.youtube.com/vi/${l.video_id}/hqdefault.jpg` : null,
+      thumbnailUrl: l.thumbnail_url || (isYoutube ? `https://img.youtube.com/vi/${l.video_id}/hqdefault.jpg` : null),
       videoId: accessible ? l.video_id : null,
       locked: !accessible,
     };
