@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/instantLogin';
-import { extractYoutubeId, extractGammaEmbedSrc } from '@/lib/lessonMedia';
+import { extractYoutubeId, extractGammaEmbedSrc, fetchOgImage } from '@/lib/lessonMedia';
 
 async function requireAdmin(request: Request) {
   const authHeader = request.headers.get('Authorization') || '';
@@ -44,6 +44,8 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     }
     fields.video_id = videoId;
     fields.video_provider = isGamma ? 'gamma' : 'youtube';
+    // best-effort - אם זה נכשל השדה פשוט לא מתעדכן, בלי להפיל את השמירה
+    if (isGamma) fields.thumbnail_url = await fetchOgImage(videoId);
   } else if (provider === 'gamma' || provider === 'youtube') {
     fields.video_provider = provider;
   }
