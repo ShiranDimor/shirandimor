@@ -32,7 +32,7 @@ export async function POST(request: Request) {
   if (!admin) return NextResponse.json({ error: 'אין הרשאת ניהול' }, { status: 403 });
 
   const body = await request.json().catch(() => ({}));
-  const { title, description, category, tier, provider, videoUrl, durationMinutes, published, sortOrder } = body as Record<string, unknown>;
+  const { title, description, category, tier, provider, videoUrl, thumbnailUrl: manualThumbnailUrl, durationMinutes, published, sortOrder } = body as Record<string, unknown>;
 
   if (!title || typeof title !== 'string') {
     return NextResponse.json({ error: 'חסרה כותרת' }, { status: 400 });
@@ -51,9 +51,10 @@ export async function POST(request: Request) {
     }, { status: 400 });
   }
 
-  // best-effort: מנסים לשלוף תמונת og:image מהמצגת עצמה בשביל כרטיס עם תצוגה מקדימה אמיתית
+  // עדיפות לתמונה שהוזנה ידנית. רק אם לא הוזנה - מנסים best-effort לשלוף og:image מהמצגת עצמה
   // (אם זה נכשל - השיעור עדיין נשמר כרגיל, פשוט עם פלייסהולדר "מצגת" גנרי)
-  const thumbnailUrl = isGamma ? await fetchOgImage(videoId) : null;
+  const manualThumbnail = typeof manualThumbnailUrl === 'string' && manualThumbnailUrl.trim() ? manualThumbnailUrl.trim() : null;
+  const thumbnailUrl = manualThumbnail || (isGamma ? await fetchOgImage(videoId) : null);
 
   const { data, error } = await supabaseAdmin
     .from('lessons')
