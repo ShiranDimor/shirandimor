@@ -137,7 +137,7 @@ export default function HomePage() {
         <div style={{ gap: '8px' }}>
           <Link href="/trading-plan" className="nav-cta-orange">תוכנית מסחר</Link>
           <Link href="/lives" className="nav-cta-live"><span className="live-dot" />לייבים</Link>
-          <Link href="/lessons" className="nav-cta-outline">ספריית שיעורים</Link>
+          <Link href="/lessons" className="nav-cta-sky">ספריית שיעורים</Link>
           <Link href="/portfolio" className="nav-cta-teal">תיק מסחר</Link>
           <Link href="/login" className="nav-cta-profit">כניסה לסוחרים</Link>
         </div>

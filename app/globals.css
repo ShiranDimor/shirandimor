@@ -17,6 +17,8 @@
     --loss-bg: rgba(201, 99, 94, 0.08);
     --orange: #E8A33D;
     --orange-bg: rgba(232, 163, 61, 0.1);
+    --sky: #5AA9E6;
+    --sky-bg: rgba(90, 169, 230, 0.1);
     --font-display: 'Rubik', sans-serif;
     --font-body: 'Rubik', sans-serif;
     --font-mono: 'JetBrains Mono', monospace;
@@ -79,9 +81,9 @@
     border: 1px solid rgba(79,184,118,0.3); border-radius: 20px; padding: 5px 10px; text-decoration: none;
     white-space: nowrap; text-align: center;
   }
-  .nav-cta-outline {
-    font-size: 12px; font-weight: 700; color: var(--text-secondary); background: transparent;
-    border: 1px solid var(--border-hairline-strong); border-radius: 20px; padding: 5px 10px; text-decoration: none;
+  .nav-cta-sky {
+    font-size: 12px; font-weight: 700; color: var(--sky); background: var(--sky-bg);
+    border: 1px solid rgba(90,169,230,0.3); border-radius: 20px; padding: 5px 10px; text-decoration: none;
     white-space: nowrap; text-align: center;
   }
 
