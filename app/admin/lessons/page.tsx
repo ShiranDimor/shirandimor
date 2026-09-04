@@ -231,12 +231,13 @@ export default function AdminLessonsPage() {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '16px' }}>
               {inGroup.map((lesson) => (
                 <div key={lesson.id} style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-hairline)', borderRadius: '10px', overflow: 'hidden' }}>
-                  <div style={{ position: 'relative', aspectRatio: '16 / 9', background: '#000' }}>
+                  <Link href={`/lessons/${lesson.id}`} target="_blank" className="lesson-card-thumb" style={{ display: 'block', position: 'relative', aspectRatio: '16 / 9', background: '#000' }}>
                     <img src={`https://img.youtube.com/vi/${lesson.video_id}/hqdefault.jpg`} alt={lesson.title} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                    <div className="lesson-card-play"><span>▶</span></div>
                     {!lesson.published && (
                       <span style={{ position: 'absolute', top: '8px', right: '8px', fontSize: '10.5px', color: '#E8A33D', background: 'rgba(8,19,26,0.85)', border: '1px solid #E8A33D', borderRadius: '5px', padding: '2px 6px' }}>טיוטה</span>
                     )}
-                  </div>
+                  </Link>
                   <div style={{ padding: '12px' }}>
                     <div style={{ fontSize: '13.5px', fontWeight: 700, marginBottom: '4px' }}>{lesson.title}</div>
                     <div style={{ fontSize: '11.5px', color: 'var(--text-tertiary)', marginBottom: '10px' }}>

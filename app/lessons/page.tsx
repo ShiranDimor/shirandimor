@@ -15,7 +15,7 @@ type LessonSummary = {
 };
 
 const CATEGORY_ICONS: Record<string, string> = {
-  'יסודות': '🧭',
+  'איך תכלס מתחילים?': '🧭',
   'אסטרטגיה': '♟️',
   'ניהול סיכונים': '🛡️',
   'מסחר לייב - חלק ראשון': '🎥',
