@@ -23,6 +23,9 @@ export default function LessonsLibraryPage() {
   const [checkingAccess, setCheckingAccess] = useState(true);
   const [gateNeeded, setGateNeeded] = useState(false);
 
+  // שער דו-שלבי: קודם רק נייד (מספיק כדי לזהות מנוי/קבוצת עדכונים קיימים - בלי לבקש שם סתם
+  // בשביל "לוודא מי זה"), ורק אם התברר שזה ליד חדש שבאמת נרשם ל-Monday מבקשים גם שם.
+  const [gateStep, setGateStep] = useState<'phone' | 'name'>('phone');
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [entering, setEntering] = useState(false);
@@ -76,32 +79,44 @@ export default function LessonsLibraryPage() {
     return /^05\d{8}$/.test(v.replace(/\D/g, ''));
   }
 
-  // אם הטלפון כבר משויך למנוי/חברת עדכונים במאנדיי - /api/lead לא יוצר ליד, ורק מחזיר matched.
-  // מציגים לכל אחד מהם הודעה מתאימה במקום לזרוק ישר לתוך הספרייה בלי שום ציון.
+  // אם הטלפון כבר משויך למנוי/חברת עדכונים במאנדיי - /api/lead לא יוצר ליד, ורק מחזיר matched,
+  // בלי שהיה צריך בכלל לבקש שם. אם לא - השרת מחזיר needsName, ורק אז עוברים לשלב השם.
   async function handleEnter() {
-    if (!name.trim() || !isValidPhone(phone)) {
-      setGateError('צריך שם ומספר נייד תקין (לדוגמה 0501234567)');
+    if (gateStep === 'phone' && !isValidPhone(phone)) {
+      setGateError('צריך מספר נייד תקין (לדוגמה 0501234567)');
       return;
     }
+    if (gateStep === 'name' && !name.trim()) {
+      setGateError('צריך שם');
+      return;
+    }
+
     setEntering(true);
     setGateError('');
 
     let matched: string | undefined;
+    let needsName = false;
     try {
       const res = await fetch('/api/lead', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name.trim(), phone: phone.trim(), source: 'ספריית שיעורים' }),
+        body: JSON.stringify({ name: name.trim() || undefined, phone: phone.trim(), source: 'ספריית שיעורים' }),
       });
       const data = await res.json().catch(() => ({}));
       matched = data.matched;
+      needsName = Boolean(data.needsName);
     } catch {}
 
     setEntering(false);
 
     if (matched === 'subscriber' || matched === 'updates') {
-      setEnterResult(matched);
+      setEnterResult(matched as 'subscriber' | 'updates');
+      return;
+    }
+
+    if (needsName) {
+      setGateStep('name');
       return;
     }
 
@@ -189,15 +204,31 @@ export default function LessonsLibraryPage() {
         )}
       </div>
 
-      {gateNeeded && !loading && !enterResult && (
+      {gateNeeded && !loading && !enterResult && gateStep === 'phone' && (
         <div className="tp-question-card">
-          <div className="tp-question-title">רק שם ונייד, וזה שלך</div>
+          <div className="tp-question-title">רק נייד, וזה שלך</div>
           <div className="tp-step-intro" style={{ marginBottom: '14px' }}>
-            בלי שאלונים, בלי מייל - רק ככה נדע איך למצוא אתכם, ופותחים לכם את כל השיעורים. לוקח כמה שניות.
+            בלי שאלונים, בלי מייל - אם כבר קיימים אצלנו זה כל מה שצריך כדי לזהות אתכם ולפתוח את כל השיעורים.
           </div>
 
-          <input className="tp-text-input" style={{ minHeight: 'auto', marginBottom: '10px' }} placeholder="שם" value={name} onChange={(e) => setName(e.target.value)} />
-          <input className="tp-text-input" style={{ minHeight: 'auto', marginBottom: '10px' }} type="tel" placeholder="נייד" value={phone} onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))} />
+          <input className="tp-text-input" style={{ minHeight: 'auto', marginBottom: '10px' }} type="tel" placeholder="נייד" value={phone} onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))} autoFocus />
+
+          {gateError && <p style={{ color: 'var(--loss)', fontSize: '13px', marginBottom: '10px' }}>{gateError}</p>}
+
+          <button type="button" className="btn-primary" onClick={handleEnter} disabled={entering}>
+            {entering ? 'בודקים...' : 'כניסה לספרייה'}
+          </button>
+        </div>
+      )}
+
+      {gateNeeded && !loading && !enterResult && gateStep === 'name' && (
+        <div className="tp-question-card">
+          <div className="tp-question-title">עוד רגע - איך קוראים לך?</div>
+          <div className="tp-step-intro" style={{ marginBottom: '14px' }}>
+            לא זיהינו אתכם אצלנו - השארת שם פותחת גישה חינמית לספרייה, ומצטרפת אתכם לקבוצת העדכונים.
+          </div>
+
+          <input className="tp-text-input" style={{ minHeight: 'auto', marginBottom: '10px' }} placeholder="שם" value={name} onChange={(e) => setName(e.target.value)} autoFocus />
 
           {gateError && <p style={{ color: 'var(--loss)', fontSize: '13px', marginBottom: '10px' }}>{gateError}</p>}
 
