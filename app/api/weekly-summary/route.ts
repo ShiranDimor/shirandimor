@@ -115,8 +115,10 @@ export async function GET(request: Request) {
 
   const trades: Trade[] = allTrades || [];
 
+  // כל העסקאות הפתוחות כרגע (לא רק אלו שנפתחו החודש) - כדי שהסיכום ישקף את מצב התיק האמיתי,
+  // כולל עסקאות שנפתחו בחודש קודם ועדיין פתוחות
   const openedThisWeekStillOpen = trades
-    .filter((t) => t.status === 'open' && new Date(t.opened_at) >= monthStart)
+    .filter((t) => t.status === 'open')
     .sort((a, b) => new Date(b.opened_at).getTime() - new Date(a.opened_at).getTime());
 
   const closedThisWeek = trades
@@ -165,8 +167,8 @@ export async function GET(request: Request) {
       </div>
 
       <div style="padding:20px 16px 4px;">
-        <div style="font-size:14.5px;font-weight:700;color:#111;margin-bottom:10px;">🟢 נפתחו החודש ונשארו פתוחות (${openedThisWeekStillOpen.length})</div>
-        ${openedThisWeekStillOpen.length === 0 ? `<div style="font-size:13px;color:#888;padding-bottom:16px;">לא נפתחו עסקאות חדשות החודש</div>` : `
+        <div style="font-size:14.5px;font-weight:700;color:#111;margin-bottom:10px;">🟢 עסקאות פתוחות כרגע (${openedThisWeekStillOpen.length})</div>
+        ${openedThisWeekStillOpen.length === 0 ? `<div style="font-size:13px;color:#888;padding-bottom:16px;">אין עסקאות פתוחות כרגע</div>` : `
         <table style="width:100%;border-collapse:collapse;font-size:13.5px;">
           <tr style="color:#888;font-size:11.5px;text-align:right;">
             <th style="padding:0 12px 6px;text-align:right;">סימבול</th>
