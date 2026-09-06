@@ -23,6 +23,9 @@ export default function AdminDashboard() {
   const [refreshing, setRefreshing] = useState(false);
   const [refreshMessage, setRefreshMessage] = useState('');
 
+  const [sendingSummary, setSendingSummary] = useState(false);
+  const [summaryMessage, setSummaryMessage] = useState('');
+
   async function handleRefreshAllPrices() {
     setRefreshing(true);
     setRefreshMessage('');
@@ -46,6 +49,31 @@ export default function AdminDashboard() {
     }
 
     setRefreshing(false);
+  }
+
+  async function handleSendMonthlySummary() {
+    setSendingSummary(true);
+    setSummaryMessage('');
+
+    const { data: { session } } = await supabase.auth.getSession();
+
+    try {
+      const res = await fetch('/api/admin/send-monthly-summary', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session?.access_token}` },
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        setSummaryMessage('שגיאה: ' + (data.error || 'לא הצלחנו לשלוח'));
+      } else {
+        setSummaryMessage(`נשלח למייל שלך · ${data.openedThisWeekStillOpen} עסקאות פתוחות · ${data.closedThisWeek} נסגרו החודש`);
+      }
+    } catch (e) {
+      setSummaryMessage('שגיאה בשליחת הסיכום');
+    }
+
+    setSendingSummary(false);
   }
 
   useEffect(() => {
@@ -219,6 +247,15 @@ export default function AdminDashboard() {
       {refreshMessage && (
         <p style={{ fontSize: '12px', color: refreshMessage.startsWith('שגיאה') ? 'var(--loss)' : 'var(--profit)', marginTop: '10px', textAlign: 'center' }}>
           {refreshMessage}
+        </p>
+      )}
+
+      <button className="btn-outline" style={{ width: '100%', marginTop: '8px' }} onClick={handleSendMonthlySummary} disabled={sendingSummary}>
+        {sendingSummary ? 'שולחים...' : '📧 שליחת סיכום החודש למייל'}
+      </button>
+      {summaryMessage && (
+        <p style={{ fontSize: '12px', color: summaryMessage.startsWith('שגיאה') ? 'var(--loss)' : 'var(--profit)', marginTop: '10px', textAlign: 'center' }}>
+          {summaryMessage}
         </p>
       )}
     </div>
