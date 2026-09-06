@@ -67,7 +67,21 @@ export default function AdminDashboard() {
       if (!res.ok) {
         setSummaryMessage('שגיאה: ' + (data.error || 'לא הצלחנו לשלוח'));
       } else {
-        setSummaryMessage(`נשלח למייל שלך · ${data.openedThisWeekStillOpen} עסקאות פתוחות · ${data.closedThisWeek} נסגרו החודש`);
+        setSummaryMessage(`נשלח למייל, התמונה ירדה למכשיר ונפתח וואטסאפ עם טקסט מוכן · ${data.openedThisWeekStillOpen} עסקאות פתוחות · ${data.closedThisWeek} נסגרו החודש`);
+
+        // מורידים את התמונה למכשיר ופותחים וואטסאפ עם טקסט מוכן - כדי שאפשר יהיה לצרף את
+        // התמונה שירדה ולשלוח לקבוצה בלי להסתמך על צירוף אוטומטי (אין חיבור API לוואטסאפ)
+        if (data.imageBase64) {
+          const link = document.createElement('a');
+          link.href = `data:image/png;base64,${data.imageBase64}`;
+          link.download = 'סיכום-החודש.png';
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        }
+        if (data.whatsappText) {
+          window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(data.whatsappText)}`, '_blank');
+        }
       }
     } catch (e) {
       setSummaryMessage('שגיאה בשליחת הסיכום');

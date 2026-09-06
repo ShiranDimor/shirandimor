@@ -203,7 +203,49 @@ async function buildSummaryHtml() {
     </div>
   </div>`;
 
-  return { html, rangeLabel, openedThisWeekStillOpen, closedThisWeek };
+  return { html, rangeLabel, openedThisWeekStillOpen, closedThisWeek, avgPct, winRate, totalOpenNow };
+}
+
+// טקסט "מפוצץ" לשליחה ידנית בוואטסאפ (לצד התמונה) - עם אימוג'ים ופירוט מלא של כל עסקה,
+// כדי שאפשר יהיה להדביק אותו כטקסט חופשי בלי תלות ביכולת שליחת תמונות אוטומטית
+function buildWhatsappSummaryText(data: Awaited<ReturnType<typeof buildSummaryHtml>>) {
+  const { rangeLabel, openedThisWeekStillOpen, closedThisWeek, avgPct, winRate, totalOpenNow } = data;
+
+  const lines: string[] = [];
+  lines.push(`🚀 *סיכום החודש - קבוצת הסוחרים "${GROUP_NAME}"*`);
+  lines.push(`📅 ${rangeLabel}`);
+  lines.push('');
+  lines.push(`💰 תשואה ממוצעת החודש: ${avgPct !== null ? `${avgPct >= 0 ? '+' : ''}${avgPct.toFixed(2)}%` : '—'}`);
+  lines.push(`✅ אחוז הצלחה: ${winRate !== null ? winRate.toFixed(0) + '%' : '—'}`);
+  lines.push(`🔒 עסקאות שנסגרו החודש: ${closedThisWeek.length}`);
+  lines.push(`📈 עסקאות פתוחות כרגע: ${totalOpenNow}`);
+  lines.push('');
+
+  if (openedThisWeekStillOpen.length > 0) {
+    lines.push('*עסקאות פתוחות כרגע:*');
+    for (const t of openedThisWeekStillOpen) {
+      const p = pctOpen(t);
+      const dirLabel = t.direction === 'long' ? 'לונג' : 'שורט';
+      const emoji = (p ?? 0) >= 0 ? '🟢' : '🔴';
+      lines.push(`${emoji} ${t.symbol} (${dirLabel}) | כניסה ${formatDate(t.opened_at)} ב-$${t.entry_price} | כרגע ${p !== null ? `${p >= 0 ? '+' : ''}${p.toFixed(2)}%` : '—'}`);
+    }
+    lines.push('');
+  }
+
+  if (closedThisWeek.length > 0) {
+    lines.push('*עסקאות שנסגרו החודש:*');
+    for (const t of closedThisWeek) {
+      const p = pct(t);
+      const dirLabel = t.direction === 'long' ? 'לונג' : 'שורט';
+      const emoji = (p ?? 0) >= 0 ? '🎯' : '⚠️';
+      lines.push(`${emoji} ${t.symbol} (${dirLabel}) | כניסה ${formatDate(t.opened_at)} | $${t.entry_price} ← $${t.exit_price} | ${p !== null ? `${p >= 0 ? '+' : ''}${p.toFixed(2)}%` : '—'} | נסגרה ${formatDate(t.closed_at as string)}`);
+    }
+    lines.push('');
+  }
+
+  lines.push(`🚀 להצטרפות לחודש ניסיון (ללא התחייבות): ${GROW_LINK}`);
+
+  return lines.join('\n');
 }
 
 export async function getMonthlySummaryImage() {
@@ -216,7 +258,8 @@ export async function getMonthlySummaryImage() {
 // כפתור ידנית מעמוד הניהול. תמיד שולח למייל הקבוע shiran@shirandimor.com (לא לכתובת שרירותית),
 // כדי שאי אפשר יהיה להשתמש בזה כדי לשלוח מייל למישהו אחר.
 export async function sendMonthlySummaryEmail() {
-  const { html, rangeLabel, openedThisWeekStillOpen, closedThisWeek } = await buildSummaryHtml();
+  const summaryData = await buildSummaryHtml();
+  const { html, rangeLabel, openedThisWeekStillOpen, closedThisWeek } = summaryData;
 
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
@@ -268,5 +311,7 @@ ${GROW_LINK}</div>
     imageError,
     openedThisWeekStillOpen: openedThisWeekStillOpen.length,
     closedThisWeek: closedThisWeek.length,
+    imageBase64,
+    whatsappText: buildWhatsappSummaryText(summaryData),
   };
 }
