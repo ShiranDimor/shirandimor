@@ -80,7 +80,9 @@ export default function AdminDashboard() {
           document.body.removeChild(link);
         }
         if (data.whatsappText) {
-          window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(data.whatsappText)}`, '_blank');
+          // פותח ישר לצ'אט האישי של שירן (לא מסך בחירת איש קשר) - כדי שאפשר יהיה לשלוח
+          // לעצמה קודם, ומשם להעביר הלאה לקבוצה
+          window.open(`https://wa.me/972547167419?text=${encodeURIComponent(data.whatsappText)}`, '_blank');
         }
       }
     } catch (e) {
