@@ -55,6 +55,10 @@ export default function AdminDashboard() {
     setSendingSummary(true);
     setSummaryMessage('');
 
+    // פותחים טאב ריק מיד, באופן סינכרוני בתוך אירוע הלחיצה עצמו - דפדפנים חוסמים
+    // window.open שמגיע אחרי await (fetch) כי הם כבר לא רואים בזה פעולה יזומה ע"י המשתמש
+    const waWindow = window.open('', '_blank');
+
     const { data: { session } } = await supabase.auth.getSession();
 
     try {
@@ -66,11 +70,11 @@ export default function AdminDashboard() {
 
       if (!res.ok) {
         setSummaryMessage('שגיאה: ' + (data.error || 'לא הצלחנו לשלוח'));
+        waWindow?.close();
       } else {
         setSummaryMessage(`נשלח למייל, התמונה ירדה למכשיר ונפתח וואטסאפ עם טקסט מוכן · ${data.openedThisWeekStillOpen} עסקאות פתוחות · ${data.closedThisWeek} נסגרו החודש`);
 
-        // מורידים את התמונה למכשיר ופותחים וואטסאפ עם טקסט מוכן - כדי שאפשר יהיה לצרף את
-        // התמונה שירדה ולשלוח לקבוצה בלי להסתמך על צירוף אוטומטי (אין חיבור API לוואטסאפ)
+        // מורידים את התמונה למכשיר - כדי שאפשר יהיה לצרף אותה לוואטסאפ ידנית (אין חיבור API לוואטסאפ)
         if (data.imageBase64) {
           const link = document.createElement('a');
           link.href = `data:image/png;base64,${data.imageBase64}`;
@@ -79,13 +83,16 @@ export default function AdminDashboard() {
           link.click();
           document.body.removeChild(link);
         }
-        if (data.whatsappText) {
-          // פותח ישר לצ'אט האישי של שירן (לא מסך בחירת איש קשר) - כדי שאפשר יהיה לשלוח
-          // לעצמה קודם, ומשם להעביר הלאה לקבוצה
-          window.open(`https://wa.me/972547167419?text=${encodeURIComponent(data.whatsappText)}`, '_blank');
+        if (data.whatsappText && waWindow) {
+          // מנווטים את הטאב שכבר נפתח (בתוך אירוע הלחיצה) ישר לצ'אט האישי של שירן -
+          // לא לחלון בחירת איש קשר - כדי שאפשר יהיה לשלוח לעצמה קודם ולהעביר הלאה לקבוצה
+          waWindow.location.href = `https://wa.me/972547167419?text=${encodeURIComponent(data.whatsappText)}`;
+        } else if (data.whatsappText) {
+          setSummaryMessage((prev) => `${prev} · הדפדפן חסם את פתיחת הטאב - נסי שוב או אשרי חלונות קופצים לאתר`);
         }
       }
     } catch (e) {
+      waWindow?.close();
       setSummaryMessage('שגיאה בשליחת הסיכום');
     }
 
