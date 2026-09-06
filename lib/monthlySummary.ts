@@ -18,6 +18,7 @@ type Trade = {
   status: string;
   opened_at: string;
   closed_at: string | null;
+  current_price: number | null;
 };
 
 const GROW_LINK = 'https://pay.grow.link/200a7cdcb258ee6ffdea0f423a1ace0e-MzE4MDU5OA';
@@ -54,11 +55,21 @@ function pct(t: Trade) {
   return ((exit - t.entry_price) / t.entry_price) * 100 * dirFactor;
 }
 
+// רווח/הפסד לא ממומש לעסקה פתוחה, לפי המחיר הנוכחי (current_price) שמתעדכן ע"י כפתור
+// "עדכון מחירים בכל האתר" - אותו חישוב בדיוק כמו pct(), רק מול המחיר הנוכחי במקום מחיר יציאה
+function pctOpen(t: Trade) {
+  if (t.current_price === null) return null;
+  const dirFactor = t.direction === 'short' ? -1 : 1;
+  return ((t.current_price - t.entry_price) / t.entry_price) * 100 * dirFactor;
+}
+
 function tradeRowHtml(t: Trade, kind: 'open' | 'closed') {
   const dirLabel = t.direction === 'long' ? 'לונג' : 'שורט';
   const dirColor = t.direction === 'long' ? '#4FB876' : '#C9635E';
 
   if (kind === 'open') {
+    const p = pctOpen(t);
+    const resultColor = (p ?? 0) >= 0 ? '#4FB876' : '#C9635E';
     // עסקאות פתוחות הן "הטיפ" בפועל - מטשטשים את הסימבול בדיוק כמו באתר לגולשים שאינם מנויים,
     // כדי שהתמונה תהיה בטוחה לשליחה גם לקבוצת העדכונים החינמית
     return `
@@ -67,6 +78,9 @@ function tradeRowHtml(t: Trade, kind: 'open' | 'closed') {
         <td style="padding:10px 12px;border-bottom:1px solid #eee;color:${dirColor};font-weight:600;">${dirLabel}</td>
         <td style="padding:10px 12px;border-bottom:1px solid #eee;">$${t.entry_price}</td>
         <td style="padding:10px 12px;border-bottom:1px solid #eee;">$${t.stop_loss}</td>
+        <td style="padding:10px 12px;border-bottom:1px solid #eee;color:${resultColor};font-weight:700;">
+          ${p !== null ? `${p >= 0 ? '+' : ''}${p.toFixed(2)}%` : '—'}
+        </td>
         <td style="padding:10px 12px;border-bottom:1px solid #eee;color:#888;font-size:13px;">${formatDate(t.opened_at)}</td>
       </tr>`;
   }
@@ -91,7 +105,7 @@ async function buildSummaryHtml() {
 
   const { data: allTrades, error } = await supabaseAdmin
     .from('trades')
-    .select('symbol, direction, entry_price, exit_price, stop_loss, shares_calculated, realized_pnl_usd, status, opened_at, closed_at');
+    .select('symbol, direction, entry_price, exit_price, stop_loss, shares_calculated, realized_pnl_usd, status, opened_at, closed_at, current_price');
 
   if (error) throw new Error(error.message);
 
@@ -157,6 +171,7 @@ async function buildSummaryHtml() {
             <th style="padding:0 12px 6px;text-align:right;">כיוון</th>
             <th style="padding:0 12px 6px;text-align:right;">כניסה</th>
             <th style="padding:0 12px 6px;text-align:right;">סטופ</th>
+            <th style="padding:0 12px 6px;text-align:right;">רווח/הפסד</th>
             <th style="padding:0 12px 6px;text-align:right;">תאריך</th>
           </tr>
           ${openedThisWeekStillOpen.map((t) => tradeRowHtml(t, 'open')).join('')}
