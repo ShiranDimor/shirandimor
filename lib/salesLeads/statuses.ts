@@ -65,4 +65,5 @@ export const ACTIVITY_TYPE_LABELS: Record<string, string> = {
   NOT_RELEVANT: 'סומן/ה כלא רלוונטי',
   STATUS_CHANGED: 'שינוי סטטוס',
   PRIORITY_CHANGED: 'שינוי עדיפות',
+  WHATSAPP_OPENED: 'נפתחה הודעת WhatsApp',
 };

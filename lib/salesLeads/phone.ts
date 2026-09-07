@@ -38,6 +38,10 @@ export function telHref(e164: string | null | undefined): string {
   return e164 ? `tel:${e164}` : '#';
 }
 
-export function whatsappHref(e164: string | null | undefined): string {
-  return e164 ? `https://wa.me/${e164.replace(/\D/g, '')}` : '#';
+// message מוכנס לשדה ההקלדה בוואטסאפ אבל לעולם לא נשלח אוטומטית - המשתמשת לוחצת Send בעצמה.
+// encodeURIComponent (ולא encodeURI) כדי לשמר נכון עברית/ירידות שורה/רווחים/אימוג'ים/מרכאות
+export function whatsappHref(e164: string | null | undefined, message?: string): string {
+  if (!e164) return '#';
+  const base = `https://wa.me/${e164.replace(/\D/g, '')}`;
+  return message ? `${base}?text=${encodeURIComponent(message)}` : base;
 }

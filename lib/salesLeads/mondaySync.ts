@@ -1,5 +1,6 @@
 import { supabaseAdmin } from '@/lib/instantLogin';
 import { normalizePhoneToE164 } from './phone';
+import { extractFirstName } from './firstName';
 
 // אך ורק קבוצת "קבוצת עדכונים" בלוח - לא לקוחות/לידים מקבוצות אחרות. אותו שם קבוצה בדיוק
 // כמו UPDATES_GROUP_NAME ב-lib/tradingPlan/monday.ts
@@ -125,12 +126,12 @@ export async function syncSalesLeadsFromMonday(): Promise<SalesLeadsSyncResult> 
     try {
       let existing = await supabaseAdmin
         .from('sales_leads')
-        .select('id, monday_item_id, name')
+        .select('id, monday_item_id, name, first_name')
         .eq('monday_item_id', lead.mondayItemId)
         .maybeSingle();
 
       if (!existing.data) {
-        existing = await supabaseAdmin.from('sales_leads').select('id, monday_item_id, name').eq('phone_normalized', phoneNormalized).maybeSingle();
+        existing = await supabaseAdmin.from('sales_leads').select('id, monday_item_id, name, first_name').eq('phone_normalized', phoneNormalized).maybeSingle();
       }
 
       if (existing.data) {
@@ -139,6 +140,12 @@ export async function syncSalesLeadsFromMonday(): Promise<SalesLeadsSyncResult> 
         if (lead.name && lead.name !== existing.data.name) patch.name = lead.name;
         if (lead.phoneRaw) patch.phone_original = lead.phoneRaw;
         if (lead.sourceInfo) patch.source_info = lead.sourceInfo;
+        // אף פעם לא דורסים first_name קיים - גם אם השם המלא השתנה במאנדיי. עדיף שם פרטי ישן
+        // שכבר עובד מאשר לקחת סיכון על ערך חדש שאולי פחות טוב
+        if (!existing.data.first_name) {
+          const computed = extractFirstName(lead.name);
+          if (computed) patch.first_name = computed;
+        }
 
         const { error } = await supabaseAdmin.from('sales_leads').update(patch).eq('id', existing.data.id);
         if (error) throw error;
@@ -149,6 +156,7 @@ export async function syncSalesLeadsFromMonday(): Promise<SalesLeadsSyncResult> 
           .insert({
             monday_item_id: lead.mondayItemId,
             name: lead.name,
+            first_name: extractFirstName(lead.name),
             phone_original: lead.phoneRaw,
             phone_normalized: phoneNormalized,
             lead_date: lead.createdAt || new Date().toISOString(),
