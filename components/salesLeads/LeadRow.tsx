@@ -6,6 +6,8 @@ import { formatPhoneIL, telHref, whatsappHref } from '@/lib/salesLeads/phone';
 import { formatDateIL, formatDateTimeIL, isOverdue, isTodayJerusalem, jerusalemLocalInputToUtcIso, utcIsoToJerusalemLocalInput } from '@/lib/salesLeads/time';
 import { getStatusMeta, priorityLabel } from '@/lib/salesLeads/statuses';
 import { applyAction } from '@/lib/salesLeads/apiClient';
+import { getLeadFirstName } from '@/lib/salesLeads/firstName';
+import { buildInitialOutreachMessage } from '@/lib/salesLeads/whatsappMessage';
 
 type Props = {
   lead: SalesLead;
@@ -26,9 +28,27 @@ export default function LeadRow({ lead, onOpen, onChanged, onError }: Props) {
   const [followupValue, setFollowupValue] = useState(() => (lead.next_followup_at ? utcIsoToJerusalemLocalInput(lead.next_followup_at) : defaultFollowupLocal()));
   const [followupNote, setFollowupNote] = useState('');
 
+  const [waError, setWaError] = useState(false);
+
   const overdue = isOverdue(lead.next_followup_at);
   const today = !overdue && isTodayJerusalem(lead.next_followup_at);
   const statusMeta = getStatusMeta(lead.sales_status);
+  const whatsappMessage = buildInitialOutreachMessage(getLeadFirstName(lead));
+
+  // רק תיעוד שנפתח WhatsApp - לא חוסם את הניווט בכלל (fire-and-forget), ולא אומר שנשלחה הודעה
+  function logWhatsappOpened() {
+    applyAction(lead.id, { type: 'whatsapp_opened' }).catch(() => {});
+  }
+
+  function handleWhatsappClick(e: React.MouseEvent) {
+    stop(e);
+    if (!lead.phone_normalized) {
+      e.preventDefault();
+      setWaError(true);
+      return;
+    }
+    logWhatsappOpened();
+  }
 
   async function run(fn: () => Promise<void>) {
     if (busy) return;
@@ -75,10 +95,13 @@ export default function LeadRow({ lead, onOpen, onChanged, onError }: Props) {
       )}
 
       {lead.last_note && <div className="sl-last-note">"{lead.last_note}"</div>}
+      {waError && <div className="sl-last-note" style={{ color: 'var(--loss)' }}>לא נמצא מספר WhatsApp תקין לליד הזה.</div>}
 
       <div className="sl-actions" onClick={stop}>
         <a className="sl-act-call" href={telHref(lead.phone_normalized)}>📞 התקשרי</a>
-        <a className="sl-act-whatsapp" href={whatsappHref(lead.phone_normalized)} target="_blank" rel="noopener noreferrer">💬 WhatsApp</a>
+        <a className="sl-act-whatsapp" href={whatsappHref(lead.phone_normalized, whatsappMessage)} target="_blank" rel="noopener noreferrer" onClick={handleWhatsappClick}>
+          💬 WhatsApp
+        </a>
         <button disabled={busy} onClick={() => run(() => applyAction(lead.id, { type: 'no_answer' }))}>לא ענה</button>
         <button disabled={busy} onClick={() => setShowFollowup((v) => !v)}>Follow-up</button>
         <button className="sl-act-primary" disabled={busy} onClick={() => run(() => applyAction(lead.id, { type: 'set_status', status: 'registered' }))}>✔ נרשם</button>

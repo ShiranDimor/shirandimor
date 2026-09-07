@@ -2,6 +2,7 @@ export type SalesLead = {
   id: string;
   monday_item_id: string | null;
   name: string;
+  first_name: string | null;
   phone_original: string | null;
   phone_normalized: string;
   lead_date: string;
@@ -29,4 +30,4 @@ export type SalesLeadActivity = {
 };
 
 export const SALES_LEADS_LIST_COLUMNS =
-  'id, monday_item_id, name, phone_original, phone_normalized, lead_date, sales_status, stage, priority, last_contact_at, next_followup_at, next_followup_note, call_attempts_count, last_call_outcome, last_note, created_at, updated_at';
+  'id, monday_item_id, name, first_name, phone_original, phone_normalized, lead_date, sales_status, stage, priority, last_contact_at, next_followup_at, next_followup_note, call_attempts_count, last_call_outcome, last_note, created_at, updated_at';

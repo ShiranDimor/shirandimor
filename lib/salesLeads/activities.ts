@@ -8,7 +8,8 @@ export type LeadAction =
   | { type: 'set_status'; status: string; note?: string }
   | { type: 'set_priority'; priority: 'normal' | 'hot' | 'very_hot' }
   | { type: 'set_followup'; followupAt: string; note?: string }
-  | { type: 'clear_followup' };
+  | { type: 'clear_followup' }
+  | { type: 'whatsapp_opened' };
 
 type LeadRow = {
   id: string;
@@ -133,6 +134,13 @@ export async function applyLeadAction(leadId: string, action: LeadAction): Promi
       if (!row.next_followup_at) break;
       await supabaseAdmin.from('sales_leads').update({ next_followup_at: null, next_followup_note: null }).eq('id', leadId);
       await insertActivity(leadId, 'FOLLOW_UP_COMPLETED', null, { previousFollowupAt: row.next_followup_at });
+      break;
+    }
+
+    // רק תיעוד שנפתח WhatsApp - לא אומר שההודעה נשלחה בפועל (אין דרך לדעת אם נלחץ Send
+    // בתוך WhatsApp), ולכן לא נוגעים בסטטוס/ניסיונות התקשרות/תאריך טיפול אחרון
+    case 'whatsapp_opened': {
+      await insertActivity(leadId, 'WHATSAPP_OPENED', null, null);
       break;
     }
   }

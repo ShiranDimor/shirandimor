@@ -6,6 +6,8 @@ import { formatPhoneIL, telHref, whatsappHref } from '@/lib/salesLeads/phone';
 import { formatDateIL, formatDateTimeIL, isOverdue, jerusalemLocalInputToUtcIso, utcIsoToJerusalemLocalInput } from '@/lib/salesLeads/time';
 import { ACTIVITY_TYPE_LABELS, PRIORITIES, SALES_STATUSES, LeadPriority } from '@/lib/salesLeads/statuses';
 import { fetchLeadDetail, applyAction } from '@/lib/salesLeads/apiClient';
+import { getLeadFirstName } from '@/lib/salesLeads/firstName';
+import { buildInitialOutreachMessage } from '@/lib/salesLeads/whatsappMessage';
 
 type Props = {
   leadId: string;
@@ -24,6 +26,9 @@ export default function LeadDrawer({ leadId, onClose, onChanged }: Props) {
   const [noteOnly, setNoteOnly] = useState('');
   const [followupValue, setFollowupValue] = useState('');
   const [followupNote, setFollowupNote] = useState('');
+  const [editingWaMessage, setEditingWaMessage] = useState(false);
+  const [waMessageDraft, setWaMessageDraft] = useState('');
+  const [waError, setWaError] = useState(false);
 
   async function load() {
     setLoading(true);
@@ -34,6 +39,7 @@ export default function LeadDrawer({ leadId, onClose, onChanged }: Props) {
       setActivities(data.activities);
       setFollowupValue(data.lead.next_followup_at ? utcIsoToJerusalemLocalInput(data.lead.next_followup_at) : '');
       setFollowupNote(data.lead.next_followup_note || '');
+      setWaMessageDraft(buildInitialOutreachMessage(getLeadFirstName(data.lead)));
     } catch (e) {
       setError(e instanceof Error ? e.message : 'שגיאה בטעינה');
     }
@@ -78,10 +84,32 @@ export default function LeadDrawer({ leadId, onClose, onChanged }: Props) {
 
           {lead && (
             <>
-              <div className="sl-actions" style={{ marginBottom: '18px' }}>
+              <div className="sl-actions" style={{ marginBottom: editingWaMessage ? '10px' : '18px' }}>
                 <a className="sl-act-call" href={telHref(lead.phone_normalized)}>📞 התקשרי</a>
-                <a className="sl-act-whatsapp" href={whatsappHref(lead.phone_normalized)} target="_blank" rel="noopener noreferrer">💬 WhatsApp</a>
+                <a
+                  className="sl-act-whatsapp"
+                  href={whatsappHref(lead.phone_normalized, waMessageDraft)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => {
+                    if (!lead.phone_normalized) {
+                      e.preventDefault();
+                      setWaError(true);
+                      return;
+                    }
+                    applyAction(lead.id, { type: 'whatsapp_opened' }).catch(() => {});
+                  }}
+                >
+                  💬 WhatsApp
+                </a>
+                <button onClick={() => setEditingWaMessage((v) => !v)}>{editingWaMessage ? 'ביטול עריכה' : '✏️ עריכת הודעה'}</button>
               </div>
+              {waError && <p style={{ fontSize: '12.5px', color: 'var(--loss)', marginBottom: '14px' }}>לא נמצא מספר WhatsApp תקין לליד הזה.</p>}
+              {editingWaMessage && (
+                <div className="sl-inline-form" style={{ borderTop: 'none', paddingTop: 0, marginBottom: '18px' }}>
+                  <textarea value={waMessageDraft} onChange={(e) => setWaMessageDraft(e.target.value)} rows={6} />
+                </div>
+              )}
 
               <div className="sl-drawer-section">
                 <h3>פרטים</h3>
