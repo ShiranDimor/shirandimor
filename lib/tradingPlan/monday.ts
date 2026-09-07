@@ -530,6 +530,10 @@ export async function syncGenericLead(params: {
   name?: string | null;
   source: string;
   note?: string;
+  // forceNew: יוצר תמיד כרטיס חדש בקבוצת "לידים חדשים", גם אם הטלפון כבר קיים במקום אחר
+  // בלוח (למשל בקבוצת העדכונים) - לשימוש בקמפיינים שבהם צריך פריט פעולה נפרד וברור לכל
+  // הרשמה, ולא רק הערה שנטמעת בתוך כרטיס קיים ועלולה להתפספס
+  forceNew?: boolean;
 }): Promise<{ ok: boolean; reason?: string; itemId?: string; created?: boolean }> {
   const token = process.env.MONDAY_API_TOKEN;
   const boardId = process.env.MONDAY_BOARD_ID;
@@ -541,7 +545,7 @@ export async function syncGenericLead(params: {
     const { groupId, phoneColumnId, emailColumnId, campaignColumnId } = await getBoardSchema(token, boardId);
     const normalized = normalizePhone(params.phone);
 
-    const existingItemId = phoneColumnId
+    const existingItemId = phoneColumnId && !params.forceNew
       ? await findItemIdByPhone(token, boardId, phoneColumnId, normalized).catch(() => null)
       : null;
 

@@ -153,7 +153,8 @@ export default function AdminDashboard() {
     setLessonsCount((lessonsRes?.lessons || []).length);
     setRevenueCount(revenueRes?.count || 0);
     setRevenueTotal(revenueRes?.totalAmount || 0);
-    setTrialSignupsCount((trialSignupsRes?.signups || []).length);
+    const trialSignups: { handled: boolean }[] = trialSignupsRes?.signups || [];
+    setTrialSignupsCount(trialSignups.filter((s) => !s.handled).length);
   }
 
   async function handleLogout() {
@@ -266,10 +267,10 @@ export default function AdminDashboard() {
           <div className="at-count">כלי פנימי</div>
         </Link>
 
-        <Link href="/admin/trial-signups" className="admin-tile">
+        <Link href="/admin/trial-signups" className={`admin-tile ${trialSignupsCount > 0 ? 'attention' : ''}`}>
           <div className="at-icon">🎁</div>
           <div className="at-title">נרשמים לימי ניסיון</div>
-          <div className="at-count">{trialSignupsCount} נרשמים</div>
+          <div className="at-count">{trialSignupsCount} ממתינים לטיפול</div>
         </Link>
       </div>
 
