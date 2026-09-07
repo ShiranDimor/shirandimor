@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { isActiveSubscriber } from '@/lib/subscriberStatus';
 import { syncGenericLead } from '@/lib/tradingPlan/monday';
+import { supabaseAdmin } from '@/lib/instantLogin';
 
 const TRIAL_SOURCE_LABEL = 'ימי ניסיון - עדכונים (7 ימים)';
 
@@ -20,16 +21,23 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, alreadySubscriber: true });
   }
 
-  const result = await syncGenericLead({
-    phone,
-    name,
-    source: TRIAL_SOURCE_LABEL,
-    note: `נרשם/ה ל-7 ימי ניסיון דרך דף ההרשמה\nנייד: ${phone}`,
-  });
+  const [mondayResult] = await Promise.all([
+    syncGenericLead({
+      phone,
+      name,
+      source: TRIAL_SOURCE_LABEL,
+      note: `נרשם/ה ל-7 ימי ניסיון דרך דף ההרשמה\nנייד: ${phone}`,
+    }),
+    // נשמר גם בטבלה משלנו כדי שיהיה אפשר לראות את כל הנרשמים לסבב הזה בעמוד הניהול באתר,
+    // לא רק במאנדיי
+    supabaseAdmin.from('trial_signups').insert({ name, phone }).then(({ error }) => {
+      if (error) console.error('שגיאה בשמירת הרשמת ניסיון', error);
+    }),
+  ]);
 
-  if (!result.ok) {
-    console.error('שגיאה בסנכרון הרשמת ניסיון ל-Monday.com', result.reason);
+  if (!mondayResult.ok) {
+    console.error('שגיאה בסנכרון הרשמת ניסיון ל-Monday.com', mondayResult.reason);
   }
 
-  return NextResponse.json({ ok: true, monday: result.ok });
+  return NextResponse.json({ ok: true, monday: mondayResult.ok });
 }
