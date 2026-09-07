@@ -20,6 +20,8 @@ export default function AdminDashboard() {
   const [revenueCount, setRevenueCount] = useState(0);
   const [revenueTotal, setRevenueTotal] = useState(0);
   const [trialSignupsCount, setTrialSignupsCount] = useState(0);
+  const [salesLeadsInProgress, setSalesLeadsInProgress] = useState(0);
+  const [salesLeadsAttention, setSalesLeadsAttention] = useState(0);
 
   const [refreshing, setRefreshing] = useState(false);
   const [refreshMessage, setRefreshMessage] = useState('');
@@ -131,7 +133,7 @@ export default function AdminDashboard() {
   async function loadCounts() {
     const { data: { session } } = await supabase.auth.getSession();
 
-    const [pending, approved, openTrades, abandonedRes, livesRes, lessonsRes, revenueRes, trialSignupsRes] = await Promise.all([
+    const [pending, approved, openTrades, abandonedRes, livesRes, lessonsRes, revenueRes, trialSignupsRes, salesLeadsRes] = await Promise.all([
       supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'lead'),
       supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'subscriber'),
       supabase.from('trades').select('id', { count: 'exact', head: true }).eq('status', 'open'),
@@ -140,6 +142,7 @@ export default function AdminDashboard() {
       fetch('/api/admin/lessons', { headers: { Authorization: `Bearer ${session?.access_token}` } }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
       fetch('/api/admin/revenue-projection', { headers: { Authorization: `Bearer ${session?.access_token}` } }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
       fetch('/api/admin/trial-signups', { headers: { Authorization: `Bearer ${session?.access_token}` } }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+      fetch('/api/admin/sales-leads/stats', { headers: { Authorization: `Bearer ${session?.access_token}` } }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
     ]);
 
     setPendingCount(pending.count || 0);
@@ -155,6 +158,8 @@ export default function AdminDashboard() {
     setRevenueTotal(revenueRes?.totalAmount || 0);
     const trialSignups: { handled: boolean }[] = trialSignupsRes?.signups || [];
     setTrialSignupsCount(trialSignups.filter((s) => !s.handled).length);
+    setSalesLeadsInProgress(salesLeadsRes?.inProgress || 0);
+    setSalesLeadsAttention((salesLeadsRes?.followupsOverdue || 0) + (salesLeadsRes?.followupsToday || 0));
   }
 
   async function handleLogout() {
@@ -207,6 +212,12 @@ export default function AdminDashboard() {
       <div className="section-label"><h2>אזור הניהול</h2></div>
 
       <div className="admin-tiles">
+        <Link href="/admin/sales-leads" className={`admin-tile ${salesLeadsAttention > 0 ? 'attention' : ''}`}>
+          <div className="at-icon">📞</div>
+          <div className="at-title">שיחות מכירה - קבוצת עדכונים</div>
+          <div className="at-count">{salesLeadsAttention > 0 ? `${salesLeadsAttention} דורשים טיפול · ` : ''}{salesLeadsInProgress} בטיפול</div>
+        </Link>
+
         <Link href="/admin/trades" className="admin-tile">
           <div className="at-icon">📊</div>
           <div className="at-title">תיק מסחר</div>

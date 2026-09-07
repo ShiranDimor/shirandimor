@@ -35,6 +35,10 @@
     {
       "path": "/api/cron/monthly-revenue-snapshot",
       "schedule": "0 3 1 * *"
+    },
+    {
+      "path": "/api/cron/sales-leads-sync",
+      "schedule": "0 5 * * *"
     }
   ]
 }
