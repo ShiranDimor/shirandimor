@@ -53,6 +53,8 @@ export default function TrialSignupPage() {
       <div className="form-title" style={{ fontSize: '22px' }}>7 ימי ניסיון בקבוצת הסוחרים - ללא עלות</div>
       <div style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.7, marginBottom: '20px' }}>
         פתחתי סבב חדש של 7 ימי ניסיון לקבוצת הסוחרים "מדברים עסקאות" - בלי עלות ובלי התחייבות. המקום מוגבל, אז כדי לשריין השאירו שם ונייד ואני אחזור אליכם.
+        <br /><br />
+        לפני ההצטרפות תתקיים שיחה קצרה איתי כדי לוודא התאמה לקבוצה.
       </div>
 
       {!done && (
@@ -84,7 +86,7 @@ export default function TrialSignupPage() {
       {done && (
         <div className="tp-question-card">
           <div className="tp-question-title">קיבלנו! 🎉</div>
-          <div className="tp-step-intro">שיריינו לך מקום ל-7 ימי ניסיון. אני אחזור אליך בהודעה עם כל הפרטים.</div>
+          <div className="tp-step-intro">שיריינו לך מקום ל-7 ימי ניסיון. אני אחזור אליך לשיחה קצרה לוודא התאמה, ואז נסגור את הפרטים.</div>
         </div>
       )}
 
