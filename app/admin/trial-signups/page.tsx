@@ -19,6 +19,8 @@ export default function AdminTrialSignupsPage() {
   const [signups, setSignups] = useState<TrialSignup[]>([]);
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [resyncingId, setResyncingId] = useState<string | null>(null);
+  const [resyncMessage, setResyncMessage] = useState<{ id: string; text: string } | null>(null);
 
   useEffect(() => {
     checkAdmin();
@@ -49,6 +51,23 @@ export default function AdminTrialSignupsPage() {
       setSignups((prev) => prev.map((s) => (s.id === id ? { ...s, handled } : s)));
     }
     setUpdatingId(null);
+  }
+
+  async function resyncToMonday(id: string) {
+    if (resyncingId) return;
+    setResyncingId(id);
+    setResyncMessage(null);
+
+    const { data: { session } } = await supabase.auth.getSession();
+    const res = await fetch('/api/admin/trial-signup-resync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
+      body: JSON.stringify({ id }),
+    });
+    const data = await res.json().catch(() => ({}));
+
+    setResyncMessage({ id, text: res.ok ? 'נוצר כרטיס ליד חדש במאנדיי ✔' : 'שגיאה: ' + (data.error || 'לא הצלחנו לסנכרן') });
+    setResyncingId(null);
   }
 
   async function checkAdmin() {
@@ -115,16 +134,28 @@ export default function AdminTrialSignupsPage() {
 
   function renderRow(s: TrialSignup) {
     return (
-      <div className="admin-row" key={s.id}>
+      <div className="admin-row" key={s.id} style={{ flexWrap: 'wrap' }}>
         <div>
           <div className="name">{s.name}</div>
           <div className="email">{s.phone}</div>
           <div className="email" style={{ marginTop: '2px' }}>נרשם/ה: {new Date(s.created_at).toLocaleDateString('he-IL')} {new Date(s.created_at).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}</div>
+          {resyncMessage?.id === s.id && (
+            <div className="email" style={{ marginTop: '4px', color: resyncMessage.text.startsWith('שגיאה') ? 'var(--loss)' : 'var(--profit)' }}>{resyncMessage.text}</div>
+          )}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
           <a href={`https://wa.me/972${s.phone.replace(/\D/g, '').replace(/^0/, '')}`} target="_blank" rel="noopener noreferrer" className="btn-outline" style={{ width: 'auto', padding: '8px 14px' }}>
             וואטסאפ
           </a>
+          <button
+            className="btn-outline"
+            style={{ width: 'auto', padding: '8px 14px' }}
+            onClick={() => resyncToMonday(s.id)}
+            disabled={resyncingId === s.id}
+            title="יוצר כרטיס ליד חדש במאנדיי (למקרה שלא נוצר אוטומטית)"
+          >
+            {resyncingId === s.id ? 'מסנכרן...' : '🔄 סנכרון למאנדיי'}
+          </button>
           <button
             className="btn-outline"
             style={{ width: 'auto', padding: '8px 14px' }}
