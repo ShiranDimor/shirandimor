@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { LESSONS_LIBRARY_PUBLIC, LESSON_CATEGORIES, LESSON_CATEGORY_ICONS } from '@/lib/lessonsConfig';
 
+const PRESENTATIONS_KEY = '__presentations__';
+
 type LessonSummary = {
   id: string;
   title: string;
@@ -135,8 +137,16 @@ export default function LessonsLibraryPage() {
 
   // רק נושאים שיש בהם בפועל שיעורים, בסדר הקבוע מ-LESSON_CATEGORIES (ולא לפי סדר הופעה מקרי)
   const presentCategories = LESSON_CATEGORIES.filter((c) => videoLessons.some((l) => l.category === c));
-  const visibleLessons = activeCategory ? videoLessons.filter((l) => l.category === activeCategory) : videoLessons;
-  const nothingToShow = activeCategory ? visibleLessons.length === 0 : presentationLessons.length === 0 && presentCategories.length === 0;
+
+  // בברירת מחדל מציגים רק את התיקיות עצמן (בלי לפרוס את כל השיעורים) - לוחצים על תיקייה כדי
+  // להיכנס אליה. ככה אין יותר גלילה ארוכה כדי להגיע לנושא רחוק ברשימה.
+  const visibleLessons = activeCategory === PRESENTATIONS_KEY
+    ? presentationLessons
+    : activeCategory
+    ? videoLessons.filter((l) => l.category === activeCategory)
+    : [];
+  const nothingToShow = !activeCategory && presentationLessons.length === 0 && presentCategories.length === 0;
+  const activeCategoryLabel = activeCategory === PRESENTATIONS_KEY ? 'מצגות' : activeCategory;
 
   function renderGrid(list: LessonSummary[]) {
     return (
@@ -275,15 +285,6 @@ export default function LessonsLibraryPage() {
 
       {!gateNeeded && (
         <>
-          {presentCategories.length > 1 && (
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '20px' }}>
-              <button type="button" className={`filter-chip ${!activeCategory ? 'active' : ''}`} onClick={() => setActiveCategory(null)}>הכל</button>
-              {presentCategories.map((c) => (
-                <button key={c} type="button" className={`filter-chip ${activeCategory === c ? 'active' : ''}`} onClick={() => setActiveCategory(c)}>{c}</button>
-              ))}
-            </div>
-          )}
-
           {loading && renderSkeleton()}
           {!loading && nothingToShow && (
             <div className="lessons-empty">
@@ -292,29 +293,34 @@ export default function LessonsLibraryPage() {
             </div>
           )}
 
-          {!loading && activeCategory && renderGrid(visibleLessons)}
-
-          {!loading && !activeCategory && presentationLessons.length > 0 && (
-            <div className="lesson-folder">
-              <div className="lesson-folder-header">
-                <div className="lesson-folder-icon">📊</div>
-                <div className="lesson-folder-title">מצגות</div>
-                <div className="lesson-folder-count">{presentationLessons.length}</div>
-              </div>
-              {renderGrid(presentationLessons)}
+          {!loading && !nothingToShow && !activeCategory && (
+            <div className="lesson-folder-grid">
+              {presentationLessons.length > 0 && (
+                <button type="button" className="lesson-folder-tile" onClick={() => setActiveCategory(PRESENTATIONS_KEY)}>
+                  <div className="lesson-folder-icon">📊</div>
+                  <div className="lesson-folder-title">מצגות</div>
+                  <div className="lesson-folder-count">{presentationLessons.length}</div>
+                </button>
+              )}
+              {presentCategories.map((c) => (
+                <button key={c} type="button" className="lesson-folder-tile" onClick={() => setActiveCategory(c)}>
+                  <div className="lesson-folder-icon">{LESSON_CATEGORY_ICONS[c] || '📁'}</div>
+                  <div className="lesson-folder-title">{c}</div>
+                  <div className="lesson-folder-count">{videoLessons.filter((l) => l.category === c).length}</div>
+                </button>
+              ))}
             </div>
           )}
 
-          {!loading && !activeCategory && presentCategories.map((c) => (
-            <div key={c} className="lesson-folder">
-              <div className="lesson-folder-header">
-                <div className="lesson-folder-icon">{LESSON_CATEGORY_ICONS[c] || '📁'}</div>
-                <div className="lesson-folder-title">{c}</div>
-                <div className="lesson-folder-count">{videoLessons.filter((l) => l.category === c).length}</div>
-              </div>
-              {renderGrid(videoLessons.filter((l) => l.category === c))}
-            </div>
-          ))}
+          {!loading && activeCategory && (
+            <>
+              <button type="button" className="nav-link" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginBottom: '16px', fontSize: '14px' }} onClick={() => setActiveCategory(null)}>
+                ← לכל התיקיות
+              </button>
+              <div className="section-label"><h2>{activeCategoryLabel}</h2><span className="count">{visibleLessons.length}</span></div>
+              {renderGrid(visibleLessons)}
+            </>
+          )}
         </>
       )}
 

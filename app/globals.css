@@ -874,6 +874,18 @@
 .lesson-folder-title { font-size: 14.5px; font-weight: 700; color: var(--text-primary); }
 .lesson-folder-count { font-family: var(--font-mono); font-size: 11px; color: var(--text-tertiary); }
 
+/* תיקיות לחיצות בעמוד הספרייה הציבורי - כרטיס נלחץ פותח תיקייה במקום שכולן פרוסות ביחד */
+.lesson-folder-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; }
+.lesson-folder-tile {
+  display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 22px 12px;
+  background: var(--bg-surface); border: 1px solid var(--border-hairline); border-radius: 12px;
+  cursor: pointer; font: inherit; color: inherit; text-align: center;
+  transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+}
+.lesson-folder-tile:hover { border-color: var(--teal); transform: translateY(-2px); box-shadow: 0 10px 26px rgba(0,0,0,0.28); }
+.lesson-folder-tile .lesson-folder-icon { width: 44px; height: 44px; font-size: 20px; }
+.lesson-folder-tile .lesson-folder-title { font-size: 13.5px; }
+
 .lesson-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 16px; }
 
 .lesson-card {
