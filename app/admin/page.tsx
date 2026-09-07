@@ -19,6 +19,7 @@ export default function AdminDashboard() {
   const [lessonsCount, setLessonsCount] = useState(0);
   const [revenueCount, setRevenueCount] = useState(0);
   const [revenueTotal, setRevenueTotal] = useState(0);
+  const [trialSignupsCount, setTrialSignupsCount] = useState(0);
 
   const [refreshing, setRefreshing] = useState(false);
   const [refreshMessage, setRefreshMessage] = useState('');
@@ -130,7 +131,7 @@ export default function AdminDashboard() {
   async function loadCounts() {
     const { data: { session } } = await supabase.auth.getSession();
 
-    const [pending, approved, openTrades, abandonedRes, livesRes, lessonsRes, revenueRes] = await Promise.all([
+    const [pending, approved, openTrades, abandonedRes, livesRes, lessonsRes, revenueRes, trialSignupsRes] = await Promise.all([
       supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'lead'),
       supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'subscriber'),
       supabase.from('trades').select('id', { count: 'exact', head: true }).eq('status', 'open'),
@@ -138,6 +139,7 @@ export default function AdminDashboard() {
       fetch('/api/admin/lives', { headers: { Authorization: `Bearer ${session?.access_token}` } }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
       fetch('/api/admin/lessons', { headers: { Authorization: `Bearer ${session?.access_token}` } }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
       fetch('/api/admin/revenue-projection', { headers: { Authorization: `Bearer ${session?.access_token}` } }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+      fetch('/api/admin/trial-signups', { headers: { Authorization: `Bearer ${session?.access_token}` } }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
     ]);
 
     setPendingCount(pending.count || 0);
@@ -151,6 +153,7 @@ export default function AdminDashboard() {
     setLessonsCount((lessonsRes?.lessons || []).length);
     setRevenueCount(revenueRes?.count || 0);
     setRevenueTotal(revenueRes?.totalAmount || 0);
+    setTrialSignupsCount((trialSignupsRes?.signups || []).length);
   }
 
   async function handleLogout() {
@@ -261,6 +264,12 @@ export default function AdminDashboard() {
           <div className="at-icon">💬</div>
           <div className="at-title">ניתוח קבוצות ווטסאפ</div>
           <div className="at-count">כלי פנימי</div>
+        </Link>
+
+        <Link href="/admin/trial-signups" className="admin-tile">
+          <div className="at-icon">🎁</div>
+          <div className="at-title">נרשמים לימי ניסיון</div>
+          <div className="at-count">{trialSignupsCount} נרשמים</div>
         </Link>
       </div>
 
