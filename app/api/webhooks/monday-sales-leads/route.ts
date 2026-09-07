@@ -3,12 +3,14 @@ import { syncSalesLeadsFromMonday } from '@/lib/salesLeads/mondaySync';
 
 // Webhook קבלה ממאנדיי - לשימוש אופציונלי אם בעתיד תרצי לחבר Automation/Webhook בלוח שיצביע
 // לכתובת הזו (למשל ב"create_item" או "item_moved_to_group"). לא חובה בכלל להשתמש בזה -
-// הסנכרון התקופתי (app/api/cron/sales-leads-sync) כבר רץ כל 15 דקות ומספיק לבד.
+// הסנכרון היומי (app/api/cron/sales-leads-sync, 05:00) וכפתור "סנכרן עכשיו" באדמין מספיקים לבד.
 //
 // מאנדיי שולח קודם בקשת "challenge" חד-פעמית כדי לאמת את הכתובת בזמן יצירת ה-Webhook -
 // וחייבים להחזיר בדיוק את אותו ה-challenge בחזרה כדי שהחיבור יאושר.
 // אם MONDAY_WEBHOOK_SECRET מוגדר, דורשים אותו כפרמטר ?secret= בכתובת שנרשמת במאנדיי - אחרת
 // מקבלים כל קריאה (הנזק המקסימלי מקריאה מזויפת הוא סנכרון מיותר, לא חשיפת מידע)
+export const maxDuration = 60;
+
 export async function POST(request: Request) {
   const secret = process.env.MONDAY_WEBHOOK_SECRET;
   if (secret) {
