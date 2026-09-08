@@ -25,8 +25,10 @@ const GROW_LINK = 'https://pay.grow.link/200a7cdcb258ee6ffdea0f423a1ace0e-MzE4MD
 const GROUP_NAME = 'מדברים עסקאות';
 const SITE_URL = 'https://www.shirandimor.com';
 
+// חובה timeZone מפורש - זה רץ בשרת (UTC), ובלי זה עסקה שנפתחה/נסגרה בשעות הקטנות של הלילה
+// לפי שעון ישראל הייתה עלולה להיראות כאילו זה קרה יום קודם
 function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString('he-IL');
+  return new Date(iso).toLocaleDateString('he-IL', { timeZone: 'Asia/Jerusalem' });
 }
 
 // מרנדר את ה-HTML של הסיכום לתמונת PNG אמיתית (דרך כרום headless), כדי שאפשר יהיה לשמור ולשלוח אותה ישירות לקבוצות
@@ -101,7 +103,9 @@ function tradeRowHtml(t: Trade, kind: 'open' | 'closed') {
 
 async function buildSummaryHtml() {
   const now = new Date();
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  // מחושב לפי שעון ישראל ולא UTC (זמן השרת) - כדי שתחילת החודש תתאים לחצות האמיתית בישראל
+  const nowIsrael = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Jerusalem' }));
+  const monthStart = new Date(nowIsrael.getFullYear(), nowIsrael.getMonth(), 1);
 
   const { data: allTrades, error } = await supabaseAdmin
     .from('trades')
