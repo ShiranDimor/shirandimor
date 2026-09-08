@@ -29,6 +29,9 @@ export default function AdminDashboard() {
   const [sendingSummary, setSendingSummary] = useState(false);
   const [summaryMessage, setSummaryMessage] = useState('');
 
+  const [backfillingLiveLeads, setBackfillingLiveLeads] = useState(false);
+  const [backfillMessage, setBackfillMessage] = useState('');
+
   async function handleRefreshAllPrices() {
     setRefreshing(true);
     setRefreshMessage('');
@@ -100,6 +103,33 @@ export default function AdminDashboard() {
     }
 
     setSendingSummary(false);
+  }
+
+  // סנכרון למפרע - יוצר ליד במאנדיי לכל מי שנרשם ללייב ואינו מנוי ועדיין לא סונכרן (בטוח
+  // להריץ שוב, מדלג על כל מי שכבר סונכרן)
+  async function handleBackfillLiveLeads() {
+    setBackfillingLiveLeads(true);
+    setBackfillMessage('');
+
+    const { data: { session } } = await supabase.auth.getSession();
+
+    try {
+      const res = await fetch('/api/admin/backfill-live-leads', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session?.access_token}` },
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        setBackfillMessage('שגיאה: ' + (data.error || 'לא הצלחנו לסנכרן'));
+      } else {
+        setBackfillMessage(`נבדקו ${data.total} · נוצרו ${data.created} לידים חדשים · ${data.failed} נכשלו${data.failedNames?.length ? ' (' + data.failedNames.join(', ') + ')' : ''}`);
+      }
+    } catch (e) {
+      setBackfillMessage('שגיאה בסנכרון');
+    }
+
+    setBackfillingLiveLeads(false);
   }
 
   useEffect(() => {
@@ -300,6 +330,15 @@ export default function AdminDashboard() {
       {summaryMessage && (
         <p style={{ fontSize: '12px', color: summaryMessage.startsWith('שגיאה') ? 'var(--loss)' : 'var(--profit)', marginTop: '10px', textAlign: 'center' }}>
           {summaryMessage}
+        </p>
+      )}
+
+      <button className="btn-outline" style={{ width: '100%', marginTop: '8px' }} onClick={handleBackfillLiveLeads} disabled={backfillingLiveLeads} title="יוצר ליד במאנדיי לכל מי שנרשם ללייב ואינו מנוי ועדיין לא סונכרן">
+        {backfillingLiveLeads ? 'מסנכרנים...' : '🔄 סנכרון למפרע - הרשמות ללייבים'}
+      </button>
+      {backfillMessage && (
+        <p style={{ fontSize: '12px', color: backfillMessage.startsWith('שגיאה') ? 'var(--loss)' : 'var(--profit)', marginTop: '10px', textAlign: 'center' }}>
+          {backfillMessage}
         </p>
       )}
     </div>

@@ -588,3 +588,75 @@ export async function syncGenericLead(params: {
     return { ok: false, reason: 'error' };
   }
 }
+
+const LIVE_REGISTRATION_CAMPAIGN_VALUE = 'הרשמה ללייב';
+const DUPLICATE_STATUS_LABEL = 'ליד כפול';
+
+// יוצר תמיד כרטיס ליד חדש עבור מי שנרשם ללייב ואינו מנוי - בלי קשר לשאלה אם הלייב פתוח לכולם
+// או לא. אם הטלפון כבר מוכר במקום אחר בלוח, הכרטיס עדיין נוצר אבל מסומן כ"ליד כפול" - כדי
+// ששירן תדע לטפל בו אבל שום הרשמה לא תיעלם בשקט
+export async function createLiveRegistrationLead(params: {
+  name: string;
+  phone: string;
+  email?: string | null;
+  liveTitle: string;
+  liveScheduledAt: string;
+}): Promise<{ ok: boolean; reason?: string; itemId?: string }> {
+  const token = process.env.MONDAY_API_TOKEN;
+  const boardId = process.env.MONDAY_BOARD_ID;
+  if (!token || !boardId) return { ok: false, reason: 'not_configured' };
+
+  try {
+    const { groupId, phoneColumnId, emailColumnId, campaignColumnId, statusColumnId } = await getBoardSchema(token, boardId);
+    const normalized = normalizePhone(params.phone);
+
+    const existingItemId = phoneColumnId
+      ? await findItemIdByPhone(token, boardId, phoneColumnId, normalized).catch(() => null)
+      : null;
+
+    // חייבים timeZone מפורש - השרת רץ ב-UTC, ובלי זה לייב ב-20:00 בישראל היה מוצג כ-17:00
+    const liveDate = new Date(params.liveScheduledAt);
+    const liveDateLabel = `${liveDate.toLocaleDateString('he-IL', { timeZone: 'Asia/Jerusalem' })} ${liveDate.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem' })}`;
+    const campaignValue = `${LIVE_REGISTRATION_CAMPAIGN_VALUE} - ${liveDateLabel}`;
+
+    const columnValues: Record<string, unknown> = {};
+    if (phoneColumnId) columnValues[phoneColumnId] = { phone: params.phone.startsWith('0') ? `972${params.phone.slice(1)}` : params.phone, countryShortName: 'IL' };
+    if (emailColumnId && params.email) columnValues[emailColumnId] = { email: params.email, text: params.email };
+    if (campaignColumnId) columnValues[campaignColumnId] = campaignValue;
+
+    const createData: any = await mondayRequest(
+      token,
+      `mutation ($boardId: ID!, $groupId: String, $itemName: String!, $columnValues: JSON) {
+        create_item (board_id: $boardId, group_id: $groupId, item_name: $itemName, column_values: $columnValues) { id }
+      }`,
+      { boardId, groupId: groupId || null, itemName: params.name, columnValues: JSON.stringify(columnValues) }
+    );
+
+    const itemId = createData?.data?.create_item?.id;
+    if (!itemId) return { ok: false, reason: 'no_item_id' };
+
+    if (existingItemId && statusColumnId) {
+      await mondayRequest(
+        token,
+        `mutation ($boardId: ID!, $itemId: ID!, $columnId: String!, $value: String!) {
+          change_simple_column_value (board_id: $boardId, item_id: $itemId, column_id: $columnId, value: $value) { id }
+        }`,
+        { boardId, itemId, columnId: statusColumnId, value: DUPLICATE_STATUS_LABEL }
+      ).catch((e) => console.error('Monday.com: נכשל סימון "ליד כפול" (הרשמה ללייב)', e));
+    }
+
+    await mondayRequest(
+      token,
+      `mutation ($itemId: ID!, $body: String!) { create_update (item_id: $itemId, body: $body) { id } }`,
+      {
+        itemId,
+        body: `נייד: ${params.phone}${params.email ? `\nאימייל: ${params.email}` : ''}\nמקור: הרשמה ללייב "${params.liveTitle}" (${liveDateLabel}) באתר${existingItemId ? '\n⚠ כבר קיים ליד/מנוי אחר עם אותו נייד - סומן כ"ליד כפול"' : ''}`,
+      }
+    ).catch((e) => console.error('Monday.com: נכשל הוספת הערה (הרשמה ללייב)', e));
+
+    return { ok: true, itemId };
+  } catch (e) {
+    console.error('שגיאה בסנכרון הרשמה ללייב ל-Monday.com', e);
+    return { ok: false, reason: 'error' };
+  }
+}
