@@ -94,9 +94,11 @@ async function createMondayLiveLead(name: string, phone: string, email: string |
       ? await hasExistingPhone(token, boardId, phoneColumnId, normalizeMondayPhone(phone)).catch(() => false)
       : false;
 
-    // מוסיפים את תאריך ושעת הלייב לשם הקמפיין, כדי שאפשר יהיה להבדיל בין לידים מלייבים שונים בלוח
+    // מוסיפים את תאריך ושעת הלייב לשם הקמפיין, כדי שאפשר יהיה להבדיל בין לידים מלייבים שונים בלוח.
+    // חובה לציין timeZone מפורש - השרת (Vercel) רץ ב-UTC, ובלי זה "17:00" בישראל (בקיץ, UTC+3)
+    // היה מוצג כ"17:00" גם כשבפועל השעה המקומית האמיתית היא 20:00
     const liveDate = new Date(liveScheduledAt);
-    const liveDateLabel = `${liveDate.toLocaleDateString('he-IL')} ${liveDate.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}`;
+    const liveDateLabel = `${liveDate.toLocaleDateString('he-IL', { timeZone: 'Asia/Jerusalem' })} ${liveDate.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem' })}`;
     const campaignValue = `${CAMPAIGN_VALUE} - ${liveDateLabel}`;
 
     const columnValues: Record<string, unknown> = {};
