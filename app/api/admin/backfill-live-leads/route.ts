@@ -44,6 +44,18 @@ export async function POST(request: Request) {
     const live = Array.isArray(row.lives) ? row.lives[0] : row.lives;
     if (!row.name || !row.phone || !live) continue;
 
+    // "תופסים" את השורה לפני היצירה במאנדיי (update מותנה ב-monday_synced=false), לא אחריה -
+    // כדי שאם הכפתור נלחץ פעמיים ברצף (למשל טאץ' כפול לפני שהכפתור הספיק להיות disabled),
+    // רק ניסיון אחד באמת ייצור ליד; השני יראה 0 שורות עודכנו ופשוט ידלג
+    const { data: claimed } = await supabaseAdmin
+      .from('live_registrations')
+      .update({ monday_synced: true })
+      .eq('id', row.id)
+      .eq('monday_synced', false)
+      .select('id');
+
+    if (!claimed || claimed.length === 0) continue;
+
     const result = await createLiveRegistrationLead({
       name: row.name,
       phone: row.phone,
@@ -54,8 +66,9 @@ export async function POST(request: Request) {
 
     if (result.ok) {
       created += 1;
-      await supabaseAdmin.from('live_registrations').update({ monday_synced: true }).eq('id', row.id);
     } else {
+      // הכרטיס לא נוצר בפועל - משחררים את התפיסה כדי שאפשר יהיה לנסות שוב בפעם הבאה
+      await supabaseAdmin.from('live_registrations').update({ monday_synced: false }).eq('id', row.id);
       failed += 1;
       failedNames.push(row.name);
     }
