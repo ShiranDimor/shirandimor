@@ -150,9 +150,12 @@ export default function AdminDashboard() {
     setOpenTradesCount(openTrades.count || 0);
     setAbandonedTotal(abandonedRes?.total || 0);
     setAbandonedUnread(abandonedRes?.unread || 0);
-    const lives: { registrationsCount: number }[] = livesRes?.lives || [];
-    setLivesCount(lives.length);
-    setLiveRegistrationsTotal(lives.reduce((sum, l) => sum + (l.registrationsCount || 0), 0));
+    const lives: { registrationsCount: number; scheduled_at: string }[] = livesRes?.lives || [];
+    // רק לייבים עתידיים - נרשמים ללייב שכבר עבר עדיין נספרים בתוך הלייב עצמו, אבל לא בסיכום
+    // הזה, כדי שהמספר כאן ישקף רק מה שעוד רלוונטי להיערך אליו
+    const upcomingLives = lives.filter((l) => new Date(l.scheduled_at).getTime() >= Date.now());
+    setLivesCount(upcomingLives.length);
+    setLiveRegistrationsTotal(upcomingLives.reduce((sum, l) => sum + (l.registrationsCount || 0), 0));
     setLessonsCount((lessonsRes?.lessons || []).length);
     setRevenueCount(revenueRes?.count || 0);
     setRevenueTotal(revenueRes?.totalAmount || 0);
@@ -251,7 +254,7 @@ export default function AdminDashboard() {
         <Link href="/admin/lives" className="admin-tile">
           <div className="at-icon">📡</div>
           <div className="at-title">לייבים</div>
-          <div className="at-count">{liveRegistrationsTotal} נרשמים · {livesCount} לייבים</div>
+          <div className="at-count">{liveRegistrationsTotal} נרשמים · {livesCount} לייבים קרובים</div>
         </Link>
 
         <Link href="/admin/analytics" className="admin-tile">
