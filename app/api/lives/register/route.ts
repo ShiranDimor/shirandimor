@@ -1,144 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/instantLogin';
 import { isActiveSubscriber } from '@/lib/subscriberStatus';
-import { isContactInSubscribersGroupMonday } from '@/lib/tradingPlan/monday';
-
-const LEAD_GROUP_NAME = 'לידים חדשים';
-const CAMPAIGN_COLUMN_TITLE = 'campaign_name';
-const STATUS_COLUMN_TITLE = 'סטטוס טיפול';
-const DUPLICATE_STATUS_LABEL = 'ליד כפול';
-const CAMPAIGN_VALUE = 'הרשמה ללייב';
-
-function normalizeMondayPhone(raw: string) {
-  const digits = raw.replace(/\D/g, '');
-  return digits.slice(-9);
-}
-
-// זורק על שגיאת GraphQL (json.errors) ולא רק שגיאת HTTP - מאנדיי לרוב מחזיר 200 גם כששאילתה
-// נכשלה (rate limit/מכסת מורכבות), ובלי הבדיקה הזו pagination שנכשל באמצע נראה כמו "אין עוד תוצאות"
-async function mondayRequest(token: string, query: string, variables: Record<string, unknown>) {
-  const res = await fetch('https://api.monday.com/v2', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: token },
-    body: JSON.stringify({ query, variables }),
-  });
-  const json = await res.json();
-  if (!res.ok || json.errors) {
-    throw new Error(`Monday API error (${res.status}): ${JSON.stringify(json.errors || json)}`);
-  }
-  return json;
-}
-
-async function getBoardSchema(token: string, boardId: string) {
-  const data = await mondayRequest(
-    token,
-    `query ($boardId: ID!) {
-      boards (ids: [$boardId]) { columns { id title type } groups { id title } }
-    }`,
-    { boardId }
-  );
-  const board = data?.data?.boards?.[0];
-  const columns: { id: string; title: string; type: string }[] = board?.columns || [];
-  const groups: { id: string; title: string }[] = board?.groups || [];
-
-  return {
-    groupId: groups.find((g) => g.title === LEAD_GROUP_NAME)?.id,
-    phoneColumnId: columns.find((c) => c.type === 'phone')?.id,
-    emailColumnId: columns.find((c) => c.type === 'email')?.id,
-    campaignColumnId: columns.find((c) => c.title === CAMPAIGN_COLUMN_TITLE)?.id,
-    statusColumnId: columns.find((c) => c.title === STATUS_COLUMN_TITLE)?.id,
-  };
-}
-
-async function hasExistingPhone(token: string, boardId: string, phoneColumnId: string, targetNormalized: string) {
-  let cursor: string | null = null;
-
-  do {
-    const itemsData: any = await mondayRequest(
-      token,
-      `query ($boardId: ID!, $cursor: String, $columnIds: [String!]) {
-        boards (ids: [$boardId]) {
-          items_page (limit: 100, cursor: $cursor) {
-            cursor
-            items { column_values (ids: $columnIds) { text } }
-          }
-        }
-      }`,
-      { boardId, cursor, columnIds: [phoneColumnId] }
-    );
-
-    const page = itemsData?.data?.boards?.[0]?.items_page;
-    const items = page?.items || [];
-
-    const found = items.some((item: { column_values: { text: string | null }[] }) => {
-      const text = item.column_values?.[0]?.text;
-      return text && normalizeMondayPhone(text) === targetNormalized;
-    });
-    if (found) return true;
-
-    cursor = page?.cursor || null;
-  } while (cursor);
-
-  return false;
-}
-
-async function createMondayLiveLead(name: string, phone: string, email: string | null, liveTitle: string, liveScheduledAt: string) {
-  const token = process.env.MONDAY_API_TOKEN;
-  const boardId = process.env.MONDAY_BOARD_ID;
-  if (!token || !boardId) return;
-
-  try {
-    const { groupId, phoneColumnId, emailColumnId, campaignColumnId, statusColumnId } = await getBoardSchema(token, boardId);
-
-    const isDuplicate = phoneColumnId
-      ? await hasExistingPhone(token, boardId, phoneColumnId, normalizeMondayPhone(phone)).catch(() => false)
-      : false;
-
-    // מוסיפים את תאריך ושעת הלייב לשם הקמפיין, כדי שאפשר יהיה להבדיל בין לידים מלייבים שונים בלוח.
-    // חובה לציין timeZone מפורש - השרת (Vercel) רץ ב-UTC, ובלי זה "17:00" בישראל (בקיץ, UTC+3)
-    // היה מוצג כ"17:00" גם כשבפועל השעה המקומית האמיתית היא 20:00
-    const liveDate = new Date(liveScheduledAt);
-    const liveDateLabel = `${liveDate.toLocaleDateString('he-IL', { timeZone: 'Asia/Jerusalem' })} ${liveDate.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem' })}`;
-    const campaignValue = `${CAMPAIGN_VALUE} - ${liveDateLabel}`;
-
-    const columnValues: Record<string, unknown> = {};
-    if (phoneColumnId) columnValues[phoneColumnId] = { phone: phone.startsWith('0') ? `972${phone.slice(1)}` : phone, countryShortName: 'IL' };
-    if (emailColumnId && email) columnValues[emailColumnId] = { email, text: email };
-    if (campaignColumnId) columnValues[campaignColumnId] = campaignValue;
-
-    const createItemData = await mondayRequest(
-      token,
-      `mutation ($boardId: ID!, $groupId: String, $itemName: String!, $columnValues: JSON) {
-        create_item (board_id: $boardId, group_id: $groupId, item_name: $itemName, column_values: $columnValues) { id }
-      }`,
-      { boardId, groupId: groupId || null, itemName: name, columnValues: JSON.stringify(columnValues) }
-    );
-
-    const itemId = createItemData?.data?.create_item?.id;
-    if (!itemId) return;
-
-    if (isDuplicate && statusColumnId) {
-      await mondayRequest(
-        token,
-        `mutation ($boardId: ID!, $itemId: ID!, $columnId: String!, $value: String!) {
-          change_simple_column_value (board_id: $boardId, item_id: $itemId, column_id: $columnId, value: $value) { id }
-        }`,
-        { boardId, itemId, columnId: statusColumnId, value: DUPLICATE_STATUS_LABEL }
-      ).catch((e) => console.error('Monday.com: נכשל סימון "ליד כפול"', e));
-    }
-
-    await mondayRequest(
-      token,
-      `mutation ($itemId: ID!, $body: String!) { create_update (item_id: $itemId, body: $body) { id } }`,
-      {
-        itemId,
-        body: `נייד: ${phone}${email ? `\nאימייל: ${email}` : ''}\nמקור: הרשמה ללייב "${liveTitle}" (${liveDateLabel}) באתר${isDuplicate ? '\n⚠ כבר קיים ליד/מנוי אחר עם אותו נייד - סומן כ"ליד כפול"' : ''}`,
-      }
-    );
-  } catch (e) {
-    console.error('שגיאה בסנכרון הרשמה ללייב ל-Monday.com', e);
-  }
-}
+import { isContactInSubscribersGroupMonday, createLiveRegistrationLead } from '@/lib/tradingPlan/monday';
 
 // POST - הרשמה ללייב. מנוי פעיל (מזוהה לפי טוקן) נרשם ישירות ומקבל את פרטי ההצטרפות.
 // מי שאינו מנוי משאיר פרטי קשר, נהפך לליד ב-Monday.com (בדיוק כמו טופס קבוצת העדכונים), ושירן
@@ -207,13 +70,17 @@ export async function POST(request: Request) {
     is_subscriber: false,
   });
 
-  // ללייב שמסומן כפתוח לכולם, מי שאינו מנוי מקבל את פרטי ההצטרפות ישירות ולא הופך לליד
-  // מכירתי במאנדיי - אין למה "לפנות" אליו, הוא כבר קיבל גישה לוובינר הפתוח
+  // כל מי שנרשם ואינו מנוי הופך לליד ב-Monday - גם ללייב שפתוח לכולם. בעבר לייב "פתוח לכולם"
+  // דילג על יצירת ליד (בהנחה שאין למה "לפנות" אליו), וזה גרם לעשרות נרשמים לא-מנויים להיעלם
+  // בלי שום עקבות - שירן ביקשה מפורשות שכל הרשמה תיפתח כליד, בלי יוצא מן הכלל
+  const leadResult = await createLiveRegistrationLead({ name, phone, email: email || null, liveTitle: live.title, liveScheduledAt: live.scheduled_at }).catch(() => ({ ok: false }));
+  if (leadResult.ok) {
+    await supabaseAdmin.from('live_registrations').update({ monday_synced: true }).eq('live_id', liveId).eq('phone', phone).eq('is_subscriber', false);
+  }
+
   if (live.open_to_all) {
     return NextResponse.json({ ok: true, isSubscriber: false, openToAll: true, joinInfo: live.join_info });
   }
-
-  await createMondayLiveLead(name, phone, email || null, live.title, live.scheduled_at).catch(() => {});
 
   return NextResponse.json({ ok: true, isSubscriber: false });
 }
