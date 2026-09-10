@@ -35,9 +35,11 @@ export default function LeadRow({ lead, onOpen, onChanged, onError }: Props) {
   const statusMeta = getStatusMeta(lead.sales_status);
   const whatsappMessage = buildInitialOutreachMessage(getLeadFirstName(lead));
 
-  // רק תיעוד שנפתח WhatsApp - לא חוסם את הניווט בכלל (fire-and-forget), ולא אומר שנשלחה הודעה
+  // רק תיעוד שנפתח WhatsApp - לא חוסם את הניווט בכלל (fire-and-forget), ולא אומר שנשלחה הודעה.
+  // אם זו הייתה פנייה ראשונית (הליד היה "לא טופל") השרת מעביר אותו אוטומטית לסטטוס ייעודי -
+  // מרעננים את הרשימה כדי שזה יתעדכן מיד
   function logWhatsappOpened() {
-    applyAction(lead.id, { type: 'whatsapp_opened' }).catch(() => {});
+    applyAction(lead.id, { type: 'whatsapp_opened' }).then(onChanged).catch(() => {});
   }
 
   function handleWhatsappClick(e: React.MouseEvent) {

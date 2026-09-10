@@ -12,6 +12,9 @@ export type SalesStatus = {
 
 export const SALES_STATUSES: SalesStatus[] = [
   { value: 'not_handled', label: 'לא טופל', stage: 'in_progress' },
+  // מוגדר אוטומטית כשנפתחת הודעת WhatsApp ראשונית לליד שעדיין לא טופל בכלל (ר' lib/salesLeads/activities.ts) -
+  // כדי שלא יעורבב עם "לא טופל" ברשימה, גם לפני שהתקבלה תשובה בפועל
+  { value: 'whatsapp_sent', label: 'נשלחה פנייה ב-WhatsApp', stage: 'in_progress' },
   { value: 'no_answer', label: 'לא ענה/תה', stage: 'in_progress' },
   { value: 'spoke', label: 'דיברנו', stage: 'in_progress' },
   { value: 'asked_callback', label: 'ביקש/ה שאחזור אליו/ה', stage: 'in_progress' },

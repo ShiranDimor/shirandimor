@@ -97,7 +97,10 @@ export default function LeadDrawer({ leadId, onClose, onChanged }: Props) {
                       setWaError(true);
                       return;
                     }
-                    applyAction(lead.id, { type: 'whatsapp_opened' }).catch(() => {});
+                    applyAction(lead.id, { type: 'whatsapp_opened' }).then(() => {
+                      onChanged();
+                      load();
+                    }).catch(() => {});
                   }}
                 >
                   💬 WhatsApp

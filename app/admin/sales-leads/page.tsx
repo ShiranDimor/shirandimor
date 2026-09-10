@@ -21,6 +21,7 @@ const STAGE_TABS: { value: Stage; label: string }[] = [
 
 const FILTER_CHIPS: { id: string; label: string; dim: 'status' | 'priority' | 'followup'; value: string }[] = [
   { id: 'not_handled', label: 'לא טופלו עדיין', dim: 'status', value: 'not_handled' },
+  { id: 'whatsapp_sent', label: 'נשלחה פנייה', dim: 'status', value: 'whatsapp_sent' },
   { id: 'no_answer', label: 'לא ענו', dim: 'status', value: 'no_answer' },
   { id: 'interested', label: 'מתעניינים', dim: 'status', value: 'interested' },
   { id: 'followup_any', label: 'יש Follow-up', dim: 'followup', value: 'any' },
