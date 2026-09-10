@@ -137,10 +137,16 @@ export async function applyLeadAction(leadId: string, action: LeadAction): Promi
       break;
     }
 
-    // רק תיעוד שנפתח WhatsApp - לא אומר שההודעה נשלחה בפועל (אין דרך לדעת אם נלחץ Send
-    // בתוך WhatsApp), ולכן לא נוגעים בסטטוס/ניסיונות התקשרות/תאריך טיפול אחרון
+    // תיעוד שנפתח WhatsApp - לא אומר שההודעה נשלחה בפועל בוודאות (אין דרך לדעת אם נלחץ Send),
+    // ולכן לא נוגעים בניסיונות התקשרות/תאריך טיפול אחרון. אבל אם הליד היה עדיין "לא טופל"
+    // בכלל, זו בפועל הפנייה הראשונית אליו - מעבירים אותו לסטטוס ייעודי כדי שלא יישאר מעורבב
+    // עם מי שעוד לא פנו אליו בכלל ברשימה
     case 'whatsapp_opened': {
       await insertActivity(leadId, 'WHATSAPP_OPENED', null, null);
+      if (row.sales_status === 'not_handled') {
+        await supabaseAdmin.from('sales_leads').update({ sales_status: 'whatsapp_sent', stage: statusToStage('whatsapp_sent') }).eq('id', leadId);
+        await insertActivity(leadId, 'STATUS_CHANGED', null, { from: 'not_handled', to: 'whatsapp_sent', auto: true });
+      }
       break;
     }
   }
