@@ -286,6 +286,12 @@ export default function AdminDashboard() {
           <div className="at-title">נרשמים לימי ניסיון</div>
           <div className="at-count">{trialSignupsCount} ממתינים לטיפול</div>
         </Link>
+
+        <Link href="/admin/marketing" className="admin-tile">
+          <div className="at-icon">📣</div>
+          <div className="at-title">סטודיו תוכן שיווקי</div>
+          <div className="at-count">כלי פנימי</div>
+        </Link>
       </div>
 
       <button className="btn-outline" style={{ width: '100%', marginTop: '8px' }} onClick={handleRefreshAllPrices} disabled={refreshing}>
