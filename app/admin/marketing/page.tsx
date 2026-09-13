@@ -22,6 +22,8 @@ type Post = {
   scheduled_at: string | null;
   published_at: string | null;
   created_at: string;
+  source_type: 'manual' | 'trade' | 'whatsapp';
+  image_base64: string | null;
 };
 
 type BrandVoice = {
@@ -29,6 +31,24 @@ type BrandVoice = {
   sample_posts: string;
   avoid_notes: string;
 };
+
+type TradeSource = {
+  id: string;
+  symbol: string;
+  direction: string;
+  openedAt: string;
+  closedAt: string;
+  pct: number;
+};
+
+type WhatsappLatest = {
+  id: string;
+  group_type: string;
+  message_count: number | null;
+  created_at: string;
+};
+
+const WHATSAPP_GROUP_LABEL: Record<string, string> = { סוחרים: 'קבוצת הסוחרים', עדכונים: 'קבוצת העדכונים' };
 
 const PLATFORM_LABEL: Record<Platform, string> = { instagram: 'אינסטגרם', facebook: 'פייסבוק', both: 'שתיהן' };
 const CONTENT_TYPE_LABEL: Record<ContentType, string> = { feed_post: 'פוסט פיד', reel: 'רילס', story: 'סטורי' };
@@ -59,6 +79,15 @@ export default function AdminMarketingPage() {
   const [statusFilter, setStatusFilter] = useState<Status | 'all'>('all');
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
+  const [tradeSources, setTradeSources] = useState<TradeSource[]>([]);
+  const [selectedTradeId, setSelectedTradeId] = useState('');
+  const [generatingTrade, setGeneratingTrade] = useState(false);
+  const [tradeGenError, setTradeGenError] = useState('');
+
+  const [whatsappLatest, setWhatsappLatest] = useState<WhatsappLatest | null>(null);
+  const [generatingWhatsapp, setGeneratingWhatsapp] = useState(false);
+  const [whatsappGenError, setWhatsappGenError] = useState('');
+
   useEffect(() => {
     checkAdmin();
   }, []);
@@ -79,7 +108,70 @@ export default function AdminMarketingPage() {
     if (profile?.role === 'admin') {
       loadBrandVoice();
       loadPosts();
+      loadTradeSources();
+      loadWhatsappLatest();
     }
+  }
+
+  async function loadTradeSources() {
+    const res = await fetch('/api/admin/marketing/sources/trades', { headers: await authHeaders() });
+    if (res.ok) {
+      const data = await res.json();
+      setTradeSources(data.trades || []);
+      setSelectedTradeId(data.trades?.[0]?.id || '');
+    }
+  }
+
+  async function loadWhatsappLatest() {
+    const res = await fetch('/api/admin/marketing/sources/whatsapp-latest', { headers: await authHeaders() });
+    if (res.ok) {
+      const data = await res.json();
+      setWhatsappLatest(data.latest || null);
+    }
+  }
+
+  async function handleGenerateFromTrade() {
+    if (!selectedTradeId) return;
+    setGeneratingTrade(true);
+    setTradeGenError('');
+    try {
+      const res = await fetch('/api/admin/marketing/generate-trade', {
+        method: 'POST',
+        headers: await authHeaders(),
+        body: JSON.stringify({ tradeId: selectedTradeId }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data) {
+        setTradeGenError(data?.error || 'שגיאה ביצירת התוכן');
+      } else {
+        setStatusFilter('draft');
+        await Promise.all([loadPosts(), loadTradeSources()]);
+      }
+    } catch {
+      setTradeGenError('שגיאה בשליחת הבקשה');
+    }
+    setGeneratingTrade(false);
+  }
+
+  async function handleGenerateFromWhatsapp() {
+    setGeneratingWhatsapp(true);
+    setWhatsappGenError('');
+    try {
+      const res = await fetch('/api/admin/marketing/generate-whatsapp', {
+        method: 'POST',
+        headers: await authHeaders(),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data) {
+        setWhatsappGenError(data?.error || 'שגיאה ביצירת התוכן');
+      } else {
+        setStatusFilter('draft');
+        await loadPosts();
+      }
+    } catch {
+      setWhatsappGenError('שגיאה בשליחת הבקשה');
+    }
+    setGeneratingWhatsapp(false);
   }
 
   async function loadBrandVoice() {
@@ -259,7 +351,54 @@ export default function AdminMarketingPage() {
       </div>
 
       <div className="section-label" style={{ marginTop: '30px' }}><h2>יצירת תוכן חדש</h2></div>
-      <div className="journal-form">
+
+      <div className="journal-form" style={{ borderRightColor: 'var(--profit)' }}>
+        <label style={{ display: 'block', marginBottom: '8px', fontSize: '13.5px', fontWeight: 600 }}>📈 עסקה שנסגרה</label>
+        {tradeSources.length === 0 ? (
+          <p style={{ fontSize: '12.5px', color: 'var(--text-tertiary)' }}>אין כרגע עסקאות סגורות בתיק שעדיין לא נוצר להן פוסט.</p>
+        ) : (
+          <>
+            <select
+              value={selectedTradeId}
+              onChange={(e) => setSelectedTradeId(e.target.value)}
+              style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--bg-surface)', color: 'var(--text-primary)', fontSize: '12.5px', marginBottom: '10px' }}
+            >
+              {tradeSources.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.symbol} · {t.direction === 'short' ? 'שורט' : 'לונג'} · {t.pct >= 0 ? '+' : ''}{t.pct.toFixed(1)}% · נסגרה {formatDateTime(t.closedAt)}
+                </option>
+              ))}
+            </select>
+            <button className="btn-primary" onClick={handleGenerateFromTrade} disabled={generatingTrade}>
+              {generatingTrade ? 'יוצרים תוכן... זה יכול לקחת רגע' : 'צור תוכן מהעסקה הזו'}
+            </button>
+            {tradeGenError && <p style={{ marginTop: '10px', fontSize: '13px', color: 'var(--loss)' }}>{tradeGenError}</p>}
+          </>
+        )}
+      </div>
+
+      <div className="journal-form" style={{ borderRightColor: 'var(--teal)' }}>
+        <label style={{ display: 'block', marginBottom: '8px', fontSize: '13.5px', fontWeight: 600 }}>💬 תוכן מקצועי מוואטסאפ</label>
+        {!whatsappLatest ? (
+          <p style={{ fontSize: '12.5px', color: 'var(--text-tertiary)' }}>
+            עדיין אין העלאת וואטסאפ לשלוף ממנה - צריך להעלות ייצוא צ׳אט קודם ב<Link href="/admin/whatsapp-analysis" style={{ color: 'var(--teal)' }}>עמוד ניתוח קבוצות ווטסאפ</Link>.
+          </p>
+        ) : (
+          <>
+            <p style={{ fontSize: '12.5px', color: 'var(--text-tertiary)', marginBottom: '10px' }}>
+              המקור: {WHATSAPP_GROUP_LABEL[whatsappLatest.group_type] || whatsappLatest.group_type} · הועלה {formatDateTime(whatsappLatest.created_at)} - ה-AI יבחר לבד נקודה מעניינת ושונה מפעם קודמת.
+            </p>
+            <button className="btn-primary" onClick={handleGenerateFromWhatsapp} disabled={generatingWhatsapp}>
+              {generatingWhatsapp ? 'יוצרים תוכן... זה יכול לקחת רגע' : 'צור תוכן מקצועי'}
+            </button>
+            {whatsappGenError && <p style={{ marginTop: '10px', fontSize: '13px', color: 'var(--loss)' }}>{whatsappGenError}</p>}
+          </>
+        )}
+      </div>
+
+      <details className="section-collapse" style={{ marginBottom: '20px' }}>
+        <summary><h2 style={{ fontSize: '14px' }}>יצירה ידנית / מותאמת אישית</h2></summary>
+      <div className="journal-form" style={{ marginTop: '10px' }}>
         <div className="toggle-row">
           {(['instagram', 'facebook', 'both'] as Platform[]).map((p) => (
             <div key={p} className={`toggle-opt ${platform === p ? 'long-active' : ''}`} onClick={() => setPlatform(p)} style={{ cursor: 'pointer' }}>
@@ -304,6 +443,7 @@ export default function AdminMarketingPage() {
         </button>
         {genError && <p style={{ marginTop: '10px', fontSize: '13px', color: 'var(--loss)' }}>{genError}</p>}
       </div>
+      </details>
 
       <div className="section-label" style={{ marginTop: '30px' }}>
         <h2>התור שלך</h2>
@@ -336,6 +476,23 @@ export default function AdminMarketingPage() {
 
           <div style={{ padding: '10px 4px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <p style={{ fontSize: '11.5px', color: 'var(--text-tertiary)' }}>בריף: {post.topic}</p>
+
+            {post.image_base64 && (
+              <div>
+                <img
+                  src={`data:image/png;base64,${post.image_base64}`}
+                  alt="כרטיס גרפי"
+                  style={{ width: '100%', maxWidth: '320px', borderRadius: '10px', border: '1px solid var(--border-hairline-strong)', display: 'block', marginBottom: '8px' }}
+                />
+                <a
+                  href={`data:image/png;base64,${post.image_base64}`}
+                  download={`${post.topic.slice(0, 30).replace(/[^\w֐-׿]+/g, '-')}.png`}
+                  style={{ fontSize: '12px', color: 'var(--teal)' }}
+                >
+                  הורדת התמונה
+                </a>
+              </div>
+            )}
 
             <div className="field">
               <label>הוק (פתיחה)</label>
