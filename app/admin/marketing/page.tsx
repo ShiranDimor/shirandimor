@@ -49,6 +49,7 @@ type WhatsappLatest = {
 };
 
 const WHATSAPP_GROUP_LABEL: Record<string, string> = { סוחרים: 'קבוצת הסוחרים', עדכונים: 'קבוצת העדכונים' };
+const SOURCE_ICON: Record<Post['source_type'], string> = { trade: '📈', whatsapp: '💬', manual: '✍️' };
 
 const PLATFORM_LABEL: Record<Platform, string> = { instagram: 'אינסטגרם', facebook: 'פייסבוק', both: 'שתיהן' };
 const CONTENT_TYPE_LABEL: Record<ContentType, string> = { feed_post: 'פוסט פיד', reel: 'רילס', story: 'סטורי' };
@@ -469,9 +470,14 @@ export default function AdminMarketingPage() {
       {filteredPosts.map((post) => (
         <details key={post.id} className="section-collapse" style={{ marginBottom: '10px' }}>
           <summary>
-            <h2 style={{ fontSize: '14px' }}>
-              {PLATFORM_LABEL[post.platform]} · {CONTENT_TYPE_LABEL[post.content_type]} · {STATUS_LABEL[post.status]} · {formatDateTime(post.created_at)}
-            </h2>
+            <div>
+              <h2 style={{ fontSize: '14px' }}>
+                {SOURCE_ICON[post.source_type]} {post.hook || post.topic || '(ללא כותרת)'}
+              </h2>
+              <p style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '2px' }}>
+                {PLATFORM_LABEL[post.platform]} · {CONTENT_TYPE_LABEL[post.content_type]} · {STATUS_LABEL[post.status]} · {formatDateTime(post.created_at)}
+              </p>
+            </div>
           </summary>
 
           <div style={{ padding: '10px 4px', display: 'flex', flexDirection: 'column', gap: '12px' }}>

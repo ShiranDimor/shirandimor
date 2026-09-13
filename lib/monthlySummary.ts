@@ -1,6 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
 import chromium from '@sparticuz/chromium';
 import puppeteer from 'puppeteer-core';
+import os from 'os';
+import path from 'path';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -33,11 +35,18 @@ function formatDate(iso: string) {
 
 // מרנדר את ה-HTML של הסיכום לתמונת PNG אמיתית (דרך כרום headless), כדי שאפשר יהיה לשמור ולשלוח אותה ישירות לקבוצות
 async function renderHtmlToImageBase64(html: string): Promise<string> {
+  const executablePath = await chromium.executablePath();
+  // @sparticuz/chromium מחלץ גופנים ל-tmp/fonts אבל לא תמיד קובע FONTCONFIG_PATH בעצמו
+  // (תלוי בזיהוי סביבת Amazon Linux 2023 שלא תמיד מתקיים ב-Vercel) - בלעדיו כרום מרנדר
+  // את כל הטקסט (כולל עברית) כריק לגמרי, בלי שגיאה גלויה. חייבים להצביע לזה ידנית.
+  const fontsDir = path.join(os.tmpdir(), 'fonts');
+
   const browser = await puppeteer.launch({
     args: chromium.args,
     defaultViewport: { width: 650, height: 800 },
-    executablePath: await chromium.executablePath(),
+    executablePath,
     headless: true,
+    env: { ...process.env, FONTCONFIG_PATH: fontsDir, HOME: os.tmpdir() },
   });
 
   try {
