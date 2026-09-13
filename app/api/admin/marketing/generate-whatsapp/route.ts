@@ -68,7 +68,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: `לא נמצא תוכן מתאים לשימוש: ${generated.topicSummary || 'לא זוהו הודעות ברורות של שירן בהעלאה הזו'}` }, { status: 422 });
     }
 
-    const imageBase64 = await renderInsightCard(generated.hook);
+    const imageBase64 = await renderInsightCard(generated.hook, generated.highlightPhrase);
 
     const { data, error } = await supabaseAdmin
       .from('marketing_posts')

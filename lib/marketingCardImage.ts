@@ -163,32 +163,50 @@ export async function renderTradeCard(data: TradeCardData): Promise<string> {
   return renderHtmlToPngBase64(html);
 }
 
-export async function renderInsightCard(hook: string): Promise<string> {
+// מפצל את ה-hook סביב highlightPhrase (אם באמת מופיע בו verbatim) כדי לעצב רק את החלק הזה
+// באפקט "טוש מרקר" - שאר המשפט נשאר טקסט רגיל. אם אין התאמה מדויקת - כל המשפט רגיל, בלי קריסה.
+const HEBREW_LETTER = /[א-ת]/;
+
+function splitForHighlight(hook: string, highlightPhrase: string): { before: string; marked: string; after: string } | null {
+  const trimmed = highlightPhrase.trim();
+  if (!trimmed) return null;
+  const idx = hook.indexOf(trimmed);
+  if (idx === -1) return null;
+  const endIdx = idx + trimmed.length;
+  // אם התו ממש לפני/אחרי ההדגשה הוא אות עברית - ה-highlight חותך באמצע מילה (למשל אות
+  // יחס דבוקה כמו ש-/ו-/ב- שנדבקת בלי רווח למילה שאחריה) - עדיף בלי הדגשה מאשר קטע שבור
+  if (HEBREW_LETTER.test(hook[idx - 1] || '') || HEBREW_LETTER.test(hook[endIdx] || '')) return null;
+  return { before: hook.slice(0, idx), marked: hook.slice(idx, endIdx), after: hook.slice(endIdx) };
+}
+
+export async function renderInsightCard(hook: string, highlightPhrase = ''): Promise<string> {
   const primary = pickAccent();
   let secondary = pickAccent();
   if (secondary.hex === primary.hex) {
     secondary = ACCENT_PALETTE[(ACCENT_PALETTE.indexOf(primary) + 1) % ACCENT_PALETTE.length];
   }
-  const primaryRgba = `rgba(${primary.rgb},0.12)`;
+
+  const split = splitForHighlight(hook, highlightPhrase);
+  const hookHtml = split
+    ? `${escapeHtml(split.before)}<span class="mark">${escapeHtml(split.marked)}</span>${escapeHtml(split.after)}`
+    : escapeHtml(hook);
 
   const html = `<!DOCTYPE html><html lang="he"><head><meta charset="utf-8"><style>${baseStyle(primary, secondary)}
-    .badge { display: inline-flex; align-items: center; gap: 8px; background: ${primaryRgba}; border: 1.5px solid ${primary.hex}; color: ${primary.hex}; font-size: 20px; font-weight: 700; padding: 9px 20px; border-radius: 40px; }
     .brand { color: #8E96A8; font-size: 22px; font-weight: 600; }
     .brand b { color: ${primary.hex}; font-weight: 700; }
-    .wrap { position: relative; z-index: 2; height: 100%; display: flex; flex-direction: column; justify-content: space-between; padding: 70px; }
-    .hook { font-size: 54px; font-weight: 800; color: #E9ECF2; line-height: 1.45; }
-    .qmark { font-family: 'Rubik', sans-serif; font-size: 100px; font-weight: 800; color: ${secondary.hex}; opacity: 0.6; line-height: 0.6; margin-top: 26px; margin-bottom: 6px; }
+    .wrap { position: relative; z-index: 2; height: 100%; display: flex; flex-direction: column; justify-content: space-between; padding: 76px; }
+    .hook { font-size: 72px; font-weight: 900; color: #F5F7FA; line-height: 1.28; letter-spacing: -0.5px; }
+    .hook .mark {
+      color: #08110E; background: ${primary.hex};
+      padding: 2px 10px; border-radius: 6px; box-decoration-break: clone; -webkit-box-decoration-break: clone;
+    }
     .footer { display: flex; justify-content: space-between; align-items: center; }
-    .footer .site { color: ${primary.hex}; font-size: 22px; font-weight: 600; }
+    .footer .site { color: ${secondary.hex}; font-size: 22px; font-weight: 600; }
   </style></head><body>
     <div class="bg-glow-1"></div><div class="bg-glow-2"></div>
     <div class="wrap">
       <div class="brand">מסחר <b>אחראי</b> במניות</div>
-      <div>
-        <div class="badge">תוכן מקצועי</div>
-        <div class="qmark">"</div>
-        <div class="hook">${escapeHtml(hook)}</div>
-      </div>
+      <div class="hook">${hookHtml}</div>
       <div class="footer"><div></div><div class="site">shirandimor.com ←</div></div>
     </div>
   </body></html>`;
