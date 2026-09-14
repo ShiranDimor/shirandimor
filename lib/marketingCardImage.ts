@@ -32,14 +32,14 @@ async function waitForFontsExtracted(fontsDir: string): Promise<void> {
   }
 }
 
-async function renderOnce(html: string): Promise<Buffer> {
+async function renderOnce(html: string, height = 1080): Promise<Buffer> {
   const executablePath = await chromium.executablePath();
   const fontsDir = path.join(os.tmpdir(), 'fonts');
   await waitForFontsExtracted(fontsDir);
 
   const browser = await puppeteer.launch({
     args: chromium.args,
-    defaultViewport: { width: 1080, height: 1080 },
+    defaultViewport: { width: 1080, height },
     executablePath,
     headless: true,
     env: { ...process.env, FONTCONFIG_PATH: fontsDir, HOME: os.tmpdir() },
@@ -50,7 +50,7 @@ async function renderOnce(html: string): Promise<Buffer> {
     await page.setContent(html, { waitUntil: 'load' });
     // חשוב: לא להעביר `clip` ל-screenshot - ב-chrome-headless-shell (הבינארי המצומצם של
     // @sparticuz/chromium) קליפ גורם לטקסט כולו להיעלם מהתמונה (הרקע/הצורות כן מצטלמים),
-    // בלי שגיאה גלויה. ה-viewport כבר מוגדר בדיוק ל-1080x1080 אז screenshot רגיל שקול.
+    // בלי שגיאה גלויה. ה-viewport כבר מוגדר בדיוק לגובה הרצוי אז screenshot רגיל שקול.
     return Buffer.from(await page.screenshot({ type: 'png' }));
   } finally {
     await browser.close();
@@ -62,10 +62,10 @@ async function renderOnce(html: string): Promise<Buffer> {
 // התיקון למעלה (race נדיר בקולד-סטארט) - עדיף ניסיון חוזר אחד מאשר לשמור כרטיס ריק בשקט.
 const SUSPICIOUSLY_BLANK_BYTES = 8000;
 
-async function renderHtmlToPngBase64(html: string): Promise<string> {
-  let buffer = await renderOnce(html);
+async function renderHtmlToPngBase64(html: string, height = 1080): Promise<string> {
+  let buffer = await renderOnce(html, height);
   if (buffer.length < SUSPICIOUSLY_BLANK_BYTES) {
-    buffer = await renderOnce(html);
+    buffer = await renderOnce(html, height);
   }
   return buffer.toString('base64');
 }
@@ -152,10 +152,12 @@ export type TradeCardData = {
   riskRewardLabel: string | null;
 };
 
-export async function renderTradeCard(data: TradeCardData): Promise<string> {
-  const isGain = data.pct >= 0;
-  const result = isGain ? pickGainAccent() : LOSS;
-  const pctSign = isGain ? '+' : '';
+// כרטיס לעסקה מפסידה - עיצוב CSS דינמי (רגוע, בלובים אורגניים, אדום קבוע). לעסקה מרוויחה
+// יש תבנית נפרדת (renderGainTradeCard) שמבוססת על תמונת רקע קבועה - ראה שם למה.
+async function renderLossTradeCard(data: TradeCardData): Promise<string> {
+  const isGain = false;
+  const result = LOSS;
+  const pctSign = '';
   // רוחב הפאנל בפועל (940 חוץ פחות 44*2 padding) = 852 - חייב להתאים בדיוק לרוחב ה-svg
   // וה-viewBox, אחרת נקודת הסיום (chart-end-dot) גולשת מחוץ לגבולות הפאנל
   const CHART_W = 852;
@@ -240,6 +242,56 @@ export async function renderTradeCard(data: TradeCardData): Promise<string> {
   </body></html>`;
 
   return renderHtmlToPngBase64(html);
+}
+
+// תבנית קבועה לעסקה מרוויחה - רקע תמונה סטטית (במקום CSS דינמי) לפי בקשת המשתמשת: "אותה
+// תמונה בדיוק כל פעם, רק מדביקים עליה את הנתונים המשתנים". התמונה כוללת "וי" ירוק וגרף עולה
+// קבועים - משמעותית "הצלחה", ולכן משמשת אך ורק לעסקאות מרוויחות (להפסד יש תבנית CSS נפרדת
+// למעלה, כדי לא להציג סימן הצלחה מטעה על עסקה שהפסידה). קואורדינטות הטקסט נמדדו ידנית
+// מול הקובץ הזה - אם התמונה תוחלף, צריך למדוד מחדש.
+let cachedBgBase64: string | null = null;
+function getGainCardBackgroundBase64(): string {
+  if (!cachedBgBase64) {
+    const filePath = path.join(process.cwd(), 'public', 'marketing', 'trade-card-bg.jpg');
+    cachedBgBase64 = fs.readFileSync(filePath).toString('base64');
+  }
+  return cachedBgBase64;
+}
+
+const GAIN_CARD_INK = '#12241C';
+const GAIN_CARD_PCT_COLOR = '#1F6E38';
+const GAIN_CARD_COVER = '#F9F6EE';
+
+async function renderGainTradeCard(data: TradeCardData): Promise<string> {
+  const metaLine = [data.riskRewardLabel ? `${data.riskRewardLabel} יחס סיכוי/סיכון` : '', data.durationLabel].filter(Boolean).join(' | ');
+  const recapLine = [`+${data.pct.toFixed(1)}%`, data.riskRewardLabel, data.durationLabel, data.symbol].filter(Boolean).join(' | ');
+
+  const html = `<!DOCTYPE html><html lang="he"><head><meta charset="utf-8"><style>
+    @import url('https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=JetBrains+Mono:wght@700;800&display=swap');
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 1080px; height: 1330px; overflow: hidden; }
+    body { background: url(data:image/jpeg;base64,${getGainCardBackgroundBase64()}) no-repeat top left; background-size: 1080px 1330px; font-family: 'Rubik', sans-serif; position: relative; direction: rtl; }
+    .cover { position: absolute; background: ${GAIN_CARD_COVER}; }
+    .symbol { position: absolute; top: 452px; left: 210px; width: 260px; height: 66px; font-size: 50px; font-weight: 800; color: ${GAIN_CARD_INK}; font-family: 'JetBrains Mono', monospace; letter-spacing: -1px; direction: ltr; text-align: left; display: flex; align-items: center; }
+    .meta { position: absolute; top: 519px; left: 210px; width: 400px; height: 44px; font-size: 27px; font-weight: 500; color: ${GAIN_CARD_INK}; display: flex; align-items: center; }
+    .pct { position: absolute; top: 585px; left: 210px; width: 420px; height: 108px; font-size: 84px; font-weight: 900; color: ${GAIN_CARD_PCT_COLOR}; direction: ltr; text-align: left; display: flex; align-items: center; }
+    .recap { position: absolute; top: 803px; left: 195px; width: 400px; height: 40px; font-size: 22px; font-weight: 500; color: ${GAIN_CARD_INK}; display: flex; align-items: center; }
+  </style></head><body>
+    <div class="cover" style="top:450px; left:198px; width:264px; height:68px;"></div>
+    <div class="cover" style="top:516px; left:198px; width:404px; height:48px;"></div>
+    <div class="cover" style="top:582px; left:198px; width:424px; height:112px;"></div>
+    <div class="cover" style="top:800px; left:193px; width:404px; height:44px;"></div>
+    <div class="symbol">${escapeHtml(data.symbol)}</div>
+    <div class="meta">${escapeHtml(metaLine)}</div>
+    <div class="pct">+${data.pct.toFixed(1)}%</div>
+    <div class="recap">${escapeHtml(recapLine)}</div>
+  </body></html>`;
+
+  return renderHtmlToPngBase64(html, 1330);
+}
+
+export async function renderTradeCard(data: TradeCardData): Promise<string> {
+  return data.pct >= 0 ? renderGainTradeCard(data) : renderLossTradeCard(data);
 }
 
 // מפצל את ה-hook סביב highlightPhrase (אם באמת מופיע בו verbatim) כדי לעצב רק את החלק הזה
