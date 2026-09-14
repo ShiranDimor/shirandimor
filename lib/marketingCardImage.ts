@@ -276,15 +276,22 @@ async function renderGainTradeCard(data: TradeCardData): Promise<string> {
     .meta { position: absolute; top: 519px; left: 210px; width: 400px; height: 44px; font-size: 27px; font-weight: 500; color: ${GAIN_CARD_INK}; display: flex; align-items: center; }
     .pct { position: absolute; top: 585px; left: 210px; width: 420px; height: 108px; font-size: 84px; font-weight: 900; color: ${GAIN_CARD_PCT_COLOR}; direction: ltr; text-align: left; display: flex; align-items: center; }
     .recap { position: absolute; top: 803px; left: 195px; width: 400px; height: 40px; font-size: 22px; font-weight: 500; color: ${GAIN_CARD_INK}; display: flex; align-items: center; }
+    .site-url { position: absolute; top: 80px; left: 0; width: 1080px; text-align: center; font-size: 20px; font-weight: 500; color: #6B6459; direction: ltr; }
+    .cta-cover { position: absolute; top: 1085px; left: 295px; width: 495px; height: 70px; background: rgb(46,99,57); border-radius: 40px; }
+    .cta-text { position: absolute; top: 1085px; left: 295px; width: 495px; height: 70px; display: flex; align-items: center; justify-content: center; gap: 10px; color: #fff; font-size: 27px; font-weight: 700; }
   </style></head><body>
     <div class="cover" style="top:450px; left:198px; width:264px; height:68px;"></div>
     <div class="cover" style="top:516px; left:198px; width:404px; height:48px;"></div>
     <div class="cover" style="top:582px; left:198px; width:424px; height:112px;"></div>
     <div class="cover" style="top:800px; left:193px; width:404px; height:44px;"></div>
+    <div style="position:absolute; top:170px; left:10px; width:250px; height:250px; background: radial-gradient(ellipse at center, rgba(242,239,231,0.98) 50%, rgba(242,239,231,0) 78%);"></div>
     <div class="symbol">${escapeHtml(data.symbol)}</div>
     <div class="meta">${escapeHtml(metaLine)}</div>
     <div class="pct">+${data.pct.toFixed(1)}%</div>
     <div class="recap">${escapeHtml(recapLine)}</div>
+    <div class="site-url">shirandimor.com</div>
+    <div class="cta-cover"></div>
+    <div class="cta-text"><span>7 ימי ניסיון ללא עלות</span></div>
   </body></html>`;
 
   return renderHtmlToPngBase64(html, 1330);
