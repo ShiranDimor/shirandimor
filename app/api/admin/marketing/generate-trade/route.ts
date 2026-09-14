@@ -77,7 +77,6 @@ export async function POST(request: Request) {
       durationLabel: duration,
       pct: tradePct,
       riskRewardLabel,
-      hook: generated.hook,
     });
 
     const { data, error } = await supabaseAdmin
