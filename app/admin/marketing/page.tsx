@@ -24,6 +24,7 @@ type Post = {
   created_at: string;
   source_type: 'manual' | 'trade' | 'whatsapp';
   image_base64: string | null;
+  extra_image_base64: string | null;
   external_post_id: string | null;
 };
 
@@ -253,6 +254,36 @@ export default function AdminMarketingPage() {
     if (!confirm('למחוק את הטיוטה הזו?')) return;
     const res = await fetch(`/api/admin/marketing/posts/${id}`, { method: 'DELETE', headers: await authHeaders() });
     if (res.ok) setPosts((prev) => prev.filter((p) => p.id !== id));
+  }
+
+  async function handleUploadExtraImage(postId: string, file: File) {
+    const base64 = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result).split(',')[1] || '');
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+    const res = await fetch(`/api/admin/marketing/posts/${postId}`, {
+      method: 'PATCH',
+      headers: await authHeaders(),
+      body: JSON.stringify({ extraImageBase64: base64 }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      setPosts((prev) => prev.map((p) => (p.id === postId ? data.post : p)));
+    }
+  }
+
+  async function handleRemoveExtraImage(postId: string) {
+    const res = await fetch(`/api/admin/marketing/posts/${postId}`, {
+      method: 'PATCH',
+      headers: await authHeaders(),
+      body: JSON.stringify({ extraImageBase64: null }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      setPosts((prev) => prev.map((p) => (p.id === postId ? data.post : p)));
+    }
   }
 
   async function handleCopy(post: Post) {
@@ -524,6 +555,36 @@ export default function AdminMarketingPage() {
                 </a>
               </div>
             )}
+
+            <div className="field">
+              <label>תמונה נוספת (למשל צילום מסך אמיתי מהקבוצה) - יפורסם כפוסט עם שתי תמונות</label>
+              {post.extra_image_base64 ? (
+                <div>
+                  <img
+                    src={`data:image/png;base64,${post.extra_image_base64}`}
+                    alt="תמונה נוספת"
+                    style={{ width: '100%', maxWidth: '320px', borderRadius: '10px', border: '1px solid var(--border-hairline-strong)', display: 'block', marginBottom: '8px' }}
+                  />
+                  <button
+                    className="nav-link"
+                    style={{ background: 'none', border: 'none', color: 'var(--loss)', cursor: 'pointer', padding: 0, fontSize: '12px' }}
+                    onClick={() => handleRemoveExtraImage(post.id)}
+                  >
+                    הסרת התמונה הנוספת
+                  </button>
+                </div>
+              ) : (
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleUploadExtraImage(post.id, file);
+                  }}
+                  style={{ fontSize: '12.5px' }}
+                />
+              )}
+            </div>
 
             <div className="field">
               <label>הוק (פתיחה)</label>

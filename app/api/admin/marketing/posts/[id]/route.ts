@@ -41,6 +41,12 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     updates.scheduled_at = body.scheduledAt ? new Date(body.scheduledAt).toISOString() : null;
   }
 
+  // extraImageBase64 - צילום מסך שמעלים ידנית (למשל מקבוצת הוואטסאפ) שמצטרף לכרטיס
+  // האוטומטי כשמפרסמים. null מוחק אותו (הסרה/החלפה).
+  if (body.extraImageBase64 !== undefined) {
+    updates.extra_image_base64 = typeof body.extraImageBase64 === 'string' ? body.extraImageBase64 : null;
+  }
+
   if (Object.keys(updates).length === 0) {
     return NextResponse.json({ error: 'אין מה לעדכן' }, { status: 400 });
   }

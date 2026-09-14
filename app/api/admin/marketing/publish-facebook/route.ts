@@ -36,7 +36,11 @@ export async function POST(request: Request) {
 
   try {
     const caption = [post.caption, post.hashtags].filter(Boolean).join('\n\n');
-    const { postId: externalPostId } = await publishPhotoToFacebookPage({ imageBase64: post.image_base64, caption });
+    const { postId: externalPostId } = await publishPhotoToFacebookPage({
+      imageBase64: post.image_base64,
+      extraImageBase64: post.extra_image_base64,
+      caption,
+    });
 
     const { data, error } = await supabaseAdmin
       .from('marketing_posts')

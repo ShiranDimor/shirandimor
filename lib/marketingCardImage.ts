@@ -150,7 +150,16 @@ export type TradeCardData = {
   durationLabel: string;
   pct: number;
   riskRewardLabel: string | null;
+  entryPrice: number | null;
+  exitPrice: number | null;
+  openedAt: string | null;
+  closedAt: string | null;
 };
+
+// תאריך קצר בעברית (יום.חודש) לפי שעון ישראל - חייב אזור זמן מפורש כי זה רץ בשרת ב-UTC
+function formatDateShort(iso: string): string {
+  return new Date(iso).toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric', timeZone: 'Asia/Jerusalem' });
+}
 
 // כרטיס לעסקה מפסידה - עיצוב CSS דינמי (רגוע, בלובים אורגניים, אדום קבוע). לעסקה מרוויחה
 // יש תבנית נפרדת (renderGainTradeCard) שמבוססת על תמונת רקע קבועה - ראה שם למה.
@@ -167,7 +176,8 @@ async function renderLossTradeCard(data: TradeCardData): Promise<string> {
   const endPoint = isGain ? { x: CHART_W, y: 14 } : { x: CHART_W, y: 152 };
 
   const stats = [
-    { label: 'כיוון', value: data.directionLabel },
+    ...(data.entryPrice !== null ? [{ label: 'מחיר כניסה', value: `$${data.entryPrice.toFixed(2)}` }] : []),
+    ...(data.exitPrice !== null ? [{ label: 'מחיר יציאה', value: `$${data.exitPrice.toFixed(2)}` }] : []),
     { label: 'משך', value: data.durationLabel },
     ...(data.riskRewardLabel ? [{ label: 'סיכוי/סיכון', value: data.riskRewardLabel }] : []),
     { label: 'תוצאה', value: `${pctSign}${data.pct.toFixed(1)}%` },
@@ -266,6 +276,13 @@ async function renderGainTradeCard(data: TradeCardData): Promise<string> {
   const metaLine = [data.riskRewardLabel ? `${data.riskRewardLabel} יחס סיכוי/סיכון` : '', data.durationLabel].filter(Boolean).join(' | ');
   const recapLine = [`+${data.pct.toFixed(1)}%`, data.riskRewardLabel, data.durationLabel, data.symbol].filter(Boolean).join(' | ');
 
+  const priceStats = [
+    ...(data.entryPrice !== null ? [{ label: 'מחיר כניסה', value: `$${data.entryPrice.toFixed(2)}` }] : []),
+    ...(data.openedAt ? [{ label: 'תאריך כניסה', value: formatDateShort(data.openedAt) }] : []),
+    ...(data.exitPrice !== null ? [{ label: 'מחיר יציאה', value: `$${data.exitPrice.toFixed(2)}` }] : []),
+    ...(data.closedAt ? [{ label: 'תאריך יציאה', value: formatDateShort(data.closedAt) }] : []),
+  ];
+
   const html = `<!DOCTYPE html><html lang="he"><head><meta charset="utf-8"><style>
     @import url('https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=JetBrains+Mono:wght@700;800&display=swap');
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -277,6 +294,11 @@ async function renderGainTradeCard(data: TradeCardData): Promise<string> {
     .pct { position: absolute; top: 585px; left: 210px; width: 420px; height: 108px; font-size: 84px; font-weight: 900; color: ${GAIN_CARD_PCT_COLOR}; direction: ltr; text-align: left; display: flex; align-items: center; }
     .recap { position: absolute; top: 803px; left: 195px; width: 400px; height: 40px; font-size: 22px; font-weight: 500; color: ${GAIN_CARD_INK}; display: flex; align-items: center; }
     .site-url { position: absolute; top: 80px; left: 0; width: 1080px; text-align: center; font-size: 20px; font-weight: 500; color: #6B6459; direction: ltr; }
+    .price-row { position: absolute; top: 862px; left: 170px; width: 740px; height: 70px; background: rgba(255,255,255,0.75); border-radius: 20px; display: flex; align-items: center; box-shadow: 0 10px 24px rgba(30,42,34,0.06); }
+    .price-item { flex: 1; text-align: center; border-right: 1px solid rgba(18,36,28,0.1); }
+    .price-item:first-child { border-right: none; }
+    .price-item .v { font-size: 21px; font-weight: 800; color: ${GAIN_CARD_INK}; font-family: 'JetBrains Mono', monospace; }
+    .price-item .l { margin-top: 3px; font-size: 13px; color: #6B6459; }
     .cta-cover { position: absolute; top: 1085px; left: 295px; width: 495px; height: 70px; background: rgb(46,99,57); border-radius: 40px; }
     .cta-text { position: absolute; top: 1085px; left: 295px; width: 495px; height: 70px; display: flex; align-items: center; justify-content: center; gap: 10px; color: #fff; font-size: 27px; font-weight: 700; }
   </style></head><body>
@@ -290,6 +312,7 @@ async function renderGainTradeCard(data: TradeCardData): Promise<string> {
     <div class="pct">+${data.pct.toFixed(1)}%</div>
     <div class="recap">${escapeHtml(recapLine)}</div>
     <div class="site-url">shirandimor.com</div>
+    ${priceStats.length ? `<div class="price-row">${priceStats.map((s) => `<div class="price-item"><div class="v">${escapeHtml(s.value)}</div><div class="l">${escapeHtml(s.label)}</div></div>`).join('')}</div>` : ''}
     <div class="cta-cover"></div>
     <div class="cta-text"><span>7 ימי ניסיון ללא עלות</span></div>
   </body></html>`;
