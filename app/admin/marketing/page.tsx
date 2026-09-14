@@ -24,6 +24,7 @@ type Post = {
   created_at: string;
   source_type: 'manual' | 'trade' | 'whatsapp';
   image_base64: string | null;
+  external_post_id: string | null;
 };
 
 type BrandVoice = {
@@ -79,6 +80,8 @@ export default function AdminMarketingPage() {
   const [loadingPosts, setLoadingPosts] = useState(false);
   const [statusFilter, setStatusFilter] = useState<Status | 'all'>('all');
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [publishingId, setPublishingId] = useState<string | null>(null);
+  const [publishError, setPublishError] = useState<Record<string, string>>({});
 
   const [tradeSources, setTradeSources] = useState<TradeSource[]>([]);
   const [selectedTradeId, setSelectedTradeId] = useState('');
@@ -261,6 +264,28 @@ export default function AdminMarketingPage() {
     } catch {
       // אין הרשאת clipboard (למשל דפדפן חוסם) - שקט, שירן פשוט תסמן ותעתיק ידנית
     }
+  }
+
+  async function handlePublishFacebook(postId: string) {
+    if (!confirm('לפרסם את הפוסט הזה בפועל לעמוד הפייסבוק שלך עכשיו? זו פעולה שמפרסמת החוצה, לא ניתן לבטל.')) return;
+    setPublishingId(postId);
+    setPublishError((prev) => ({ ...prev, [postId]: '' }));
+    try {
+      const res = await fetch('/api/admin/marketing/publish-facebook', {
+        method: 'POST',
+        headers: await authHeaders(),
+        body: JSON.stringify({ postId }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data) {
+        setPublishError((prev) => ({ ...prev, [postId]: data?.error || 'שגיאה בפרסום' }));
+      } else {
+        setPosts((prev) => prev.map((p) => (p.id === postId ? data.post : p)));
+      }
+    } catch {
+      setPublishError((prev) => ({ ...prev, [postId]: 'שגיאה בשליחת הבקשה' }));
+    }
+    setPublishingId(null);
   }
 
   async function handleLogout() {
@@ -579,16 +604,33 @@ export default function AdminMarketingPage() {
                 {copiedId === post.id ? 'הועתק!' : 'העתקת טקסט'}
               </button>
 
+              {post.status !== 'published' && (
+                <button
+                  className="nav-link"
+                  style={{ background: 'var(--profit-bg)', border: '1px solid var(--profit)', color: 'var(--profit)', borderRadius: '8px', padding: '8px 14px', cursor: 'pointer' }}
+                  onClick={() => handlePublishFacebook(post.id)}
+                  disabled={publishingId === post.id}
+                >
+                  {publishingId === post.id ? 'מפרסמים...' : 'פרסום בפועל לפייסבוק'}
+                </button>
+              )}
+
               <button className="nav-link" style={{ background: 'none', border: 'none', color: 'var(--loss)', cursor: 'pointer', marginRight: 'auto' }} onClick={() => deletePost(post.id)}>
                 מחיקה
               </button>
             </div>
+            {publishError[post.id] && <p style={{ fontSize: '12px', color: 'var(--loss)' }}>{publishError[post.id]}</p>}
+            {post.status === 'published' && post.external_post_id && (
+              <a href={`https://www.facebook.com/${post.external_post_id}`} target="_blank" rel="noreferrer" style={{ fontSize: '12px', color: 'var(--teal)' }}>
+                לצפייה בפוסט שפורסם בפייסבוק ←
+              </a>
+            )}
           </div>
         </details>
       ))}
 
       <p style={{ fontSize: '11.5px', color: 'var(--text-tertiary)', marginTop: '24px', lineHeight: 1.6 }}>
-        הכלי הזה יוצר טיוטות ומנהל תור - הפרסום בפועל לאינסטגרם/פייסבוק עדיין ידני (כפתור "העתקת טקסט" ואז הדבקה באפליקציה). פרסום אוטומטי דורש חיבור למטא (Meta Graph API) עם טוקן גישה לעמוד/לחשבון העסקי - אפשר להוסיף בהמשך אם תרצי.
+        כפתור "פרסום בפועל לפייסבוק" מפרסם ישירות לעמוד שלך דרך Meta Graph API - רק אחרי שאת לוחצת עליו במפורש, אף פוסט לא יוצא לבד. כדי שזה יעבוד, צריך לחבר את עמוד הפייסבוק פעם אחת (META_PAGE_ID ו-META_PAGE_ACCESS_TOKEN ב-Vercel).
       </p>
     </div>
   );
