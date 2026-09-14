@@ -77,6 +77,10 @@ export async function POST(request: Request) {
       durationLabel: duration,
       pct: tradePct,
       riskRewardLabel,
+      entryPrice: trade.entry_price,
+      exitPrice: trade.exit_price,
+      openedAt: trade.opened_at,
+      closedAt: trade.closed_at,
     });
 
     const { data, error } = await supabaseAdmin
