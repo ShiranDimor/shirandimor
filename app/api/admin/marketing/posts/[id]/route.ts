@@ -41,16 +41,33 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     updates.scheduled_at = body.scheduledAt ? new Date(body.scheduledAt).toISOString() : null;
   }
 
-  // extraImageBase64 - צילום מסך שמעלים ידנית (למשל מקבוצת הוואטסאפ) שמצטרף לכרטיס
-  // האוטומטי כשמפרסמים. null מוחק אותו (הסרה/החלפה).
-  if (body.extraImageBase64 !== undefined) {
-    updates.extra_image_base64 = typeof body.extraImageBase64 === 'string' ? body.extraImageBase64 : null;
-  }
-
   // imageBase64 - כרטיס גרפי ראשי שמעלים ידנית. נחוץ בעיקר לפוסטים מסוג "manual"
   // (בריף חופשי), שאין להם יצירת כרטיס אוטומטית כמו לפוסטי עסקה/ווטסאפ.
   if (body.imageBase64 !== undefined) {
     updates.image_base64 = typeof body.imageBase64 === 'string' ? body.imageBase64 : null;
+  }
+
+  // addExtraImage/removeExtraImageAt - ניהול רשימת תמונות נוספות (למשל כמה צילומי מסך
+  // אמיתיים מהקבוצה) שמצטרפות לכרטיס הראשי כשמפרסמים פוסט אחד עם כמה תמונות.
+  // דורש קריאה של המצב הנוכחי כדי לצרף/להסיר מהמערך הקיים.
+  const needsCurrentExtraImages = body.addExtraImage !== undefined || body.removeExtraImageAt !== undefined;
+  let currentExtraImages: string[] = [];
+  if (needsCurrentExtraImages) {
+    const { data: currentPost, error: currentError } = await supabaseAdmin
+      .from('marketing_posts')
+      .select('extra_images')
+      .eq('id', params.id)
+      .single();
+    if (currentError || !currentPost) return NextResponse.json({ error: 'הפוסט לא נמצא' }, { status: 404 });
+    currentExtraImages = Array.isArray(currentPost.extra_images) ? currentPost.extra_images : [];
+  }
+
+  if (typeof body.addExtraImage === 'string' && body.addExtraImage) {
+    updates.extra_images = [...currentExtraImages, body.addExtraImage];
+  }
+
+  if (typeof body.removeExtraImageAt === 'number') {
+    updates.extra_images = currentExtraImages.filter((_, i) => i !== body.removeExtraImageAt);
   }
 
   if (Object.keys(updates).length === 0) {
