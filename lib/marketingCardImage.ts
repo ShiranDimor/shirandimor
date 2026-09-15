@@ -316,8 +316,8 @@ async function renderGainTradeCard(data: TradeCardData, accent: Hue): Promise<st
     .price-item:first-child { border-right: none; }
     .price-item .v { font-size: 21px; font-weight: 800; color: ${GAIN_CARD_INK}; font-family: 'JetBrains Mono', monospace; }
     .price-item .l { margin-top: 3px; font-size: 13px; color: #6B6459; }
-    .cta-cover { position: absolute; top: 1085px; left: 295px; width: 495px; height: 70px; background: ${ctaColor}; border-radius: 40px; }
-    .cta-text { position: absolute; top: 1085px; left: 295px; width: 495px; height: 70px; display: flex; align-items: center; justify-content: center; gap: 10px; color: #fff; font-size: 27px; font-weight: 700; }
+    .cta-cover { position: absolute; top: 1074px; left: 290px; width: 500px; height: 104px; background: ${ctaColor}; border-radius: 52px; }
+    .cta-text { position: absolute; top: 1074px; left: 290px; width: 500px; height: 104px; display: flex; align-items: center; justify-content: center; gap: 10px; color: #fff; font-size: 27px; font-weight: 700; }
   </style></head><body>
     <div class="cover" style="top:450px; left:198px; width:264px; height:68px;"></div>
     <div class="cover" style="top:516px; left:198px; width:404px; height:48px;"></div>
