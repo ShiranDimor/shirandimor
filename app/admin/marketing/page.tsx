@@ -286,6 +286,38 @@ export default function AdminMarketingPage() {
     }
   }
 
+  // העלאת כרטיס גרפי ראשי ידנית - נחוץ לפוסטים מסוג "manual" (בריף חופשי) שאין
+  // להם יצירת כרטיס אוטומטית, ולכן בלעדיה אי אפשר לפרסם אותם בכלל
+  async function handleUploadMainImage(postId: string, file: File) {
+    const base64 = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result).split(',')[1] || '');
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+    const res = await fetch(`/api/admin/marketing/posts/${postId}`, {
+      method: 'PATCH',
+      headers: await authHeaders(),
+      body: JSON.stringify({ imageBase64: base64 }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      setPosts((prev) => prev.map((p) => (p.id === postId ? data.post : p)));
+    }
+  }
+
+  async function handleRemoveMainImage(postId: string) {
+    const res = await fetch(`/api/admin/marketing/posts/${postId}`, {
+      method: 'PATCH',
+      headers: await authHeaders(),
+      body: JSON.stringify({ imageBase64: null }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      setPosts((prev) => prev.map((p) => (p.id === postId ? data.post : p)));
+    }
+  }
+
   async function handleCopy(post: Post) {
     const text = [post.caption, post.hashtags].filter(Boolean).join('\n\n');
     try {
@@ -539,7 +571,7 @@ export default function AdminMarketingPage() {
           <div style={{ padding: '10px 4px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <p style={{ fontSize: '11.5px', color: 'var(--text-tertiary)' }}>בריף: {post.topic}</p>
 
-            {post.image_base64 && (
+            {post.image_base64 ? (
               <div>
                 <img
                   src={`data:image/png;base64,${post.image_base64}`}
@@ -553,7 +585,31 @@ export default function AdminMarketingPage() {
                 >
                   הורדת התמונה
                 </a>
+                {post.source_type === 'manual' && (
+                  <button
+                    className="nav-link"
+                    style={{ background: 'none', border: 'none', color: 'var(--loss)', cursor: 'pointer', padding: '0 0 0 10px', fontSize: '12px' }}
+                    onClick={() => handleRemoveMainImage(post.id)}
+                  >
+                    הסרת התמונה
+                  </button>
+                )}
               </div>
+            ) : (
+              post.source_type === 'manual' && (
+                <div className="field">
+                  <label>כרטיס גרפי (חובה לפרסום - לפוסט מסוג בריף חופשי אין יצירה אוטומטית, יש להעלות תמונה ידנית)</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleUploadMainImage(post.id, file);
+                    }}
+                    style={{ fontSize: '12.5px' }}
+                  />
+                </div>
+              )
             )}
 
             <div className="field">

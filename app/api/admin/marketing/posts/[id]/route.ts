@@ -47,6 +47,12 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     updates.extra_image_base64 = typeof body.extraImageBase64 === 'string' ? body.extraImageBase64 : null;
   }
 
+  // imageBase64 - כרטיס גרפי ראשי שמעלים ידנית. נחוץ בעיקר לפוסטים מסוג "manual"
+  // (בריף חופשי), שאין להם יצירת כרטיס אוטומטית כמו לפוסטי עסקה/ווטסאפ.
+  if (body.imageBase64 !== undefined) {
+    updates.image_base64 = typeof body.imageBase64 === 'string' ? body.imageBase64 : null;
+  }
+
   if (Object.keys(updates).length === 0) {
     return NextResponse.json({ error: 'אין מה לעדכן' }, { status: 400 });
   }
