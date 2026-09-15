@@ -401,46 +401,7 @@ export default function AdminMarketingPage() {
         </div>
       </header>
 
-      <div className="section-label"><h2>פרופיל הקול שלך</h2></div>
-      <p style={{ fontSize: '12.5px', color: 'var(--text-tertiary)', marginBottom: '14px', lineHeight: 1.6 }}>
-        ככל שתתני יותר דוגמאות אמיתיות ותיאור מדויק - כך ה-AI יתרחק מניסוח שיווקי גנרי ויישמע יותר כמוך. אפשר להדביק כאן גם ציטוטים מהוואטסאפ או מפוסטים ישנים שאהבת.
-      </p>
-      <div className="journal-form">
-        <div className="field">
-          <label>איך הטון שלך נשמע (למי מדברת, מה מאפיין אותך, מה שונה אצלך)</label>
-          <textarea
-            value={brandVoice.tone_notes}
-            onChange={(e) => setBrandVoice((v) => ({ ...v, tone_notes: e.target.value }))}
-            rows={4}
-            placeholder="למשל: ישירה, כנה, לא מוכרת חלומות, מדברת כמו חברה שמבינה בשוק..."
-            style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--bg-surface)', color: 'var(--text-primary)', fontSize: '12.5px', fontFamily: 'inherit', resize: 'vertical' }}
-          />
-        </div>
-        <div className="field">
-          <label>דוגמאות פוסטים/הודעות אמיתיות שלך (אפשר כמה, מופרדות בשורה ריקה)</label>
-          <textarea
-            value={brandVoice.sample_posts}
-            onChange={(e) => setBrandVoice((v) => ({ ...v, sample_posts: e.target.value }))}
-            rows={6}
-            style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--bg-surface)', color: 'var(--text-primary)', fontSize: '12.5px', fontFamily: 'inherit', resize: 'vertical' }}
-          />
-        </div>
-        <div className="field">
-          <label>דברים שממש לא רוצים (ביטויים, טון, סוג תוכן)</label>
-          <textarea
-            value={brandVoice.avoid_notes}
-            onChange={(e) => setBrandVoice((v) => ({ ...v, avoid_notes: e.target.value }))}
-            rows={3}
-            style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--bg-surface)', color: 'var(--text-primary)', fontSize: '12.5px', fontFamily: 'inherit', resize: 'vertical' }}
-          />
-        </div>
-        <button className="btn-primary" onClick={handleSaveVoice} disabled={savingVoice}>
-          {savingVoice ? 'שומרים...' : 'שמירת פרופיל הקול'}
-        </button>
-        {voiceSavedMsg && <p style={{ marginTop: '8px', fontSize: '12.5px', color: 'var(--profit)' }}>{voiceSavedMsg}</p>}
-      </div>
-
-      <div className="section-label" style={{ marginTop: '30px' }}><h2>יצירת תוכן חדש</h2></div>
+      <div className="section-label"><h2>יצירת תוכן חדש</h2></div>
 
       <div className="journal-form" style={{ borderRightColor: 'var(--profit)' }}>
         <label style={{ display: 'block', marginBottom: '8px', fontSize: '13.5px', fontWeight: 600 }}>📈 עסקה שנסגרה</label>
@@ -754,6 +715,56 @@ export default function AdminMarketingPage() {
       <p style={{ fontSize: '11.5px', color: 'var(--text-tertiary)', marginTop: '24px', lineHeight: 1.6 }}>
         כפתור "פרסום בפועל לפייסבוק" מפרסם ישירות לעמוד שלך דרך Meta Graph API - רק אחרי שאת לוחצת עליו במפורש, אף פוסט לא יוצא לבד. כדי שזה יעבוד, צריך לחבר את עמוד הפייסבוק פעם אחת (META_PAGE_ID ו-META_PAGE_ACCESS_TOKEN ב-Vercel).
       </p>
+
+      <details className="section-collapse" style={{ marginTop: '30px' }}>
+        <summary>
+          <div>
+            <h2 style={{ fontSize: '14px' }}>פרופיל הקול שלך</h2>
+            <p style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '2px' }}>
+              עריכה נדירה - כל תוכן חדש שנוצר קורא מהפרופיל הזה, אז אין צורך לפתוח את זה בכל פעם
+            </p>
+          </div>
+        </summary>
+        <div style={{ padding: '10px 4px' }}>
+          <p style={{ fontSize: '12.5px', color: 'var(--text-tertiary)', marginBottom: '14px', lineHeight: 1.6 }}>
+            ככל שתתני יותר דוגמאות אמיתיות ותיאור מדויק - כך ה-AI יתרחק מניסוח שיווקי גנרי ויישמע יותר כמוך. אפשר להדביק כאן גם ציטוטים מהוואטסאפ או מפוסטים ישנים שאהבת.
+          </p>
+          <div className="journal-form">
+            <div className="field">
+              <label>איך הטון שלך נשמע (למי מדברת, מה מאפיין אותך, מה שונה אצלך)</label>
+              <textarea
+                value={brandVoice.tone_notes}
+                onChange={(e) => setBrandVoice((v) => ({ ...v, tone_notes: e.target.value }))}
+                rows={4}
+                placeholder="למשל: ישירה, כנה, לא מוכרת חלומות, מדברת כמו חברה שמבינה בשוק..."
+                style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--bg-surface)', color: 'var(--text-primary)', fontSize: '12.5px', fontFamily: 'inherit', resize: 'vertical' }}
+              />
+            </div>
+            <div className="field">
+              <label>דוגמאות פוסטים/הודעות אמיתיות שלך (אפשר כמה, מופרדות בשורה ריקה)</label>
+              <textarea
+                value={brandVoice.sample_posts}
+                onChange={(e) => setBrandVoice((v) => ({ ...v, sample_posts: e.target.value }))}
+                rows={6}
+                style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--bg-surface)', color: 'var(--text-primary)', fontSize: '12.5px', fontFamily: 'inherit', resize: 'vertical' }}
+              />
+            </div>
+            <div className="field">
+              <label>דברים שממש לא רוצים (ביטויים, טון, סוג תוכן)</label>
+              <textarea
+                value={brandVoice.avoid_notes}
+                onChange={(e) => setBrandVoice((v) => ({ ...v, avoid_notes: e.target.value }))}
+                rows={3}
+                style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--bg-surface)', color: 'var(--text-primary)', fontSize: '12.5px', fontFamily: 'inherit', resize: 'vertical' }}
+              />
+            </div>
+            <button className="btn-primary" onClick={handleSaveVoice} disabled={savingVoice}>
+              {savingVoice ? 'שומרים...' : 'שמירת פרופיל הקול'}
+            </button>
+            {voiceSavedMsg && <p style={{ marginTop: '8px', fontSize: '12.5px', color: 'var(--profit)' }}>{voiceSavedMsg}</p>}
+          </div>
+        </div>
+      </details>
     </div>
   );
 }
