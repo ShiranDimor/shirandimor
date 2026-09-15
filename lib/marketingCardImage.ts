@@ -93,6 +93,22 @@ function tint(hue: Hue, alpha: number): string {
   return `rgba(${hue.rgb},${alpha})`;
 }
 
+function darken(hex: string, factor: number): string {
+  const n = parseInt(hex.slice(1), 16);
+  const r = Math.max(0, Math.round(((n >> 16) & 255) * (1 - factor)));
+  const g = Math.max(0, Math.round(((n >> 8) & 255) * (1 - factor)));
+  const b = Math.max(0, Math.round((n & 255) * (1 - factor)));
+  return `rgb(${r},${g},${b})`;
+}
+
+// סדר קבוע לסבב הצבעים בתבנית הכרטיס המרוויח הקבועה (renderGainTradeCard) - לא אקראי,
+// אלא מחזורי לפי בקשת שירן: ירוק, כתום, סגול, טורקיז, תכלת, וחוזר חלילה לירוק
+const GAIN_CARD_CYCLE: Hue[] = [GAIN_PALETTE[0], GAIN_PALETTE[3], GAIN_PALETTE[2], GAIN_PALETTE[1], GAIN_PALETTE[4]];
+
+function pickGainCardAccent(index: number): Hue {
+  return GAIN_CARD_CYCLE[((index % GAIN_CARD_CYCLE.length) + GAIN_CARD_CYCLE.length) % GAIN_CARD_CYCLE.length];
+}
+
 const CREAM = '#F7F2E8';
 const INK_DARK = '#1E2A22';
 const INK_MUTED = '#6B6459';
@@ -269,10 +285,11 @@ function getGainCardBackgroundBase64(): string {
 }
 
 const GAIN_CARD_INK = '#12241C';
-const GAIN_CARD_PCT_COLOR = '#1F6E38';
 const GAIN_CARD_COVER = '#F9F6EE';
 
-async function renderGainTradeCard(data: TradeCardData): Promise<string> {
+async function renderGainTradeCard(data: TradeCardData, accent: Hue): Promise<string> {
+  const pctColor = accent.ink;
+  const ctaColor = darken(accent.ink, 0.25);
   const metaLine = [data.riskRewardLabel ? `${data.riskRewardLabel} יחס סיכוי/סיכון` : '', data.durationLabel].filter(Boolean).join(' | ');
   const recapLine = [`+${data.pct.toFixed(1)}%`, data.riskRewardLabel, data.durationLabel, data.symbol].filter(Boolean).join(' | ');
 
@@ -291,7 +308,7 @@ async function renderGainTradeCard(data: TradeCardData): Promise<string> {
     .cover { position: absolute; background: ${GAIN_CARD_COVER}; }
     .symbol { position: absolute; top: 452px; left: 210px; width: 260px; height: 66px; font-size: 50px; font-weight: 800; color: ${GAIN_CARD_INK}; font-family: 'JetBrains Mono', monospace; letter-spacing: -1px; direction: ltr; text-align: left; display: flex; align-items: center; }
     .meta { position: absolute; top: 519px; left: 210px; width: 400px; height: 44px; font-size: 27px; font-weight: 500; color: ${GAIN_CARD_INK}; display: flex; align-items: center; }
-    .pct { position: absolute; top: 585px; left: 210px; width: 420px; height: 108px; font-size: 84px; font-weight: 900; color: ${GAIN_CARD_PCT_COLOR}; direction: ltr; text-align: left; display: flex; align-items: center; }
+    .pct { position: absolute; top: 585px; left: 210px; width: 420px; height: 108px; font-size: 84px; font-weight: 900; color: ${pctColor}; direction: ltr; text-align: left; display: flex; align-items: center; }
     .recap { position: absolute; top: 803px; left: 195px; width: 400px; height: 40px; font-size: 22px; font-weight: 500; color: ${GAIN_CARD_INK}; display: flex; align-items: center; }
     .site-url { position: absolute; top: 80px; left: 0; width: 1080px; text-align: center; font-size: 20px; font-weight: 500; color: #6B6459; direction: ltr; }
     .price-row { position: absolute; top: 862px; left: 170px; width: 740px; height: 70px; background: rgba(255,255,255,0.75); border-radius: 20px; display: flex; align-items: center; box-shadow: 0 10px 24px rgba(30,42,34,0.06); }
@@ -299,7 +316,7 @@ async function renderGainTradeCard(data: TradeCardData): Promise<string> {
     .price-item:first-child { border-right: none; }
     .price-item .v { font-size: 21px; font-weight: 800; color: ${GAIN_CARD_INK}; font-family: 'JetBrains Mono', monospace; }
     .price-item .l { margin-top: 3px; font-size: 13px; color: #6B6459; }
-    .cta-cover { position: absolute; top: 1085px; left: 295px; width: 495px; height: 70px; background: rgb(46,99,57); border-radius: 40px; }
+    .cta-cover { position: absolute; top: 1085px; left: 295px; width: 495px; height: 70px; background: ${ctaColor}; border-radius: 40px; }
     .cta-text { position: absolute; top: 1085px; left: 295px; width: 495px; height: 70px; display: flex; align-items: center; justify-content: center; gap: 10px; color: #fff; font-size: 27px; font-weight: 700; }
   </style></head><body>
     <div class="cover" style="top:450px; left:198px; width:264px; height:68px;"></div>
@@ -320,8 +337,8 @@ async function renderGainTradeCard(data: TradeCardData): Promise<string> {
   return renderHtmlToPngBase64(html, 1330);
 }
 
-export async function renderTradeCard(data: TradeCardData): Promise<string> {
-  return data.pct >= 0 ? renderGainTradeCard(data) : renderLossTradeCard(data);
+export async function renderTradeCard(data: TradeCardData, gainCardAccentIndex = 0): Promise<string> {
+  return data.pct >= 0 ? renderGainTradeCard(data, pickGainCardAccent(gainCardAccentIndex)) : renderLossTradeCard(data);
 }
 
 // מפצל את ה-hook סביב highlightPhrase (אם באמת מופיע בו verbatim) כדי לעצב רק את החלק הזה

@@ -47,6 +47,13 @@ export async function POST(request: Request) {
   const { data: existing } = await supabaseAdmin.from('marketing_posts').select('id').eq('source_type', 'trade').eq('source_id', tradeId).maybeSingle();
   if (existing) return NextResponse.json({ error: 'כבר נוצר פוסט לעסקה הזו' }, { status: 409 });
 
+  // מספר פוסטי העסקה הקודמים קובע את הצבע הבא בסבב הצבעים של הכרטיס המרוויח (ראו
+  // GAIN_CARD_CYCLE ב-lib/marketingCardImage.ts) - כדי שלא כל פוסט ייראה זהה לקודם
+  const { count: previousTradePostsCount } = await supabaseAdmin
+    .from('marketing_posts')
+    .select('id', { count: 'exact', head: true })
+    .eq('source_type', 'trade');
+
   const { data: brandVoiceRow, error: brandVoiceError } = await supabaseAdmin.from('marketing_brand_voice').select('*').eq('id', 1).single();
   if (brandVoiceError) return NextResponse.json({ error: 'שגיאה בטעינת פרופיל הקול' }, { status: 500 });
 
@@ -71,17 +78,20 @@ export async function POST(request: Request) {
       },
     });
 
-    const imageBase64 = await renderTradeCard({
-      symbol: trade.symbol,
-      directionLabel,
-      durationLabel: duration,
-      pct: tradePct,
-      riskRewardLabel,
-      entryPrice: trade.entry_price,
-      exitPrice: trade.exit_price,
-      openedAt: trade.opened_at,
-      closedAt: trade.closed_at,
-    });
+    const imageBase64 = await renderTradeCard(
+      {
+        symbol: trade.symbol,
+        directionLabel,
+        durationLabel: duration,
+        pct: tradePct,
+        riskRewardLabel,
+        entryPrice: trade.entry_price,
+        exitPrice: trade.exit_price,
+        openedAt: trade.opened_at,
+        closedAt: trade.closed_at,
+      },
+      previousTradePostsCount || 0
+    );
 
     const { data, error } = await supabaseAdmin
       .from('marketing_posts')
