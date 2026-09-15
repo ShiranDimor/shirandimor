@@ -26,18 +26,19 @@ async function uploadUnpublishedPhoto(params: { pageId: string; accessToken: str
 }
 
 export async function publishPhotoToFacebookPage(params: {
-  imageBase64: string;
-  extraImageBase64?: string | null;
+  images: string[];
   caption: string;
 }): Promise<{ postId: string }> {
   const { pageId, accessToken } = requireCredentials();
+  const images = params.images.filter(Boolean);
+  if (images.length === 0) throw new Error('אין תמונות לפרסום');
 
   // פוסט עם תמונה אחת בלבד - זורם ישירות עם caption על התמונה עצמה (מוצג ומפורסם מיד)
-  if (!params.extraImageBase64) {
+  if (images.length === 1) {
     const form = new FormData();
     form.append('caption', params.caption);
     form.append('access_token', accessToken);
-    form.append('source', new Blob([Buffer.from(params.imageBase64, 'base64')], { type: 'image/png' }), 'post.png');
+    form.append('source', new Blob([Buffer.from(images[0], 'base64')], { type: 'image/png' }), 'post.png');
 
     const res = await fetch(`https://graph.facebook.com/${GRAPH_API_VERSION}/${pageId}/photos`, { method: 'POST', body: form });
     const data = await res.json();
@@ -45,18 +46,17 @@ export async function publishPhotoToFacebookPage(params: {
     return { postId: data.post_id || data.id };
   }
 
-  // שתי תמונות - מעלים כל אחת בנפרד כ"לא מפורסמת", ואז יוצרים פוסט אחד בפיד שמצרף את שתיהן
-  const [firstPhotoId, secondPhotoId] = await Promise.all([
-    uploadUnpublishedPhoto({ pageId, accessToken, imageBase64: params.imageBase64, filename: 'card.png' }),
-    uploadUnpublishedPhoto({ pageId, accessToken, imageBase64: params.extraImageBase64, filename: 'extra.png' }),
-  ]);
+  // כמה תמונות - מעלים כל אחת בנפרד כ"לא מפורסמת", ואז יוצרים פוסט אחד בפיד שמצרף את כולן
+  const photoIds = await Promise.all(
+    images.map((imageBase64, index) => uploadUnpublishedPhoto({ pageId, accessToken, imageBase64, filename: `image-${index}.png` }))
+  );
 
   const feedRes = await fetch(`https://graph.facebook.com/${GRAPH_API_VERSION}/${pageId}/feed`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       message: params.caption,
-      attached_media: [{ media_fbid: firstPhotoId }, { media_fbid: secondPhotoId }],
+      attached_media: photoIds.map((id) => ({ media_fbid: id })),
       access_token: accessToken,
     }),
   });

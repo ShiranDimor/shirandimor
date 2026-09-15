@@ -24,7 +24,7 @@ type Post = {
   created_at: string;
   source_type: 'manual' | 'trade' | 'whatsapp';
   image_base64: string | null;
-  extra_image_base64: string | null;
+  extra_images: string[];
   external_post_id: string | null;
 };
 
@@ -256,7 +256,8 @@ export default function AdminMarketingPage() {
     if (res.ok) setPosts((prev) => prev.filter((p) => p.id !== id));
   }
 
-  async function handleUploadExtraImage(postId: string, file: File) {
+  // הוספת תמונה נוספת לרשימה (אפשר כמה פעמים - כל תמונה מצטרפת לפוסט המשולב בפרסום)
+  async function handleAddExtraImage(postId: string, file: File) {
     const base64 = await new Promise<string>((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => resolve(String(reader.result).split(',')[1] || '');
@@ -266,7 +267,7 @@ export default function AdminMarketingPage() {
     const res = await fetch(`/api/admin/marketing/posts/${postId}`, {
       method: 'PATCH',
       headers: await authHeaders(),
-      body: JSON.stringify({ extraImageBase64: base64 }),
+      body: JSON.stringify({ addExtraImage: base64 }),
     });
     if (res.ok) {
       const data = await res.json();
@@ -274,11 +275,11 @@ export default function AdminMarketingPage() {
     }
   }
 
-  async function handleRemoveExtraImage(postId: string) {
+  async function handleRemoveExtraImageAt(postId: string, index: number) {
     const res = await fetch(`/api/admin/marketing/posts/${postId}`, {
       method: 'PATCH',
       headers: await authHeaders(),
-      body: JSON.stringify({ extraImageBase64: null }),
+      body: JSON.stringify({ removeExtraImageAt: index }),
     });
     if (res.ok) {
       const data = await res.json();
@@ -613,33 +614,37 @@ export default function AdminMarketingPage() {
             )}
 
             <div className="field">
-              <label>תמונה נוספת (למשל צילום מסך אמיתי מהקבוצה) - יפורסם כפוסט עם שתי תמונות</label>
-              {post.extra_image_base64 ? (
-                <div>
-                  <img
-                    src={`data:image/png;base64,${post.extra_image_base64}`}
-                    alt="תמונה נוספת"
-                    style={{ width: '100%', maxWidth: '320px', borderRadius: '10px', border: '1px solid var(--border-hairline-strong)', display: 'block', marginBottom: '8px' }}
-                  />
-                  <button
-                    className="nav-link"
-                    style={{ background: 'none', border: 'none', color: 'var(--loss)', cursor: 'pointer', padding: 0, fontSize: '12px' }}
-                    onClick={() => handleRemoveExtraImage(post.id)}
-                  >
-                    הסרת התמונה הנוספת
-                  </button>
+              <label>תמונות נוספות (למשל צילומי מסך אמיתיים מהקבוצה) - יפורסמו יחד עם הכרטיס כפוסט אחד עם כמה תמונות</label>
+              {post.extra_images.length > 0 && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginBottom: '8px' }}>
+                  {post.extra_images.map((img, index) => (
+                    <div key={index}>
+                      <img
+                        src={`data:image/png;base64,${img}`}
+                        alt={`תמונה נוספת ${index + 1}`}
+                        style={{ width: '140px', height: '140px', objectFit: 'cover', borderRadius: '10px', border: '1px solid var(--border-hairline-strong)', display: 'block', marginBottom: '4px' }}
+                      />
+                      <button
+                        className="nav-link"
+                        style={{ background: 'none', border: 'none', color: 'var(--loss)', cursor: 'pointer', padding: 0, fontSize: '12px' }}
+                        onClick={() => handleRemoveExtraImageAt(post.id, index)}
+                      >
+                        הסרה
+                      </button>
+                    </div>
+                  ))}
                 </div>
-              ) : (
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) handleUploadExtraImage(post.id, file);
-                  }}
-                  style={{ fontSize: '12.5px' }}
-                />
               )}
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handleAddExtraImage(post.id, file);
+                  e.target.value = '';
+                }}
+                style={{ fontSize: '12.5px' }}
+              />
             </div>
 
             <div className="field">

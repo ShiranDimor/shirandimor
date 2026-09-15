@@ -36,9 +36,9 @@ export async function POST(request: Request) {
 
   try {
     const caption = [post.caption, post.hashtags].filter(Boolean).join('\n\n');
+    const extraImages: string[] = Array.isArray(post.extra_images) ? post.extra_images : [];
     const { postId: externalPostId } = await publishPhotoToFacebookPage({
-      imageBase64: post.image_base64,
-      extraImageBase64: post.extra_image_base64,
+      images: [post.image_base64, ...extraImages],
       caption,
     });
 
