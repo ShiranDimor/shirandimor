@@ -11,6 +11,18 @@ function requireCredentials(): { pageId: string; accessToken: string } {
   return { pageId, accessToken };
 }
 
+// טוקן שנוצר דרך "משתמש מערכת" הוא טוקן כללי, לא טוקן עמוד - ופרסום "כעמוד עצמו"
+// (published=false + attached_media) דורש ספציפית טוקן עמוד. ממירים כאן תמיד לטוקן
+// העמוד האמיתי (אם META_PAGE_ACCESS_TOKEN כבר כזה, הקריאה פשוט מחזירה אותו בחזרה).
+async function resolvePageAccessToken(pageId: string, accessToken: string): Promise<string> {
+  const res = await fetch(`https://graph.facebook.com/${GRAPH_API_VERSION}/${pageId}?fields=access_token&access_token=${encodeURIComponent(accessToken)}`);
+  const data = await res.json();
+  if (!res.ok || !data.access_token) {
+    throw new Error(`שגיאה בקבלת טוקן גישה לעמוד: ${data?.error?.message || 'לא התקבל טוקן עמוד'}`);
+  }
+  return data.access_token as string;
+}
+
 // מעלה תמונה בודדת כ"לא מפורסמת" (published=false) - חוזר עם photo id שמשמש אח"כ לצירוף
 // לפוסט אחד עם כמה תמונות (attached_media), במקום שתי פוסטים נפרדים
 async function uploadUnpublishedPhoto(params: { pageId: string; accessToken: string; imageBase64: string; filename: string }): Promise<string> {
@@ -29,7 +41,8 @@ export async function publishPhotoToFacebookPage(params: {
   images: string[];
   caption: string;
 }): Promise<{ postId: string }> {
-  const { pageId, accessToken } = requireCredentials();
+  const { pageId, accessToken: rawToken } = requireCredentials();
+  const accessToken = await resolvePageAccessToken(pageId, rawToken);
   const images = params.images.filter(Boolean);
   if (images.length === 0) throw new Error('אין תמונות לפרסום');
 
