@@ -79,10 +79,13 @@ export default function CalendarHeatmap({ year, month, items, onPrevMonth, onNex
         >→</button>
         <div style={{ textAlign: 'center' }}>
           <div style={{ fontWeight: 700, fontSize: '13px' }}>{MONTH_LABELS[month]} {year}</div>
-          <div style={{
-            fontFamily: 'var(--font-mono)', fontSize: '11.5px', fontWeight: 600, marginTop: '2px',
-            color: items.length === 0 ? 'var(--text-tertiary)' : monthTotal >= 0 ? 'var(--profit)' : 'var(--loss)',
-          }}>
+          <div
+            data-story-hide="true"
+            style={{
+              fontFamily: 'var(--font-mono)', fontSize: '11.5px', fontWeight: 600, marginTop: '2px',
+              color: items.length === 0 ? 'var(--text-tertiary)' : monthTotal >= 0 ? 'var(--profit)' : 'var(--loss)',
+            }}
+          >
             {items.length === 0 ? 'אין עסקאות סגורות' : `סה"כ ${monthTotal >= 0 ? '+' : '-'}$${Math.abs(monthTotal).toFixed(0)}`}
           </div>
         </div>
