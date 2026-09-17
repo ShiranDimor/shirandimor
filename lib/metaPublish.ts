@@ -78,3 +78,23 @@ export async function publishPhotoToFacebookPage(params: {
 
   return { postId: feedData.id as string };
 }
+
+// פרסום כסטורי לעמוד - מנגנון שונה לגמרי מפרסום לפיד: קודם מעלים את התמונה כ"לא מפורסמת"
+// (בדיוק כמו בפוסט עם כמה תמונות), ואז מצרפים אותה לסטורי דרך endpoint ייעודי (photo_stories).
+// לסטוריז אין caption/קישור אמיתי - הטקסט המלא (כולל קריאה לפעולה) חייב להיות מודפס בתוך התמונה עצמה.
+export async function publishPhotoStoryToFacebookPage(params: { storyImageBase64: string }): Promise<{ postId: string }> {
+  const { pageId, accessToken: rawToken } = requireCredentials();
+  const accessToken = await resolvePageAccessToken(pageId, rawToken);
+
+  const photoId = await uploadUnpublishedPhoto({ pageId, accessToken, imageBase64: params.storyImageBase64, filename: 'story.png' });
+
+  const res = await fetch(`https://graph.facebook.com/${GRAPH_API_VERSION}/${pageId}/photo_stories`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ photo_id: photoId, access_token: accessToken }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(`שגיאה בפרסום הסטורי לפייסבוק: ${data?.error?.message || 'שגיאה לא ידועה'}`);
+
+  return { postId: data.post_id || data.id };
+}
