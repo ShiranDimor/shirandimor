@@ -321,38 +321,40 @@ export default function PortfolioPage() {
         <EquityCurve points={equityPoints} />
       </div>
 
-      <div className="section-label"><h2>לוח שנה</h2></div>
-      <div className="equity-card" style={{ marginBottom: '28px' }}>
-        <CalendarHeatmap year={calYear} month={calMonthIdx} items={calItems} onPrevMonth={goPrevMonth} onNextMonth={goNextMonth} />
-      </div>
-
-      <div className="section-label"><h2>תובנות התיק של שירן</h2></div>
-      <div className="insights-panel" style={{ marginBottom: '28px' }}>
-        <div className="insights-ring-row">
-          <StatsRing
-            percent={winRate ?? 0}
-            label={`${closedTrades.length} עסקאות סגורות`}
-            sublabel={`תיק התחלתי $${initialBalance !== null ? initialBalance.toLocaleString() : '—'}`}
-          />
+      <div id="portfolio-story-area">
+        <div className="section-label"><h2>לוח שנה</h2></div>
+        <div className="equity-card" style={{ marginBottom: '28px' }}>
+          <CalendarHeatmap year={calYear} month={calMonthIdx} items={calItems} onPrevMonth={goPrevMonth} onNextMonth={goNextMonth} />
         </div>
-        <div className="insight-grid">
-          <div className="insight-tile">
-            <div className="iv">{avgDaysToClose !== null ? avgDaysToClose.toFixed(1) : '—'}</div>
-            <div className="il">ימי החזקה בממוצע</div>
+
+        <div className="section-label"><h2>תובנות התיק של שירן</h2></div>
+        <div className="insights-panel" style={{ marginBottom: '28px' }}>
+          <div className="insights-ring-row">
+            <StatsRing
+              percent={winRate ?? 0}
+              label={`${closedTrades.length} עסקאות סגורות`}
+              sublabel={`תיק התחלתי $${initialBalance !== null ? initialBalance.toLocaleString() : '—'}`}
+            />
           </div>
-          <div className="insight-tile">
-            <div className="iv" style={{ color: avgPnlPct !== null ? (avgPnlPct >= 0 ? 'var(--profit)' : 'var(--loss)') : undefined }}>
-              {avgPnlPct !== null ? `${avgPnlPct >= 0 ? '+' : ''}${avgPnlPct.toFixed(2)}%` : '—'}
+          <div className="insight-grid">
+            <div className="insight-tile">
+              <div className="iv">{avgDaysToClose !== null ? avgDaysToClose.toFixed(1) : '—'}</div>
+              <div className="il">ימי החזקה בממוצע</div>
             </div>
-            <div className="il">רווח/הפסד ממוצע לעסקה</div>
-          </div>
-          <div className="insight-tile">
-            <div className="iv">{riskReward !== null ? `1:${riskReward.toFixed(1)}` : '—'}</div>
-            <div className="il">יחס סיכון-סיכוי</div>
-          </div>
-          <div className="insight-tile">
-            <div className="iv">{tradesThisMonth}</div>
-            <div className="il">עסקאות החודש</div>
+            <div className="insight-tile">
+              <div className="iv" style={{ color: avgPnlPct !== null ? (avgPnlPct >= 0 ? 'var(--profit)' : 'var(--loss)') : undefined }}>
+                {avgPnlPct !== null ? `${avgPnlPct >= 0 ? '+' : ''}${avgPnlPct.toFixed(2)}%` : '—'}
+              </div>
+              <div className="il">רווח/הפסד ממוצע לעסקה</div>
+            </div>
+            <div className="insight-tile">
+              <div className="iv">{riskReward !== null ? `1:${riskReward.toFixed(1)}` : '—'}</div>
+              <div className="il">יחס סיכון-סיכוי</div>
+            </div>
+            <div className="insight-tile">
+              <div className="iv">{tradesThisMonth}</div>
+              <div className="il">עסקאות החודש</div>
+            </div>
           </div>
         </div>
       </div>

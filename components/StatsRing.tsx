@@ -40,7 +40,7 @@ export default function StatsRing({ percent, label, sublabel }: Props) {
       </svg>
       <div style={{ textAlign: 'center' }}>
         <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>{label}</div>
-        <div style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>{sublabel}</div>
+        <div data-story-hide="true" style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>{sublabel}</div>
       </div>
     </div>
   );

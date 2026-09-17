@@ -12,8 +12,10 @@ const ALLOWED_HOSTS = ['shirandimor.com', 'www.shirandimor.com'];
 const VIEWPORT_WIDTH = 430;
 const MAX_FALLBACK_HEIGHT = 1500;
 // כפתורי צ'אט צפים (וואטסאפ/דור) מוצגים בכל עמוד בלי קשר לגלילה - לא רלוונטיים לצילום
-// שיווקי של אזור ספציפי באתר, אז מוסתרים לפני הצילום (רק בעמוד המצולם עצמו, לא באתר בפועל)
-const HIDE_SELECTORS = '.wa-float-btn, .dor-float-btn, .dor-callout';
+// שיווקי של אזור ספציפי באתר, אז מוסתרים לפני הצילום (רק בעמוד המצולם עצמו, לא באתר בפועל).
+// [data-story-hide] הוא סימון כללי בקוד האתר לאלמנטים שאסור שיופיעו בסטורי (בעיקר סכומי כסף
+// בדולרים, למשל בעמוד התיק) - שירן ביקשה שזה יימחק תמיד, בלי קשר לעמוד הספציפי.
+const HIDE_SELECTORS = '.wa-float-btn, .dor-float-btn, .dor-callout, [data-story-hide]';
 
 function isFontsExtracted(fontsDir: string): boolean {
   try {
