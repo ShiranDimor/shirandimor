@@ -99,6 +99,10 @@ export default function AdminMarketingPage() {
   const [generatingWhatsapp, setGeneratingWhatsapp] = useState(false);
   const [whatsappGenError, setWhatsappGenError] = useState('');
 
+  const [storyTopic, setStoryTopic] = useState('');
+  const [creatingStoryPost, setCreatingStoryPost] = useState(false);
+  const [storyPostError, setStoryPostError] = useState('');
+
   useEffect(() => {
     checkAdmin();
   }, []);
@@ -183,6 +187,37 @@ export default function AdminMarketingPage() {
       setWhatsappGenError('שגיאה בשליחת הבקשה');
     }
     setGeneratingWhatsapp(false);
+  }
+
+  // יצירת פוסט "סטורי בלבד" מתמונה חופשית (תיק מסחר, לייב, בניית תוכנית מסחר וכו') - בלי
+  // AI, רק עטיפה בתבנית הסטורי הממותגת ושמירה כטיוטה שאפשר לפרסם ישירות
+  async function handleCreateStoryFromUpload(file: File) {
+    setCreatingStoryPost(true);
+    setStoryPostError('');
+    try {
+      const imageBase64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result).split(',')[1] || '');
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      const res = await fetch('/api/admin/marketing/create-story-post', {
+        method: 'POST',
+        headers: await authHeaders(),
+        body: JSON.stringify({ topic: storyTopic, imageBase64 }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data) {
+        setStoryPostError(data?.error || 'שגיאה ביצירת הסטורי');
+      } else {
+        setStoryTopic('');
+        setStatusFilter('draft');
+        await loadPosts();
+      }
+    } catch {
+      setStoryPostError('שגיאה בשליחת הבקשה');
+    }
+    setCreatingStoryPost(false);
   }
 
   async function loadBrandVoice() {
@@ -495,6 +530,33 @@ export default function AdminMarketingPage() {
         )}
       </div>
 
+      <div className="journal-form" style={{ borderRightColor: 'var(--lavender)' }}>
+        <label style={{ display: 'block', marginBottom: '8px', fontSize: '13.5px', fontWeight: 600 }}>📸 סטורי מתמונה חופשית (תיק מסחר, לייב, בניית תוכנית מסחר...)</label>
+        <p style={{ fontSize: '12.5px', color: 'var(--text-tertiary)', marginBottom: '10px' }}>
+          מעלים כל תמונה שצילמת - היא תעטף אוטומטית בתבנית הסטורי הממותגת (בלי פסים ריקים) ותישמר כטיוטה מוכנה לפרסום. בלי AI ובלי caption - רק התמונה. הלינק לא יהיה לחיץ בתוך הסטורי, אז אם רוצה - צריך להוסיף אותו ידנית בדרך אחרת.
+        </p>
+        <input
+          type="text"
+          value={storyTopic}
+          onChange={(e) => setStoryTopic(e.target.value)}
+          placeholder="תיאור קצר לזיהוי (למשל: תיק המסחר שלי / לייב 17.9 / בניית תוכנית מסחר)"
+          style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--bg-surface)', color: 'var(--text-primary)', fontSize: '12.5px', marginBottom: '10px' }}
+        />
+        <input
+          type="file"
+          accept="image/*"
+          disabled={creatingStoryPost}
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) handleCreateStoryFromUpload(file);
+            e.target.value = '';
+          }}
+          style={{ fontSize: '12.5px' }}
+        />
+        {creatingStoryPost && <p style={{ marginTop: '10px', fontSize: '13px', color: 'var(--text-tertiary)' }}>יוצרים סטורי... זה יכול לקחת רגע</p>}
+        {storyPostError && <p style={{ marginTop: '10px', fontSize: '13px', color: 'var(--loss)' }}>{storyPostError}</p>}
+      </div>
+
       <details className="section-collapse" style={{ marginBottom: '20px' }}>
         <summary><h2 style={{ fontSize: '14px' }}>יצירה ידנית / מותאמת אישית</h2></summary>
       <div className="journal-form" style={{ marginTop: '10px' }}>
@@ -606,7 +668,7 @@ export default function AdminMarketingPage() {
                 )}
               </div>
             ) : (
-              post.source_type === 'manual' && (
+              post.source_type === 'manual' && post.content_type !== 'story' && (
                 <div className="field">
                   <label>כרטיס גרפי (חובה לפרסום - לפוסט מסוג בריף חופשי אין יצירה אוטומטית, יש להעלות תמונה ידנית)</label>
                   <input
