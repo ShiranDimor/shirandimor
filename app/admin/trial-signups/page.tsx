@@ -3,6 +3,9 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
+import { normalizePhoneToE164, whatsappHref } from '@/lib/salesLeads/phone';
+import { extractFirstName } from '@/lib/salesLeads/firstName';
+import { buildTrialWelcomeMessage } from '@/lib/salesLeads/whatsappMessage';
 
 type TrialSignup = {
   id: string;
@@ -144,7 +147,13 @@ export default function AdminTrialSignupsPage() {
           )}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-          <a href={`https://wa.me/972${s.phone.replace(/\D/g, '').replace(/^0/, '')}`} target="_blank" rel="noopener noreferrer" className="btn-outline" style={{ width: 'auto', padding: '8px 14px' }}>
+          <a
+            href={whatsappHref(normalizePhoneToE164(s.phone), buildTrialWelcomeMessage(extractFirstName(s.name)))}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn-outline"
+            style={{ width: 'auto', padding: '8px 14px' }}
+          >
             וואטסאפ
           </a>
           <button
