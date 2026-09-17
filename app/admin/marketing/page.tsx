@@ -26,6 +26,9 @@ type Post = {
   image_base64: string | null;
   extra_images: string[];
   external_post_id: string | null;
+  story_image_base64: string | null;
+  story_published_at: string | null;
+  story_external_post_id: string | null;
 };
 
 type BrandVoice = {
@@ -83,6 +86,9 @@ export default function AdminMarketingPage() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [publishingId, setPublishingId] = useState<string | null>(null);
   const [publishError, setPublishError] = useState<Record<string, string>>({});
+  const [generatingStoryId, setGeneratingStoryId] = useState<string | null>(null);
+  const [storyError, setStoryError] = useState<Record<string, string>>({});
+  const [publishingStoryId, setPublishingStoryId] = useState<string | null>(null);
 
   const [tradeSources, setTradeSources] = useState<TradeSource[]>([]);
   const [selectedTradeId, setSelectedTradeId] = useState('');
@@ -350,6 +356,48 @@ export default function AdminMarketingPage() {
       setPublishError((prev) => ({ ...prev, [postId]: 'שגיאה בשליחת הבקשה' }));
     }
     setPublishingId(null);
+  }
+
+  async function handleGenerateStory(postId: string) {
+    setGeneratingStoryId(postId);
+    setStoryError((prev) => ({ ...prev, [postId]: '' }));
+    try {
+      const res = await fetch(`/api/admin/marketing/posts/${postId}/generate-story`, {
+        method: 'POST',
+        headers: await authHeaders(),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data) {
+        setStoryError((prev) => ({ ...prev, [postId]: data?.error || 'שגיאה ביצירת הסטורי' }));
+      } else {
+        setPosts((prev) => prev.map((p) => (p.id === postId ? data.post : p)));
+      }
+    } catch {
+      setStoryError((prev) => ({ ...prev, [postId]: 'שגיאה בשליחת הבקשה' }));
+    }
+    setGeneratingStoryId(null);
+  }
+
+  async function handlePublishFacebookStory(postId: string) {
+    if (!confirm('לפרסם את הסטורי הזה בפועל לעמוד הפייסבוק שלך עכשיו? זו פעולה שמפרסמת החוצה, לא ניתן לבטל.')) return;
+    setPublishingStoryId(postId);
+    setStoryError((prev) => ({ ...prev, [postId]: '' }));
+    try {
+      const res = await fetch('/api/admin/marketing/publish-facebook-story', {
+        method: 'POST',
+        headers: await authHeaders(),
+        body: JSON.stringify({ postId }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data) {
+        setStoryError((prev) => ({ ...prev, [postId]: data?.error || 'שגיאה בפרסום הסטורי' }));
+      } else {
+        setPosts((prev) => prev.map((p) => (p.id === postId ? data.post : p)));
+      }
+    } catch {
+      setStoryError((prev) => ({ ...prev, [postId]: 'שגיאה בשליחת הבקשה' }));
+    }
+    setPublishingStoryId(null);
   }
 
   async function handleLogout() {
@@ -708,12 +756,65 @@ export default function AdminMarketingPage() {
                 לצפייה בפוסט שפורסם בפייסבוק ←
               </a>
             )}
+
+            <div className="field" style={{ borderTop: '1px solid var(--border-hairline)', paddingTop: '12px' }}>
+              <label>גרסת סטורי (1080x1920, רקע מלא בלי פסים ריקים)</label>
+              {post.story_image_base64 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'flex-start' }}>
+                  <img
+                    src={`data:image/png;base64,${post.story_image_base64}`}
+                    alt="גרסת סטורי"
+                    style={{ width: '160px', borderRadius: '10px', border: '1px solid var(--border-hairline-strong)', display: 'block' }}
+                  />
+                  <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
+                    <a
+                      href={`data:image/png;base64,${post.story_image_base64}`}
+                      download={`${post.topic.slice(0, 30).replace(/[^\w֐-׿]+/g, '-')}-story.png`}
+                      style={{ fontSize: '12px', color: 'var(--teal)' }}
+                    >
+                      הורדת הסטורי
+                    </a>
+                    <button
+                      className="nav-link"
+                      style={{ background: 'none', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer', padding: 0, fontSize: '12px' }}
+                      onClick={() => handleGenerateStory(post.id)}
+                      disabled={generatingStoryId === post.id}
+                    >
+                      {generatingStoryId === post.id ? 'יוצרים מחדש...' : 'יצירה מחדש (רקע אחר)'}
+                    </button>
+                    {!post.story_published_at ? (
+                      <button
+                        className="nav-link"
+                        style={{ background: 'var(--profit-bg)', border: '1px solid var(--profit)', color: 'var(--profit)', borderRadius: '8px', padding: '6px 12px', cursor: 'pointer', fontSize: '12px' }}
+                        onClick={() => handlePublishFacebookStory(post.id)}
+                        disabled={publishingStoryId === post.id}
+                      >
+                        {publishingStoryId === post.id ? 'מפרסמים...' : 'פרסום כסטורי'}
+                      </button>
+                    ) : (
+                      <span style={{ fontSize: '12px', color: 'var(--profit)' }}>✔ הסטורי פורסם</span>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <button
+                  className="nav-link"
+                  style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-hairline-strong)', borderRadius: '8px', padding: '8px 14px', cursor: 'pointer', width: 'fit-content' }}
+                  onClick={() => handleGenerateStory(post.id)}
+                  disabled={generatingStoryId === post.id || !post.image_base64}
+                  title={!post.image_base64 ? 'צריך קודם כרטיס גרפי ראשי לפוסט הזה' : undefined}
+                >
+                  {generatingStoryId === post.id ? 'יוצרים...' : 'יצירת גרסת סטורי'}
+                </button>
+              )}
+              {storyError[post.id] && <p style={{ fontSize: '12px', color: 'var(--loss)', marginTop: '6px' }}>{storyError[post.id]}</p>}
+            </div>
           </div>
         </details>
       ))}
 
       <p style={{ fontSize: '11.5px', color: 'var(--text-tertiary)', marginTop: '24px', lineHeight: 1.6 }}>
-        כפתור "פרסום בפועל לפייסבוק" מפרסם ישירות לעמוד שלך דרך Meta Graph API - רק אחרי שאת לוחצת עליו במפורש, אף פוסט לא יוצא לבד. כדי שזה יעבוד, צריך לחבר את עמוד הפייסבוק פעם אחת (META_PAGE_ID ו-META_PAGE_ACCESS_TOKEN ב-Vercel).
+        כפתור "פרסום בפועל לפייסבוק" מפרסם ישירות לעמוד שלך דרך Meta Graph API - רק אחרי שאת לוחצת עליו במפורש, אף פוסט לא יוצא לבד. כדי שזה יעבוד, צריך לחבר את עמוד הפייסבוק פעם אחת (META_PAGE_ID ו-META_PAGE_ACCESS_TOKEN ב-Vercel). פרסום לפיד ולסטורי הם שני כפתורים נפרדים - אפשר לפרסם רק לפיד, רק לסטורי, או לשניהם על אותו פוסט.
       </p>
 
       <details className="section-collapse" style={{ marginTop: '30px' }}>

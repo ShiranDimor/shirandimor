@@ -341,6 +341,37 @@ export async function renderTradeCard(data: TradeCardData, gainCardAccentIndex =
   return data.pct >= 0 ? renderGainTradeCard(data, pickGainCardAccent(gainCardAccentIndex)) : renderLossTradeCard(data);
 }
 
+// עוטף כרטיס פיד קיים (1080x1330 או 1080x1080) בתוך קנבס 1080x1920 מלא (יחס סטורי אמיתי) -
+// במקום להעלות את אותה תמונה כמו שהיא ולקבל פסים ריקים משני הצדדים כשפייסבוק ממסגר אותה.
+// עובד על כל תמונת PNG בבסיס-64 בלי תלות במקור שלה (עסקה/וואטסאפ/העלאה ידנית) - הכרטיס
+// המקורי לא משתנה כלל, רק ממורכז על גבי רקע ממותג עם אותו סגנון "בלובים אורגניים".
+export async function wrapImageAsStory(cardImageBase64: string): Promise<string> {
+  const accent = pickGainAccent();
+
+  const html = `<!DOCTYPE html><html lang="he"><head><meta charset="utf-8"><style>
+    @import url('https://fonts.googleapis.com/css2?family=Rubik:wght@500;600;700;800&display=swap');
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 1080px; height: 1920px; overflow: hidden; }
+    body { background: ${CREAM}; font-family: 'Rubik', sans-serif; position: relative; direction: rtl; }
+    .wrap { position: relative; z-index: 2; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 90px 60px; gap: 60px; }
+    .brand-row { display: flex; align-items: center; gap: 14px; }
+    .brand-row .line { width: 44px; height: 1px; background: ${INK_MUTED}; opacity: 0.5; }
+    .brand { color: ${INK_MUTED}; font-size: 26px; font-weight: 600; }
+    .brand b { color: ${accent.ink}; font-weight: 700; }
+    .card-img { width: 900px; border-radius: 28px; box-shadow: 0 30px 70px rgba(30,42,34,0.18); display: block; }
+    .footer { color: ${INK_MUTED}; font-size: 24px; font-weight: 500; }
+  </style></head><body>
+    ${organicBackdrop(accent)}
+    <div class="wrap">
+      <div class="brand-row"><div class="line"></div><div class="brand">מסחר <b>אחראי</b> במניות</div><div class="line"></div></div>
+      <img class="card-img" src="data:image/png;base64,${cardImageBase64}" />
+      <div class="footer">shirandimor.com</div>
+    </div>
+  </body></html>`;
+
+  return renderHtmlToPngBase64(html, 1920);
+}
+
 // מפצל את ה-hook סביב highlightPhrase (אם באמת מופיע בו verbatim) כדי לעצב רק את החלק הזה
 // באפקט "טוש מרקר" - שאר המשפט נשאר טקסט רגיל. אם אין התאמה מדויקת - כל המשפט רגיל, בלי קריסה.
 const HEBREW_LETTER = /[א-ת]/;
