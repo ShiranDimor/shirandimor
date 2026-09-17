@@ -330,7 +330,7 @@ export default function TradingPlanPage() {
       </header>
 
       {phase === 'intro' && (
-        <>
+        <div id="trading-plan-intro">
           <div className="tp-intro-badge">10 דקות · תוכנית אישית</div>
           <div className="form-title">תוכנית המסחר שלי ל-30 הימים הקרובים</div>
           <div className="tp-intro-text">
@@ -343,7 +343,7 @@ export default function TradingPlanPage() {
           <button type="button" className="btn-primary" onClick={handleStart} disabled={loadingNext}>
             לבנות את התוכנית שלי
           </button>
-        </>
+        </div>
       )}
 
       {phase === 'contact' && (
