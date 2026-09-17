@@ -10,3 +10,16 @@ export function buildInitialOutreachMessage(firstName: string | null): string {
 
 יש לך כמה דקות עכשיו? ואם לא, נתאם לזמן שנוח לך 🙏🏾`;
 }
+
+// הודעת הפתיחה שנפתחת מוכנה בלחיצה על כפתור WhatsApp בכרטיס "נרשם/ה ל-7 ימי ניסיון"
+export function buildTrialWelcomeMessage(firstName: string | null): string {
+  const greeting = firstName ? `היי ${firstName}` : 'היי';
+
+  return `${greeting}
+קיבלתי את הפרטים שלך בנוגע ל-7 ימי ניסיון בקבוצת הסוחרים
+אשמח שתספר לי בקצרה האם אתה סוחר/מכיר/מתחיל מ-0 כדי שאני אדע איך לדייק לך את התהליך
+
+אתה יכול להקליט או לשלוח הודעה מה שנוח לך
+
+אגב חשוב לי שתדע שאין צורך בשום ניסיון, אני שואלת רק כדי לדעת איפה אתה נמצא ומה אתה מכיר :)`;
+}
