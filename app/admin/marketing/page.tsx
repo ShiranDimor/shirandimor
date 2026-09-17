@@ -103,6 +103,11 @@ export default function AdminMarketingPage() {
   const [creatingStoryPost, setCreatingStoryPost] = useState(false);
   const [storyPostError, setStoryPostError] = useState('');
 
+  const [storyUrlTopic, setStoryUrlTopic] = useState('');
+  const [storyUrl, setStoryUrl] = useState('');
+  const [creatingStoryFromUrl, setCreatingStoryFromUrl] = useState(false);
+  const [storyUrlError, setStoryUrlError] = useState('');
+
   useEffect(() => {
     checkAdmin();
   }, []);
@@ -218,6 +223,33 @@ export default function AdminMarketingPage() {
       setStoryPostError('שגיאה בשליחת הבקשה');
     }
     setCreatingStoryPost(false);
+  }
+
+  // יצירת פוסט "סטורי בלבד" מצילום מסך אמיתי של עמוד קיים באתר (shirandimor.com בלבד) -
+  // במקום להעלות תמונה ידנית, נותנים לינק לאזור שכבר מעוצב באתר והשרת מצלם אותו לבד
+  async function handleCreateStoryFromUrl() {
+    if (!storyUrl.trim()) return;
+    setCreatingStoryFromUrl(true);
+    setStoryUrlError('');
+    try {
+      const res = await fetch('/api/admin/marketing/create-story-from-url', {
+        method: 'POST',
+        headers: await authHeaders(),
+        body: JSON.stringify({ topic: storyUrlTopic, url: storyUrl.trim() }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data) {
+        setStoryUrlError(data?.error || 'שגיאה ביצירת הסטורי');
+      } else {
+        setStoryUrlTopic('');
+        setStoryUrl('');
+        setStatusFilter('draft');
+        await loadPosts();
+      }
+    } catch {
+      setStoryUrlError('שגיאה בשליחת הבקשה');
+    }
+    setCreatingStoryFromUrl(false);
   }
 
   async function loadBrandVoice() {
@@ -555,6 +587,31 @@ export default function AdminMarketingPage() {
         />
         {creatingStoryPost && <p style={{ marginTop: '10px', fontSize: '13px', color: 'var(--text-tertiary)' }}>יוצרים סטורי... זה יכול לקחת רגע</p>}
         {storyPostError && <p style={{ marginTop: '10px', fontSize: '13px', color: 'var(--loss)' }}>{storyPostError}</p>}
+      </div>
+
+      <div className="journal-form" style={{ borderRightColor: 'var(--sky)' }}>
+        <label style={{ display: 'block', marginBottom: '8px', fontSize: '13.5px', fontWeight: 600 }}>🔗 סטורי מלינק באתר</label>
+        <p style={{ fontSize: '12.5px', color: 'var(--text-tertiary)', marginBottom: '10px' }}>
+          נותנים לינק לעמוד קיים באתר (shirandimor.com בלבד) - אני אכנס לשם, אצלם את האזור (אם הלינק כולל #עוגן בעמוד, אגלול אליו קודם), ואעטוף בתבנית הסטורי. נשמר כטיוטה - את מאשרת ומפרסמת.
+        </p>
+        <input
+          type="text"
+          value={storyUrlTopic}
+          onChange={(e) => setStoryUrlTopic(e.target.value)}
+          placeholder="תיאור קצר לזיהוי (לא חובה)"
+          style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--bg-surface)', color: 'var(--text-primary)', fontSize: '12.5px', marginBottom: '10px' }}
+        />
+        <input
+          type="url"
+          value={storyUrl}
+          onChange={(e) => setStoryUrl(e.target.value)}
+          placeholder="https://shirandimor.com/..."
+          style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--bg-surface)', color: 'var(--text-primary)', fontSize: '12.5px', marginBottom: '10px', direction: 'ltr', textAlign: 'right' }}
+        />
+        <button className="btn-primary" onClick={handleCreateStoryFromUrl} disabled={creatingStoryFromUrl || !storyUrl.trim()}>
+          {creatingStoryFromUrl ? 'מצלמים ויוצרים... זה יכול לקחת רגע' : 'יצירת סטורי מהעמוד'}
+        </button>
+        {storyUrlError && <p style={{ marginTop: '10px', fontSize: '13px', color: 'var(--loss)' }}>{storyUrlError}</p>}
       </div>
 
       <details className="section-collapse" style={{ marginBottom: '20px' }}>

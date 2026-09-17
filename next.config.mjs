@@ -13,6 +13,8 @@ const nextConfig = {
       '/api/admin/marketing/posts/[id]/generate-story': ['./node_modules/@sparticuz/chromium/bin/**/*'],
       '/api/admin/marketing/create-story-post/route': ['./node_modules/@sparticuz/chromium/bin/**/*'],
       '/api/admin/marketing/create-story-post': ['./node_modules/@sparticuz/chromium/bin/**/*'],
+      '/api/admin/marketing/create-story-from-url/route': ['./node_modules/@sparticuz/chromium/bin/**/*'],
+      '/api/admin/marketing/create-story-from-url': ['./node_modules/@sparticuz/chromium/bin/**/*'],
     },
   },
 };
