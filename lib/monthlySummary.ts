@@ -23,7 +23,7 @@ type Trade = {
   current_price: number | null;
 };
 
-const GROW_LINK = 'https://pay.grow.link/200a7cdcb258ee6ffdea0f423a1ace0e-MzE4MDU5OA';
+const TRIAL_SIGNUP_URL = 'https://www.shirandimor.com/trial';
 const GROUP_NAME = 'מדברים עסקאות';
 const SITE_URL = 'https://www.shirandimor.com';
 
@@ -209,7 +209,7 @@ async function buildSummaryHtml() {
       <div style="padding:6px 16px 24px;text-align:center;">
         <div style="background:#f0faf9;border:1px solid #cdeeeb;border-radius:12px;padding:18px 16px;">
           <div style="font-size:14.5px;font-weight:700;color:#111;margin-bottom:6px;">🚀 קבוצת הסוחרים &quot;${GROUP_NAME}&quot;</div>
-          <div style="font-size:13px;color:#666;">להצטרפות לחודש ניסיון (ללא התחייבות) כנסו ללינק</div>
+          <div style="font-size:13px;color:#666;">להצטרפות ל-7 ימי ניסיון ללא עלות כנסו ללינק</div>
         </div>
       </div>
 
@@ -256,7 +256,7 @@ function buildWhatsappSummaryText(data: Awaited<ReturnType<typeof buildSummaryHt
     lines.push('');
   }
 
-  lines.push(`🚀 להצטרפות לחודש ניסיון (ללא התחייבות): ${GROW_LINK}`);
+  lines.push(`🚀 להצטרפות ל-7 ימי ניסיון ללא עלות: ${TRIAL_SIGNUP_URL}`);
 
   return lines.join('\n');
 }
@@ -303,8 +303,8 @@ export async function sendMonthlySummaryEmail() {
             <p>הסיכום מצורף כתמונה למטה - אפשר לשמור ולשלוח אותה כמו שהיא לקבוצת העדכונים.</p>
             <p style="font-weight:700;margin-top:16px;">⚠️ שימו לב: בתוך התמונה עצמה הכפתור "הצטרפות עכשיו" אינו לחיץ - זו מגבלה של כל תמונה בוואטסאפ.</p>
             <p>מומלץ לצרף את הטקסט הבא כהודעה נפרדת מתחת לתמונה, כדי שהקישור יהיה לחיץ:</p>
-            <div style="background:#f4f4f5;border:1px solid #ddd;border-radius:8px;padding:14px;margin-top:8px;white-space:pre-line;">🚀 להצטרפות לקבוצת הסוחרים "${GROUP_NAME}" לחודש ניסיון (ללא התחייבות):
-${GROW_LINK}</div>
+            <div style="background:#f4f4f5;border:1px solid #ddd;border-radius:8px;padding:14px;margin-top:8px;white-space:pre-line;">🚀 להצטרפות לקבוצת הסוחרים "${GROUP_NAME}" ל-7 ימי ניסיון ללא עלות:
+${TRIAL_SIGNUP_URL}</div>
           </div>`
         : html,
       attachments: imageBase64
