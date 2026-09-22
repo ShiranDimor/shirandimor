@@ -19,7 +19,8 @@ async function requireAdmin(request: Request) {
 
 // יוצר מחדש כרטיס ליד במאנדיי לנרשם/ת קיים/ת - לשימוש במי שנרשם עוד לפני התיקון ל-forceNew
 // (וקיבל רק הערה על כרטיס קיים במקום כרטיס חדש בלידים חדשים), או בכל מקרה שצריך לוודא שהליד
-// אכן מופיע שם
+// אכן מופיע שם. "תופסים" את השורה (monday_synced: false -> true) לפני היצירה במאנדיי, לא אחריה -
+// כדי שלחיצה חוזרת (או לחיצה על מי שכבר סונכרן בהרשמה הראשונית) לא תיצור כרטיס כפול
 export async function POST(request: Request) {
   const admin = await requireAdmin(request);
   if (!admin) return NextResponse.json({ error: 'אין הרשאת ניהול' }, { status: 403 });
@@ -35,6 +36,17 @@ export async function POST(request: Request) {
 
   if (error || !signup) return NextResponse.json({ error: 'הנרשם/ת לא נמצא/ה' }, { status: 404 });
 
+  const { data: claimed } = await supabaseAdmin
+    .from('trial_signups')
+    .update({ monday_synced: true })
+    .eq('id', id)
+    .eq('monday_synced', false)
+    .select('id');
+
+  if (!claimed || claimed.length === 0) {
+    return NextResponse.json({ error: 'כבר סונכרן בעבר - לא נוצר כרטיס נוסף כדי למנוע כפילות' }, { status: 409 });
+  }
+
   const result = await syncGenericLead({
     phone: signup.phone,
     name: signup.name,
@@ -44,6 +56,8 @@ export async function POST(request: Request) {
   });
 
   if (!result.ok) {
+    // הכרטיס לא נוצר בפועל - משחררים את התפיסה כדי שאפשר יהיה לנסות שוב
+    await supabaseAdmin.from('trial_signups').update({ monday_synced: false }).eq('id', id);
     return NextResponse.json({ error: 'הסנכרון למאנדיי נכשל: ' + (result.reason || 'שגיאה') }, { status: 500 });
   }
 
