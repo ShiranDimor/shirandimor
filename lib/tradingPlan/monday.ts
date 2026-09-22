@@ -542,14 +542,16 @@ export async function syncGenericLead(params: {
   if (!params.phone) return { ok: false, reason: 'no_phone' };
 
   try {
-    const { groupId, phoneColumnId, emailColumnId, campaignColumnId } = await getBoardSchema(token, boardId);
+    const { groupId, phoneColumnId, emailColumnId, campaignColumnId, statusColumnId } = await getBoardSchema(token, boardId);
     const normalized = normalizePhone(params.phone);
 
-    const existingItemId = phoneColumnId && !params.forceNew
+    // בודקים תמיד אם המספר כבר קיים בלוח (גם עם forceNew) - כדי לדעת אם צריך לסמן "ליד כפול".
+    // forceNew קובע רק אם ניצור כרטיס חדש למרות זאת, לא אם נבדוק בכלל
+    const existingItemId = phoneColumnId
       ? await findItemIdByPhone(token, boardId, phoneColumnId, normalized).catch(() => null)
       : null;
 
-    if (existingItemId) {
+    if (existingItemId && !params.forceNew) {
       if (params.note) {
         await mondayRequest(
           token,
@@ -574,11 +576,27 @@ export async function syncGenericLead(params: {
     );
 
     const newItemId = createData?.data?.create_item?.id;
+
+    // forceNew יצר כרטיס חדש גם כשהמספר כבר קיים - מסמנים אותו "ליד כפול" כדי שלא ייראה כמו
+    // ליד רגיל, בדיוק כמו שקורה בהרשמה ללייב
+    if (newItemId && existingItemId && statusColumnId) {
+      await mondayRequest(
+        token,
+        `mutation ($boardId: ID!, $itemId: ID!, $columnId: String!, $value: String!) {
+          change_simple_column_value (board_id: $boardId, item_id: $itemId, column_id: $columnId, value: $value) { id }
+        }`,
+        { boardId, itemId: newItemId, columnId: statusColumnId, value: 'ליד כפול' }
+      ).catch((e) => console.error('Monday.com: נכשל סימון "ליד כפול" (ליד גנרי)', e));
+    }
+
     if (newItemId && params.note) {
+      const noteBody = existingItemId
+        ? `${params.note}\n⚠ כבר קיים ליד/מנוי אחר עם אותו נייד - סומן כ"ליד כפול"`
+        : params.note;
       await mondayRequest(
         token,
         `mutation ($itemId: ID!, $body: String!) { create_update (item_id: $itemId, body: $body) { id } }`,
-        { itemId: newItemId, body: params.note }
+        { itemId: newItemId, body: noteBody }
       ).catch((e) => console.error('Monday.com: נכשל הוספת עדכון לליד חדש (ליד גנרי)', e));
     }
 

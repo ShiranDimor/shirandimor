@@ -5,9 +5,9 @@ import { supabaseAdmin } from '@/lib/instantLogin';
 
 const TRIAL_SOURCE_LABEL = 'ימי ניסיון - עדכונים (7 ימים)';
 
-// דף הרשמה לסבב "7 ימי ניסיון" ששירן שולחת לקבוצת העדכונים - syncGenericLead דואג בעצמו
-// שאם הליד כבר קיים במאנדיי (למשל כבר בקבוצת העדכונים) הוא רק יקבל הערה על ההרשמה במקום
-// ליצור כפילות, וזה בדיוק מה שנותן לשירן את המעקב שהיא ביקשה
+// דף הרשמה לסבב "7 ימי ניסיון" ששירן שולחת לקבוצת העדכונים. syncGenericLead תמיד יוצר כרטיס
+// חדש וברור בלידים חדשים (forceNew) - ואם המספר כבר קיים במקום אחר בלוח, הוא מסמן את הכרטיס
+// כ"ליד כפול" במקום ליצור אותו כליד רגיל, כך ששירן יודעת מיד שזה מישהו מוכר
 export async function POST(request: Request) {
   const { name, phone } = await request.json();
 
@@ -21,23 +21,29 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, alreadySubscriber: true });
   }
 
-  const [mondayResult] = await Promise.all([
-    syncGenericLead({
-      phone,
-      name,
-      source: TRIAL_SOURCE_LABEL,
-      note: `נרשם/ה ל-7 ימי ניסיון דרך דף ההרשמה\nנייד: ${phone}`,
-      // תמיד כרטיס חדש בלידים חדשים - גם אם המספר כבר קיים בקבוצת העדכונים (וזה בדיוק המצב
-      // הנפוץ כאן, כי המבצע נשלח למי שכבר בעדכונים) - כדי שלא "ייבלע" כהערה על כרטיס קיים
-      forceNew: true,
-    }),
-    // נשמר גם בטבלה משלנו כדי שיהיה אפשר לראות את כל הנרשמים לסבב הזה בעמוד הניהול באתר,
-    // לא רק במאנדיי
-    supabaseAdmin.from('trial_signups').insert({ name, phone }).then(({ error }) => {
-      if (error) console.error('שגיאה בשמירת הרשמת ניסיון', error);
-    }),
-  ]);
+  const { data: signup, error: insertError } = await supabaseAdmin
+    .from('trial_signups')
+    .insert({ name, phone })
+    .select('id')
+    .single();
 
+  if (insertError) {
+    console.error('שגיאה בשמירת הרשמת ניסיון', insertError);
+  }
+
+  const mondayResult = await syncGenericLead({
+    phone,
+    name,
+    source: TRIAL_SOURCE_LABEL,
+    note: `נרשם/ה ל-7 ימי ניסיון דרך דף ההרשמה\nנייד: ${phone}`,
+    // תמיד כרטיס חדש בלידים חדשים - גם אם המספר כבר קיים בקבוצת העדכונים (וזה בדיוק המצב
+    // הנפוץ כאן, כי המבצע נשלח למי שכבר בעדכונים) - עדיין יסומן "ליד כפול" אם צריך
+    forceNew: true,
+  });
+
+  if (mondayResult.ok && signup) {
+    await supabaseAdmin.from('trial_signups').update({ monday_synced: true }).eq('id', signup.id);
+  }
   if (!mondayResult.ok) {
     console.error('שגיאה בסנכרון הרשמת ניסיון ל-Monday.com', mondayResult.reason);
   }
