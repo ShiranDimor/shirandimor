@@ -9,6 +9,7 @@ type ChatMessage = { role: 'user' | 'assistant'; content: string };
 
 const ANON_ID_KEY = 'dor_anon_id';
 const CALLOUT_SEEN_KEY = 'dor_callout_seen';
+const PHONE_CAPTURED_KEY = 'dor_phone_captured';
 
 function getAnonId() {
   if (typeof window === 'undefined') return '';
@@ -18,6 +19,10 @@ function getAnonId() {
     localStorage.setItem(ANON_ID_KEY, id);
   }
   return id;
+}
+
+function isValidPhone(v: string) {
+  return /^05\d{8}$/.test(v.replace(/\D/g, ''));
 }
 
 // ווידג'ט הצ'אט הציבורי עם דור - מופיע בכל עמוד באתר (חוץ מעמודי הניהול, שבהם כבר יש כלי בדיקה ייעודי).
@@ -33,6 +38,16 @@ export default function DorChatWidget() {
   const [error, setError] = useState('');
   const [showCallout, setShowCallout] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  // שער חובה: לפני ההודעה הראשונה בכל שיחה חדשה, חייבים נייד - כדי שאף שיחה עם דור לא תישאר
+  // בעילום שם מוחלט בלי שום דרך לחזור למי שכתב. אם השרת מדווח hasPhone (מנוי/ה עם טלפון בפרופיל,
+  // או שיחה קודמת מאותו דפדפן שכבר השאירה נייד) - מדלגים על השער. אחרת מציגים אותו פעם אחת,
+  // ושומרים בדפדפן כדי לא לשאול שוב באותו מכשיר.
+  const [needsPhoneGate, setNeedsPhoneGate] = useState(false);
+  const [gateName, setGateName] = useState('');
+  const [gatePhone, setGatePhone] = useState('');
+  const [gateError, setGateError] = useState('');
+  const [pendingContact, setPendingContact] = useState<{ name: string; phone: string } | null>(null);
 
   useEffect(() => {
     if (open && !historyLoaded) loadHistory();
@@ -73,12 +88,28 @@ export default function DorChatWidget() {
       const headers = await authHeader();
       const res = await fetch(`/api/support-bot?anonId=${encodeURIComponent(getAnonId())}`, { headers });
       const data = await res.json();
-      if (res.ok) setMessages(data.messages || []);
+      if (res.ok) {
+        setMessages(data.messages || []);
+        let alreadyCaptured = false;
+        try { alreadyCaptured = localStorage.getItem(PHONE_CAPTURED_KEY) === '1'; } catch {}
+        setNeedsPhoneGate(!data.hasPhone && !alreadyCaptured && (data.messages || []).length === 0);
+      }
     } catch (e) {
       // אין צורך להציג שגיאה - פשוט נשארים עם היסטוריה ריקה
     }
     setLoadingHistory(false);
     setHistoryLoaded(true);
+  }
+
+  function submitPhoneGate() {
+    if (!isValidPhone(gatePhone)) {
+      setGateError('צריך מספר נייד תקין (לדוגמה 0501234567)');
+      return;
+    }
+    setGateError('');
+    setPendingContact({ name: gateName.trim(), phone: gatePhone.trim() });
+    setNeedsPhoneGate(false);
+    try { localStorage.setItem(PHONE_CAPTURED_KEY, '1'); } catch {}
   }
 
   async function sendMessage(overrideText?: string) {
@@ -95,7 +126,11 @@ export default function DorChatWidget() {
       const res = await fetch('/api/support-bot', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...headers },
-        body: JSON.stringify({ message: text, anonId: getAnonId() }),
+        body: JSON.stringify({
+          message: text,
+          anonId: getAnonId(),
+          ...(pendingContact ? { name: pendingContact.name, phone: pendingContact.phone } : {}),
+        }),
       });
       const data = await res.json();
 
@@ -103,6 +138,7 @@ export default function DorChatWidget() {
         setError(data.error || 'שגיאה בבוט');
       } else {
         setMessages((prev) => [...prev, { role: 'assistant', content: data.reply }]);
+        if (pendingContact) setPendingContact(null);
       }
     } catch (e) {
       setError('שגיאת רשת');
@@ -115,6 +151,13 @@ export default function DorChatWidget() {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       sendMessage();
+    }
+  }
+
+  function handleGateKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      submitPhoneGate();
     }
   }
 
@@ -149,7 +192,51 @@ export default function DorChatWidget() {
                 טוענים...
               </p>
             )}
-            {!loadingHistory && messages.length === 0 && (
+
+            {!loadingHistory && needsPhoneGate && (
+              <div
+                style={{
+                  alignSelf: 'flex-end',
+                  maxWidth: '92%',
+                  background: 'var(--teal)',
+                  color: '#08131a',
+                  borderRadius: '12px',
+                  padding: '12px 14px',
+                  fontSize: '14px',
+                  lineHeight: 1.6,
+                }}
+              >
+                <div style={{ marginBottom: '10px' }}>
+                  היי, אני דור, העוזרת הדיגיטלית של שירן 😊
+                  <br />
+                  לפני שמתחילים - איך אפשר להשיג אותך בהמשך?
+                </div>
+                <input
+                  value={gateName}
+                  onChange={(e) => setGateName(e.target.value)}
+                  placeholder="שם (לא חובה)"
+                  style={{ width: '100%', boxSizing: 'border-box', padding: '9px 11px', borderRadius: '8px', border: '1px solid rgba(8,19,26,0.2)', fontSize: '13.5px', marginBottom: '8px', fontFamily: 'inherit' }}
+                />
+                <input
+                  value={gatePhone}
+                  onChange={(e) => setGatePhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                  onKeyDown={handleGateKeyDown}
+                  type="tel"
+                  placeholder="נייד (חובה)"
+                  style={{ width: '100%', boxSizing: 'border-box', padding: '9px 11px', borderRadius: '8px', border: '1px solid rgba(8,19,26,0.2)', fontSize: '13.5px', marginBottom: '8px', fontFamily: 'inherit' }}
+                />
+                {gateError && <div style={{ fontSize: '12px', color: '#7a1f1f', marginBottom: '8px' }}>{gateError}</div>}
+                <button
+                  type="button"
+                  onClick={submitPhoneGate}
+                  style={{ width: '100%', background: '#08131a', color: '#fff', border: 'none', borderRadius: '8px', padding: '9px', fontSize: '13.5px', fontWeight: 700, cursor: 'pointer' }}
+                >
+                  המשך לצ'אט
+                </button>
+              </div>
+            )}
+
+            {!loadingHistory && !needsPhoneGate && messages.length === 0 && (
               <>
                 <div
                   style={{
@@ -202,7 +289,7 @@ export default function DorChatWidget() {
             <div ref={bottomRef} />
           </div>
 
-          {historyLoaded && messages.length > 0 && (
+          {historyLoaded && !needsPhoneGate && messages.length > 0 && (
             <div className="dor-chat-input-row">
               <textarea
                 value={input}
