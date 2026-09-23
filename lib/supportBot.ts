@@ -165,7 +165,7 @@ export function buildRuntimeContextBlock(ctx: {
     default:
       lines.push('הקשר זמן-ריצה: זהות המשתמש/ת עדיין לא ידועה - כנראה שאינו/ה בקבוצת העדכונים ואינו/ה מנוי/ה. אין צורך לשאול על כך ישירות - אם וכאשר ישותפו פרטי קשר תוך כדי שיחה, הזיהוי יתעדכן אוטומטית. כשרלוונטי אפשר להציע בפועל את קישור ההצטרפות לקבוצת העדכונים החינמית (סעיף 0א).');
   }
-  if (ctx.contactName) lines.push(`שם שכבר שותף: ${ctx.contactName}.`);
+  if (ctx.contactName) lines.push(`שם שכבר שותף: ${ctx.contactName}. כדאי לקרוא לו/לה בשם הזה מדי פעם באופן טבעי (לא בכל הודעה) - זה מקרב, לא רק פותח משפט רשמי איתו.`);
 
   if (ctx.nextLive) {
     const d = new Date(ctx.nextLive.scheduledAt);

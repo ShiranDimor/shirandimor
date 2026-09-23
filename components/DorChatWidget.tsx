@@ -102,6 +102,10 @@ export default function DorChatWidget() {
   }
 
   function submitPhoneGate() {
+    if (!gateName.trim()) {
+      setGateError('צריך שם - כדי שדור תדע איך לפנות אליך');
+      return;
+    }
     if (!isValidPhone(gatePhone)) {
       setGateError('צריך מספר נייד תקין (לדוגמה 0501234567)');
       return;
@@ -209,12 +213,12 @@ export default function DorChatWidget() {
                 <div style={{ marginBottom: '10px' }}>
                   היי, אני דור, העוזרת הדיגיטלית של שירן 😊
                   <br />
-                  לפני שמתחילים - איך אפשר להשיג אותך בהמשך?
+                  לפני שמתחילים - איך קוראים לך, ואיך אפשר להשיג אותך בהמשך?
                 </div>
                 <input
                   value={gateName}
                   onChange={(e) => setGateName(e.target.value)}
-                  placeholder="שם (לא חובה)"
+                  placeholder="שם"
                   style={{ width: '100%', boxSizing: 'border-box', padding: '9px 11px', borderRadius: '8px', border: '1px solid rgba(8,19,26,0.2)', fontSize: '13.5px', marginBottom: '8px', fontFamily: 'inherit' }}
                 />
                 <input
@@ -222,7 +226,7 @@ export default function DorChatWidget() {
                   onChange={(e) => setGatePhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
                   onKeyDown={handleGateKeyDown}
                   type="tel"
-                  placeholder="נייד (חובה)"
+                  placeholder="נייד"
                   style={{ width: '100%', boxSizing: 'border-box', padding: '9px 11px', borderRadius: '8px', border: '1px solid rgba(8,19,26,0.2)', fontSize: '13.5px', marginBottom: '8px', fontFamily: 'inherit' }}
                 />
                 {gateError && <div style={{ fontSize: '12px', color: '#7a1f1f', marginBottom: '8px' }}>{gateError}</div>}
