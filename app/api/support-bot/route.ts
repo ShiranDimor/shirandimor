@@ -28,27 +28,39 @@ async function resolveIdentity(request: Request, anonId: string | null) {
   return null;
 }
 
-// GET - טוען היסטוריית שיחה קיימת (אם יש) לפי המזהה, כדי שרענון/חזרה לאתר לא יתחילו שיחה מהתחלה
+// GET - טוען היסטוריית שיחה קיימת (אם יש) לפי המזהה, כדי שרענון/חזרה לאתר לא יתחילו שיחה מהתחלה.
+// גם מחזיר hasPhone - כדי שהצד הלקוח ידע אם צריך להציג שער חובה של השארת נייד לפני שממשיכים,
+// או שהפונה כבר מזוהה עם נייד ידוע (מנוי/ה מחובר/ת עם טלפון בפרופיל, או שיחה קודמת מאותו דפדפן
+// שכבר השאירה נייד) ואפשר לדלג על השער
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const identity = await resolveIdentity(request, searchParams.get('anonId'));
-  if (!identity) return NextResponse.json({ messages: [] });
+  if (!identity) return NextResponse.json({ messages: [], hasPhone: false });
 
-  const { data, error } = await supabaseAdmin
-    .from('support_bot_messages')
-    .select('role, content')
-    .eq('user_id', identity.id)
-    .order('created_at', { ascending: true });
+  const [{ data, error }, { data: conversation }] = await Promise.all([
+    supabaseAdmin
+      .from('support_bot_messages')
+      .select('role, content')
+      .eq('user_id', identity.id)
+      .order('created_at', { ascending: true }),
+    supabaseAdmin
+      .from('support_bot_conversations')
+      .select('contact_phone')
+      .eq('user_id', identity.id)
+      .maybeSingle(),
+  ]);
 
   if (error) return NextResponse.json({ error: 'שגיאה בטעינת ההיסטוריה' }, { status: 500 });
 
-  return NextResponse.json({ messages: data || [] });
+  const hasPhone = Boolean(identity.profile?.phone || conversation?.contact_phone);
+
+  return NextResponse.json({ messages: data || [], hasPhone });
 }
 
 // POST - שיחה עם דור, פתוחה לכל מבקר/ת באתר (מחובר/ת או אנונימי/ת) - ההיסטוריה נשמרת לפי המזהה,
 // וסוג הפונה מסווג מול מאנדיי (מנוי/ת פעיל/ה, קבוצת עדכונים, ליד חדש) ברגע שיש פרטי קשר
 export async function POST(request: Request) {
-  const { message, anonId } = await request.json().catch(() => ({}));
+  const { message, anonId, phone: gatePhone, name: gateName } = await request.json().catch(() => ({}));
   if (!message || typeof message !== 'string') {
     return NextResponse.json({ error: 'חסרה הודעה' }, { status: 400 });
   }
@@ -63,16 +75,22 @@ export async function POST(request: Request) {
 
   const conversation = await getOrCreateConversation(identity.id, identity.profile);
 
+  // נייד/שם משער החובה שהצ'אט מציג לפני ההודעה הראשונה (אם היה כזה) - עדיפות עליונה על זיהוי
+  // הזדמנותי מתוך טקסט חופשי, כי זה כבר הוזן במפורש ע"י הפונה עצמו/ה
+  const explicitPhone = typeof gatePhone === 'string' && gatePhone.trim() ? gatePhone.trim() : null;
+  const explicitName = typeof gateName === 'string' && gateName.trim() ? gateName.trim() : null;
+
   // זיהוי הזדמנותי: אם הפונה שיתף טלפון/מייל תוך כדי השיחה ועדיין אין לנו את זה שמור - שומרים,
   // ואם הזהות עדיין לא ידועה, מסווגים מול מאנדיי לפי הפרט החדש
   const extracted = extractContactFromText(message);
   const updates: Record<string, unknown> = {};
-  if (extracted.phone && !conversation?.contact_phone) updates.contact_phone = extracted.phone;
+  if ((explicitPhone || extracted.phone) && !conversation?.contact_phone) updates.contact_phone = explicitPhone || extracted.phone;
   if (extracted.email && !conversation?.contact_email) updates.contact_email = extracted.email;
+  if (explicitName && !conversation?.contact_name) updates.contact_name = explicitName;
   let newlyClassifiedType: string | null = null;
-  if ((extracted.phone || extracted.email) && (!conversation?.user_type || conversation.user_type === 'unknown')) {
+  if ((explicitPhone || extracted.phone || extracted.email) && (!conversation?.user_type || conversation.user_type === 'unknown')) {
     newlyClassifiedType = await classifyContactMonday(
-      extracted.phone || conversation?.contact_phone || null,
+      explicitPhone || extracted.phone || conversation?.contact_phone || null,
       extracted.email || conversation?.contact_email || null
     );
     updates.user_type = newlyClassifiedType;
@@ -88,7 +106,7 @@ export async function POST(request: Request) {
     await supabaseAdmin.from('support_bot_conversations').update(updates).eq('id', conversation.id);
   }
   const effectiveUserType = (updates.user_type as string | undefined) ?? conversation?.user_type ?? null;
-  const effectiveContactName = conversation?.contact_name ?? null;
+  const effectiveContactName = explicitName ?? conversation?.contact_name ?? null;
   const effectiveGender = (updates.gender as 'male' | 'female' | undefined) ?? conversation?.gender ?? null;
 
   // ליד חדש (לא מנוי/ה, לא בקבוצת עדכונים) ששיתף/ה פרטי קשר לראשונה בשיחה עם דור - מסונכרן
