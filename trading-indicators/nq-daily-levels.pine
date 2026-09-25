@@ -37,9 +37,10 @@ lonStyle = input.string("Solid", "סגנון", options = ["Solid", "Dashed", "Do
 
 G_LBL = "תוויות"
 showLabels  = input.bool(true, "הצג תוויות", group = G_LBL)
-labelOffset = input.int(8, "מרחק מהנר האחרון (בנרות)", minval = 0, maxval = 300, group = G_LBL)
+labelOffset = input.int(3, "מרחק מהנר האחרון (בנרות)", minval = 0, maxval = 300, group = G_LBL)
 labelText   = input.color(color.black, "צבע טקסט", group = G_LBL)
 labelSize   = input.string("Normal", "גודל", options = ["Small", "Normal", "Large"], group = G_LBL)
+showTags    = input.bool(true, "הצג את שם הקו גם על הקו עצמו (בתחילתו)", group = G_LBL)
 showScale   = input.bool(true, "הצג מחירים על סקאלת המחירים", group = G_LBL)
 
 if timeframe.isweekly or timeframe.ismonthly
@@ -125,6 +126,9 @@ f_draw(line[] lns, label[] lbs, int x1, float y, color c, int w, string st, stri
         if showLabels
             txt = name + "  " + str.tostring(y, "0.00#") + (full ? "" : " (partial)")
             lbs.push(label.new(lblX, y, txt, xloc.bar_time, yloc.price, c, label.style_label_left, labelText, sz))
+        if showTags
+            // שם הקו כתוב מעל הקו, בנקודה שבה הוא מתחיל
+            lbs.push(label.new(x1, y, name, xloc.bar_time, yloc.price, color.new(color.white, 100), label.style_label_lower_left, c, size.small))
 
 var line[]  lns = array.new<line>()
 var label[] lbs = array.new<label>()
