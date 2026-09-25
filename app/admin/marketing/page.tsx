@@ -84,6 +84,7 @@ export default function AdminMarketingPage() {
   const [loadingPosts, setLoadingPosts] = useState(false);
   const [statusFilter, setStatusFilter] = useState<Status | 'all'>('all');
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [previewOpenId, setPreviewOpenId] = useState<string | null>(null);
   const [publishingId, setPublishingId] = useState<string | null>(null);
   const [publishError, setPublishError] = useState<Record<string, string>>({});
   const [generatingStoryId, setGeneratingStoryId] = useState<string | null>(null);
@@ -854,6 +855,14 @@ export default function AdminMarketingPage() {
                 {copiedId === post.id ? 'הועתק!' : 'העתקת טקסט'}
               </button>
 
+              <button
+                className="nav-link"
+                style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-hairline-strong)', borderRadius: '8px', padding: '8px 14px', cursor: 'pointer' }}
+                onClick={() => setPreviewOpenId((prev) => (prev === post.id ? null : post.id))}
+              >
+                {previewOpenId === post.id ? 'סגירת תצוגה מקדימה' : '👁 תצוגה מקדימה'}
+              </button>
+
               {post.status !== 'published' && (
                 <button
                   className="nav-link"
@@ -874,6 +883,46 @@ export default function AdminMarketingPage() {
               <a href={`https://www.facebook.com/${post.external_post_id}`} target="_blank" rel="noreferrer" style={{ fontSize: '12px', color: 'var(--teal)' }}>
                 לצפייה בפוסט שפורסם בפייסבוק ←
               </a>
+            )}
+
+            {previewOpenId === post.id && (
+              <div style={{ border: '1px solid var(--border-hairline-strong)', borderRadius: '12px', overflow: 'hidden', maxWidth: '360px', background: '#fff' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 12px' }}>
+                  <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--teal)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: '#0B0F17', fontSize: '13px', flexShrink: 0 }}>מ</div>
+                  <div>
+                    <div style={{ fontSize: '13px', fontWeight: 700, color: '#050505' }}>מסחר אחראי במניות</div>
+                    <div style={{ fontSize: '11px', color: '#65676B' }}>עכשיו · 🌐</div>
+                  </div>
+                </div>
+
+                {(post.caption || post.hashtags) && (
+                  <div style={{ padding: '0 12px 10px', fontSize: '13px', color: '#050505', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
+                    {[post.caption, post.hashtags].filter(Boolean).join('\n\n')}
+                  </div>
+                )}
+
+                {post.image_base64 && (
+                  <img src={`data:image/png;base64,${post.image_base64}`} alt="תצוגה מקדימה" style={{ width: '100%', display: 'block' }} />
+                )}
+                {post.extra_images.map((img, index) => (
+                  <img key={index} src={`data:image/png;base64,${img}`} alt={`תמונה נוספת ${index + 1}`} style={{ width: '100%', display: 'block', borderTop: '2px solid #f0f2f5' }} />
+                ))}
+
+                {!post.image_base64 && !post.caption && !post.hashtags && (
+                  <p style={{ padding: '12px', fontSize: '12.5px', color: '#65676B' }}>אין עדיין תוכן/תמונה להציג לפוסט הזה</p>
+                )}
+              </div>
+            )}
+
+            {previewOpenId === post.id && post.story_image_base64 && (
+              <div>
+                <p style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginBottom: '6px' }}>תצוגה מקדימה - סטורי (בלי כיתוב, הכל בתוך התמונה)</p>
+                <img
+                  src={`data:image/png;base64,${post.story_image_base64}`}
+                  alt="תצוגה מקדימה של הסטורי"
+                  style={{ width: '180px', borderRadius: '10px', border: '1px solid var(--border-hairline-strong)', display: 'block' }}
+                />
+              </div>
             )}
 
             <div className="field" style={{ borderTop: '1px solid var(--border-hairline)', paddingTop: '12px' }}>
