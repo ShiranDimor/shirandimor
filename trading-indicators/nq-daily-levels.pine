@@ -1,0 +1,164 @@
+// NQ / MNQ Daily Levels: 50% Daily Range + Asia High/Low + London High/Low
+//
+// כל השעות מחושבות לפי America/New_York (כולל שעון קיץ/חורף), בלי קשר לאזור הזמן של הגרף.
+// החישוב רץ על נתוני דקה (request.security "1") ולא על הנרות שבגרף. לכן:
+//   * הוא כולל את כל המסחר מתחילת היום, גם מה שמחוץ לחלון הגרף המוצג.
+//   * התוצאות זהות בכל טווח זמן (1 דקה, 5 דקות, שעה, 4 שעות, יומי) של אותו חוזה.
+
+//@version=6
+indicator("NQ Daily Levels (50% / Asia / London)", shorttitle = "NQ Levels", overlay = true, max_lines_count = 20, max_labels_count = 20)
+
+const string TZ = "America/New_York"
+
+// ───────────── הגדרות ─────────────
+G_DAY = "יום מסחר (שעון ניו יורק)"
+dayStartH = input.int(18, "תחילת יום: שעה", minval = 0, maxval = 23, inline = "ds", group = G_DAY)
+dayStartM = input.int(0, "דקה", minval = 0, maxval = 59, inline = "ds", group = G_DAY)
+
+G_MID = "50% Daily Range"
+showMid  = input.bool(true, "הצג", group = G_MID)
+midColor = input.color(#FFD600, "צבע", inline = "m", group = G_MID)
+midWidth = input.int(2, "עובי", minval = 1, maxval = 10, inline = "m", group = G_MID)
+midStyle = input.string("Dashed", "סגנון", options = ["Solid", "Dashed", "Dotted"], inline = "m", group = G_MID)
+
+G_ASIA = "Asia High / Low"
+showAsia  = input.bool(true, "הצג", group = G_ASIA)
+asiaSess  = input.session("2000-0000", "חלון (שעון ניו יורק)", group = G_ASIA)
+asiaColor = input.color(#00BCD4, "צבע", inline = "a", group = G_ASIA)
+asiaWidth = input.int(2, "עובי", minval = 1, maxval = 10, inline = "a", group = G_ASIA)
+asiaStyle = input.string("Solid", "סגנון", options = ["Solid", "Dashed", "Dotted"], inline = "a", group = G_ASIA)
+
+G_LON = "London High / Low"
+showLon  = input.bool(true, "הצג", group = G_LON)
+lonSess  = input.session("0200-0500", "חלון (שעון ניו יורק)", group = G_LON)
+lonColor = input.color(#E040FB, "צבע", inline = "l", group = G_LON)
+lonWidth = input.int(2, "עובי", minval = 1, maxval = 10, inline = "l", group = G_LON)
+lonStyle = input.string("Solid", "סגנון", options = ["Solid", "Dashed", "Dotted"], inline = "l", group = G_LON)
+
+G_LBL = "תוויות"
+showLabels  = input.bool(true, "הצג תוויות", group = G_LBL)
+labelOffset = input.int(8, "מרחק מהנר האחרון (בנרות)", minval = 0, maxval = 300, group = G_LBL)
+labelText   = input.color(color.black, "צבע טקסט", group = G_LBL)
+labelSize   = input.string("Normal", "גודל", options = ["Small", "Normal", "Large"], group = G_LBL)
+showScale   = input.bool(true, "הצג מחירים על סקאלת המחירים", group = G_LBL)
+
+if timeframe.isweekly or timeframe.ismonthly
+    runtime.error("NQ Daily Levels עובד בטווחי זמן של יום ומטה.")
+
+// ───────────── עזרים ─────────────
+// "HHMM-HHMM" -> [דקת התחלה, דקת סיום] ביום (0-1439)
+f_parse(string s) =>
+    sh = str.tonumber(str.substring(s, 0, 2))
+    sm = str.tonumber(str.substring(s, 2, 4))
+    eh = str.tonumber(str.substring(s, 5, 7))
+    em = str.tonumber(str.substring(s, 7, 9))
+    [int(sh * 60 + sm), int(eh * 60 + em)]
+
+// האם דקה ביום (m) נמצאת בחלון [s, e). תומך בחלון שעובר חצות.
+f_inWin(int m, int s, int e) =>
+    s < e ? (m >= s and m < e) : s > e ? (m >= s or m < e) : false
+
+f_style(string s) =>
+    switch s
+        "Solid"  => line.style_solid
+        "Dotted" => line.style_dotted
+        => line.style_dashed
+
+// ───────────── מנוע החישוב (רץ על נרות של דקה) ─────────────
+f_engine(int dsMin, int aS, int aE, int lS, int lE) =>
+    m = hour(time, TZ) * 60 + minute(time, TZ)
+    // מזיזים את הזמן כך שתחילת יום המסחר נופלת על חצות, ואז התאריך = מזהה יום המסחר
+    tShift = time + (1440 - dsMin) * 60000
+    key = year(tShift, TZ) * 10000 + month(tShift, TZ) * 100 + dayofmonth(tShift, TZ)
+    newDay = bar_index == 0 or key != key[1]
+
+    var float dHi = na
+    var float dLo = na
+    var int   dT  = na
+    var bool  dFull = false
+    var float aHi = na
+    var float aLo = na
+    var int   aT  = na
+    var float lHi = na
+    var float lLo = na
+    var int   lT  = na
+
+    if newDay
+        dHi := high
+        dLo := low
+        dT  := time
+        dFull := bar_index > 0   // false = הנתונים התחילו באמצע היום
+        aHi := na
+        aLo := na
+        aT  := na
+        lHi := na
+        lLo := na
+        lT  := na
+    else
+        dHi := math.max(dHi, high)
+        dLo := math.min(dLo, low)
+
+    if f_inWin(m, aS, aE)
+        aHi := na(aHi) ? high : math.max(aHi, high)
+        aLo := na(aLo) ? low : math.min(aLo, low)
+        aT  := na(aT) ? time : aT
+
+    if f_inWin(m, lS, lE)
+        lHi := na(lHi) ? high : math.max(lHi, high)
+        lLo := na(lLo) ? low : math.min(lLo, low)
+        lT  := na(lT) ? time : lT
+
+    [dHi, dLo, dT, dFull, aHi, aLo, aT, lHi, lLo, lT]
+
+[aS, aE] = f_parse(asiaSess)
+[lS, lE] = f_parse(lonSess)
+dsMin = dayStartH * 60 + dayStartM
+
+[dHi, dLo, dT, dFull, aHi, aLo, aT, lHi, lLo, lT] = request.security(syminfo.tickerid, "1", f_engine(dsMin, aS, aE, lS, lE), lookahead = barmerge.lookahead_on)
+
+mid = (dHi + dLo) / 2
+
+// ───────────── ציור (רק על הנר האחרון = יום המסחר הנוכחי) ─────────────
+f_draw(line[] lns, label[] lbs, int x1, float y, color c, int w, string st, string name, bool full, int lblX, string sz) =>
+    if not na(y) and not na(x1)
+        lns.push(line.new(x1, y, x1 + 60000, y, xloc.bar_time, extend.right, c, f_style(st), w))
+        if showLabels
+            txt = name + "  " + str.tostring(y, "0.00#") + (full ? "" : " (partial)")
+            lbs.push(label.new(lblX, y, txt, xloc.bar_time, yloc.price, c, label.style_label_left, labelText, sz))
+
+var line[]  lns = array.new<line>()
+var label[] lbs = array.new<label>()
+
+if barstate.islast
+    // מוחקים את הציור הקודם (כולל קווי היום הקודם) ומציירים מחדש לפי המצב הנוכחי
+    for ln in lns
+        line.delete(ln)
+    for lb in lbs
+        label.delete(lb)
+    lns.clear()
+    lbs.clear()
+
+    sz = switch labelSize
+        "Small" => size.small
+        "Large" => size.large
+        => size.normal
+    lblX = time + labelOffset * timeframe.in_seconds() * 1000
+    // חלון נחשב שלם אם התחיל אחרי תחילת הנתונים שנטענו
+    aFull = dFull or aT > dT
+    lFull = dFull or lT > dT
+
+    if showMid
+        f_draw(lns, lbs, dT, mid, midColor, midWidth, midStyle, "50% Daily Range", dFull, lblX, sz)
+    if showAsia
+        f_draw(lns, lbs, aT, aHi, asiaColor, asiaWidth, asiaStyle, "Asia High", aFull, lblX, sz)
+        f_draw(lns, lbs, aT, aLo, asiaColor, asiaWidth, asiaStyle, "Asia Low", aFull, lblX, sz)
+    if showLon
+        f_draw(lns, lbs, lT, lHi, lonColor, lonWidth, lonStyle, "London High", lFull, lblX, sz)
+        f_draw(lns, lbs, lT, lLo, lonColor, lonWidth, lonStyle, "London Low", lFull, lblX, sz)
+
+// סימון המחירים על סקאלת המחירים (ערך אחרון בלבד)
+plot(showMid  and barstate.islast ? mid : na, "50% Daily Range", midColor,  display = showScale ? display.price_scale : display.none)
+plot(showAsia and barstate.islast ? aHi : na, "Asia High",       asiaColor, display = showScale ? display.price_scale : display.none)
+plot(showAsia and barstate.islast ? aLo : na, "Asia Low",        asiaColor, display = showScale ? display.price_scale : display.none)
+plot(showLon  and barstate.islast ? lHi : na, "London High",     lonColor,  display = showScale ? display.price_scale : display.none)
+plot(showLon  and barstate.islast ? lLo : na, "London Low",      lonColor,  display = showScale ? display.price_scale : display.none)
