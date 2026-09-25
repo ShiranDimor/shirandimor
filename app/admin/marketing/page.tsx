@@ -76,7 +76,7 @@ export default function AdminMarketingPage() {
   const [platform, setPlatform] = useState<Platform>('instagram');
   const [contentType, setContentType] = useState<ContentType>('feed_post');
   const [topic, setTopic] = useState('');
-  const [variantCount, setVariantCount] = useState(2);
+  const [variantCount, setVariantCount] = useState(1);
   const [generating, setGenerating] = useState(false);
   const [genError, setGenError] = useState('');
 
