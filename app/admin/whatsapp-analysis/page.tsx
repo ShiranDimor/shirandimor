@@ -38,6 +38,7 @@ export default function AdminWhatsappAnalysisPage() {
 
   const [history, setHistory] = useState<Analysis[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [deletingId, setDeletingId] = useState('');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -149,6 +150,29 @@ export default function AdminWhatsappAnalysisPage() {
     setAnalyzing(false);
   }
 
+  async function handleDelete(id: string) {
+    if (!window.confirm('למחוק לצמיתות את הניתוח הזה?')) return;
+    setDeletingId(id);
+    const { data: { session } } = await supabase.auth.getSession();
+    try {
+      const res = await fetch('/api/admin/whatsapp-analysis', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
+        body: JSON.stringify({ id }),
+      });
+      if (res.ok) {
+        setHistory((prev) => prev.filter((h) => h.id !== id));
+        if (result?.id === id) setResult(null);
+      } else {
+        const data = await res.json().catch(() => null);
+        setError(data?.error || 'מחיקת הניתוח נכשלה');
+      }
+    } catch {
+      setError('מחיקת הניתוח נכשלה');
+    }
+    setDeletingId('');
+  }
+
   async function handleLogout() {
     await supabase.auth.signOut();
     window.location.href = '/';
@@ -238,9 +262,18 @@ export default function AdminWhatsappAnalysisPage() {
 
       {result && (
         <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-hairline-strong)', borderRight: '3px solid var(--profit)', borderRadius: '12px', padding: '18px', marginTop: '20px' }}>
-          <div style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginBottom: '8px' }}>
-            {result.group_type === 'סוחרים' ? 'קבוצת הסוחרים' : 'קבוצת עדכונים'} · {formatDateTime(result.created_at)}
-            {result.truncated && ' · הקובץ היה ארוך מדי ונותח רק החלק האחרון שלו'}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+            <div style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>
+              {result.group_type === 'סוחרים' ? 'קבוצת הסוחרים' : 'קבוצת עדכונים'} · {formatDateTime(result.created_at)}
+              {result.truncated && ' · הקובץ היה ארוך מדי ונותח רק החלק האחרון שלו'}
+            </div>
+            <button
+              onClick={() => handleDelete(result.id)}
+              disabled={deletingId === result.id}
+              style={{ background: 'none', border: 'none', color: 'var(--loss)', fontSize: '12px', cursor: 'pointer', padding: 0 }}
+            >
+              {deletingId === result.id ? 'מוחקים...' : 'מחיקה'}
+            </button>
           </div>
           <p style={{ fontSize: '13.5px', color: 'var(--text-primary)', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{result.analysis}</p>
         </div>
@@ -251,8 +284,15 @@ export default function AdminWhatsappAnalysisPage() {
       {!loadingHistory && filteredHistory.length === 0 && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>עדיין אין ניתוחים שמורים לקבוצה הזו</p>}
       {filteredHistory.map((h) => (
         <details key={h.id} className="section-collapse" style={{ marginBottom: '10px' }}>
-          <summary>
+          <summary style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h2 style={{ fontSize: '14px' }}>{h.group_type === 'סוחרים' ? 'קבוצת הסוחרים' : 'קבוצת עדכונים'} · {formatDateTime(h.created_at)}</h2>
+            <button
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDelete(h.id); }}
+              disabled={deletingId === h.id}
+              style={{ background: 'none', border: 'none', color: 'var(--loss)', fontSize: '12px', cursor: 'pointer', padding: 0 }}
+            >
+              {deletingId === h.id ? 'מוחקים...' : 'מחיקה'}
+            </button>
           </summary>
           <p style={{ fontSize: '13.5px', color: 'var(--text-secondary)', lineHeight: 1.7, whiteSpace: 'pre-wrap', padding: '10px 4px' }}>{h.analysis}</p>
         </details>
