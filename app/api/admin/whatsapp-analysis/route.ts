@@ -67,3 +67,17 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: e instanceof Error ? e.message : 'שגיאה בניתוח' }, { status: 500 });
   }
 }
+
+// DELETE - מחיקת ניתוח שמור (למשל אחד שיצא לא רלוונטי)
+export async function DELETE(request: Request) {
+  const admin = await requireAdmin(request);
+  if (!admin) return NextResponse.json({ error: 'אין הרשאת ניהול' }, { status: 403 });
+
+  const { id } = await request.json().catch(() => ({}));
+  if (!id) return NextResponse.json({ error: 'חסר מזהה' }, { status: 400 });
+
+  const { error } = await supabaseAdmin.from('whatsapp_analyses').delete().eq('id', id);
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  return NextResponse.json({ ok: true });
+}
