@@ -8,7 +8,7 @@ import { supabase } from '@/lib/supabase';
 type GroupType = 'סוחרים' | 'עדכונים';
 
 // תואם ל-MAX_CHARS בlib/whatsappAnalysis.ts - מקוצר כאן כדי לא לשלוח לשרת יותר ממה שהוא ינתח בפועל
-const MAX_UPLOAD_CHARS = 300000;
+const MAX_UPLOAD_CHARS = 150000;
 
 type Analysis = {
   id: string;
