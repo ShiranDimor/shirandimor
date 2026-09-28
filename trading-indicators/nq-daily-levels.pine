@@ -43,6 +43,12 @@ labelSize   = input.string("Normal", "גודל", options = ["Small", "Normal", "
 showTags    = input.bool(true, "הצג את שם הקו גם על הקו עצמו (בתחילתו)", group = G_LBL)
 showScale   = input.bool(true, "הצג מחירים על סקאלת המחירים", group = G_LBL)
 
+G_ALR = "התראות"
+alertAsia = input.bool(true, "התראה כשהמחיר מגיע ל-Asia High / Low", group = G_ALR)
+alertLon  = input.bool(true, "התראה כשהמחיר מגיע ל-London High / Low", group = G_ALR)
+alertMid  = input.bool(false, "התראה כשהמחיר מגיע ל-50% Daily Range", group = G_ALR)
+alertOnce = input.bool(true, "רק פעם אחת ביום לכל קו", group = G_ALR)
+
 if timeframe.isweekly or timeframe.ismonthly
     runtime.error("NQ Daily Levels עובד בטווחי זמן של יום ומטה.")
 
@@ -109,13 +115,15 @@ f_engine(int dsMin, int aS, int aE, int lS, int lE) =>
         lLo := na(lLo) ? low : math.min(lLo, low)
         lT  := na(lT) ? time : lT
 
-    [dHi, dLo, dT, dFull, aHi, aLo, aT, lHi, lLo, lT]
+    aDone = not na(aT) and not f_inWin(m, aS, aE)   // חלון אסיה הסתיים
+    lDone = not na(lT) and not f_inWin(m, lS, lE)   // חלון לונדון הסתיים
+    [dHi, dLo, dT, dFull, aHi, aLo, aT, lHi, lLo, lT, aDone, lDone]
 
 [aS, aE] = f_parse(asiaSess)
 [lS, lE] = f_parse(lonSess)
 dsMin = dayStartH * 60 + dayStartM
 
-[dHi, dLo, dT, dFull, aHi, aLo, aT, lHi, lLo, lT] = request.security(syminfo.tickerid, "1", f_engine(dsMin, aS, aE, lS, lE), lookahead = barmerge.lookahead_on)
+[dHi, dLo, dT, dFull, aHi, aLo, aT, lHi, lLo, lT, aDone, lDone] = request.security(syminfo.tickerid, "1", f_engine(dsMin, aS, aE, lS, lE), lookahead = barmerge.lookahead_on)
 
 mid = (dHi + dLo) / 2
 
@@ -166,3 +174,50 @@ plot(showAsia and barstate.islast ? aHi : na, "Asia High",       asiaColor, disp
 plot(showAsia and barstate.islast ? aLo : na, "Asia Low",        asiaColor, display = showScale ? display.price_scale : display.none)
 plot(showLon  and barstate.islast ? lHi : na, "London High",     lonColor,  display = showScale ? display.price_scale : display.none)
 plot(showLon  and barstate.islast ? lLo : na, "London Low",      lonColor,  display = showScale ? display.price_scale : display.none)
+
+// ───────────── התראות ─────────────
+// בודקים בכל טיק אם המחיר חצה/נגע בקו מאז הטיק הקודם. varip שומר ערכים בין טיקים.
+// אסיה/לונדון מתריעים רק אחרי שהחלון נסגר (כשהקו כבר קבוע).
+varip float lastPx  = na
+varip int   alertDay = na
+varip bool  hitAH = false
+varip bool  hitAL = false
+varip bool  hitLH = false
+varip bool  hitLL = false
+varip bool  hitM  = false
+
+f_touched(float prev, float px, float lvl) =>
+    not na(prev) and not na(lvl) and ((prev < lvl and px >= lvl) or (prev > lvl and px <= lvl) or px == lvl)
+
+f_msg(string name, float lvl) =>
+    syminfo.ticker + ": המחיר הגיע ל-" + name + " " + str.tostring(lvl, "0.00#")
+
+if barstate.isrealtime
+    if alertDay != dT
+        alertDay := dT
+        hitAH := false
+        hitAL := false
+        hitLH := false
+        hitLL := false
+        hitM  := false
+
+    if alertAsia and aDone
+        if f_touched(lastPx, close, aHi) and not (alertOnce and hitAH)
+            hitAH := true
+            alert(f_msg("Asia High", aHi), alert.freq_all)
+        if f_touched(lastPx, close, aLo) and not (alertOnce and hitAL)
+            hitAL := true
+            alert(f_msg("Asia Low", aLo), alert.freq_all)
+    if alertLon and lDone
+        if f_touched(lastPx, close, lHi) and not (alertOnce and hitLH)
+            hitLH := true
+            alert(f_msg("London High", lHi), alert.freq_all)
+        if f_touched(lastPx, close, lLo) and not (alertOnce and hitLL)
+            hitLL := true
+            alert(f_msg("London Low", lLo), alert.freq_all)
+    if alertMid
+        if f_touched(lastPx, close, mid) and not (alertOnce and hitM)
+            hitM := true
+            alert(f_msg("50% Daily Range", mid), alert.freq_all)
+
+    lastPx := close
