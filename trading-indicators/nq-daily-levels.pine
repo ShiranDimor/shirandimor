@@ -193,7 +193,7 @@ f_msg(string name, float lvl) =>
     syminfo.ticker + ": המחיר הגיע ל-" + name + " " + str.tostring(lvl, "0.00#")
 
 if barstate.isrealtime
-    if alertDay != dT
+    if na(alertDay) or alertDay != dT
         alertDay := dT
         hitAH := false
         hitAL := false
