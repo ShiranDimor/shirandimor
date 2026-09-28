@@ -192,6 +192,13 @@ f_touched(float prev, float px, float lvl) =>
 f_msg(string name, float lvl) =>
     syminfo.ticker + ": המחיר הגיע ל-" + name + " " + str.tostring(lvl, "0.00#")
 
+// אירועי נגיעה בטיק הנוכחי (מתאפסים בכל ריצה)
+bool tAH = false
+bool tAL = false
+bool tLH = false
+bool tLL = false
+bool tM  = false
+
 if barstate.isrealtime
     if na(alertDay) or alertDay != dT
         alertDay := dT
@@ -204,20 +211,38 @@ if barstate.isrealtime
     if alertAsia and aDone
         if f_touched(lastPx, close, aHi) and not (alertOnce and hitAH)
             hitAH := true
-            alert(f_msg("Asia High", aHi), alert.freq_all)
+            tAH := true
         if f_touched(lastPx, close, aLo) and not (alertOnce and hitAL)
             hitAL := true
-            alert(f_msg("Asia Low", aLo), alert.freq_all)
+            tAL := true
     if alertLon and lDone
         if f_touched(lastPx, close, lHi) and not (alertOnce and hitLH)
             hitLH := true
-            alert(f_msg("London High", lHi), alert.freq_all)
+            tLH := true
         if f_touched(lastPx, close, lLo) and not (alertOnce and hitLL)
             hitLL := true
-            alert(f_msg("London Low", lLo), alert.freq_all)
+            tLL := true
     if alertMid
         if f_touched(lastPx, close, mid) and not (alertOnce and hitM)
             hitM := true
-            alert(f_msg("50% Daily Range", mid), alert.freq_all)
+            tM := true
 
     lastPx := close
+
+if tAH
+    alert(f_msg("Asia High", aHi), alert.freq_all)
+if tAL
+    alert(f_msg("Asia Low", aLo), alert.freq_all)
+if tLH
+    alert(f_msg("London High", lHi), alert.freq_all)
+if tLL
+    alert(f_msg("London Low", lLo), alert.freq_all)
+if tM
+    alert(f_msg("50% Daily Range", mid), alert.freq_all)
+
+// התראות עם שם, שמופיעות ברשימת "תנאי" בחלון יצירת ההתראה
+alertcondition(tAH or tAL or tLH or tLL or tM, "NQ Levels - נגיעה בקו", "{{ticker}}: המחיר הגיע לאחד הקווים (אסיה / לונדון / 50%). מחיר: {{close}}")
+alertcondition(tAH, "Asia High - נגיעה", "{{ticker}}: המחיר הגיע ל-Asia High. מחיר: {{close}}")
+alertcondition(tAL, "Asia Low - נגיעה", "{{ticker}}: המחיר הגיע ל-Asia Low. מחיר: {{close}}")
+alertcondition(tLH, "London High - נגיעה", "{{ticker}}: המחיר הגיע ל-London High. מחיר: {{close}}")
+alertcondition(tLL, "London Low - נגיעה", "{{ticker}}: המחיר הגיע ל-London Low. מחיר: {{close}}")
