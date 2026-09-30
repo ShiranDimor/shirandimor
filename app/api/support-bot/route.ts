@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/lib/instantLogin';
 import { callSupportBot, extractContactFromText, extractGenderFromText, buildRuntimeContextBlock } from '@/lib/supportBot';
 import { classifyContactMonday, syncGenericLead } from '@/lib/tradingPlan/monday';
 import { getOrCreateConversation, getNextLive, getMonthTradeStats } from '@/lib/supportBotConversation';
+import { isPhoneBlocked } from '@/lib/blockedContacts';
 
 // מזהה את הפונה: אם יש טוקן התחברות תקין - זה המשתמש האמיתי (וגם הפרופיל שלו נטען לסיווג מדויק).
 // אם אין טוקן (מבקר/ת אנונימי/ת באתר) - המזהה הוא anonId שנוצר ונשמר בדפדפן של המבקר עצמו,
@@ -79,6 +80,11 @@ export async function POST(request: Request) {
   // הזדמנותי מתוך טקסט חופשי, כי זה כבר הוזן במפורש ע"י הפונה עצמו/ה
   const explicitPhone = typeof gatePhone === 'string' && gatePhone.trim() ? gatePhone.trim() : null;
   const explicitName = typeof gateName === 'string' && gateName.trim() ? gateName.trim() : null;
+
+  // איש קשר חסום - דור לא ממשיכה איתו בשיחה (בלי לחשוף שהוא חסום), ולא מסנכרנת שום ליד למאנדיי
+  if (await isPhoneBlocked(explicitPhone || conversation?.contact_phone)) {
+    return NextResponse.json({ reply: 'תודה על הפנייה - כרגע לא ניתן להמשיך את השיחה כאן. אפשר לפנות ישירות בטלפון.' });
+  }
 
   // זיהוי הזדמנותי: אם הפונה שיתף טלפון/מייל תוך כדי השיחה ועדיין אין לנו את זה שמור - שומרים,
   // ואם הזהות עדיין לא ידועה, מסווגים מול מאנדיי לפי הפרט החדש

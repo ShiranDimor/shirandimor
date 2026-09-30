@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/instantLogin';
 import { isActiveSubscriber } from '@/lib/subscriberStatus';
 import { isContactInSubscribersGroupMonday, createLiveRegistrationLead } from '@/lib/tradingPlan/monday';
+import { isPhoneBlocked } from '@/lib/blockedContacts';
 
 // POST - הרשמה ללייב. מנוי פעיל (מזוהה לפי טוקן) נרשם ישירות ומקבל את פרטי ההצטרפות.
 // מי שאינו מנוי משאיר פרטי קשר, נהפך לליד ב-Monday.com (בדיוק כמו טופס קבוצת העדכונים), ושירן
@@ -49,6 +50,12 @@ export async function POST(request: Request) {
   // לא מנוי - צריך שם וטלפון כדי להיהפך לליד
   if (!name || !phone) {
     return NextResponse.json({ error: 'חסרים פרטים' }, { status: 400 });
+  }
+
+  // איש קשר חסום - מגיב בדיוק כמו הרשמה ללייב סגור (בלי לחשוף שהוא חסום), בלי לשמור הרשמה,
+  // ליצור ליד, או למסור את פרטי ההצטרפות (גם אם הלייב פתוח לכולם)
+  if (await isPhoneBlocked(phone)) {
+    return NextResponse.json({ ok: true, isSubscriber: false });
   }
 
   const isSubscriberByContact = (await isActiveSubscriber(phone, email || null)) || (await isContactInSubscribersGroupMonday(phone, email || null));
