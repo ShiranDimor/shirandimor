@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { isActiveSubscriber } from '@/lib/subscriberStatus';
 import { syncGenericLead } from '@/lib/tradingPlan/monday';
 import { supabaseAdmin } from '@/lib/instantLogin';
+import { isPhoneBlocked } from '@/lib/blockedContacts';
 
 const TRIAL_SOURCE_LABEL = 'ימי ניסיון - עדכונים (7 ימים)';
 
@@ -19,6 +20,11 @@ export async function POST(request: Request) {
   const alreadySubscriber = await isActiveSubscriber(phone, undefined).catch(() => false);
   if (alreadySubscriber) {
     return NextResponse.json({ ok: true, alreadySubscriber: true });
+  }
+
+  // איש קשר חסום - מגיב כהרשמה רגילה (בלי לחשוף שהוא חסום) אבל לא שומר ולא יוצר שום ליד
+  if (await isPhoneBlocked(phone)) {
+    return NextResponse.json({ ok: true });
   }
 
   const { data: signup, error: insertError } = await supabaseAdmin

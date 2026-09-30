@@ -281,6 +281,12 @@ export default function AdminDashboard() {
           <div className="at-count">כלי פנימי</div>
         </Link>
 
+        <Link href="/admin/blocked-contacts" className="admin-tile">
+          <div className="at-icon">🚫</div>
+          <div className="at-title">אנשי קשר חסומים</div>
+          <div className="at-count">כלי פנימי</div>
+        </Link>
+
         <Link href="/admin/trial-signups" className={`admin-tile ${trialSignupsCount > 0 ? 'attention' : ''}`}>
           <div className="at-icon">🎁</div>
           <div className="at-title">נרשמים לימי ניסיון</div>
