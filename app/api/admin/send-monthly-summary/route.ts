@@ -18,13 +18,19 @@ async function requireAdmin(request: Request) {
 }
 
 // POST - שליחה ידנית של סיכום החודש למייל, בלחיצת כפתור מעמוד הניהול - בדיוק אותה שליחה
-// שקורית אוטומטית ב-cron, רק על-פי דרישה
+// שקורית אוטומטית ב-cron, רק על-פי דרישה. month אופציונלי בפורמט "YYYY-MM" - לבחירת חודש
+// אחר מהחודש הנוכחי (למשל ב-1 באוקטובר לשלוח את סיכום ספטמבר)
 export async function POST(request: Request) {
   const admin = await requireAdmin(request);
   if (!admin) return NextResponse.json({ error: 'אין הרשאת ניהול' }, { status: 403 });
 
+  const body = await request.json().catch(() => ({}));
+  const monthParam = typeof body?.month === 'string' ? body.month : null;
+  const match = monthParam?.match(/^(\d{4})-(\d{2})$/);
+  const targetMonth = match ? { year: Number(match[1]), month: Number(match[2]) - 1 } : undefined;
+
   try {
-    const result = await sendMonthlySummaryEmail();
+    const result = await sendMonthlySummaryEmail(targetMonth);
     return NextResponse.json({ ok: true, ...result });
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : 'שגיאה בשליחת הסיכום' }, { status: 500 });
