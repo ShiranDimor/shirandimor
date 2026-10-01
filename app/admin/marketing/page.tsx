@@ -79,6 +79,7 @@ export default function AdminMarketingPage() {
   const [variantCount, setVariantCount] = useState(1);
   const [generating, setGenerating] = useState(false);
   const [genError, setGenError] = useState('');
+  const [manualImageBase64, setManualImageBase64] = useState<string | null>(null);
 
   const [posts, setPosts] = useState<Post[]>([]);
   const [loadingPosts, setLoadingPosts] = useState(false);
@@ -288,6 +289,12 @@ export default function AdminMarketingPage() {
     setTimeout(() => setVoiceSavedMsg(''), 2500);
   }
 
+  function handleManualImageChange(file: File) {
+    const reader = new FileReader();
+    reader.onload = () => setManualImageBase64(String(reader.result).split(',')[1] || null);
+    reader.readAsDataURL(file);
+  }
+
   async function handleGenerate() {
     if (!topic.trim()) { setGenError('צריך לכתוב נושא/בריף קצר'); return; }
     setGenerating(true);
@@ -296,13 +303,14 @@ export default function AdminMarketingPage() {
       const res = await fetch('/api/admin/marketing/posts', {
         method: 'POST',
         headers: await authHeaders(),
-        body: JSON.stringify({ platform, contentType, topic, variantCount }),
+        body: JSON.stringify({ platform, contentType, topic, variantCount, imageBase64: manualImageBase64 }),
       });
       const data = await res.json().catch(() => null);
       if (!res.ok || !data) {
         setGenError(data?.error || 'שגיאה ביצירת התוכן');
       } else {
         setTopic('');
+        setManualImageBase64(null);
         setStatusFilter('draft');
         await loadPosts();
       }
@@ -642,6 +650,36 @@ export default function AdminMarketingPage() {
             placeholder="למשל: למה חשוב לקבוע סטופ לוס לפני כניסה לעסקה, ולא אחרי"
             style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--bg-surface)', color: 'var(--text-primary)', fontSize: '12.5px', fontFamily: 'inherit', resize: 'vertical' }}
           />
+        </div>
+
+        <div className="field">
+          <label>תמונה/קובץ לצרף לפוסט (לא חובה - אפשר גם להוסיף אחר כך)</label>
+          {manualImageBase64 ? (
+            <div>
+              <img
+                src={`data:image/png;base64,${manualImageBase64}`}
+                alt="תצוגה מקדימה"
+                style={{ width: '100%', maxWidth: '240px', borderRadius: '10px', border: '1px solid var(--border-hairline-strong)', display: 'block', marginBottom: '6px' }}
+              />
+              <button
+                className="nav-link"
+                style={{ background: 'none', border: 'none', color: 'var(--loss)', cursor: 'pointer', padding: 0, fontSize: '12px' }}
+                onClick={() => setManualImageBase64(null)}
+              >
+                הסרת התמונה
+              </button>
+            </div>
+          ) : (
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleManualImageChange(file);
+              }}
+              style={{ fontSize: '12.5px' }}
+            />
+          )}
         </div>
 
         <div className="field">
