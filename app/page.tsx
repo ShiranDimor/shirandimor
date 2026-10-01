@@ -161,6 +161,12 @@ export default function HomePage() {
           </Link>
         )}
 
+        {!showLeadForm && !hasFullAccess && (
+          <Link href="/trial" className="btn-outline" style={{ display: 'block', textAlign: 'center', textDecoration: 'none', marginBottom: '10px' }}>
+            🚀 7 ימי ניסיון ללא עלות לקבוצת הסוחרים
+          </Link>
+        )}
+
         {showLeadForm && !leadSubmitted && (
           <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-hairline-strong)', borderRight: '3px solid var(--profit)', borderRadius: '10px', padding: '16px', marginBottom: '10px' }}>
             <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '14px', textAlign: 'center' }}>
