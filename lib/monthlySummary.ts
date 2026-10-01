@@ -110,11 +110,19 @@ function tradeRowHtml(t: Trade, kind: 'open' | 'closed') {
     </tr>`;
 }
 
-async function buildSummaryHtml() {
+// targetMonth אופציונלי (month 0-אינדקס, כמו ב-Date רגיל) - לשליחה ידנית של חודש שעבר (למשל
+// 1 באוקטובר רוצים את סיכום ספטמבר), בלי זה ברירת המחדל היא החודש הנוכחי עד הרגע הזה ממש
+async function buildSummaryHtml(targetMonth?: { year: number; month: number }) {
   const now = new Date();
   // מחושב לפי שעון ישראל ולא UTC (זמן השרת) - כדי שתחילת החודש תתאים לחצות האמיתית בישראל
   const nowIsrael = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Jerusalem' }));
-  const monthStart = new Date(nowIsrael.getFullYear(), nowIsrael.getMonth(), 1);
+  const year = targetMonth?.year ?? nowIsrael.getFullYear();
+  const month = targetMonth?.month ?? nowIsrael.getMonth();
+  const isCurrentMonth = year === nowIsrael.getFullYear() && month === nowIsrael.getMonth();
+
+  const monthStart = new Date(year, month, 1);
+  // חודש שעבר (לא הנוכחי) - הטווח הוא החודש השלם, עד הרגע האחרון שלו, לא עד "עכשיו"
+  const monthEnd = isCurrentMonth ? nowIsrael : new Date(year, month + 1, 0, 23, 59, 59, 999);
 
   const { data: allTrades, error } = await supabaseAdmin
     .from('trades')
@@ -131,7 +139,7 @@ async function buildSummaryHtml() {
     .sort((a, b) => new Date(b.opened_at).getTime() - new Date(a.opened_at).getTime());
 
   const closedThisWeek = trades
-    .filter((t) => t.status === 'closed' && t.closed_at && new Date(t.closed_at) >= monthStart)
+    .filter((t) => t.status === 'closed' && t.closed_at && new Date(t.closed_at) >= monthStart && new Date(t.closed_at) <= monthEnd)
     .sort((a, b) => new Date(b.closed_at as string).getTime() - new Date(a.closed_at as string).getTime());
 
   const wins = closedThisWeek.filter((t) => (t.realized_pnl_usd ?? 0) >= 0);
@@ -140,7 +148,7 @@ async function buildSummaryHtml() {
   const winRate = closedThisWeek.length > 0 ? (wins.length / closedThisWeek.length) * 100 : null;
   const totalOpenNow = trades.filter((t) => t.status === 'open').length;
 
-  const rangeLabel = `${formatDate(monthStart.toISOString())} - ${formatDate(now.toISOString())}`;
+  const rangeLabel = `${formatDate(monthStart.toISOString())} - ${formatDate(monthEnd.toISOString())}`;
 
   const html = `
   <div dir="rtl" style="font-family: Arial, Helvetica, sans-serif; background:#f4f4f5; padding:24px 12px;">
@@ -261,8 +269,8 @@ function buildWhatsappSummaryText(data: Awaited<ReturnType<typeof buildSummaryHt
   return lines.join('\n');
 }
 
-export async function getMonthlySummaryImage() {
-  const { html, rangeLabel } = await buildSummaryHtml();
+export async function getMonthlySummaryImage(targetMonth?: { year: number; month: number }) {
+  const { html, rangeLabel } = await buildSummaryHtml(targetMonth);
   const imageBase64 = await renderHtmlToImageBase64(html);
   return { imageBase64, rangeLabel };
 }
@@ -270,8 +278,9 @@ export async function getMonthlySummaryImage() {
 // שולח את סיכום החודש למייל של שירן - בין אם דרך ה-cron האוטומטי (יום ראשון) ובין אם בלחיצת
 // כפתור ידנית מעמוד הניהול. תמיד שולח למייל הקבוע shiran@shirandimor.com (לא לכתובת שרירותית),
 // כדי שאי אפשר יהיה להשתמש בזה כדי לשלוח מייל למישהו אחר.
-export async function sendMonthlySummaryEmail() {
-  const summaryData = await buildSummaryHtml();
+// targetMonth אופציונלי - לשליחה ידנית של חודש שעבר (למשל ביקשה ב-1.10 את סיכום ספטמבר)
+export async function sendMonthlySummaryEmail(targetMonth?: { year: number; month: number }) {
+  const summaryData = await buildSummaryHtml(targetMonth);
   const { html, rangeLabel, openedThisWeekStillOpen, closedThisWeek } = summaryData;
 
   const apiKey = process.env.RESEND_API_KEY;

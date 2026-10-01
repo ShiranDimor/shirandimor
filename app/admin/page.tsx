@@ -28,6 +28,10 @@ export default function AdminDashboard() {
 
   const [sendingSummary, setSendingSummary] = useState(false);
   const [summaryMessage, setSummaryMessage] = useState('');
+  const [summaryMonth, setSummaryMonth] = useState(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  });
 
   async function handleRefreshAllPrices() {
     setRefreshing(true);
@@ -67,7 +71,8 @@ export default function AdminDashboard() {
     try {
       const res = await fetch('/api/admin/send-monthly-summary', {
         method: 'POST',
-        headers: { Authorization: `Bearer ${session?.access_token}` },
+        headers: { Authorization: `Bearer ${session?.access_token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ month: summaryMonth }),
       });
       const data = await res.json();
 
@@ -309,9 +314,19 @@ export default function AdminDashboard() {
         </p>
       )}
 
-      <button className="btn-outline" style={{ width: '100%', marginTop: '8px' }} onClick={handleSendMonthlySummary} disabled={sendingSummary}>
-        {sendingSummary ? 'שולחים...' : '📧 שליחת סיכום החודש למייל'}
-      </button>
+      <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+        <input
+          type="month"
+          className="tp-text-input"
+          style={{ minHeight: 'auto', width: '140px', flexShrink: 0 }}
+          value={summaryMonth}
+          onChange={(e) => setSummaryMonth(e.target.value)}
+          max={`${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`}
+        />
+        <button className="btn-outline" style={{ flex: 1 }} onClick={handleSendMonthlySummary} disabled={sendingSummary}>
+          {sendingSummary ? 'שולחים...' : '📧 שליחת סיכום החודש למייל'}
+        </button>
+      </div>
       {summaryMessage && (
         <p style={{ fontSize: '12px', color: summaryMessage.startsWith('שגיאה') ? 'var(--loss)' : 'var(--profit)', marginTop: '10px', textAlign: 'center' }}>
           {summaryMessage}
