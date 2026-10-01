@@ -6,6 +6,33 @@ import { isPhoneBlocked } from '@/lib/blockedContacts';
 
 const TRIAL_SOURCE_LABEL = 'ימי ניסיון - עדכונים (7 ימים)';
 
+// מייל התראה ישיר לשירן, בלי תלות בהתראות של מאנדיי עצמו - מאנדיי לא שולח התראה אוטומטית
+// על כרטיס שנוצר דרך ה-API (רק על פעולות שנעשות ידנית באפליקציה, או דרך אוטומציה שהוגדרה
+// בלוח), אז זו הדרך היחידה שמבטיחה שהיא תדע על ההרשמה מיד, גם אם הסנכרון למאנדיי עצמו נכשל
+async function notifyNewTrialSignup(name: string, phone: string) {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    console.error('RESEND_API_KEY לא מוגדר - לא ניתן לשלוח מייל התראה על הרשמת ניסיון');
+    return;
+  }
+
+  try {
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        from: 'התראות האתר <noreply@shirandimor.com>',
+        to: 'shiran@shirandimor.com',
+        subject: 'הרשמה חדשה ל-7 ימי ניסיון',
+        text: `מישהו/י נרשם/ה ל-7 ימי ניסיון.\n\nשם: ${name}\nנייד: ${phone}\n\nלרשימת הנרשמים: https://www.shirandimor.com/admin/trial-signups`,
+      }),
+    });
+    if (!res.ok) console.error('שגיאה בשליחת מייל התראה על הרשמת ניסיון', await res.text());
+  } catch (e) {
+    console.error('שגיאה בשליחת מייל התראה על הרשמת ניסיון', e);
+  }
+}
+
 // דף הרשמה לסבב "7 ימי ניסיון" ששירן שולחת לקבוצת העדכונים. syncGenericLead תמיד יוצר כרטיס
 // חדש וברור בלידים חדשים (forceNew) - ואם המספר כבר קיים במקום אחר בלוח, הוא מסמן את הכרטיס
 // כ"ליד כפול" במקום ליצור אותו כליד רגיל, כך ששירן יודעת מיד שזה מישהו מוכר
@@ -36,6 +63,8 @@ export async function POST(request: Request) {
   if (insertError) {
     console.error('שגיאה בשמירת הרשמת ניסיון', insertError);
   }
+
+  await notifyNewTrialSignup(name, phone);
 
   const mondayResult = await syncGenericLead({
     phone,
