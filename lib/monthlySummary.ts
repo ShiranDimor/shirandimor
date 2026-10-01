@@ -121,8 +121,14 @@ async function buildSummaryHtml(targetMonth?: { year: number; month: number }) {
   const isCurrentMonth = year === nowIsrael.getFullYear() && month === nowIsrael.getMonth();
 
   const monthStart = new Date(year, month, 1);
-  // חודש שעבר (לא הנוכחי) - הטווח הוא החודש השלם, עד הרגע האחרון שלו, לא עד "עכשיו"
-  const monthEnd = isCurrentMonth ? nowIsrael : new Date(year, month + 1, 0, 23, 59, 59, 999);
+  // גבול עליון לסינון (לא לתצוגה) - תחילת החודש הבא, לא "23:59:59 של היום האחרון": זמן כזה
+  // ממש בסוף היום, אחרי שעובר דרך formatDate (שממיר לשעון ישראל, UTC+2/3), עלול "להידחף" כבר
+  // ליום הראשון של החודש הבא בתצוגה. גם לסינון עצמו "<" מול תחילת החודש הבא מדויק יותר מ-"<="
+  // מול רגע מסוים בתוך היום האחרון, כי הוא תמיד כולל את כל היום האחרון במלואו
+  const nextMonthStart = new Date(year, month + 1, 1);
+  const filterEnd = isCurrentMonth ? nowIsrael : nextMonthStart;
+  // חודש שעבר (לא הנוכחי) - לתצוגה בלבד: היום האחרון של החודש בחצות (00:00), לא "עכשיו"
+  const displayEnd = isCurrentMonth ? nowIsrael : new Date(year, month + 1, 0);
 
   const { data: allTrades, error } = await supabaseAdmin
     .from('trades')
@@ -139,7 +145,7 @@ async function buildSummaryHtml(targetMonth?: { year: number; month: number }) {
     .sort((a, b) => new Date(b.opened_at).getTime() - new Date(a.opened_at).getTime());
 
   const closedThisWeek = trades
-    .filter((t) => t.status === 'closed' && t.closed_at && new Date(t.closed_at) >= monthStart && new Date(t.closed_at) <= monthEnd)
+    .filter((t) => t.status === 'closed' && t.closed_at && new Date(t.closed_at) >= monthStart && new Date(t.closed_at) < filterEnd)
     .sort((a, b) => new Date(b.closed_at as string).getTime() - new Date(a.closed_at as string).getTime());
 
   const wins = closedThisWeek.filter((t) => (t.realized_pnl_usd ?? 0) >= 0);
@@ -148,7 +154,7 @@ async function buildSummaryHtml(targetMonth?: { year: number; month: number }) {
   const winRate = closedThisWeek.length > 0 ? (wins.length / closedThisWeek.length) * 100 : null;
   const totalOpenNow = trades.filter((t) => t.status === 'open').length;
 
-  const rangeLabel = `${formatDate(monthStart.toISOString())} - ${formatDate(monthEnd.toISOString())}`;
+  const rangeLabel = `${formatDate(monthStart.toISOString())} - ${formatDate(displayEnd.toISOString())}`;
 
   const html = `
   <div dir="rtl" style="font-family: Arial, Helvetica, sans-serif; background:#f4f4f5; padding:24px 12px;">
