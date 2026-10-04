@@ -255,10 +255,24 @@ async function buildSummaryHtml(targetMonth?: { year: number; month: number }, a
 // טקסט "מפוצץ" לשליחה ידנית בוואטסאפ (לצד התמונה) - עם אימוג'ים ופירוט מלא של כל עסקה,
 // כדי שאפשר יהיה להדביק אותו כטקסט חופשי בלי תלות ביכולת שליחת תמונות אוטומטית
 function buildWhatsappSummaryText(data: Awaited<ReturnType<typeof buildSummaryHtml>>) {
-  const { rangeLabel, openedThisWeekStillOpen, closedThisWeek, avgPct, winRate, totalOpenNow, audience } = data;
+  const { rangeLabel, avgPct, winRate, closedThisWeek, totalOpenNow, audience } = data;
+
+  // לקבוצת הסוחרים ההודעה היא רק תזכורת המחיר המקסימלי - הם רואים את הסטטיסטיקה והעסקאות
+  // עצמן בתמונה המצורפת, אין טעם לכפול את זה גם בטקסט
+  if (audience === 'traders') {
+    return [
+      'חברים, שימו לב למצב התיק (תמיד אפשר להיכנס גם לתיק המלא באתר) - בעיקר לעסקאות הפתוחות.',
+      '',
+      'כל עוד המחיר עוד לא עבר את המחיר המקסימלי לכניסה (יש עמודה ייעודית לזה בתיק הפתוחות באתר) - עדיין אפשר להיכנס לעסקה.',
+      '',
+      'זה בדיוק היתרון בעסקאות סווינג: לא צריך להיות מחוברים 24/7 לנייד, ואם נכנסתם אחרי שעה, שעתיים, יום או יומיים - זה בסדר גמור, כל עוד המחיר המקסימלי לא נחצה.',
+      '',
+      'יום שקט לכולנו 🙏',
+    ].join('\n');
+  }
 
   const lines: string[] = [];
-  lines.push(audience === 'traders' ? `🚀 *סיכום החודש - קבוצת הסוחרים "${GROUP_NAME}"*` : `🚀 *סיכום החודש - קבוצת העדכונים*`);
+  lines.push('🚀 *סיכום החודש - קבוצת העדכונים*');
   lines.push(`📅 ${rangeLabel}`);
   lines.push('');
   lines.push(`💰 תשואה ממוצעת החודש: ${avgPct !== null ? `${avgPct >= 0 ? '+' : ''}${avgPct.toFixed(2)}%` : '—'}`);
@@ -267,42 +281,8 @@ function buildWhatsappSummaryText(data: Awaited<ReturnType<typeof buildSummaryHt
   lines.push(`📈 עסקאות פתוחות כרגע: ${totalOpenNow}`);
   lines.push('');
 
-  // לקבוצת העדכונים לא מפרטים עסקה-עסקה בטקסט (הם רואים את הטבלה המטושטשת בתמונה עצמה) -
-  // רק סטטיסטיקת הסיכום למעלה ואז קריאה לפעולה. לקבוצת הסוחרים הפירוט המלא נשאר כמו תמיד
-  if (audience === 'traders') {
-    if (openedThisWeekStillOpen.length > 0) {
-      lines.push('*עסקאות פתוחות כרגע:*');
-      for (const t of openedThisWeekStillOpen) {
-        const p = pctOpen(t);
-        const dirLabel = t.direction === 'long' ? 'לונג' : 'שורט';
-        const emoji = (p ?? 0) >= 0 ? '🟢' : '🔴';
-        lines.push(`${emoji} ${t.symbol} (${dirLabel}) | כניסה ${formatDate(t.opened_at)} ב-$${t.entry_price} | כרגע ${p !== null ? `${p >= 0 ? '+' : ''}${p.toFixed(2)}%` : '—'}`);
-      }
-      lines.push('');
-    }
-
-    if (closedThisWeek.length > 0) {
-      lines.push('*עסקאות שנסגרו החודש:*');
-      for (const t of closedThisWeek) {
-        const p = pct(t);
-        const dirLabel = t.direction === 'long' ? 'לונג' : 'שורט';
-        const emoji = (p ?? 0) >= 0 ? '🎯' : '⚠️';
-        lines.push(`${emoji} ${t.symbol} (${dirLabel}) | כניסה ${formatDate(t.opened_at)} | $${t.entry_price} ← $${t.exit_price} | ${p !== null ? `${p >= 0 ? '+' : ''}${p.toFixed(2)}%` : '—'} | נסגרה ${formatDate(t.closed_at as string)}`);
-      }
-      lines.push('');
-    }
-
-    lines.push('חברים, שימו לב למצב התיק (תמיד אפשר להיכנס גם לתיק המלא באתר) - בעיקר לעסקאות הפתוחות.');
-    lines.push('');
-    lines.push('כל עוד המחיר עוד לא עבר את המחיר המקסימלי לכניסה (יש עמודה ייעודית לזה בתיק הפתוחות באתר) - עדיין אפשר להיכנס לעסקה.');
-    lines.push('');
-    lines.push('זה בדיוק היתרון בעסקאות סווינג: לא צריך להיות מחוברים 24/7 לנייד, ואם נכנסתם אחרי שעה, שעתיים, יום או יומיים - זה בסדר גמור, כל עוד המחיר המקסימלי לא נחצה.');
-    lines.push('');
-    lines.push('יום שקט לכולנו 🙏');
-  } else {
-    lines.push('רוצים לראות מה קרה השבוע האחרון בקבוצת הסוחרים? בשקט, בלי רעש וצלצולים, ובלי אלפי שקלים לקורס תיאורטי - 7 ימי ניסיון ללא עלות:');
-    lines.push(TRIAL_SIGNUP_URL);
-  }
+  lines.push('רוצים לראות מה קרה השבוע האחרון בקבוצת הסוחרים? בשקט, בלי רעש וצלצולים, ובלי אלפי שקלים לקורס תיאורטי - 7 ימי ניסיון ללא עלות:');
+  lines.push(TRIAL_SIGNUP_URL);
 
   return lines.join('\n');
 }
