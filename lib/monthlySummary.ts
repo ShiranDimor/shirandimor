@@ -25,14 +25,12 @@ type Trade = {
 
 const TRIAL_SIGNUP_URL = 'https://www.shirandimor.com/trial';
 const GROUP_NAME = 'מדברים עסקאות';
-const UPDATES_GROUP_NAME = 'מדברים עסקאות - קבוצת עדכונים';
 const SITE_URL = 'https://www.shirandimor.com';
 
 // לקבוצת העדכונים (חינמית) הסימבולים מטושטשים (כמו בכל האתר למי שאין לו/ה גישה מלאה) ואין
 // צורך בהסרת משפט ה-7 ימי ניסיון - להפך, זה בדיוק קהל היעד שלו. לקבוצת הסוחרים (בתשלום) -
 // הפוך: סימבולים גלויים (כמו שכבר היה) ובלי שום אזכור של הניסיון החינמי, כי הם כבר מנויים
 export type SummaryAudience = 'updates' | 'traders';
-const MASKED_SYMBOL = '∗∗∗∗';
 
 // חובה timeZone מפורש - זה רץ בשרת (UTC), ובלי זה עסקה שנפתחה/נסגרה בשעות הקטנות של הלילה
 // לפי שעון ישראל הייתה עלולה להיראות כאילו זה קרה יום קודם
@@ -258,7 +256,6 @@ async function buildSummaryHtml(targetMonth?: { year: number; month: number }, a
 // כדי שאפשר יהיה להדביק אותו כטקסט חופשי בלי תלות ביכולת שליחת תמונות אוטומטית
 function buildWhatsappSummaryText(data: Awaited<ReturnType<typeof buildSummaryHtml>>) {
   const { rangeLabel, openedThisWeekStillOpen, closedThisWeek, avgPct, winRate, totalOpenNow, audience } = data;
-  const blurSymbols = audience === 'updates';
 
   const lines: string[] = [];
   lines.push(audience === 'traders' ? `🚀 *סיכום החודש - קבוצת הסוחרים "${GROUP_NAME}"*` : `🚀 *סיכום החודש - קבוצת העדכונים*`);
@@ -270,32 +267,35 @@ function buildWhatsappSummaryText(data: Awaited<ReturnType<typeof buildSummaryHt
   lines.push(`📈 עסקאות פתוחות כרגע: ${totalOpenNow}`);
   lines.push('');
 
-  if (openedThisWeekStillOpen.length > 0) {
-    lines.push('*עסקאות פתוחות כרגע:*');
-    for (const t of openedThisWeekStillOpen) {
-      const p = pctOpen(t);
-      const dirLabel = t.direction === 'long' ? 'לונג' : 'שורט';
-      const emoji = (p ?? 0) >= 0 ? '🟢' : '🔴';
-      lines.push(`${emoji} ${blurSymbols ? MASKED_SYMBOL : t.symbol} (${dirLabel}) | כניסה ${formatDate(t.opened_at)} ב-$${t.entry_price} | כרגע ${p !== null ? `${p >= 0 ? '+' : ''}${p.toFixed(2)}%` : '—'}`);
+  // לקבוצת העדכונים לא מפרטים עסקה-עסקה בטקסט (הם רואים את הטבלה המטושטשת בתמונה עצמה) -
+  // רק סטטיסטיקת הסיכום למעלה ואז קריאה לפעולה. לקבוצת הסוחרים הפירוט המלא נשאר כמו תמיד
+  if (audience === 'traders') {
+    if (openedThisWeekStillOpen.length > 0) {
+      lines.push('*עסקאות פתוחות כרגע:*');
+      for (const t of openedThisWeekStillOpen) {
+        const p = pctOpen(t);
+        const dirLabel = t.direction === 'long' ? 'לונג' : 'שורט';
+        const emoji = (p ?? 0) >= 0 ? '🟢' : '🔴';
+        lines.push(`${emoji} ${t.symbol} (${dirLabel}) | כניסה ${formatDate(t.opened_at)} ב-$${t.entry_price} | כרגע ${p !== null ? `${p >= 0 ? '+' : ''}${p.toFixed(2)}%` : '—'}`);
+      }
+      lines.push('');
     }
-    lines.push('');
-  }
 
-  if (closedThisWeek.length > 0) {
-    lines.push('*עסקאות שנסגרו החודש:*');
-    for (const t of closedThisWeek) {
-      const p = pct(t);
-      const dirLabel = t.direction === 'long' ? 'לונג' : 'שורט';
-      const emoji = (p ?? 0) >= 0 ? '🎯' : '⚠️';
-      lines.push(`${emoji} ${blurSymbols ? MASKED_SYMBOL : t.symbol} (${dirLabel}) | כניסה ${formatDate(t.opened_at)} | $${t.entry_price} ← $${t.exit_price} | ${p !== null ? `${p >= 0 ? '+' : ''}${p.toFixed(2)}%` : '—'} | נסגרה ${formatDate(t.closed_at as string)}`);
+    if (closedThisWeek.length > 0) {
+      lines.push('*עסקאות שנסגרו החודש:*');
+      for (const t of closedThisWeek) {
+        const p = pct(t);
+        const dirLabel = t.direction === 'long' ? 'לונג' : 'שורט';
+        const emoji = (p ?? 0) >= 0 ? '🎯' : '⚠️';
+        lines.push(`${emoji} ${t.symbol} (${dirLabel}) | כניסה ${formatDate(t.opened_at)} | $${t.entry_price} ← $${t.exit_price} | ${p !== null ? `${p >= 0 ? '+' : ''}${p.toFixed(2)}%` : '—'} | נסגרה ${formatDate(t.closed_at as string)}`);
+      }
+      lines.push('');
     }
-    lines.push('');
-  }
 
-  if (audience === 'updates') {
-    lines.push(`🚀 להצטרפות ל-7 ימי ניסיון ללא עלות: ${TRIAL_SIGNUP_URL}`);
-  } else {
     lines.push('חברים, אם יש פער בין העסקאות שלי לשלכם - זה בסדר, רק תוודאו שאתם יודעים למה. משהו לא ברור? אני כאן בפרטי.');
+  } else {
+    lines.push('רוצים לראות מה קרה השבוע האחרון בקבוצת הסוחרים? בשקט, בלי רעש וצלצולים, ובלי אלפי שקלים לקורס תיאורטי - 7 ימי ניסיון ללא עלות:');
+    lines.push(TRIAL_SIGNUP_URL);
   }
 
   return lines.join('\n');
