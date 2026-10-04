@@ -241,7 +241,12 @@ async function buildSummaryHtml(targetMonth?: { year: number; month: number }, a
           <div style="font-size:14.5px;font-weight:700;color:#111;margin-bottom:6px;">🚀 קבוצת הסוחרים &quot;${GROUP_NAME}&quot;</div>
           <div style="font-size:13px;color:#666;">להצטרפות ל-7 ימי ניסיון ללא עלות כנסו ללינק</div>
         </div>
-      </div>` : '<div style="padding-bottom:16px;"></div>'}
+      </div>` : `
+      <div style="padding:6px 16px 24px;text-align:center;">
+        <div style="background:#f4f4f5;border:1px solid #e5e5e5;border-radius:12px;padding:16px;">
+          <div style="font-size:13px;color:#555;">חברים, אם יש פער בין העסקאות שלי לשלכם - זה בסדר, רק תוודאו שאתם יודעים למה. משהו לא ברור? אני כאן בפרטי.</div>
+        </div>
+      </div>`}
 
     </div>
   </div>`;
@@ -289,6 +294,8 @@ function buildWhatsappSummaryText(data: Awaited<ReturnType<typeof buildSummaryHt
 
   if (audience === 'updates') {
     lines.push(`🚀 להצטרפות ל-7 ימי ניסיון ללא עלות: ${TRIAL_SIGNUP_URL}`);
+  } else {
+    lines.push('חברים, אם יש פער בין העסקאות שלי לשלכם - זה בסדר, רק תוודאו שאתם יודעים למה. משהו לא ברור? אני כאן בפרטי.');
   }
 
   return lines.join('\n');
