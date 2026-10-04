@@ -255,10 +255,10 @@ async function buildSummaryHtml(targetMonth?: { year: number; month: number }, a
 // טקסט "מפוצץ" לשליחה ידנית בוואטסאפ (לצד התמונה) - עם אימוג'ים ופירוט מלא של כל עסקה,
 // כדי שאפשר יהיה להדביק אותו כטקסט חופשי בלי תלות ביכולת שליחת תמונות אוטומטית
 function buildWhatsappSummaryText(data: Awaited<ReturnType<typeof buildSummaryHtml>>) {
-  const { rangeLabel, avgPct, winRate, closedThisWeek, totalOpenNow, audience } = data;
+  const { audience } = data;
 
-  // לקבוצת הסוחרים ההודעה היא רק תזכורת המחיר המקסימלי - הם רואים את הסטטיסטיקה והעסקאות
-  // עצמן בתמונה המצורפת, אין טעם לכפול את זה גם בטקסט
+  // שתי ההודעות קצרות ומכוונות בכוונה - הסטטיסטיקה והעסקאות עצמן כבר נמצאות בתמונה המצורפת,
+  // אין טעם לכפול אותן גם בטקסט שמתלווה אליה
   if (audience === 'traders') {
     return [
       'חברים, שימו לב למצב התיק (תמיד אפשר להיכנס גם לתיק המלא באתר) - בעיקר לעסקאות הפתוחות.',
@@ -267,24 +267,17 @@ function buildWhatsappSummaryText(data: Awaited<ReturnType<typeof buildSummaryHt
       '',
       'זה בדיוק היתרון בעסקאות סווינג: לא צריך להיות מחוברים 24/7 לנייד, ואם נכנסתם אחרי שעה, שעתיים, יום או יומיים - זה בסדר גמור, כל עוד המחיר המקסימלי לא נחצה.',
       '',
-      'יום שקט לכולנו 🙏',
+      'יום שקט לכולנו 🙏🏾',
     ].join('\n');
   }
 
-  const lines: string[] = [];
-  lines.push('🚀 *סיכום החודש - קבוצת העדכונים*');
-  lines.push(`📅 ${rangeLabel}`);
-  lines.push('');
-  lines.push(`💰 תשואה ממוצעת החודש: ${avgPct !== null ? `${avgPct >= 0 ? '+' : ''}${avgPct.toFixed(2)}%` : '—'}`);
-  lines.push(`✅ אחוז הצלחה: ${winRate !== null ? winRate.toFixed(0) + '%' : '—'}`);
-  lines.push(`🔒 עסקאות שנסגרו החודש: ${closedThisWeek.length}`);
-  lines.push(`📈 עסקאות פתוחות כרגע: ${totalOpenNow}`);
-  lines.push('');
-
-  lines.push('רוצים לראות מה קרה השבוע האחרון בקבוצת הסוחרים? בשקט, בלי רעש וצלצולים, ובלי אלפי שקלים לקורס תיאורטי - 7 ימי ניסיון ללא עלות:');
-  lines.push(TRIAL_SIGNUP_URL);
-
-  return lines.join('\n');
+  return [
+    'בוקר טוב חברים',
+    'שימו לב מה היה לנו שבוע שעבר בקבוצת הסוחרים',
+    'בשקט, בלי רעש וצלצולים, ובלי אלפי שקלים לקורס תיאורטי - 7 ימי ניסיון ללא עלות:',
+    TRIAL_SIGNUP_URL,
+    'יום שקט לכולנו 🙏🏾',
+  ].join('\n');
 }
 
 export async function getMonthlySummaryImage(targetMonth?: { year: number; month: number }, audience: SummaryAudience = 'traders') {
