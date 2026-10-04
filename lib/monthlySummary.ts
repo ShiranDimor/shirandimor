@@ -241,8 +241,11 @@ async function buildSummaryHtml(targetMonth?: { year: number; month: number }, a
         </div>
       </div>` : `
       <div style="padding:6px 16px 24px;text-align:center;">
-        <div style="background:#f4f4f5;border:1px solid #e5e5e5;border-radius:12px;padding:16px;">
-          <div style="font-size:13px;color:#555;">חברים, אם יש פער בין העסקאות שלי לשלכם - זה בסדר, רק תוודאו שאתם יודעים למה. משהו לא ברור? אני כאן בפרטי.</div>
+        <div style="background:#f4f4f5;border:1px solid #e5e5e5;border-radius:12px;padding:16px;text-align:right;">
+          <div style="font-size:13px;color:#555;margin-bottom:10px;">חברים, שימו לב למצב התיק (תמיד אפשר להיכנס גם לתיק המלא באתר) - בעיקר לעסקאות הפתוחות.</div>
+          <div style="font-size:13px;color:#555;margin-bottom:10px;">כל עוד המחיר עוד לא עבר את המחיר המקסימלי לכניסה (יש עמודה ייעודית לזה בתיק הפתוחות באתר) - עדיין אפשר להיכנס לעסקה.</div>
+          <div style="font-size:13px;color:#555;margin-bottom:10px;">זה בדיוק היתרון בעסקאות סווינג: לא צריך להיות מחוברים 24/7 לנייד, ואם נכנסתם אחרי שעה, שעתיים, יום או יומיים - זה בסדר גמור, כל עוד המחיר המקסימלי לא נחצה.</div>
+          <div style="font-size:13px;color:#555;text-align:center;">יום שקט לכולנו 🙏</div>
         </div>
       </div>`}
 
@@ -292,7 +295,13 @@ function buildWhatsappSummaryText(data: Awaited<ReturnType<typeof buildSummaryHt
       lines.push('');
     }
 
-    lines.push('חברים, אם יש פער בין העסקאות שלי לשלכם - זה בסדר, רק תוודאו שאתם יודעים למה. משהו לא ברור? אני כאן בפרטי.');
+    lines.push('חברים, שימו לב למצב התיק (תמיד אפשר להיכנס גם לתיק המלא באתר) - בעיקר לעסקאות הפתוחות.');
+    lines.push('');
+    lines.push('כל עוד המחיר עוד לא עבר את המחיר המקסימלי לכניסה (יש עמודה ייעודית לזה בתיק הפתוחות באתר) - עדיין אפשר להיכנס לעסקה.');
+    lines.push('');
+    lines.push('זה בדיוק היתרון בעסקאות סווינג: לא צריך להיות מחוברים 24/7 לנייד, ואם נכנסתם אחרי שעה, שעתיים, יום או יומיים - זה בסדר גמור, כל עוד המחיר המקסימלי לא נחצה.');
+    lines.push('');
+    lines.push('יום שקט לכולנו 🙏');
   } else {
     lines.push('רוצים לראות מה קרה השבוע האחרון בקבוצת הסוחרים? בשקט, בלי רעש וצלצולים, ובלי אלפי שקלים לקורס תיאורטי - 7 ימי ניסיון ללא עלות:');
     lines.push(TRIAL_SIGNUP_URL);
