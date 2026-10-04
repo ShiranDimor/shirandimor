@@ -32,6 +32,7 @@ export default function AdminDashboard() {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
   });
+  const [summaryAudience, setSummaryAudience] = useState<'traders' | 'updates'>('traders');
 
   async function handleRefreshAllPrices() {
     setRefreshing(true);
@@ -72,7 +73,7 @@ export default function AdminDashboard() {
       const res = await fetch('/api/admin/send-monthly-summary', {
         method: 'POST',
         headers: { Authorization: `Bearer ${session?.access_token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ month: summaryMonth }),
+        body: JSON.stringify({ month: summaryMonth, audience: summaryAudience }),
       });
       const data = await res.json();
 
@@ -314,6 +315,14 @@ export default function AdminDashboard() {
         </p>
       )}
 
+      <div className="toggle-row" style={{ marginTop: '8px' }}>
+        <div className={`toggle-opt ${summaryAudience === 'traders' ? 'long-active' : ''}`} onClick={() => setSummaryAudience('traders')} style={{ cursor: 'pointer' }}>
+          לקבוצת הסוחרים (סימבולים גלויים)
+        </div>
+        <div className={`toggle-opt ${summaryAudience === 'updates' ? 'short-active' : ''}`} onClick={() => setSummaryAudience('updates')} style={{ cursor: 'pointer' }}>
+          לקבוצת העדכונים (סימבולים מטושטשים)
+        </div>
+      </div>
       <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
         <input
           type="month"
