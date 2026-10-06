@@ -140,6 +140,7 @@ export default function JournalPage() {
   const [editStop, setEditStop] = useState('');
   const [editShares, setEditShares] = useState('');
   const [editExitPrice, setEditExitPrice] = useState('');
+  const [editCloseDate, setEditCloseDate] = useState('');
   const [savingEdit, setSavingEdit] = useState(false);
 
   const [addQtyId, setAddQtyId] = useState<string | null>(null);
@@ -275,6 +276,7 @@ export default function JournalPage() {
     setEditStop(String(entry.stop_loss));
     setEditShares(String(entry.shares));
     setEditExitPrice(entry.exit_price !== null ? String(entry.exit_price) : '');
+    setEditCloseDate(entry.closed_at ? entry.closed_at.slice(0, 10) : '');
   }
 
   function cancelEdit() {
@@ -300,6 +302,10 @@ export default function JournalPage() {
       const exit = parseFloat(editExitPrice);
       updates.exit_price = exit;
       updates.realized_pnl_usd = (exit - entryPriceNum) * sharesNum * dirFactor;
+    }
+
+    if (entry.status === 'closed' && editCloseDate) {
+      updates.closed_at = new Date(editCloseDate).toISOString();
     }
 
     const { error } = await supabase.from('journal_entries').update(updates).eq('id', entry.id);
@@ -484,7 +490,10 @@ export default function JournalPage() {
                   <div className="field" style={{ marginBottom: 0 }}><label>סטופ לוס</label><ClearableInput type="number" value={editStop} onChange={(ev) => setEditStop(ev.target.value)} onClear={() => setEditStop('')} /></div>
                 </div>
                 {entry.status === 'closed' && (
-                  <div className="field"><label>מחיר יציאה</label><ClearableInput type="number" value={editExitPrice} onChange={(ev) => setEditExitPrice(ev.target.value)} onClear={() => setEditExitPrice('')} /></div>
+                  <div className="form-row" style={{ marginBottom: 0 }}>
+                    <div className="field" style={{ marginBottom: 0 }}><label>מחיר יציאה</label><ClearableInput type="number" value={editExitPrice} onChange={(ev) => setEditExitPrice(ev.target.value)} onClear={() => setEditExitPrice('')} /></div>
+                    <div className="field" style={{ marginBottom: 0 }}><label>תאריך סגירה</label><input type="date" value={editCloseDate} onChange={(ev) => setEditCloseDate(ev.target.value)} /></div>
+                  </div>
                 )}
                 <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
                   <button className="qp-confirm" onClick={() => saveEdit(entry)} disabled={savingEdit}>{savingEdit ? 'שומרים...' : 'שמירת שינויים'}</button>
