@@ -107,6 +107,8 @@ export default function AdminTradesPage() {
   const [editMaxEntry, setEditMaxEntry] = useState('');
   const [editShares, setEditShares] = useState('');
   const [editExitPrice, setEditExitPrice] = useState('');
+  const [editOpenDate, setEditOpenDate] = useState('');
+  const [editCloseDate, setEditCloseDate] = useState('');
   const [savingEdit, setSavingEdit] = useState(false);
 
   const [addQtyId, setAddQtyId] = useState<string | null>(null);
@@ -306,6 +308,8 @@ export default function AdminTradesPage() {
     setEditMaxEntry(trade.max_entry_price !== null ? String(trade.max_entry_price) : '');
     setEditShares(String(trade.shares_calculated));
     setEditExitPrice(trade.exit_price !== null ? String(trade.exit_price) : '');
+    setEditOpenDate(trade.opened_at.slice(0, 10));
+    setEditCloseDate(trade.closed_at ? trade.closed_at.slice(0, 10) : '');
   }
 
   function cancelEdit() {
@@ -332,6 +336,11 @@ export default function AdminTradesPage() {
       const exit = parseFloat(editExitPrice);
       updates.exit_price = exit;
       updates.realized_pnl_usd = (exit - entry) * shares * dirFactor;
+    }
+
+    if (isClosed) {
+      if (editOpenDate) updates.opened_at = new Date(editOpenDate).toISOString();
+      if (editCloseDate) updates.closed_at = new Date(editCloseDate).toISOString();
     }
 
     const { error } = await supabase.from('trades').update(updates).eq('id', trade.id);
@@ -608,7 +617,13 @@ export default function AdminTradesPage() {
             <div className="field" style={{ marginBottom: 0 }}><label>עד איזה מחיר אפשר להיכנס</label><ClearableInput type="number" value={editMaxEntry} onChange={(e) => setEditMaxEntry(e.target.value)} onClear={() => setEditMaxEntry('')} placeholder="לא חובה" /></div>
           )}
           {isClosed && (
-            <div className="field"><label>מחיר יציאה</label><ClearableInput type="number" value={editExitPrice} onChange={(e) => setEditExitPrice(e.target.value)} onClear={() => setEditExitPrice('')} /></div>
+            <>
+              <div className="field"><label>מחיר יציאה</label><ClearableInput type="number" value={editExitPrice} onChange={(e) => setEditExitPrice(e.target.value)} onClear={() => setEditExitPrice('')} /></div>
+              <div className="form-row" style={{ marginBottom: 0 }}>
+                <div className="field" style={{ marginBottom: 0 }}><label>תאריך פתיחה</label><input type="date" value={editOpenDate} onChange={(e) => setEditOpenDate(e.target.value)} /></div>
+                <div className="field" style={{ marginBottom: 0 }}><label>תאריך סגירה</label><input type="date" value={editCloseDate} onChange={(e) => setEditCloseDate(e.target.value)} /></div>
+              </div>
+            </>
           )}
           <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
             <button className="qp-confirm" onClick={() => saveEdit(trade, isClosed)} disabled={savingEdit}>{savingEdit ? 'שומרים...' : 'שמירת שינויים'}</button>
