@@ -74,6 +74,7 @@ export default function AdminTradesPage() {
   const [calMonthIdx, setCalMonthIdx] = useState(() => new Date().getMonth());
   const [profitMonthFilter, setProfitMonthFilter] = useState(currentMonthKey);
   const [lossMonthFilter, setLossMonthFilter] = useState(currentMonthKey);
+  const [insightsMonthFilter, setInsightsMonthFilter] = useState(currentMonthKey);
 
   const [closingId, setClosingId] = useState<string | null>(null);
   const [popoverPos, setPopoverPos] = useState<{ top: number; left: number } | null>(null);
@@ -471,9 +472,16 @@ export default function AdminTradesPage() {
     ? closedLossTrades_
     : closedLossTrades_.filter((t) => t.closed_at && monthKey(t.closed_at) === lossMonthFilter);
 
-  const winRate = closedTrades.length > 0 ? (closedProfitTrades_.length / closedTrades.length) * 100 : null;
+  // "תובנות התיק" ממוקדות לחודש נבחר (ברירת מחדל: החודש הנוכחי) - לא לכל ההיסטוריה, כדי
+  // שהתובנות ישקפו "איך הלך החודש" ולא ייטשטשו בתוך ממוצע של כל הזמנים
+  const closedTradesForInsights = insightsMonthFilter === 'all'
+    ? closedTrades
+    : closedTrades.filter((t) => t.closed_at && monthKey(t.closed_at) === insightsMonthFilter);
+  const closedProfitForInsights = closedTradesForInsights.filter((t) => (pctPnl(t, true) ?? 0) >= 0);
 
-  const closedPcts = closedTrades.map((t) => pctPnl(t, true) ?? 0);
+  const winRate = closedTradesForInsights.length > 0 ? (closedProfitForInsights.length / closedTradesForInsights.length) * 100 : null;
+
+  const closedPcts = closedTradesForInsights.map((t) => pctPnl(t, true) ?? 0);
   const avgPnlPct = closedPcts.length > 0 ? closedPcts.reduce((s, x) => s + x, 0) / closedPcts.length : null;
 
   const winPcts = closedPcts.filter((p) => p >= 0);
@@ -482,7 +490,7 @@ export default function AdminTradesPage() {
   const avgLossPct = lossPcts.length > 0 ? Math.abs(lossPcts.reduce((s, x) => s + x, 0) / lossPcts.length) : 0;
   const riskReward = avgLossPct > 0 ? avgWinPct / avgLossPct : null;
 
-  const daysToClose = closedTrades
+  const daysToClose = closedTradesForInsights
     .filter((t) => t.closed_at)
     .map((t) => (new Date(t.closed_at as string).getTime() - new Date(t.opened_at).getTime()) / 86400000);
   const avgDaysToClose = daysToClose.length > 0 ? daysToClose.reduce((s, x) => s + x, 0) / daysToClose.length : null;
@@ -783,12 +791,24 @@ export default function AdminTradesPage() {
         <CalendarHeatmap year={calYear} month={calMonthIdx} items={calItems} onPrevMonth={goPrevMonth} onNextMonth={goNextMonth} />
       </div>
 
-      <div className="section-label"><h2>תובנות התיק</h2></div>
+      <div className="section-label">
+        <h2>תובנות התיק - {insightsMonthFilter === 'all' ? 'כל החודשים' : monthLabel(insightsMonthFilter)}</h2>
+      </div>
+      {availableClosedMonths.length > 0 && (
+        <div className="month-select-wrap" style={{ marginBottom: '10px' }}>
+          <select className="month-select" value={insightsMonthFilter} onChange={(e) => setInsightsMonthFilter(e.target.value)}>
+            <option value="all">כל החודשים</option>
+            {availableClosedMonths.map((m) => (
+              <option key={m} value={m}>{monthLabel(m)}</option>
+            ))}
+          </select>
+        </div>
+      )}
       <div className="insights-panel" style={{ marginBottom: '28px' }}>
         <div className="insights-ring-row">
           <StatsRing
             percent={winRate ?? 0}
-            label={`${closedTrades.length} עסקאות סגורות`}
+            label={`${closedTradesForInsights.length} עסקאות סגורות`}
             sublabel={`תיק התחלתי $${initialBalance !== null ? initialBalance.toLocaleString() : '—'}`}
           />
         </div>
