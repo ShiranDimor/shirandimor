@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
+import { checkStopLossBreaches } from '@/lib/stopLossAlert';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -14,7 +15,7 @@ export async function GET(request: Request) {
 
   const { data: openTrades, error } = await supabaseAdmin
     .from('trades')
-    .select('id, symbol')
+    .select('id, symbol, direction, stop_loss, stop_loss_alert_sent')
     .eq('status', 'open');
 
   if (error) {
@@ -22,6 +23,7 @@ export async function GET(request: Request) {
   }
 
   const results: { symbol: string; price: number | null }[] = [];
+  const updatedTrades: { id: string; symbol: string; direction: string; stop_loss: number; stop_loss_alert_sent: boolean; current_price: number }[] = [];
 
   for (const trade of openTrades || []) {
     try {
@@ -37,11 +39,14 @@ export async function GET(request: Request) {
           .update({ current_price: currentPrice, current_price_updated_at: new Date().toISOString() })
           .eq('id', trade.id);
         results.push({ symbol: trade.symbol, price: currentPrice });
+        updatedTrades.push({ ...trade, current_price: currentPrice });
       }
     } catch (e) {
       results.push({ symbol: trade.symbol, price: null });
     }
   }
+
+  await checkStopLossBreaches(supabaseAdmin, updatedTrades);
 
   return NextResponse.json({ updated: results.length, results });
 }

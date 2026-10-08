@@ -331,6 +331,10 @@ export default function AdminTradesPage() {
       shares_calculated: shares,
     };
 
+    // סטופ לוס חדש הוא סף חדש לבדיקה - מאפסים את דגל ההתראה כדי שתוכל להישלח שוב אם הסף
+    // החדש הזה יופעל (בלי זה, סף חדש לא היה מתריע בכלל אם כבר התריעו על הסף הקודם)
+    if (stop !== trade.stop_loss) updates.stop_loss_alert_sent = false;
+
     if (isClosed && editExitPrice) {
       const exit = parseFloat(editExitPrice);
       updates.exit_price = exit;
