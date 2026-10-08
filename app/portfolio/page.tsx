@@ -174,10 +174,15 @@ export default function PortfolioPage() {
     ? allClosedLoss_
     : allClosedLoss_.filter((t) => t.closed_at && monthKey(t.closed_at) === lossMonthFilter);
 
-  const allClosedProfit = closedTrades.filter((t) => pct(t) >= 0).length;
-  const winRate = closedTrades.length > 0 ? (allClosedProfit / closedTrades.length) * 100 : null;
+  // "תובנות התיק" ממוקדות לאותו חודש שמוצג בלוח השנה ממש מעליהן (לא בורר נפרד) - כך שדפדוף
+  // בלוח השנה לחודש אחר מעדכן את התובנות אוטומטית, בלי צורך לבחור את אותו חודש פעמיים
+  const insightsMonthFilter = `${calYear}-${String(calMonthIdx + 1).padStart(2, '0')}`;
+  const closedTradesForInsights = closedTrades.filter((t) => t.closed_at && monthKey(t.closed_at) === insightsMonthFilter);
 
-  const closedPcts = closedTrades.map((t) => pct(t));
+  const closedProfitForInsights = closedTradesForInsights.filter((t) => pct(t) >= 0).length;
+  const winRate = closedTradesForInsights.length > 0 ? (closedProfitForInsights / closedTradesForInsights.length) * 100 : null;
+
+  const closedPcts = closedTradesForInsights.map((t) => pct(t));
   const avgPnlPct = closedPcts.length > 0 ? closedPcts.reduce((s, x) => s + x, 0) / closedPcts.length : null;
 
   const winPcts = closedPcts.filter((p) => p >= 0);
@@ -186,12 +191,12 @@ export default function PortfolioPage() {
   const avgLossPct = lossPcts.length > 0 ? Math.abs(lossPcts.reduce((s, x) => s + x, 0) / lossPcts.length) : 0;
   const riskReward = avgLossPct > 0 ? avgWinPct / avgLossPct : null;
 
-  const daysToClose = closedTrades
+  const daysToClose = closedTradesForInsights
     .filter((t) => t.closed_at)
     .map((t) => (new Date(t.closed_at as string).getTime() - new Date(t.opened_at).getTime()) / 86400000);
   const avgDaysToClose = daysToClose.length > 0 ? daysToClose.reduce((s, x) => s + x, 0) / daysToClose.length : null;
 
-  const tradesThisMonth = [...openTrades, ...closedTrades].filter((t) => monthKey(t.opened_at) === currentMonthKey()).length;
+  const tradesThisMonth = [...openTrades, ...closedTrades].filter((t) => monthKey(t.opened_at) === insightsMonthFilter).length;
 
   const equityPoints = (() => {
     if (initialBalance === null) return [];
@@ -327,12 +332,12 @@ export default function PortfolioPage() {
           <CalendarHeatmap year={calYear} month={calMonthIdx} items={calItems} onPrevMonth={goPrevMonth} onNextMonth={goNextMonth} />
         </div>
 
-        <div className="section-label"><h2>תובנות התיק של שירן</h2></div>
+        <div className="section-label"><h2>תובנות התיק של שירן - {monthLabel(insightsMonthFilter)}</h2></div>
         <div className="insights-panel" style={{ marginBottom: '28px' }}>
           <div className="insights-ring-row">
             <StatsRing
               percent={winRate ?? 0}
-              label={`${closedTrades.length} עסקאות סגורות`}
+              label={`${closedTradesForInsights.length} עסקאות סגורות`}
               sublabel={`תיק התחלתי $${initialBalance !== null ? initialBalance.toLocaleString() : '—'}`}
             />
           </div>
