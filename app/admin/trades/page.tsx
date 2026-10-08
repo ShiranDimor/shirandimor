@@ -74,7 +74,6 @@ export default function AdminTradesPage() {
   const [calMonthIdx, setCalMonthIdx] = useState(() => new Date().getMonth());
   const [profitMonthFilter, setProfitMonthFilter] = useState(currentMonthKey);
   const [lossMonthFilter, setLossMonthFilter] = useState(currentMonthKey);
-  const [insightsMonthFilter, setInsightsMonthFilter] = useState(currentMonthKey);
 
   const [closingId, setClosingId] = useState<string | null>(null);
   const [popoverPos, setPopoverPos] = useState<{ top: number; left: number } | null>(null);
@@ -481,11 +480,10 @@ export default function AdminTradesPage() {
     ? closedLossTrades_
     : closedLossTrades_.filter((t) => t.closed_at && monthKey(t.closed_at) === lossMonthFilter);
 
-  // "תובנות התיק" ממוקדות לחודש נבחר (ברירת מחדל: החודש הנוכחי) - לא לכל ההיסטוריה, כדי
-  // שהתובנות ישקפו "איך הלך החודש" ולא ייטשטשו בתוך ממוצע של כל הזמנים
-  const closedTradesForInsights = insightsMonthFilter === 'all'
-    ? closedTrades
-    : closedTrades.filter((t) => t.closed_at && monthKey(t.closed_at) === insightsMonthFilter);
+  // "תובנות התיק" ממוקדות לאותו חודש שמוצג בלוח השנה ממש מעליהן (לא בורר נפרד) - כך שדפדוף
+  // בלוח השנה לחודש אחר מעדכן את התובנות אוטומטית, בלי צורך לבחור את אותו חודש פעמיים
+  const insightsMonthFilter = `${calYear}-${String(calMonthIdx + 1).padStart(2, '0')}`;
+  const closedTradesForInsights = closedTrades.filter((t) => t.closed_at && monthKey(t.closed_at) === insightsMonthFilter);
   const closedProfitForInsights = closedTradesForInsights.filter((t) => (pctPnl(t, true) ?? 0) >= 0);
 
   const winRate = closedTradesForInsights.length > 0 ? (closedProfitForInsights.length / closedTradesForInsights.length) * 100 : null;
@@ -504,7 +502,7 @@ export default function AdminTradesPage() {
     .map((t) => (new Date(t.closed_at as string).getTime() - new Date(t.opened_at).getTime()) / 86400000);
   const avgDaysToClose = daysToClose.length > 0 ? daysToClose.reduce((s, x) => s + x, 0) / daysToClose.length : null;
 
-  const tradesThisMonth = [...openTrades, ...closedTrades].filter((t) => monthKey(t.opened_at) === currentMonthKey()).length;
+  const tradesThisMonth = [...openTrades, ...closedTrades].filter((t) => monthKey(t.opened_at) === insightsMonthFilter).length;
 
   const equityPoints = (() => {
     if (initialBalance === null) return [];
@@ -807,18 +805,8 @@ export default function AdminTradesPage() {
       </div>
 
       <div className="section-label">
-        <h2>תובנות התיק - {insightsMonthFilter === 'all' ? 'כל החודשים' : monthLabel(insightsMonthFilter)}</h2>
+        <h2>תובנות התיק - {monthLabel(insightsMonthFilter)}</h2>
       </div>
-      {availableClosedMonths.length > 0 && (
-        <div className="month-select-wrap" style={{ marginBottom: '10px' }}>
-          <select className="month-select" value={insightsMonthFilter} onChange={(e) => setInsightsMonthFilter(e.target.value)}>
-            <option value="all">כל החודשים</option>
-            {availableClosedMonths.map((m) => (
-              <option key={m} value={m}>{monthLabel(m)}</option>
-            ))}
-          </select>
-        </div>
-      )}
       <div className="insights-panel" style={{ marginBottom: '28px' }}>
         <div className="insights-ring-row">
           <StatsRing
