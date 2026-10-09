@@ -62,8 +62,37 @@ export default function JournalPage() {
   const [entryPrice, setEntryPrice] = useState('');
   const [stopLoss, setStopLoss] = useState('');
   const [riskAmount, setRiskAmount] = useState('');
+  const [openDate, setOpenDate] = useState('');
   const [saving, setSaving] = useState(false);
   const [tradingPlanHref, setTradingPlanHref] = useState('/trading-plan');
+
+  const [initialBalance, setInitialBalance] = useState<number | null>(null);
+  const [editingBalance, setEditingBalance] = useState(false);
+  const [balanceInput, setBalanceInput] = useState('');
+  const [savingBalance, setSavingBalance] = useState(false);
+
+  function startEditBalance() {
+    setBalanceInput(initialBalance !== null ? String(initialBalance) : '');
+    setEditingBalance(true);
+  }
+
+  async function saveBalance() {
+    if (!userId) return;
+    const value = parseFloat(balanceInput);
+    if (!value || value <= 0) return;
+    setSavingBalance(true);
+
+    const { error } = await supabase
+      .from('journal_settings')
+      .upsert({ user_id: userId, initial_balance: value, updated_at: new Date().toISOString() });
+
+    setSavingBalance(false);
+
+    if (!error) {
+      setInitialBalance(value);
+      setEditingBalance(false);
+    }
+  }
 
   useEffect(() => {
     load();
@@ -84,6 +113,13 @@ export default function JournalPage() {
 
     if (data) setEntries(data);
     setLoading(false);
+
+    const { data: settings } = await supabase
+      .from('journal_settings')
+      .select('initial_balance')
+      .eq('user_id', user.id)
+      .maybeSingle();
+    if (settings) setInitialBalance(Number(settings.initial_balance));
 
     const { data: profile } = await supabase.from('profiles').select('full_name, phone, email').eq('id', user.id).single();
     const prefillParams = new URLSearchParams();
@@ -340,12 +376,13 @@ export default function JournalPage() {
       risk_amount_usd: parseFloat(riskAmount),
       shares: calcShares,
       status: 'open',
+      ...(openDate ? { opened_at: new Date(openDate).toISOString() } : {}),
     });
 
     setSaving(false);
 
     if (!error) {
-      setSymbol(''); setEntryPrice(''); setStopLoss(''); setRiskAmount('');
+      setSymbol(''); setEntryPrice(''); setStopLoss(''); setRiskAmount(''); setOpenDate('');
       setShowForm(false);
       load();
     }
@@ -398,6 +435,7 @@ export default function JournalPage() {
             <div className="field"><label>סטופ לוס</label><ClearableInput type="number" value={stopLoss} onChange={(e) => setStopLoss(e.target.value)} onClear={() => setStopLoss('')} placeholder="121.00" /></div>
           </div>
           <div className="field"><label>סיכון כספי ($)</label><ClearableInput type="number" value={riskAmount} onChange={(e) => setRiskAmount(e.target.value)} onClear={() => setRiskAmount('')} placeholder="500" /></div>
+          <div className="field"><label>תאריך פתיחה (לא חובה - ברירת מחדל: היום)</label><input type="date" value={openDate} onChange={(e) => setOpenDate(e.target.value)} /></div>
           <div style={{ background: 'var(--bg-void)', border: '1px solid var(--border-hairline)', borderRadius: '8px', padding: '10px 12px', marginBottom: '14px', display: 'flex', justifyContent: 'space-between' }}>
             <span style={{ fontSize: '12.5px', color: 'var(--text-secondary)' }}>כמות מניות מחושבת</span>
             <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, color: 'var(--teal)' }}>{calcShares || '—'}</span>
@@ -435,8 +473,8 @@ export default function JournalPage() {
             .filter((e) => e.closed_at)
             .slice()
             .sort((a, b) => new Date(a.closed_at as string).getTime() - new Date(b.closed_at as string).getTime());
-          let running = 0;
-          const points = [{ date: 'התחלה', value: 0 }];
+          let running = initialBalance ?? 0;
+          const points = [{ date: 'התחלה', value: Math.round(running) }];
           for (const e of chronological) {
             running += e.realized_pnl_usd ?? 0;
             points.push({ date: formatDate(e.closed_at), value: Math.round(running) });
@@ -599,7 +637,27 @@ export default function JournalPage() {
 
         return (
           <>
-            <div className="section-label"><h2>צמיחת היומן שלי</h2></div>
+            <div className="section-label">
+              <h2>צמיחת היומן שלי</h2>
+              {editingBalance ? (
+                <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                  <ClearableInput
+                    type="number"
+                    value={balanceInput}
+                    onChange={(e) => setBalanceInput(e.target.value)}
+                    onClear={() => setBalanceInput('')}
+                    placeholder="20000"
+                    style={{ width: '110px', padding: '6px 8px', fontSize: '12.5px' }}
+                  />
+                  <button className="qp-confirm" style={{ padding: '6px 10px', fontSize: '12px' }} onClick={saveBalance} disabled={savingBalance}>{savingBalance ? '...' : 'שמירה'}</button>
+                  <button className="qp-cancel" style={{ padding: '6px 10px', fontSize: '12px' }} onClick={() => setEditingBalance(false)}>ביטול</button>
+                </div>
+              ) : (
+                <button onClick={startEditBalance} className="count" style={{ background: 'none', border: 'none', cursor: 'pointer', font: 'inherit', display: 'flex', alignItems: 'center', gap: '4px' }} title="עדכון גודל התיק שלי">
+                  תיק התחלתי ${initialBalance !== null ? initialBalance.toLocaleString() : '—'} ✎
+                </button>
+              )}
+            </div>
             <div className="equity-card">
               <EquityCurve points={equityPoints} />
             </div>
