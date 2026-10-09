@@ -49,7 +49,7 @@ export async function checkStopLossBreaches(supabaseAdmin: SupabaseClient, trade
         from: 'התראות האתר <noreply@shirandimor.com>',
         to: 'shiran@shirandimor.com',
         subject: breached.length === 1 ? `⚠️ סטופ לוס הופעל - ${breached[0].symbol}` : `⚠️ סטופ לוס הופעל ב-${breached.length} עסקאות`,
-        text: `העסקאות הבאות הגיעו למחיר הסטופ לוס שלהן:\n\n${lines.join('\n')}\n\nלתיק: https://www.shirandimor.com/admin/trades`,
+        text: `${breached.length === 1 ? 'העסקה הבאה הגיעה' : 'העסקאות הבאות הגיעו'} למחיר הסטופ לוס שלה${breached.length === 1 ? '' : 'ן'}:\n\n${lines.join('\n')}\n\nלתיק: https://www.shirandimor.com/admin/trades`,
       }),
     });
     if (!res.ok) console.error('שגיאה בשליחת מייל התראת סטופ לוס', await res.text());
@@ -71,7 +71,8 @@ function wrapEmail(bodyHtml: string): string {
 
 function buildSubscriberAlertContent(firstSymbol: string, count: number, lines: string[]) {
   const subject = count === 1 ? `⚠️ סטופ לוס הופעל - ${firstSymbol}` : `⚠️ סטופ לוס הופעל ב-${count} עסקאות`;
-  const text = `חברים, שימו לב - הסטופ לוס הופעל בעסקה/ות הפתוחה/ות הבאה/ות בתיק:\n\n${lines.join('\n')}\n\nלתיק המלא: ${SITE_URL}/portfolio`;
+  const intro = count === 1 ? 'הסטופ לוס הופעל בעסקה הפתוחה הבאה בתיק' : 'הסטופ לוס הופעל בעסקאות הפתוחות הבאות בתיק';
+  const text = `חברים, שימו לב - ${intro}:\n\n${lines.join('\n')}\n\nלתיק המלא: ${SITE_URL}/portfolio`;
 
   const html = wrapEmail(`
   <div dir="rtl" style="font-family: Arial, Helvetica, sans-serif; background:#f4f4f5; padding:24px 12px;">
@@ -82,7 +83,7 @@ function buildSubscriberAlertContent(firstSymbol: string, count: number, lines: 
         <div style="color:#e2918c;font-size:15px;font-weight:700;margin-top:10px;">⚠️ סטופ לוס הופעל</div>
       </div>
       <div style="padding:24px;">
-        <p style="font-size:14px;color:#222;line-height:1.7;margin:0 0 16px;">חברים, שימו לב - הסטופ לוס הופעל בעסקה/ות הפתוחה/ות הבאה/ות בתיק:</p>
+        <p style="font-size:14px;color:#222;line-height:1.7;margin:0 0 16px;">חברים, שימו לב - ${intro}:</p>
         <div style="background:#fdf2f1;border:1px solid #f3d4d1;border-radius:10px;padding:4px 16px;margin-bottom:20px;">
           ${lines.map((line, i) => `<div style="font-size:14px;color:#8a3c37;font-weight:600;padding:10px 0;${i < lines.length - 1 ? 'border-bottom:1px solid #f3d4d1;' : ''}">${line}</div>`).join('')}
         </div>
