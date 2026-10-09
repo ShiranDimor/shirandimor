@@ -34,6 +34,9 @@ export default function AdminDashboard() {
   });
   const [summaryAudience, setSummaryAudience] = useState<'traders' | 'updates'>('traders');
 
+  const [sendingStopLossTest, setSendingStopLossTest] = useState(false);
+  const [stopLossTestMessage, setStopLossTestMessage] = useState('');
+
   async function handleRefreshAllPrices() {
     setRefreshing(true);
     setRefreshMessage('');
@@ -106,6 +109,27 @@ export default function AdminDashboard() {
     }
 
     setSendingSummary(false);
+  }
+
+  async function handleSendStopLossTest() {
+    setSendingStopLossTest(true);
+    setStopLossTestMessage('');
+
+    const { data: { session } } = await supabase.auth.getSession();
+
+    try {
+      const res = await fetch('/api/admin/test-stop-loss-alert', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session?.access_token}` },
+      });
+      const data = await res.json();
+
+      setStopLossTestMessage(res.ok ? 'נשלחה דוגמה לכתובת הבדיקה' : 'שגיאה: ' + (data.error || 'לא הצלחנו לשלוח'));
+    } catch (e) {
+      setStopLossTestMessage('שגיאה בשליחת הדוגמה');
+    }
+
+    setSendingStopLossTest(false);
   }
 
   useEffect(() => {
@@ -339,6 +363,15 @@ export default function AdminDashboard() {
       {summaryMessage && (
         <p style={{ fontSize: '12px', color: summaryMessage.startsWith('שגיאה') ? 'var(--loss)' : 'var(--profit)', marginTop: '10px', textAlign: 'center' }}>
           {summaryMessage}
+        </p>
+      )}
+
+      <button className="btn-outline" style={{ width: '100%', marginTop: '18px' }} onClick={handleSendStopLossTest} disabled={sendingStopLossTest}>
+        {sendingStopLossTest ? 'שולחים דוגמה...' : '⚠️ שליחת דוגמה - מייל התראת סטופ לוס למנויים'}
+      </button>
+      {stopLossTestMessage && (
+        <p style={{ fontSize: '12px', color: stopLossTestMessage.startsWith('שגיאה') ? 'var(--loss)' : 'var(--profit)', marginTop: '10px', textAlign: 'center' }}>
+          {stopLossTestMessage}
         </p>
       )}
     </div>

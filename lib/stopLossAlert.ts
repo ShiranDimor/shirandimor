@@ -60,18 +60,13 @@ export async function checkStopLossBreaches(supabaseAdmin: SupabaseClient, trade
   await notifySubscribers(breached, apiKey, lines);
 }
 
-async function notifySubscribers(breached: TradeForAlert[], apiKey: string, lines: string[]) {
-  const recipients = SUBSCRIBER_BROADCAST_LIVE
-    ? Array.from((await getActiveSubscriberContacts()).emails)
-    : [SUBSCRIBER_BROADCAST_TEST_RECIPIENT];
-
-  if (recipients.length === 0) return;
-
-  const subject = breached.length === 1
-    ? `⚠️ סטופ לוס הופעל - ${breached[0].symbol}`
-    : `⚠️ סטופ לוס הופעל ב-${breached.length} עסקאות`;
+function buildSubscriberAlertContent(firstSymbol: string, count: number, lines: string[]) {
+  const subject = count === 1 ? `⚠️ סטופ לוס הופעל - ${firstSymbol}` : `⚠️ סטופ לוס הופעל ב-${count} עסקאות`;
   const text = `חברים, שימו לב - הסטופ לוס הופעל בעסקה/ות הפתוחה/ות הבאה/ות בתיק:\n\n${lines.join('\n')}\n\nלתיק המלא: https://www.shirandimor.com/portfolio`;
+  return { subject, text };
+}
 
+async function sendSubscriberAlertEmails(apiKey: string, recipients: string[], subject: string, text: string) {
   await Promise.allSettled(
     recipients.map(async (to) => {
       try {
@@ -86,4 +81,27 @@ async function notifySubscribers(breached: TradeForAlert[], apiKey: string, line
       }
     })
   );
+}
+
+async function notifySubscribers(breached: TradeForAlert[], apiKey: string, lines: string[]) {
+  const recipients = SUBSCRIBER_BROADCAST_LIVE
+    ? Array.from((await getActiveSubscriberContacts()).emails)
+    : [SUBSCRIBER_BROADCAST_TEST_RECIPIENT];
+
+  if (recipients.length === 0) return;
+
+  const { subject, text } = buildSubscriberAlertContent(breached[0].symbol, breached.length, lines);
+  await sendSubscriberAlertEmails(apiKey, recipients, subject, text);
+}
+
+// שליחת דוגמה ידנית של מייל התראת המנויים, בלי לחכות לחציית סטופ אמיתית - תמיד נשלחת רק
+// לכתובת הבדיקה (לא תלוי בדגל SUBSCRIBER_BROADCAST_LIVE) כדי שלחיצה על כפתור בדיקה בטעות
+// לא תוכל לשלוח בטעות לכל המנויים
+export async function sendSampleSubscriberAlert() {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) throw new Error('RESEND_API_KEY לא מוגדר');
+
+  const sampleLine = 'AAPL (לונג) - סטופ: $220 · מחיר נוכחי: $218.5';
+  const { subject, text } = buildSubscriberAlertContent('AAPL', 1, [sampleLine]);
+  await sendSubscriberAlertEmails(apiKey, [SUBSCRIBER_BROADCAST_TEST_RECIPIENT], `[דוגמה] ${subject}`, text);
 }
