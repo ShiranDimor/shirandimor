@@ -129,6 +129,7 @@ export default function AdminTradesPage() {
   const [stopLoss, setStopLoss] = useState('');
   const [maxEntryPrice, setMaxEntryPrice] = useState('');
   const [riskAmount, setRiskAmount] = useState('3000');
+  const [openDate, setOpenDate] = useState('');
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
 
@@ -447,6 +448,7 @@ export default function AdminTradesPage() {
       shares_calculated: shares,
       current_price: entry,
       status: 'open',
+      ...(openDate ? { opened_at: new Date(openDate).toISOString() } : {}),
     });
 
     setSaving(false);
@@ -459,6 +461,7 @@ export default function AdminTradesPage() {
       setEntryPrice('');
       setStopLoss('');
       setMaxEntryPrice('');
+      setOpenDate('');
       setShowAddForm(false);
       loadTrades();
     }
@@ -773,6 +776,7 @@ export default function AdminTradesPage() {
           </div>
           <div className="field"><label>עד איזה מחיר אפשר להיכנס (לא חובה)</label><ClearableInput type="number" value={maxEntryPrice} onChange={(e) => setMaxEntryPrice(e.target.value)} onClear={() => setMaxEntryPrice('')} placeholder="415.00" /></div>
           <div className="field"><label>סיכון כספי ($)</label><ClearableInput type="number" value={riskAmount} onChange={(e) => setRiskAmount(e.target.value)} onClear={() => setRiskAmount('')} placeholder="3000" /></div>
+          <div className="field"><label>תאריך פתיחה (לא חובה - ברירת מחדל: היום)</label><input type="date" value={openDate} onChange={(e) => setOpenDate(e.target.value)} /></div>
           <button className="btn-primary" onClick={handleAddTrade} disabled={saving}>{saving ? 'שומרים...' : 'פרסום לתיק'}</button>
           {message && <p style={{ marginTop: '10px', fontSize: '13px', color: message.includes('שגיאה') ? 'var(--loss)' : 'var(--profit)' }}>{message}</p>}
         </div>
