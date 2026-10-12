@@ -1,4 +1,4 @@
-// NQ / MNQ Daily Levels: 50% Daily Range + Asia High/Low + London High/Low + Previous Day High/Low
+// NQ / MNQ Daily Levels: 50% Daily Range + Asia High/Low + London High/Low + Previous Day High/Low + Previous Day POC/VAH/VAL
 //
 // כל השעות מחושבות לפי America/New_York (כולל שעון קיץ/חורף), בלי קשר לאזור הזמן של הגרף.
 // החישוב רץ על נתוני דקה (request.security "1") ולא על הנרות שבגרף. לכן:
@@ -6,7 +6,7 @@
 //   * התוצאות זהות בכל טווח זמן (1 דקה, 5 דקות, שעה, 4 שעות, יומי) של אותו חוזה.
 
 //@version=6
-indicator("NQ Daily Levels (50% / Asia / London / PDH-PDL)", shorttitle = "NQ Levels", overlay = true, max_lines_count = 30, max_labels_count = 30)
+indicator("NQ Daily Levels (50% / Asia / London / PDH-PDL / PD VP)", shorttitle = "NQ Levels", overlay = true, max_lines_count = 50, max_labels_count = 50)
 
 const string TZ = "America/New_York"
 
@@ -41,6 +41,17 @@ pdColor = input.color(#FF9800, "צבע", inline = "p", group = G_PD)
 pdWidth = input.int(2, "עובי", minval = 1, maxval = 10, inline = "p", group = G_PD)
 pdStyle = input.string("Solid", "סגנון", options = ["Solid", "Dashed", "Dotted"], inline = "p", group = G_PD)
 
+G_VP = "Previous Day Volume Profile (POC / VAH / VAL)"
+showVP   = input.bool(true, "הצג", group = G_VP)
+vpRow    = input.float(1.0, "גובה שורה בפרופיל (נקודות)", minval = 0.25, step = 0.25, group = G_VP)
+vpVA     = input.int(70, "אחוז Value Area", minval = 10, maxval = 100, group = G_VP)
+pocColor = input.color(#F44336, "POC: צבע", inline = "vp1", group = G_VP)
+pocWidth = input.int(2, "עובי", minval = 1, maxval = 10, inline = "vp1", group = G_VP)
+pocStyle = input.string("Solid", "סגנון", options = ["Solid", "Dashed", "Dotted"], inline = "vp1", group = G_VP)
+vaColor  = input.color(#B0BEC5, "VAH / VAL: צבע", inline = "vp2", group = G_VP)
+vaWidth  = input.int(2, "עובי", minval = 1, maxval = 10, inline = "vp2", group = G_VP)
+vaStyle  = input.string("Dashed", "סגנון", options = ["Solid", "Dashed", "Dotted"], inline = "vp2", group = G_VP)
+
 G_LBL = "תוויות"
 showLabels  = input.bool(true, "הצג תוויות", group = G_LBL)
 labelOffset = input.int(3, "מרחק מהנר האחרון (בנרות)", minval = 0, maxval = 300, group = G_LBL)
@@ -53,6 +64,7 @@ G_ALR = "התראות"
 alertAsia = input.bool(true, "התראה כשהמחיר מגיע ל-Asia High / Low", group = G_ALR)
 alertLon  = input.bool(true, "התראה כשהמחיר מגיע ל-London High / Low", group = G_ALR)
 alertPD   = input.bool(false, "התראה כשהמחיר מגיע ל-Previous Day High / Low", group = G_ALR)
+alertVP   = input.bool(false, "התראה כשהמחיר מגיע ל-POC / VAH / VAL של יום קודם", group = G_ALR)
 alertMid  = input.bool(false, "התראה כשהמחיר מגיע ל-50% Daily Range", group = G_ALR)
 alertOnce = input.bool(true, "רק פעם אחת ביום לכל קו", group = G_ALR)
 
@@ -79,7 +91,41 @@ f_style(string s) =>
         => line.style_dashed
 
 // ───────────── מנוע החישוב (רץ על נרות של דקה) ─────────────
-f_engine(int dsMin, int aS, int aE, int lS, int lE) =>
+// Volume Profile: POC + Value Area מתוך מפה של (מספר שורה -> נפח)
+f_profile(map<int, float> vp, int kLo, int kHi, float row, int vaPct) =>
+    float poc = na
+    float vah = na
+    float val = na
+    if vp.size() > 0
+        float total = 0.0
+        float best  = -1.0
+        int   kPoc  = kLo
+        for k = kLo to kHi
+            v = nz(vp.get(k))
+            total += v
+            if v > best
+                best := v
+                kPoc := k
+        // מרחיבים מה-POC כלפי מעלה/מטה, כל פעם לצד עם יותר נפח, עד שמגיעים לאחוז ה-Value Area
+        int   up  = kPoc
+        int   dn  = kPoc
+        float acc = best
+        float target = total * vaPct / 100.0
+        while acc < target and (up < kHi or dn > kLo)
+            vUp = up < kHi ? nz(vp.get(up + 1)) : -1.0
+            vDn = dn > kLo ? nz(vp.get(dn - 1)) : -1.0
+            if vUp >= vDn
+                up += 1
+                acc += vUp
+            else
+                dn -= 1
+                acc += vDn
+        poc := math.round_to_mintick((kPoc + 0.5) * row)
+        vah := math.round_to_mintick((up + 1) * row)
+        val := math.round_to_mintick(dn * row)
+    [poc, vah, val]
+
+f_engine(int dsMin, int aS, int aE, int lS, int lE, float row, int vaPct) =>
     m = hour(time, TZ) * 60 + minute(time, TZ)
     // מזיזים את הזמן כך שתחילת יום המסחר נופלת על חצות, ואז התאריך = מזהה יום המסחר
     tShift = time + (1440 - dsMin) * 60000
@@ -99,8 +145,22 @@ f_engine(int dsMin, int aS, int aE, int lS, int lE) =>
     var float pdHi = na
     var float pdLo = na
     var bool  pdFull = false
+    var map<int, float> vp = map.new<int, float>()
+    var int   kLo = na
+    var int   kHi = na
+    var float pPoc = na
+    var float pVah = na
+    var float pVal = na
 
     if newDay
+        // פרופיל הנפח של היום שהסתיים -> POC / VAH / VAL של "יום קודם"
+        [poc, vah, val] = f_profile(vp, kLo, kHi, row, vaPct)
+        pPoc := bar_index > 0 ? poc : na
+        pVah := bar_index > 0 ? vah : na
+        pVal := bar_index > 0 ? val : na
+        vp.clear()
+        kLo := na
+        kHi := na
         // היום שהסתיים הופך ל"יום הקודם" (רק אם יש לנו אותו מתחילתו)
         pdHi := bar_index > 0 ? dHi : na
         pdLo := bar_index > 0 ? dLo : na
@@ -129,15 +189,24 @@ f_engine(int dsMin, int aS, int aE, int lS, int lE) =>
         lLo := na(lLo) ? low : math.min(lLo, low)
         lT  := na(lT) ? time : lT
 
+    // מוסיפים את נפח נר הדקה לפרופיל של היום, מחולק שווה על כל השורות שבין הנמוך לגבוה
+    b0 = int(math.floor(low / row))
+    b1 = int(math.floor(high / row))
+    vShare = nz(volume) / (b1 - b0 + 1)
+    for k = b0 to b1
+        vp.put(k, nz(vp.get(k)) + vShare)
+    kLo := na(kLo) ? b0 : math.min(kLo, b0)
+    kHi := na(kHi) ? b1 : math.max(kHi, b1)
+
     aDone = not na(aT) and not f_inWin(m, aS, aE)   // חלון אסיה הסתיים
     lDone = not na(lT) and not f_inWin(m, lS, lE)   // חלון לונדון הסתיים
-    [dHi, dLo, dT, dFull, aHi, aLo, aT, lHi, lLo, lT, aDone, lDone, pdHi, pdLo, pdFull]
+    [dHi, dLo, dT, dFull, aHi, aLo, aT, lHi, lLo, lT, aDone, lDone, pdHi, pdLo, pdFull, pPoc, pVah, pVal]
 
 [aS, aE] = f_parse(asiaSess)
 [lS, lE] = f_parse(lonSess)
 dsMin = dayStartH * 60 + dayStartM
 
-[dHi, dLo, dT, dFull, aHi, aLo, aT, lHi, lLo, lT, aDone, lDone, pdHi, pdLo, pdFull] = request.security(syminfo.tickerid, "1", f_engine(dsMin, aS, aE, lS, lE), lookahead = barmerge.lookahead_on)
+[dHi, dLo, dT, dFull, aHi, aLo, aT, lHi, lLo, lT, aDone, lDone, pdHi, pdLo, pdFull, pPoc, pVah, pVal] = request.security(syminfo.tickerid, "1", f_engine(dsMin, aS, aE, lS, lE, vpRow, vpVA), lookahead = barmerge.lookahead_on)
 
 mid = (dHi + dLo) / 2
 
@@ -176,6 +245,10 @@ if barstate.islast
     if showPD
         f_draw(lns, lbs, dT, pdHi, pdColor, pdWidth, pdStyle, "Previous Day High", pdFull, lblX, sz)
         f_draw(lns, lbs, dT, pdLo, pdColor, pdWidth, pdStyle, "Previous Day Low", pdFull, lblX, sz)
+    if showVP
+        f_draw(lns, lbs, dT, pPoc, pocColor, pocWidth, pocStyle, "PD POC", pdFull, lblX, sz)
+        f_draw(lns, lbs, dT, pVah, vaColor, vaWidth, vaStyle, "PD VAH", pdFull, lblX, sz)
+        f_draw(lns, lbs, dT, pVal, vaColor, vaWidth, vaStyle, "PD VAL", pdFull, lblX, sz)
     if showMid
         f_draw(lns, lbs, dT, mid, midColor, midWidth, midStyle, "50% Daily Range", dFull, lblX, sz)
     if showAsia
@@ -193,6 +266,9 @@ plot(showLon  and barstate.islast ? lHi : na, "London High",     lonColor,  disp
 plot(showLon  and barstate.islast ? lLo : na, "London Low",      lonColor,  display = showScale ? display.price_scale : display.none)
 plot(showPD   and barstate.islast ? pdHi : na, "Previous Day High", pdColor, display = showScale ? display.price_scale : display.none)
 plot(showPD   and barstate.islast ? pdLo : na, "Previous Day Low",  pdColor, display = showScale ? display.price_scale : display.none)
+plot(showVP   and barstate.islast ? pPoc : na, "PD POC", pocColor, display = showScale ? display.price_scale : display.none)
+plot(showVP   and barstate.islast ? pVah : na, "PD VAH", vaColor,  display = showScale ? display.price_scale : display.none)
+plot(showVP   and barstate.islast ? pVal : na, "PD VAL", vaColor,  display = showScale ? display.price_scale : display.none)
 
 // ───────────── התראות ─────────────
 // בודקים בכל טיק אם המחיר חצה/נגע בקו מאז הטיק הקודם. varip שומר ערכים בין טיקים.
@@ -206,6 +282,9 @@ varip bool  hitLL = false
 varip bool  hitM  = false
 varip bool  hitPH = false
 varip bool  hitPL = false
+varip bool  hitPOC = false
+varip bool  hitVAH = false
+varip bool  hitVAL = false
 
 f_touched(float prev, float px, float lvl) =>
     not na(prev) and not na(lvl) and ((prev < lvl and px >= lvl) or (prev > lvl and px <= lvl) or px == lvl)
@@ -221,6 +300,9 @@ bool tLL = false
 bool tM  = false
 bool tPH = false
 bool tPL = false
+bool tPOC = false
+bool tVAH = false
+bool tVAL = false
 
 if barstate.isrealtime
     if na(alertDay) or alertDay != dT
@@ -232,6 +314,9 @@ if barstate.isrealtime
         hitM  := false
         hitPH := false
         hitPL := false
+        hitPOC := false
+        hitVAH := false
+        hitVAL := false
 
     if alertAsia and aDone
         if f_touched(lastPx, close, aHi) and not (alertOnce and hitAH)
@@ -260,6 +345,17 @@ if barstate.isrealtime
             hitPL := true
             tPL := true
 
+    if alertVP
+        if f_touched(lastPx, close, pPoc) and not (alertOnce and hitPOC)
+            hitPOC := true
+            tPOC := true
+        if f_touched(lastPx, close, pVah) and not (alertOnce and hitVAH)
+            hitVAH := true
+            tVAH := true
+        if f_touched(lastPx, close, pVal) and not (alertOnce and hitVAL)
+            hitVAL := true
+            tVAL := true
+
     lastPx := close
 
 if tAH
@@ -276,9 +372,15 @@ if tPH
     alert(f_msg("Previous Day High", pdHi), alert.freq_all)
 if tPL
     alert(f_msg("Previous Day Low", pdLo), alert.freq_all)
+if tPOC
+    alert(f_msg("PD POC", pPoc), alert.freq_all)
+if tVAH
+    alert(f_msg("PD VAH", pVah), alert.freq_all)
+if tVAL
+    alert(f_msg("PD VAL", pVal), alert.freq_all)
 
 // התראות עם שם, שמופיעות ברשימת "תנאי" בחלון יצירת ההתראה
-alertcondition(tAH or tAL or tLH or tLL or tM or tPH or tPL, "NQ Levels - נגיעה בקו", "{{ticker}}: המחיר הגיע לאחד הקווים (אסיה / לונדון / 50% / יום קודם). מחיר: {{close}}")
+alertcondition(tAH or tAL or tLH or tLL or tM or tPH or tPL or tPOC or tVAH or tVAL, "NQ Levels - נגיעה בקו", "{{ticker}}: המחיר הגיע לאחד הקווים (אסיה / לונדון / 50% / יום קודם). מחיר: {{close}}")
 alertcondition(tAH, "Asia High - נגיעה", "{{ticker}}: המחיר הגיע ל-Asia High. מחיר: {{close}}")
 alertcondition(tAL, "Asia Low - נגיעה", "{{ticker}}: המחיר הגיע ל-Asia Low. מחיר: {{close}}")
 alertcondition(tLH, "London High - נגיעה", "{{ticker}}: המחיר הגיע ל-London High. מחיר: {{close}}")

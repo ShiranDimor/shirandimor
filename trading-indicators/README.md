@@ -1,7 +1,7 @@
 # NQ Daily Levels – 50% / Asia / London
 
-אינדיקטור אחד ל-TradingView (Pine Script v6) עם שבעה קווים:
-50% Daily Range, Asia High, Asia Low, London High, London Low, Previous Day High, Previous Day Low.
+אינדיקטור אחד ל-TradingView (Pine Script v6) עם עשרה קווים:
+50% Daily Range, Asia High, Asia Low, London High, London Low, Previous Day High, Previous Day Low, PD POC, PD VAH, PD VAL.
 כל השעות לפי שעון ניו יורק (כולל שעון קיץ/חורף), גם אם הגרף מוצג בשעון ישראל.
 
 ## התקנה
