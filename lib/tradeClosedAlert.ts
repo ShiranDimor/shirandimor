@@ -4,9 +4,8 @@ import { getActiveSubscriberContacts } from '@/lib/subscriberStatus';
 // (סגירה ידנית בכפתור "⚡ סגירה" או סגירה אוטומטית בסטופ לוס), עם ציון אם נסגרה ברווח או בהפסד.
 // מכירה חלקית לא שולחת מייל - רק כשהעסקה כולה נסגרת
 
-// השליחה לכל המנויים עדיין לא הופעלה בפועל - כל עוד הדגל הזה false, המייל יוצא רק לכתובת
-// הבדיקה של שירן, כדי שתוכל לראות איך זה נראה לפני שמפעילים לכולם. להפעלה: להחליף ל-true
-const TRADE_CLOSED_BROADCAST_LIVE = false;
+// מופעל - המייל יוצא לכל המנויים הפעילים + לשירן. להחזרה למצב בדיקה (רק לכתובת הבדיקה): false
+const TRADE_CLOSED_BROADCAST_LIVE = true;
 export const SUBSCRIBER_BROADCAST_TEST_RECIPIENT = 'shiran@shirandizi.com';
 const OWNER_EMAIL = 'shiran@shirandimor.com';
 const SITE_URL = 'https://www.shirandimor.com';
