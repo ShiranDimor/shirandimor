@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/instantLogin';
-import { sendSampleSubscriberAlert } from '@/lib/stopLossAlert';
+import { sendSampleTradeClosedAlerts } from '@/lib/tradeClosedAlert';
 
 async function requireAdmin(request: Request) {
   const authHeader = request.headers.get('Authorization') || '';
@@ -15,14 +15,14 @@ async function requireAdmin(request: Request) {
   return user;
 }
 
-// POST - שליחת דוגמה ידנית של מייל התראת סטופ לוס בנוסח-מנוי, לכתובת הבדיקה בלבד -
-// כדי לראות איך זה נראה בלי לחכות לחציית סטופ אמיתית בתיק
+// POST - שליחת דוגמה ידנית של מייל "עסקה נסגרה" למנויים (אחת ברווח, אחת בהפסד בסטופ),
+// לכתובת הבדיקה בלבד - כדי לראות איך זה נראה בלי לחכות לסגירה אמיתית בתיק
 export async function POST(request: Request) {
   const admin = await requireAdmin(request);
   if (!admin) return NextResponse.json({ error: 'אין הרשאת ניהול' }, { status: 403 });
 
   try {
-    await sendSampleSubscriberAlert();
+    await sendSampleTradeClosedAlerts();
     return NextResponse.json({ success: true });
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : 'שגיאה לא ידועה' }, { status: 500 });

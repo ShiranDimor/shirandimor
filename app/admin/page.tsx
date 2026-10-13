@@ -124,7 +124,7 @@ export default function AdminDashboard() {
       });
       const data = await res.json();
 
-      setStopLossTestMessage(res.ok ? 'נשלחה דוגמה לכתובת הבדיקה' : 'שגיאה: ' + (data.error || 'לא הצלחנו לשלוח'));
+      setStopLossTestMessage(res.ok ? 'נשלחו 2 דוגמאות לכתובת הבדיקה' : 'שגיאה: ' + (data.error || 'לא הצלחנו לשלוח'));
     } catch (e) {
       setStopLossTestMessage('שגיאה בשליחת הדוגמה');
     }
@@ -367,7 +367,7 @@ export default function AdminDashboard() {
       )}
 
       <button className="btn-outline" style={{ width: '100%', marginTop: '18px' }} onClick={handleSendStopLossTest} disabled={sendingStopLossTest}>
-        {sendingStopLossTest ? 'שולחים דוגמה...' : '⚠️ שליחת דוגמה - מייל התראת סטופ לוס למנויים'}
+        {sendingStopLossTest ? 'שולחים דוגמה...' : '📧 שליחת דוגמה - מייל "עסקה נסגרה" למנויים (רווח + הפסד)'}
       </button>
       {stopLossTestMessage && (
         <p style={{ fontSize: '12px', color: stopLossTestMessage.startsWith('שגיאה') ? 'var(--loss)' : 'var(--profit)', marginTop: '10px', textAlign: 'center' }}>

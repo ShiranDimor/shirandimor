@@ -7,6 +7,7 @@ import ClearableInput from '@/components/ClearableInput';
 import EquityCurve from '@/components/EquityCurve';
 import StatsRing from '@/components/StatsRing';
 import CalendarHeatmap from '@/components/CalendarHeatmap';
+import { realizeShares } from '@/lib/tradeClose';
 
 type Trade = {
   id: string;
@@ -184,62 +185,23 @@ export default function AdminTradesPage() {
     if (settings) setInitialBalance(Number(settings.initial_balance));
   }
 
-  // ממזג עסקה למניה יחידה: מכירה חלקית יוצרת שבר "סגור" נפרד; כשהיתרה מתאפסת כל השברים מתאחדים לעסקה סגורה אחת עם מחיר יציאה וכניסה ממוצעים
-  async function realizeShares(trade: Trade, sellShares: number, sellPrice: number, closedAtIso: string) {
-    const dirFactor = trade.direction === 'short' ? -1 : 1;
-    const realizedForSlice = (sellPrice - trade.entry_price) * sellShares * dirFactor;
-    const remaining = trade.shares_calculated - sellShares;
-
-    if (remaining > 0) {
-      await supabase.from('trades').insert({
-        created_by: userId,
-        direction: trade.direction,
-        symbol: trade.symbol,
-        entry_price: trade.entry_price,
-        stop_loss: trade.stop_loss,
-        risk_amount_usd: 0,
-        status: 'closed',
-        exit_price: sellPrice,
-        shares_calculated: sellShares,
-        realized_pnl_usd: realizedForSlice,
-        parent_trade_id: trade.parent_trade_id || trade.id,
-        opened_at: trade.opened_at,
-        closed_at: closedAtIso,
-      });
-      await supabase.from('trades').update({ shares_calculated: remaining }).eq('id', trade.id);
-      return;
-    }
-
-    const rootId = trade.parent_trade_id || trade.id;
-    const { data: siblings } = await supabase
-      .from('trades')
-      .select('id, shares_calculated, exit_price, realized_pnl_usd')
-      .eq('parent_trade_id', rootId)
-      .neq('id', trade.id);
-
-    const allSiblings = siblings || [];
-    const totalShares = allSiblings.reduce((s, x) => s + x.shares_calculated, 0) + sellShares;
-    const weightedExit = (allSiblings.reduce((s, x) => s + x.shares_calculated * (x.exit_price ?? 0), 0) + sellShares * sellPrice) / totalShares;
-    const totalPnl = allSiblings.reduce((s, x) => s + (x.realized_pnl_usd ?? 0), 0) + realizedForSlice;
-
-    await supabase.from('trades').update({
-      status: 'closed',
-      shares_calculated: totalShares,
-      exit_price: weightedExit,
-      realized_pnl_usd: totalPnl,
-      closed_at: closedAtIso,
-    }).eq('id', trade.id);
-
-    if (allSiblings.length > 0) {
-      await supabase.from('trades').delete().in('id', allSiblings.map((s) => s.id));
-    }
-  }
-
   async function handleCloseTrade(trade: Trade) {
     if (!exitPrice) return;
     setClosing(true);
 
-    await realizeShares(trade, trade.shares_calculated, parseFloat(exitPrice), exitDate ? new Date(exitDate).toISOString() : new Date().toISOString());
+    await realizeShares(supabase, trade, trade.shares_calculated, parseFloat(exitPrice), exitDate ? new Date(exitDate).toISOString() : new Date().toISOString(), userId);
+
+    // מייל "עסקה נסגרה" (ברווח / בהפסד) למנויים - כישלון בשליחה לא חוסם את הסגירה עצמה
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      await fetch('/api/admin/trade-closed', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
+        body: JSON.stringify({ tradeId: trade.id }),
+      });
+    } catch (e) {
+      console.error('שגיאה בשליחת מייל סגירת עסקה', e);
+    }
 
     setClosing(false);
     setClosingId(null);
@@ -294,7 +256,7 @@ export default function AdminTradesPage() {
     }
 
     setSellingQty(true);
-    await realizeShares(trade, shares, price, new Date().toISOString());
+    await realizeShares(supabase, trade, shares, price, new Date().toISOString(), userId);
     setSellingQty(false);
     setSellQtyId(null);
     loadTrades();
