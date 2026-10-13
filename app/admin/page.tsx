@@ -28,6 +28,14 @@ export default function AdminDashboard() {
 
   const [sendingSummary, setSendingSummary] = useState(false);
   const [summaryMessage, setSummaryMessage] = useState('');
+  const [summaryMonth, setSummaryMonth] = useState(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  });
+  const [summaryAudience, setSummaryAudience] = useState<'traders' | 'updates'>('traders');
+
+  const [sendingStopLossTest, setSendingStopLossTest] = useState(false);
+  const [stopLossTestMessage, setStopLossTestMessage] = useState('');
 
   async function handleRefreshAllPrices() {
     setRefreshing(true);
@@ -67,7 +75,8 @@ export default function AdminDashboard() {
     try {
       const res = await fetch('/api/admin/send-monthly-summary', {
         method: 'POST',
-        headers: { Authorization: `Bearer ${session?.access_token}` },
+        headers: { Authorization: `Bearer ${session?.access_token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ month: summaryMonth, audience: summaryAudience }),
       });
       const data = await res.json();
 
@@ -100,6 +109,27 @@ export default function AdminDashboard() {
     }
 
     setSendingSummary(false);
+  }
+
+  async function handleSendStopLossTest() {
+    setSendingStopLossTest(true);
+    setStopLossTestMessage('');
+
+    const { data: { session } } = await supabase.auth.getSession();
+
+    try {
+      const res = await fetch('/api/admin/test-stop-loss-alert', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session?.access_token}` },
+      });
+      const data = await res.json();
+
+      setStopLossTestMessage(res.ok ? 'נשלחה דוגמה לכתובת הבדיקה' : 'שגיאה: ' + (data.error || 'לא הצלחנו לשלוח'));
+    } catch (e) {
+      setStopLossTestMessage('שגיאה בשליחת הדוגמה');
+    }
+
+    setSendingStopLossTest(false);
   }
 
   useEffect(() => {
@@ -281,6 +311,12 @@ export default function AdminDashboard() {
           <div className="at-count">כלי פנימי</div>
         </Link>
 
+        <Link href="/admin/blocked-contacts" className="admin-tile">
+          <div className="at-icon">🚫</div>
+          <div className="at-title">אנשי קשר חסומים</div>
+          <div className="at-count">כלי פנימי</div>
+        </Link>
+
         <Link href="/admin/trial-signups" className={`admin-tile ${trialSignupsCount > 0 ? 'attention' : ''}`}>
           <div className="at-icon">🎁</div>
           <div className="at-title">נרשמים לימי ניסיון</div>
@@ -303,12 +339,39 @@ export default function AdminDashboard() {
         </p>
       )}
 
-      <button className="btn-outline" style={{ width: '100%', marginTop: '8px' }} onClick={handleSendMonthlySummary} disabled={sendingSummary}>
-        {sendingSummary ? 'שולחים...' : '📧 שליחת סיכום החודש למייל'}
-      </button>
+      <div className="toggle-row" style={{ marginTop: '8px' }}>
+        <div className={`toggle-opt ${summaryAudience === 'traders' ? 'long-active' : ''}`} onClick={() => setSummaryAudience('traders')} style={{ cursor: 'pointer' }}>
+          לקבוצת הסוחרים (סימבולים גלויים)
+        </div>
+        <div className={`toggle-opt ${summaryAudience === 'updates' ? 'short-active' : ''}`} onClick={() => setSummaryAudience('updates')} style={{ cursor: 'pointer' }}>
+          לקבוצת העדכונים (סימבולים מטושטשים)
+        </div>
+      </div>
+      <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+        <input
+          type="month"
+          className="tp-text-input"
+          style={{ minHeight: 'auto', width: '140px', flexShrink: 0 }}
+          value={summaryMonth}
+          onChange={(e) => setSummaryMonth(e.target.value)}
+          max={`${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`}
+        />
+        <button className="btn-outline" style={{ flex: 1 }} onClick={handleSendMonthlySummary} disabled={sendingSummary}>
+          {sendingSummary ? 'שולחים...' : '📧 שליחת סיכום החודש למייל'}
+        </button>
+      </div>
       {summaryMessage && (
         <p style={{ fontSize: '12px', color: summaryMessage.startsWith('שגיאה') ? 'var(--loss)' : 'var(--profit)', marginTop: '10px', textAlign: 'center' }}>
           {summaryMessage}
+        </p>
+      )}
+
+      <button className="btn-outline" style={{ width: '100%', marginTop: '18px' }} onClick={handleSendStopLossTest} disabled={sendingStopLossTest}>
+        {sendingStopLossTest ? 'שולחים דוגמה...' : '⚠️ שליחת דוגמה - מייל התראת סטופ לוס למנויים'}
+      </button>
+      {stopLossTestMessage && (
+        <p style={{ fontSize: '12px', color: stopLossTestMessage.startsWith('שגיאה') ? 'var(--loss)' : 'var(--profit)', marginTop: '10px', textAlign: 'center' }}>
+          {stopLossTestMessage}
         </p>
       )}
     </div>

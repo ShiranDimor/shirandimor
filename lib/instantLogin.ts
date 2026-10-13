@@ -14,7 +14,7 @@ export async function sendLoginEmail(email: string) {
   const { data, error } = await supabaseAdmin.auth.admin.generateLink({
     type: 'magiclink',
     email,
-    options: { redirectTo: 'https://shirandimor.com/auth/callback' },
+    options: { redirectTo: 'https://www.shirandimor.com/auth/callback' },
   });
 
   const actionLink = data?.properties?.action_link;

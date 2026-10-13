@@ -35,7 +35,7 @@ export async function POST(request: Request) {
   if (!admin) return NextResponse.json({ error: 'אין הרשאת ניהול' }, { status: 403 });
 
   const body = await request.json().catch(() => ({}));
-  const { platform, contentType, topic, variantCount } = body as Record<string, unknown>;
+  const { platform, contentType, topic, variantCount, imageBase64 } = body as Record<string, unknown>;
 
   if (typeof platform !== 'string' || !PLATFORMS.includes(platform as MarketingPlatform)) {
     return NextResponse.json({ error: 'פלטפורמה לא תקינה' }, { status: 400 });
@@ -68,6 +68,10 @@ export async function POST(request: Request) {
       )
     );
 
+    // אותה תמונה (אם הועלתה) מצורפת לכל הגרסאות - התמונה זהה בין כל הגרסאות, רק הטקסט משתנה,
+    // כדי שלא תהיה חובה לבחור גרסה לפני שאפשר בכלל לצרף תמונה
+    const imageToAttach = typeof imageBase64 === 'string' && imageBase64 ? imageBase64 : null;
+
     const rowsToInsert = variants.map((v) => ({
       platform,
       content_type: contentType,
@@ -78,6 +82,7 @@ export async function POST(request: Request) {
       video_script: v.video_script,
       visual_idea: v.visual_idea,
       status: 'draft' as const,
+      image_base64: imageToAttach,
     }));
 
     const { data, error } = await supabaseAdmin.from('marketing_posts').insert(rowsToInsert).select();

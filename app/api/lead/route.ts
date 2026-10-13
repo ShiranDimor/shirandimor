@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { isActiveSubscriber } from '@/lib/subscriberStatus';
 import { classifyContactMonday } from '@/lib/tradingPlan/monday';
+import { isPhoneBlocked } from '@/lib/blockedContacts';
 
 const LEAD_GROUP_NAME = 'לידים חדשים';
 // קישור ההצטרפות בפועל לקבוצת הוואטסאפ החינמית - נשמר כאן (קוד צד-שרת) ולא בעמוד עצמו,
@@ -91,6 +92,13 @@ export async function POST(request: Request) {
 
   if (!phone) {
     return NextResponse.json({ error: 'חסרים פרטים' }, { status: 400 });
+  }
+
+  // איש קשר חסום - מגיב כמו הצטרפות רגילה (בלי לחשוף שהוא חסום) אבל לא יוצר שום ליד/רשומה בפועל
+  if (await isPhoneBlocked(phone)) {
+    const response = NextResponse.json({ ok: true, monday: false, inviteUrl: WHATSAPP_FREE_GROUP_INVITE_URL });
+    response.cookies.set('sd_registered', '1', { maxAge: 60 * 60 * 24 * 365, path: '/', sameSite: 'lax' });
+    return response;
   }
 
   // מזהה מאיזה טופס/עמוד ספציפי הגיע הליד (למשל דף בית מול ספריית שיעורים) - כדי שיהיה אפשר

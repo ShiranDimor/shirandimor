@@ -106,6 +106,8 @@ export default function AdminTradesPage() {
   const [editMaxEntry, setEditMaxEntry] = useState('');
   const [editShares, setEditShares] = useState('');
   const [editExitPrice, setEditExitPrice] = useState('');
+  const [editOpenDate, setEditOpenDate] = useState('');
+  const [editCloseDate, setEditCloseDate] = useState('');
   const [savingEdit, setSavingEdit] = useState(false);
 
   const [addQtyId, setAddQtyId] = useState<string | null>(null);
@@ -127,6 +129,7 @@ export default function AdminTradesPage() {
   const [stopLoss, setStopLoss] = useState('');
   const [maxEntryPrice, setMaxEntryPrice] = useState('');
   const [riskAmount, setRiskAmount] = useState('3000');
+  const [openDate, setOpenDate] = useState('');
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
 
@@ -305,6 +308,8 @@ export default function AdminTradesPage() {
     setEditMaxEntry(trade.max_entry_price !== null ? String(trade.max_entry_price) : '');
     setEditShares(String(trade.shares_calculated));
     setEditExitPrice(trade.exit_price !== null ? String(trade.exit_price) : '');
+    setEditOpenDate(trade.opened_at.slice(0, 10));
+    setEditCloseDate(trade.closed_at ? trade.closed_at.slice(0, 10) : '');
   }
 
   function cancelEdit() {
@@ -327,10 +332,19 @@ export default function AdminTradesPage() {
       shares_calculated: shares,
     };
 
+    // סטופ לוס חדש הוא סף חדש לבדיקה - מאפסים את דגל ההתראה כדי שתוכל להישלח שוב אם הסף
+    // החדש הזה יופעל (בלי זה, סף חדש לא היה מתריע בכלל אם כבר התריעו על הסף הקודם)
+    if (stop !== trade.stop_loss) updates.stop_loss_alert_sent = false;
+
     if (isClosed && editExitPrice) {
       const exit = parseFloat(editExitPrice);
       updates.exit_price = exit;
       updates.realized_pnl_usd = (exit - entry) * shares * dirFactor;
+    }
+
+    if (isClosed) {
+      if (editOpenDate) updates.opened_at = new Date(editOpenDate).toISOString();
+      if (editCloseDate) updates.closed_at = new Date(editCloseDate).toISOString();
     }
 
     const { error } = await supabase.from('trades').update(updates).eq('id', trade.id);
@@ -434,6 +448,7 @@ export default function AdminTradesPage() {
       shares_calculated: shares,
       current_price: entry,
       status: 'open',
+      ...(openDate ? { opened_at: new Date(openDate).toISOString() } : {}),
     });
 
     setSaving(false);
@@ -446,6 +461,7 @@ export default function AdminTradesPage() {
       setEntryPrice('');
       setStopLoss('');
       setMaxEntryPrice('');
+      setOpenDate('');
       setShowAddForm(false);
       loadTrades();
     }
@@ -471,9 +487,15 @@ export default function AdminTradesPage() {
     ? closedLossTrades_
     : closedLossTrades_.filter((t) => t.closed_at && monthKey(t.closed_at) === lossMonthFilter);
 
-  const winRate = closedTrades.length > 0 ? (closedProfitTrades_.length / closedTrades.length) * 100 : null;
+  // "תובנות התיק" ממוקדות לאותו חודש שמוצג בלוח השנה ממש מעליהן (לא בורר נפרד) - כך שדפדוף
+  // בלוח השנה לחודש אחר מעדכן את התובנות אוטומטית, בלי צורך לבחור את אותו חודש פעמיים
+  const insightsMonthFilter = `${calYear}-${String(calMonthIdx + 1).padStart(2, '0')}`;
+  const closedTradesForInsights = closedTrades.filter((t) => t.closed_at && monthKey(t.closed_at) === insightsMonthFilter);
+  const closedProfitForInsights = closedTradesForInsights.filter((t) => (pctPnl(t, true) ?? 0) >= 0);
 
-  const closedPcts = closedTrades.map((t) => pctPnl(t, true) ?? 0);
+  const winRate = closedTradesForInsights.length > 0 ? (closedProfitForInsights.length / closedTradesForInsights.length) * 100 : null;
+
+  const closedPcts = closedTradesForInsights.map((t) => pctPnl(t, true) ?? 0);
   const avgPnlPct = closedPcts.length > 0 ? closedPcts.reduce((s, x) => s + x, 0) / closedPcts.length : null;
 
   const winPcts = closedPcts.filter((p) => p >= 0);
@@ -482,12 +504,12 @@ export default function AdminTradesPage() {
   const avgLossPct = lossPcts.length > 0 ? Math.abs(lossPcts.reduce((s, x) => s + x, 0) / lossPcts.length) : 0;
   const riskReward = avgLossPct > 0 ? avgWinPct / avgLossPct : null;
 
-  const daysToClose = closedTrades
+  const daysToClose = closedTradesForInsights
     .filter((t) => t.closed_at)
     .map((t) => (new Date(t.closed_at as string).getTime() - new Date(t.opened_at).getTime()) / 86400000);
   const avgDaysToClose = daysToClose.length > 0 ? daysToClose.reduce((s, x) => s + x, 0) / daysToClose.length : null;
 
-  const tradesThisMonth = [...openTrades, ...closedTrades].filter((t) => monthKey(t.opened_at) === currentMonthKey()).length;
+  const tradesThisMonth = [...openTrades, ...closedTrades].filter((t) => monthKey(t.opened_at) === insightsMonthFilter).length;
 
   const equityPoints = (() => {
     if (initialBalance === null) return [];
@@ -600,7 +622,13 @@ export default function AdminTradesPage() {
             <div className="field" style={{ marginBottom: 0 }}><label>עד איזה מחיר אפשר להיכנס</label><ClearableInput type="number" value={editMaxEntry} onChange={(e) => setEditMaxEntry(e.target.value)} onClear={() => setEditMaxEntry('')} placeholder="לא חובה" /></div>
           )}
           {isClosed && (
-            <div className="field"><label>מחיר יציאה</label><ClearableInput type="number" value={editExitPrice} onChange={(e) => setEditExitPrice(e.target.value)} onClear={() => setEditExitPrice('')} /></div>
+            <>
+              <div className="field"><label>מחיר יציאה</label><ClearableInput type="number" value={editExitPrice} onChange={(e) => setEditExitPrice(e.target.value)} onClear={() => setEditExitPrice('')} /></div>
+              <div className="form-row" style={{ marginBottom: 0 }}>
+                <div className="field" style={{ marginBottom: 0 }}><label>תאריך פתיחה</label><input type="date" value={editOpenDate} onChange={(e) => setEditOpenDate(e.target.value)} /></div>
+                <div className="field" style={{ marginBottom: 0 }}><label>תאריך סגירה</label><input type="date" value={editCloseDate} onChange={(e) => setEditCloseDate(e.target.value)} /></div>
+              </div>
+            </>
           )}
           <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
             <button className="qp-confirm" onClick={() => saveEdit(trade, isClosed)} disabled={savingEdit}>{savingEdit ? 'שומרים...' : 'שמירת שינויים'}</button>
@@ -748,6 +776,7 @@ export default function AdminTradesPage() {
           </div>
           <div className="field"><label>עד איזה מחיר אפשר להיכנס (לא חובה)</label><ClearableInput type="number" value={maxEntryPrice} onChange={(e) => setMaxEntryPrice(e.target.value)} onClear={() => setMaxEntryPrice('')} placeholder="415.00" /></div>
           <div className="field"><label>סיכון כספי ($)</label><ClearableInput type="number" value={riskAmount} onChange={(e) => setRiskAmount(e.target.value)} onClear={() => setRiskAmount('')} placeholder="3000" /></div>
+          <div className="field"><label>תאריך פתיחה (לא חובה - ברירת מחדל: היום)</label><input type="date" value={openDate} onChange={(e) => setOpenDate(e.target.value)} /></div>
           <button className="btn-primary" onClick={handleAddTrade} disabled={saving}>{saving ? 'שומרים...' : 'פרסום לתיק'}</button>
           {message && <p style={{ marginTop: '10px', fontSize: '13px', color: message.includes('שגיאה') ? 'var(--loss)' : 'var(--profit)' }}>{message}</p>}
         </div>
@@ -783,12 +812,14 @@ export default function AdminTradesPage() {
         <CalendarHeatmap year={calYear} month={calMonthIdx} items={calItems} onPrevMonth={goPrevMonth} onNextMonth={goNextMonth} />
       </div>
 
-      <div className="section-label"><h2>תובנות התיק</h2></div>
+      <div className="section-label">
+        <h2>תובנות התיק - {monthLabel(insightsMonthFilter)}</h2>
+      </div>
       <div className="insights-panel" style={{ marginBottom: '28px' }}>
         <div className="insights-ring-row">
           <StatsRing
             percent={winRate ?? 0}
-            label={`${closedTrades.length} עסקאות סגורות`}
+            label={`${closedTradesForInsights.length} עסקאות סגורות`}
             sublabel={`תיק התחלתי $${initialBalance !== null ? initialBalance.toLocaleString() : '—'}`}
           />
         </div>

@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
+import { checkStopLossBreaches } from '@/lib/stopLossAlert';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -23,7 +24,7 @@ export async function POST(request: Request) {
   }
 
   const [{ data: openTrades, error: tradesError }, { data: openEntries, error: entriesError }] = await Promise.all([
-    supabaseAdmin.from('trades').select('id, symbol').eq('status', 'open'),
+    supabaseAdmin.from('trades').select('id, symbol, direction, stop_loss, stop_loss_alert_sent').eq('status', 'open'),
     supabaseAdmin.from('journal_entries').select('id, symbol').eq('status', 'open'),
   ]);
 
@@ -48,16 +49,21 @@ export async function POST(request: Request) {
   let tradesUpdated = 0;
   let entriesUpdated = 0;
 
+  const updatedTrades = (openTrades || []).filter((t) => prices[t.symbol]);
+
   await Promise.all(
-    (openTrades || [])
-      .filter((t) => prices[t.symbol])
-      .map(async (t) => {
-        const { error } = await supabaseAdmin
-          .from('trades')
-          .update({ current_price: prices[t.symbol], current_price_updated_at: nowIso })
-          .eq('id', t.id);
-        if (!error) tradesUpdated++;
-      })
+    updatedTrades.map(async (t) => {
+      const { error } = await supabaseAdmin
+        .from('trades')
+        .update({ current_price: prices[t.symbol], current_price_updated_at: nowIso })
+        .eq('id', t.id);
+      if (!error) tradesUpdated++;
+    })
+  );
+
+  await checkStopLossBreaches(
+    supabaseAdmin,
+    updatedTrades.map((t) => ({ ...t, current_price: prices[t.symbol] }))
   );
 
   await Promise.all(

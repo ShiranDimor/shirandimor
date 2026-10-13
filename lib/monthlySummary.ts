@@ -27,6 +27,11 @@ const TRIAL_SIGNUP_URL = 'https://www.shirandimor.com/trial';
 const GROUP_NAME = 'מדברים עסקאות';
 const SITE_URL = 'https://www.shirandimor.com';
 
+// לקבוצת העדכונים (חינמית) הסימבולים מטושטשים (כמו בכל האתר למי שאין לו/ה גישה מלאה) ואין
+// צורך בהסרת משפט ה-7 ימי ניסיון - להפך, זה בדיוק קהל היעד שלו. לקבוצת הסוחרים (בתשלום) -
+// הפוך: סימבולים גלויים (כמו שכבר היה) ובלי שום אזכור של הניסיון החינמי, כי הם כבר מנויים
+export type SummaryAudience = 'updates' | 'traders';
+
 // חובה timeZone מפורש - זה רץ בשרת (UTC), ובלי זה עסקה שנפתחה/נסגרה בשעות הקטנות של הלילה
 // לפי שעון ישראל הייתה עלולה להיראות כאילו זה קרה יום קודם
 function formatDate(iso: string) {
@@ -74,18 +79,24 @@ function pctOpen(t: Trade) {
   return ((t.current_price - t.entry_price) / t.entry_price) * 100 * dirFactor;
 }
 
-function tradeRowHtml(t: Trade, kind: 'open' | 'closed') {
+// blurSymbol - בדיוק כמו .trade-symbol.blurred באתר עצמו (filter: blur), רק inline כי זה
+// נרנדר לתמונת PNG קבועה דרך כרום headless ולא תלוי בתמיכת CSS של לקוח מייל
+function symbolCellHtml(symbol: string, blurSymbol: boolean) {
+  if (!blurSymbol) return symbol;
+  return `<span style="filter:blur(5px);user-select:none;color:#999;">${symbol}</span>`;
+}
+
+function tradeRowHtml(t: Trade, kind: 'open' | 'closed', blurSymbol: boolean) {
   const dirLabel = t.direction === 'long' ? 'לונג' : 'שורט';
   const dirColor = t.direction === 'long' ? '#4FB876' : '#C9635E';
+  const symbolCell = symbolCellHtml(t.symbol, blurSymbol);
 
   if (kind === 'open') {
     const p = pctOpen(t);
     const resultColor = (p ?? 0) >= 0 ? '#4FB876' : '#C9635E';
-    // הסימבול לא מטושטש בסיכום הזה (בניגוד לתצוגה הציבורית באתר) - שירן ביקשה מפורשות שיוצג
-    // גלוי, כי עד שהסיכום נשלח העסקה כבר לא רלוונטית לכניסה חדשה
     return `
       <tr>
-        <td style="padding:10px 12px;border-bottom:1px solid #eee;font-weight:700;">${t.symbol}</td>
+        <td style="padding:10px 12px;border-bottom:1px solid #eee;font-weight:700;">${symbolCell}</td>
         <td style="padding:10px 12px;border-bottom:1px solid #eee;color:${dirColor};font-weight:600;">${dirLabel}</td>
         <td style="padding:10px 12px;border-bottom:1px solid #eee;">$${t.entry_price}</td>
         <td style="padding:10px 12px;border-bottom:1px solid #eee;">$${t.stop_loss}</td>
@@ -100,7 +111,7 @@ function tradeRowHtml(t: Trade, kind: 'open' | 'closed') {
   const resultColor = (p ?? 0) >= 0 ? '#4FB876' : '#C9635E';
   return `
     <tr>
-      <td style="padding:10px 12px;border-bottom:1px solid #eee;font-weight:700;">${t.symbol}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid #eee;font-weight:700;">${symbolCell}</td>
       <td style="padding:10px 12px;border-bottom:1px solid #eee;color:${dirColor};font-weight:600;">${dirLabel}</td>
       <td style="padding:10px 12px;border-bottom:1px solid #eee;">$${t.entry_price} ← $${t.exit_price}</td>
       <td style="padding:10px 12px;border-bottom:1px solid #eee;color:${resultColor};font-weight:700;">
@@ -110,11 +121,27 @@ function tradeRowHtml(t: Trade, kind: 'open' | 'closed') {
     </tr>`;
 }
 
-async function buildSummaryHtml() {
+// targetMonth אופציונלי (month 0-אינדקס, כמו ב-Date רגיל) - לשליחה ידנית של חודש שעבר (למשל
+// 1 באוקטובר רוצים את סיכום ספטמבר), בלי זה ברירת המחדל היא החודש הנוכחי עד הרגע הזה ממש.
+// audience ברירת המחדל 'traders' - שומר על ההתנהגות הקודמת (סימבולים גלויים) למי שקורא לפונקציה בלי לציין
+async function buildSummaryHtml(targetMonth?: { year: number; month: number }, audience: SummaryAudience = 'traders') {
+  const blurSymbols = audience === 'updates';
   const now = new Date();
   // מחושב לפי שעון ישראל ולא UTC (זמן השרת) - כדי שתחילת החודש תתאים לחצות האמיתית בישראל
   const nowIsrael = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Jerusalem' }));
-  const monthStart = new Date(nowIsrael.getFullYear(), nowIsrael.getMonth(), 1);
+  const year = targetMonth?.year ?? nowIsrael.getFullYear();
+  const month = targetMonth?.month ?? nowIsrael.getMonth();
+  const isCurrentMonth = year === nowIsrael.getFullYear() && month === nowIsrael.getMonth();
+
+  const monthStart = new Date(year, month, 1);
+  // גבול עליון לסינון (לא לתצוגה) - תחילת החודש הבא, לא "23:59:59 של היום האחרון": זמן כזה
+  // ממש בסוף היום, אחרי שעובר דרך formatDate (שממיר לשעון ישראל, UTC+2/3), עלול "להידחף" כבר
+  // ליום הראשון של החודש הבא בתצוגה. גם לסינון עצמו "<" מול תחילת החודש הבא מדויק יותר מ-"<="
+  // מול רגע מסוים בתוך היום האחרון, כי הוא תמיד כולל את כל היום האחרון במלואו
+  const nextMonthStart = new Date(year, month + 1, 1);
+  const filterEnd = isCurrentMonth ? nowIsrael : nextMonthStart;
+  // חודש שעבר (לא הנוכחי) - לתצוגה בלבד: היום האחרון של החודש בחצות (00:00), לא "עכשיו"
+  const displayEnd = isCurrentMonth ? nowIsrael : new Date(year, month + 1, 0);
 
   const { data: allTrades, error } = await supabaseAdmin
     .from('trades')
@@ -131,7 +158,7 @@ async function buildSummaryHtml() {
     .sort((a, b) => new Date(b.opened_at).getTime() - new Date(a.opened_at).getTime());
 
   const closedThisWeek = trades
-    .filter((t) => t.status === 'closed' && t.closed_at && new Date(t.closed_at) >= monthStart)
+    .filter((t) => t.status === 'closed' && t.closed_at && new Date(t.closed_at) >= monthStart && new Date(t.closed_at) < filterEnd)
     .sort((a, b) => new Date(b.closed_at as string).getTime() - new Date(a.closed_at as string).getTime());
 
   const wins = closedThisWeek.filter((t) => (t.realized_pnl_usd ?? 0) >= 0);
@@ -140,7 +167,7 @@ async function buildSummaryHtml() {
   const winRate = closedThisWeek.length > 0 ? (wins.length / closedThisWeek.length) * 100 : null;
   const totalOpenNow = trades.filter((t) => t.status === 'open').length;
 
-  const rangeLabel = `${formatDate(monthStart.toISOString())} - ${formatDate(now.toISOString())}`;
+  const rangeLabel = `${formatDate(monthStart.toISOString())} - ${formatDate(displayEnd.toISOString())}`;
 
   const html = `
   <div dir="rtl" style="font-family: Arial, Helvetica, sans-serif; background:#f4f4f5; padding:24px 12px;">
@@ -149,7 +176,7 @@ async function buildSummaryHtml() {
       <div style="background:#111318;padding:24px;text-align:center;">
         <img src="${SITE_URL}/shiran-photo.jpg" width="56" height="56" alt="שירן דימור" style="width:56px;height:56px;border-radius:50%;object-fit:cover;border:2px solid #4fc9c4;margin-bottom:12px;" />
         <div style="color:#fff;font-size:18px;font-weight:700;">מסחר <span style="color:#4fc9c4;">אחראי</span> במניות</div>
-        <div style="color:#9C8FD9;font-size:12.5px;letter-spacing:0.02em;margin-top:6px;">שירן דימור · קבוצת הסוחרים &quot;${GROUP_NAME}&quot;</div>
+        <div style="color:#9C8FD9;font-size:12.5px;letter-spacing:0.02em;margin-top:6px;">שירן דימור · ${audience === 'traders' ? `קבוצת הסוחרים &quot;${GROUP_NAME}&quot;` : 'קבוצת העדכונים'}</div>
         <div style="color:#fff;font-size:20px;font-weight:700;margin-top:14px;">סיכום החודש</div>
         <div style="color:#aaa;font-size:13px;margin-top:4px;">${rangeLabel}</div>
       </div>
@@ -187,7 +214,7 @@ async function buildSummaryHtml() {
             <th style="padding:0 12px 6px;text-align:right;">רווח/הפסד</th>
             <th style="padding:0 12px 6px;text-align:right;">תאריך</th>
           </tr>
-          ${openedThisWeekStillOpen.map((t) => tradeRowHtml(t, 'open')).join('')}
+          ${openedThisWeekStillOpen.map((t) => tradeRowHtml(t, 'open', blurSymbols)).join('')}
         </table>`}
       </div>
 
@@ -202,67 +229,62 @@ async function buildSummaryHtml() {
             <th style="padding:0 12px 6px;text-align:right;">תוצאה</th>
             <th style="padding:0 12px 6px;text-align:right;">תאריך</th>
           </tr>
-          ${closedThisWeek.map((t) => tradeRowHtml(t, 'closed')).join('')}
+          ${closedThisWeek.map((t) => tradeRowHtml(t, 'closed', blurSymbols)).join('')}
         </table>`}
       </div>
 
+      ${audience === 'updates' ? `
       <div style="padding:6px 16px 24px;text-align:center;">
         <div style="background:#f0faf9;border:1px solid #cdeeeb;border-radius:12px;padding:18px 16px;">
           <div style="font-size:14.5px;font-weight:700;color:#111;margin-bottom:6px;">🚀 קבוצת הסוחרים &quot;${GROUP_NAME}&quot;</div>
           <div style="font-size:13px;color:#666;">להצטרפות ל-7 ימי ניסיון ללא עלות כנסו ללינק</div>
         </div>
-      </div>
+      </div>` : `
+      <div style="padding:6px 16px 24px;text-align:center;">
+        <div style="background:#f4f4f5;border:1px solid #e5e5e5;border-radius:12px;padding:16px;">
+          <div style="font-size:13px;color:#555;">חברים, אם יש פער בין העסקאות שלי לשלכם - זה בסדר, רק תוודאו שאתם יודעים למה. משהו לא ברור? אני כאן בפרטי.</div>
+        </div>
+      </div>`}
 
     </div>
   </div>`;
 
-  return { html, rangeLabel, openedThisWeekStillOpen, closedThisWeek, avgPct, winRate, totalOpenNow };
+  return { html, rangeLabel, openedThisWeekStillOpen, closedThisWeek, avgPct, winRate, totalOpenNow, audience };
 }
 
 // טקסט "מפוצץ" לשליחה ידנית בוואטסאפ (לצד התמונה) - עם אימוג'ים ופירוט מלא של כל עסקה,
 // כדי שאפשר יהיה להדביק אותו כטקסט חופשי בלי תלות ביכולת שליחת תמונות אוטומטית
 function buildWhatsappSummaryText(data: Awaited<ReturnType<typeof buildSummaryHtml>>) {
-  const { rangeLabel, openedThisWeekStillOpen, closedThisWeek, avgPct, winRate, totalOpenNow } = data;
+  const { audience } = data;
 
-  const lines: string[] = [];
-  lines.push(`🚀 *סיכום החודש - קבוצת הסוחרים "${GROUP_NAME}"*`);
-  lines.push(`📅 ${rangeLabel}`);
-  lines.push('');
-  lines.push(`💰 תשואה ממוצעת החודש: ${avgPct !== null ? `${avgPct >= 0 ? '+' : ''}${avgPct.toFixed(2)}%` : '—'}`);
-  lines.push(`✅ אחוז הצלחה: ${winRate !== null ? winRate.toFixed(0) + '%' : '—'}`);
-  lines.push(`🔒 עסקאות שנסגרו החודש: ${closedThisWeek.length}`);
-  lines.push(`📈 עסקאות פתוחות כרגע: ${totalOpenNow}`);
-  lines.push('');
-
-  if (openedThisWeekStillOpen.length > 0) {
-    lines.push('*עסקאות פתוחות כרגע:*');
-    for (const t of openedThisWeekStillOpen) {
-      const p = pctOpen(t);
-      const dirLabel = t.direction === 'long' ? 'לונג' : 'שורט';
-      const emoji = (p ?? 0) >= 0 ? '🟢' : '🔴';
-      lines.push(`${emoji} ${t.symbol} (${dirLabel}) | כניסה ${formatDate(t.opened_at)} ב-$${t.entry_price} | כרגע ${p !== null ? `${p >= 0 ? '+' : ''}${p.toFixed(2)}%` : '—'}`);
-    }
-    lines.push('');
+  // שתי ההודעות קצרות ומכוונות בכוונה - הסטטיסטיקה והעסקאות עצמן כבר נמצאות בתמונה המצורפת,
+  // אין טעם לכפול אותן גם בטקסט שמתלווה אליה
+  if (audience === 'traders') {
+    return [
+      'חברים, שימו לב למצב התיק (תמיד אפשר להיכנס גם לתיק המלא באתר) - בעיקר לעסקאות הפתוחות.',
+      '',
+      'כל עוד המחיר עוד לא עבר את המחיר המקסימלי לכניסה (יש עמודה ייעודית לזה בתיק הפתוחות באתר) - עדיין אפשר להיכנס לעסקה.',
+      '',
+      'זה בדיוק היתרון בעסקאות סווינג: לא צריך להיות מחוברים 24/7 לנייד, ואם נכנסתם אחרי שעה, שעתיים, יום או יומיים - זה בסדר גמור, כל עוד המחיר המקסימלי לא נחצה.',
+      '',
+      'יום שקט לכולנו 🙏🏾',
+    ].join('\n');
   }
 
-  if (closedThisWeek.length > 0) {
-    lines.push('*עסקאות שנסגרו החודש:*');
-    for (const t of closedThisWeek) {
-      const p = pct(t);
-      const dirLabel = t.direction === 'long' ? 'לונג' : 'שורט';
-      const emoji = (p ?? 0) >= 0 ? '🎯' : '⚠️';
-      lines.push(`${emoji} ${t.symbol} (${dirLabel}) | כניסה ${formatDate(t.opened_at)} | $${t.entry_price} ← $${t.exit_price} | ${p !== null ? `${p >= 0 ? '+' : ''}${p.toFixed(2)}%` : '—'} | נסגרה ${formatDate(t.closed_at as string)}`);
-    }
-    lines.push('');
-  }
-
-  lines.push(`🚀 להצטרפות ל-7 ימי ניסיון ללא עלות: ${TRIAL_SIGNUP_URL}`);
-
-  return lines.join('\n');
+  return [
+    'בוקר טוב חברים',
+    'שימו לב מה היה לנו שבוע שעבר בקבוצת הסוחרים',
+    '',
+    'בשקט, בלי רעש וצלצולים, ובלי אלפי שקלים לקורס תיאורטי!!!',
+    '',
+    'ל - 7 ימי ניסיון ללא עלות:',
+    TRIAL_SIGNUP_URL,
+    'יום שקט לכולנו 🙏🏾',
+  ].join('\n');
 }
 
-export async function getMonthlySummaryImage() {
-  const { html, rangeLabel } = await buildSummaryHtml();
+export async function getMonthlySummaryImage(targetMonth?: { year: number; month: number }, audience: SummaryAudience = 'traders') {
+  const { html, rangeLabel } = await buildSummaryHtml(targetMonth, audience);
   const imageBase64 = await renderHtmlToImageBase64(html);
   return { imageBase64, rangeLabel };
 }
@@ -270,8 +292,11 @@ export async function getMonthlySummaryImage() {
 // שולח את סיכום החודש למייל של שירן - בין אם דרך ה-cron האוטומטי (יום ראשון) ובין אם בלחיצת
 // כפתור ידנית מעמוד הניהול. תמיד שולח למייל הקבוע shiran@shirandimor.com (לא לכתובת שרירותית),
 // כדי שאי אפשר יהיה להשתמש בזה כדי לשלוח מייל למישהו אחר.
-export async function sendMonthlySummaryEmail() {
-  const summaryData = await buildSummaryHtml();
+// targetMonth אופציונלי - לשליחה ידנית של חודש שעבר (למשל ביקשה ב-1.10 את סיכום ספטמבר).
+// audience - 'traders' (ברירת מחדל, תואם להתנהגות הקודמת) שולח לקבוצת הסוחרים עם סימבולים גלויים
+// ובלי אזכור ניסיון חינמי, 'updates' שולח לקבוצת העדכונים עם סימבולים מטושטשים וכפתור ניסיון
+export async function sendMonthlySummaryEmail(targetMonth?: { year: number; month: number }, audience: SummaryAudience = 'traders') {
+  const summaryData = await buildSummaryHtml(targetMonth, audience);
   const { html, rangeLabel, openedThisWeekStillOpen, closedThisWeek } = summaryData;
 
   const apiKey = process.env.RESEND_API_KEY;
@@ -297,14 +322,15 @@ export async function sendMonthlySummaryEmail() {
     body: JSON.stringify({
       from: 'סיכום החודש <noreply@shirandimor.com>',
       to: 'shiran@shirandimor.com',
-      subject: `סיכום החודש לקבוצות · ${rangeLabel}`,
+      subject: `סיכום החודש ל${audience === 'traders' ? 'קבוצת הסוחרים' : 'קבוצת העדכונים'} · ${rangeLabel}`,
       html: imageBase64
         ? `<div dir="rtl" style="font-family: Arial, Helvetica, sans-serif; padding: 16px; color:#333;">
-            <p>הסיכום מצורף כתמונה למטה - אפשר לשמור ולשלוח אותה כמו שהיא לקבוצת העדכונים.</p>
+            <p>הסיכום מצורף כתמונה למטה - אפשר לשמור ולשלוח אותה כמו שהיא ל${audience === 'traders' ? 'קבוצת הסוחרים' : 'קבוצת העדכונים'}.</p>
+            ${audience === 'updates' ? `
             <p style="font-weight:700;margin-top:16px;">⚠️ שימו לב: בתוך התמונה עצמה הכפתור "הצטרפות עכשיו" אינו לחיץ - זו מגבלה של כל תמונה בוואטסאפ.</p>
             <p>מומלץ לצרף את הטקסט הבא כהודעה נפרדת מתחת לתמונה, כדי שהקישור יהיה לחיץ:</p>
             <div style="background:#f4f4f5;border:1px solid #ddd;border-radius:8px;padding:14px;margin-top:8px;white-space:pre-line;">🚀 להצטרפות לקבוצת הסוחרים "${GROUP_NAME}" ל-7 ימי ניסיון ללא עלות:
-${TRIAL_SIGNUP_URL}</div>
+${TRIAL_SIGNUP_URL}</div>` : ''}
           </div>`
         : html,
       attachments: imageBase64
