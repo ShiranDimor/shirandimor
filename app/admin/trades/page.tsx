@@ -191,6 +191,18 @@ export default function AdminTradesPage() {
 
     await realizeShares(supabase, trade, trade.shares_calculated, parseFloat(exitPrice), exitDate ? new Date(exitDate).toISOString() : new Date().toISOString(), userId);
 
+    // מייל "עסקה נסגרה" (ברווח / בהפסד) למנויים - כישלון בשליחה לא חוסם את הסגירה עצמה
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      await fetch('/api/admin/trade-closed', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
+        body: JSON.stringify({ tradeId: trade.id }),
+      });
+    } catch (e) {
+      console.error('שגיאה בשליחת מייל סגירת עסקה', e);
+    }
+
     setClosing(false);
     setClosingId(null);
     setExitPrice('');
