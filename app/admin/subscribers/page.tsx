@@ -30,6 +30,8 @@ export default function AdminSubscribersPage() {
   const [debugPhone, setDebugPhone] = useState('');
   const [debugging, setDebugging] = useState(false);
   const [debugResult, setDebugResult] = useState('');
+  const [fillingEmails, setFillingEmails] = useState(false);
+  const [fillEmailsMessage, setFillEmailsMessage] = useState('');
 
   const [showGrantForm, setShowGrantForm] = useState(false);
   const [grantName, setGrantName] = useState('');
@@ -129,6 +131,42 @@ export default function AdminSubscribersPage() {
     }
 
     setDebugging(false);
+  }
+
+  // השלמת מיילים חסרים במאנדיי: קודם תצוגה מקדימה, ורק אחרי אישור כותבים בפועל
+  async function handleFillMondayEmails() {
+    setFillingEmails(true);
+    setFillEmailsMessage('');
+    const { data: { session } } = await supabase.auth.getSession();
+    const call = async (dryRun: boolean) => {
+      const res = await fetch('/api/admin/monday-fill-emails', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
+        body: JSON.stringify({ dryRun }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || 'שגיאה');
+      return data;
+    };
+
+    try {
+      const preview = await call(true);
+      if (preview.filled.length === 0) {
+        setFillEmailsMessage(`אין מה להשלים: ${preview.missingEmail} פריטים במאנדיי בלי מייל, ולאף אחד מהם אין מייל מוכר באתר לפי מספר הנייד.`);
+      } else {
+        const sample = preview.filled.slice(0, 10).map((f: { name: string; email: string }) => `${f.name} ← ${f.email}`).join('\n');
+        const ok = window.confirm(`נמצאו ${preview.filled.length} פריטים במאנדיי בלי מייל שיש להם מייל באתר (לפי מספר נייד).\n\n${sample}${preview.filled.length > 10 ? '\n...' : ''}\n\nלעדכן את המיילים במאנדיי?`);
+        if (ok) {
+          const done = await call(false);
+          setFillEmailsMessage(`עודכנו ${done.filled.length} מיילים במאנדיי.${done.failed.length ? ` נכשלו: ${done.failed.length}.` : ''} נשארו בלי מייל (אין מייל מוכר באתר): ${done.noMatchOnSite.length}.`);
+        } else {
+          setFillEmailsMessage('בוטל - לא עודכן כלום.');
+        }
+      }
+    } catch (e) {
+      setFillEmailsMessage('שגיאה: ' + (e instanceof Error ? e.message : 'לא הצלחנו להשלים'));
+    }
+    setFillingEmails(false);
   }
 
   async function cancelSubscription(id: string, name: string) {
@@ -311,6 +349,15 @@ export default function AdminSubscribersPage() {
           </pre>
         )}
       </details>
+
+      <button className="btn-outline" style={{ width: '100%', marginBottom: '16px' }} onClick={handleFillMondayEmails} disabled={fillingEmails}>
+        {fillingEmails ? 'בודקים מול מאנדיי...' : '📧 השלמת מיילים חסרים במאנדיי (לפי המיילים שיש באתר)'}
+      </button>
+      {fillEmailsMessage && (
+        <p style={{ fontSize: '12px', color: fillEmailsMessage.startsWith('שגיאה') ? 'var(--loss)' : 'var(--text-secondary)', marginTop: '-8px', marginBottom: '16px', textAlign: 'center' }}>
+          {fillEmailsMessage}
+        </p>
+      )}
 
       <div className="sort-header">
         <div className={`sort-col ${sortBy === 'name' ? 'active' : ''}`} onClick={() => toggleSort('name')}>

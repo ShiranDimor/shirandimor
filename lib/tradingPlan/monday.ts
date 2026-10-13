@@ -678,3 +678,79 @@ export async function createLiveRegistrationLead(params: {
     return { ok: false, reason: 'error' };
   }
 }
+
+export type MondayEmailBackfillResult = {
+  totalItems: number;
+  missingEmail: number;
+  filled: { name: string; email: string }[];
+  noMatchOnSite: string[];
+  failed: { name: string; error: string }[];
+};
+
+// משלים מייל לכל פריט בלוח (בכל הקבוצות) שאין לו מייל, לפי התאמת מספר נייד למיילים שידועים באתר.
+// לא נוגע בפריטים שכבר יש להם מייל. dryRun = רק מחזיר מה היה מתעדכן, בלי לכתוב למאנדיי
+export async function fillMissingEmailsInMonday(emailByPhone: Map<string, string>, dryRun: boolean): Promise<MondayEmailBackfillResult> {
+  const token = process.env.MONDAY_API_TOKEN;
+  const boardId = process.env.MONDAY_BOARD_ID;
+  if (!token || !boardId) throw new Error('MONDAY_API_TOKEN / MONDAY_BOARD_ID לא מוגדרים');
+
+  const { phoneColumnId, emailColumnId } = await getBoardSchema(token, boardId);
+  if (!phoneColumnId || !emailColumnId) throw new Error('לא נמצאו עמודות טלפון/מייל בלוח');
+
+  const result: MondayEmailBackfillResult = { totalItems: 0, missingEmail: 0, filled: [], noMatchOnSite: [], failed: [] };
+  const toFill: { id: string; name: string; email: string }[] = [];
+  let cursor: string | null = null;
+
+  do {
+    const itemsData: any = await mondayRequest(
+      token,
+      `query ($boardId: ID!, $cursor: String, $columnIds: [String!]) {
+        boards (ids: [$boardId]) {
+          items_page (limit: 100, cursor: $cursor) {
+            cursor
+            items { id name column_values (ids: $columnIds) { id text } }
+          }
+        }
+      }`,
+      { boardId, cursor, columnIds: [phoneColumnId, emailColumnId] }
+    );
+
+    const page = itemsData?.data?.boards?.[0]?.items_page;
+    const items: { id: string; name: string; column_values: { id: string; text: string | null }[] }[] = page?.items || [];
+
+    for (const item of items) {
+      result.totalItems += 1;
+      const emailText = item.column_values?.find((cv) => cv.id === emailColumnId)?.text;
+      if (emailText && emailText.trim()) continue;
+      result.missingEmail += 1;
+
+      const phoneText = item.column_values?.find((cv) => cv.id === phoneColumnId)?.text;
+      const email = phoneText ? emailByPhone.get(normalizePhone(phoneText)) : undefined;
+      if (email) toFill.push({ id: item.id, name: item.name, email });
+      else result.noMatchOnSite.push(item.name);
+    }
+
+    cursor = page?.cursor || null;
+  } while (cursor);
+
+  for (const f of toFill) {
+    if (dryRun) {
+      result.filled.push({ name: f.name, email: f.email });
+      continue;
+    }
+    try {
+      await mondayRequest(
+        token,
+        `mutation ($boardId: ID!, $itemId: ID!, $columnValues: JSON!) {
+          change_multiple_column_values (board_id: $boardId, item_id: $itemId, column_values: $columnValues) { id }
+        }`,
+        { boardId, itemId: f.id, columnValues: JSON.stringify({ [emailColumnId]: { email: f.email, text: f.email } }) }
+      );
+      result.filled.push({ name: f.name, email: f.email });
+    } catch (e) {
+      result.failed.push({ name: f.name, error: e instanceof Error ? e.message : 'שגיאה לא ידועה' });
+    }
+  }
+
+  return result;
+}
