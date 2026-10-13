@@ -32,6 +32,7 @@ export default function AdminSubscribersPage() {
   const [debugResult, setDebugResult] = useState('');
   const [fillingEmails, setFillingEmails] = useState(false);
   const [fillEmailsMessage, setFillEmailsMessage] = useState('');
+  const [fillPreview, setFillPreview] = useState<{ name: string; email: string }[] | null>(null);
 
   const [showGrantForm, setShowGrantForm] = useState(false);
   const [grantName, setGrantName] = useState('');
@@ -133,38 +134,44 @@ export default function AdminSubscribersPage() {
     setDebugging(false);
   }
 
-  // השלמת מיילים חסרים במאנדיי: קודם תצוגה מקדימה, ורק אחרי אישור כותבים בפועל
-  async function handleFillMondayEmails() {
+  // השלמת מיילים חסרים במאנדיי: קודם תצוגה מקדימה בתוך העמוד, ורק אחרי לחיצה על "אישור" כותבים בפועל
+  async function callFillMondayEmails(dryRun: boolean) {
+    const { data: { session } } = await supabase.auth.getSession();
+    const res = await fetch('/api/admin/monday-fill-emails', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
+      body: JSON.stringify({ dryRun }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.error || 'שגיאה');
+    return data;
+  }
+
+  async function handlePreviewMondayEmails() {
     setFillingEmails(true);
     setFillEmailsMessage('');
-    const { data: { session } } = await supabase.auth.getSession();
-    const call = async (dryRun: boolean) => {
-      const res = await fetch('/api/admin/monday-fill-emails', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
-        body: JSON.stringify({ dryRun }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || 'שגיאה');
-      return data;
-    };
-
+    setFillPreview(null);
     try {
-      const preview = await call(true);
+      const preview = await callFillMondayEmails(true);
       if (preview.filled.length === 0) {
         setFillEmailsMessage(`אין מה להשלים: ${preview.missingEmail} פריטים במאנדיי בלי מייל, ולאף אחד מהם אין מייל מוכר באתר לפי מספר הנייד.`);
       } else {
-        const sample = preview.filled.slice(0, 10).map((f: { name: string; email: string }) => `${f.name} ← ${f.email}`).join('\n');
-        const ok = window.confirm(`נמצאו ${preview.filled.length} פריטים במאנדיי בלי מייל שיש להם מייל באתר (לפי מספר נייד).\n\n${sample}${preview.filled.length > 10 ? '\n...' : ''}\n\nלעדכן את המיילים במאנדיי?`);
-        if (ok) {
-          const done = await call(false);
-          setFillEmailsMessage(`עודכנו ${done.filled.length} מיילים במאנדיי.${done.failed.length ? ` נכשלו: ${done.failed.length}.` : ''} נשארו בלי מייל (אין מייל מוכר באתר): ${done.noMatchOnSite.length}.`);
-        } else {
-          setFillEmailsMessage('בוטל - לא עודכן כלום.');
-        }
+        setFillPreview(preview.filled);
       }
     } catch (e) {
-      setFillEmailsMessage('שגיאה: ' + (e instanceof Error ? e.message : 'לא הצלחנו להשלים'));
+      setFillEmailsMessage('שגיאה: ' + (e instanceof Error ? e.message : 'לא הצלחנו לבדוק'));
+    }
+    setFillingEmails(false);
+  }
+
+  async function handleConfirmMondayEmails() {
+    setFillingEmails(true);
+    try {
+      const done = await callFillMondayEmails(false);
+      setFillEmailsMessage(`עודכנו ${done.filled.length} מיילים במאנדיי.${done.failed.length ? ` נכשלו: ${done.failed.length}.` : ''} נשארו בלי מייל (אין מייל מוכר באתר): ${done.noMatchOnSite.length}.`);
+      setFillPreview(null);
+    } catch (e) {
+      setFillEmailsMessage('שגיאה: ' + (e instanceof Error ? e.message : 'לא הצלחנו לעדכן'));
     }
     setFillingEmails(false);
   }
@@ -350,9 +357,27 @@ export default function AdminSubscribersPage() {
         )}
       </details>
 
-      <button className="btn-outline" style={{ width: '100%', marginBottom: '16px' }} onClick={handleFillMondayEmails} disabled={fillingEmails}>
-        {fillingEmails ? 'בודקים מול מאנדיי...' : '📧 השלמת מיילים חסרים במאנדיי (לפי המיילים שיש באתר)'}
+      <button className="btn-outline" style={{ width: '100%', marginBottom: '16px' }} onClick={handlePreviewMondayEmails} disabled={fillingEmails}>
+        {fillingEmails && !fillPreview ? 'בודקים מול מאנדיי...' : '📧 השלמת מיילים חסרים במאנדיי (לפי המיילים שיש באתר)'}
       </button>
+      {fillPreview && (
+        <div style={{ border: '1px solid var(--border)', borderRadius: '10px', padding: '12px', marginBottom: '16px' }}>
+          <p style={{ fontSize: '13px', marginBottom: '8px' }}>
+            נמצאו {fillPreview.length} אנשים במאנדיי בלי מייל, שיש להם מייל באתר (לפי מספר נייד). זה מה שייכתב במאנדיי:
+          </p>
+          <div style={{ maxHeight: '220px', overflowY: 'auto', fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '10px' }}>
+            {fillPreview.map((f, i) => (
+              <div key={i}>{f.name} ← <span dir="ltr">{f.email}</span></div>
+            ))}
+          </div>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button className="btn-primary" style={{ flex: 1 }} onClick={handleConfirmMondayEmails} disabled={fillingEmails}>
+              {fillingEmails ? 'מעדכנים...' : `✅ אישור - לעדכן ${fillPreview.length} מיילים במאנדיי`}
+            </button>
+            <button className="btn-outline" onClick={() => setFillPreview(null)} disabled={fillingEmails}>ביטול</button>
+          </div>
+        </div>
+      )}
       {fillEmailsMessage && (
         <p style={{ fontSize: '12px', color: fillEmailsMessage.startsWith('שגיאה') ? 'var(--loss)' : 'var(--text-secondary)', marginTop: '-8px', marginBottom: '16px', textAlign: 'center' }}>
           {fillEmailsMessage}
