@@ -1,9 +1,13 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { getActiveSubscriberContacts } from '@/lib/subscriberStatus';
+import { realizeShares, type TradeToRealize } from '@/lib/tradeClose';
 
 // בודק אם עסקאות פתוחות בתיק האמיתי (trades, לא יומן מנויים) הגיעו למחיר הסטופ לוס שלהן
 // אחרי עדכון מחיר - ואם כן, שולח מייל התראה מיידי. מסמן stop_loss_alert_sent כדי שלא תישלח
-// התראה כפולה על אותה עסקה בכל ריענון מחיר נוסף - רק אם מחיר הסטופ עצמו משתנה (עריכה) זה מתאפס
+// התראה כפולה על אותה עסקה בכל ריענון מחיר נוסף - רק אם מחיר הסטופ עצמו משתנה (עריכה) זה מתאפס.
+// בנוסף, עסקה שהגיעה לסטופ נסגרת אוטומטית בתיק - במחיר הסטופ ובתאריך שבו זה זוהה - בדיוק כמו
+// לחיצה על "⚡ סגירה" בעמוד הניהול (כולל איחוד מכירות חלקיות). אם המחיר בפועל היה שונה (פער פתיחה),
+// אפשר לתקן את מחיר היציאה דרך עריכת העסקה הסגורה
 
 // שליחת ההתראה לכל המנויים עדיין לא הופעלה בפועל - כל עוד הדגל הזה false, ההודעה שמנוסחת
 // למנויים יוצאת רק לכתובת הבדיקה של שירן, כדי שתוכל לראות איך זה נראה אצל מנוי לפני
@@ -29,6 +33,7 @@ export async function checkStopLossBreaches(supabaseAdmin: SupabaseClient, trade
   if (breached.length === 0) return;
 
   await supabaseAdmin.from('trades').update({ stop_loss_alert_sent: true }).in('id', breached.map((t) => t.id));
+  await closeAtStop(supabaseAdmin, breached.map((t) => t.id));
 
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
@@ -38,7 +43,7 @@ export async function checkStopLossBreaches(supabaseAdmin: SupabaseClient, trade
 
   const lines = breached.map((t) => {
     const dirLabel = t.direction === 'long' ? 'לונג' : 'שורט';
-    return `${t.symbol} (${dirLabel}) - סטופ: $${t.stop_loss} · מחיר נוכחי: $${t.current_price}`;
+    return `${t.symbol} (${dirLabel}) - סטופ: $${t.stop_loss} · מחיר נוכחי: $${t.current_price} · העסקה נסגרה במחיר הסטופ`;
   });
 
   try {
@@ -49,7 +54,7 @@ export async function checkStopLossBreaches(supabaseAdmin: SupabaseClient, trade
         from: 'התראות האתר <noreply@shirandimor.com>',
         to: 'shiran@shirandimor.com',
         subject: breached.length === 1 ? `⚠️ סטופ לוס הופעל - ${breached[0].symbol}` : `⚠️ סטופ לוס הופעל ב-${breached.length} עסקאות`,
-        text: `${breached.length === 1 ? 'העסקה הבאה הגיעה' : 'העסקאות הבאות הגיעו'} למחיר הסטופ לוס שלה${breached.length === 1 ? '' : 'ן'}:\n\n${lines.join('\n')}\n\nלתיק: https://www.shirandimor.com/admin/trades`,
+        text: `${breached.length === 1 ? 'העסקה הבאה הגיעה' : 'העסקאות הבאות הגיעו'} למחיר הסטופ לוס שלה${breached.length === 1 ? '' : 'ן'} ונסגר${breached.length === 1 ? 'ה' : 'ו'} אוטומטית בתיק במחיר הסטופ ובתאריך של היום:\n\n${lines.join('\n')}\n\nאם מחיר היציאה בפועל שונה (למשל פער פתיחה), אפשר לתקן בעריכת העסקה הסגורה.\n\nלתיק: https://www.shirandimor.com/admin/trades`,
       }),
     });
     if (!res.ok) console.error('שגיאה בשליחת מייל התראת סטופ לוס', await res.text());
@@ -58,6 +63,28 @@ export async function checkStopLossBreaches(supabaseAdmin: SupabaseClient, trade
   }
 
   await notifySubscribers(breached, apiKey, lines);
+}
+
+// סוגר כל עסקה שהגיעה לסטופ במחיר הסטופ, בתאריך של עכשיו
+async function closeAtStop(supabaseAdmin: SupabaseClient, ids: string[]) {
+  const { data: rows, error } = await supabaseAdmin
+    .from('trades')
+    .select('id, direction, symbol, entry_price, stop_loss, shares_calculated, opened_at, parent_trade_id, status')
+    .in('id', ids);
+  if (error) {
+    console.error('שגיאה בטעינת עסקאות לסגירה אוטומטית בסטופ', error);
+    return;
+  }
+
+  const closedAtIso = new Date().toISOString();
+  for (const row of rows || []) {
+    if (row.status !== 'open') continue;
+    try {
+      await realizeShares(supabaseAdmin, row as TradeToRealize, row.shares_calculated, row.stop_loss, closedAtIso);
+    } catch (e) {
+      console.error(`שגיאה בסגירה אוטומטית של ${row.symbol} בסטופ`, e);
+    }
+  }
 }
 
 const SITE_URL = 'https://www.shirandimor.com';
