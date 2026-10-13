@@ -6,7 +6,7 @@
 //   * התוצאות זהות בכל טווח זמן (1 דקה, 5 דקות, שעה, 4 שעות, יומי) של אותו חוזה.
 
 //@version=6
-indicator("NQ Daily Levels (50% / Asia / London / PDH-PDL / PD VP)", shorttitle = "NQ Levels", overlay = true, max_lines_count = 50, max_labels_count = 50, max_boxes_count = 500)
+indicator("NQ Daily Levels (50% / Asia / London / PDH-PDL / VP)", shorttitle = "NQ Levels", overlay = true, max_lines_count = 60, max_labels_count = 60, max_boxes_count = 500)
 
 const string TZ = "America/New_York"
 
@@ -52,6 +52,15 @@ vaColor  = input.color(#B0BEC5, "VAH / VAL: צבע", inline = "vp2", group = G_V
 vaWidth  = input.int(2, "עובי", minval = 1, maxval = 10, inline = "vp2", group = G_VP)
 vaStyle  = input.string("Dashed", "סגנון", options = ["Solid", "Dashed", "Dotted"], inline = "vp2", group = G_VP)
 
+G_TD = "Today Volume Profile (POC / VAH / VAL) - מתעדכן"
+showTD   = input.bool(true, "הצג", group = G_TD)
+tdPocCol = input.color(#FFFFFF, "Today POC: צבע", inline = "td1", group = G_TD)
+tdPocW   = input.int(2, "עובי", minval = 1, maxval = 10, inline = "td1", group = G_TD)
+tdPocSt  = input.string("Solid", "סגנון", options = ["Solid", "Dashed", "Dotted"], inline = "td1", group = G_TD)
+tdVaCol  = input.color(#00E676, "Today VAH / VAL: צבע", inline = "td2", group = G_TD)
+tdVaW    = input.int(1, "עובי", minval = 1, maxval = 10, inline = "td2", group = G_TD)
+tdVaSt   = input.string("Dotted", "סגנון", options = ["Solid", "Dashed", "Dotted"], inline = "td2", group = G_TD)
+
 G_VPH = "Volume Profile - היסטוגרמה"
 showHistPD = input.bool(true, "הצג פרופיל של יום קודם", group = G_VPH)
 histPDPos  = input.string("על היום הנוכחי", "מיקום הפרופיל של יום קודם", options = ["על היום הנוכחי", "על היום של אתמול"], group = G_VPH)
@@ -68,6 +77,7 @@ labelOffset = input.int(3, "מרחק מהנר האחרון (בנרות)", minval
 labelText   = input.color(color.black, "צבע טקסט", group = G_LBL)
 labelSize   = input.string("Normal", "גודל", options = ["Small", "Normal", "Large"], group = G_LBL)
 showTags    = input.bool(true, "הצג את שם הקו גם על הקו עצמו (בתחילתו)", group = G_LBL)
+lblGap      = input.float(15, "מרווח מינימלי בין תוויות (נקודות)", minval = 0, step = 1, tooltip = "כשכמה קווים קרובים במחיר, התוויות מימין מוזזות למטה כך שלא יעלו אחת על השנייה. המחיר בתווית תמיד המחיר המדויק של הקו. אם התוויות עדיין עולות זו על זו - להגדיל; אם הן רחוקות מדי מהקווים - להקטין.", group = G_LBL)
 showScale   = input.bool(true, "הצג מחירים על סקאלת המחירים", group = G_LBL)
 
 G_ALR = "התראות"
@@ -323,15 +333,27 @@ if barstate.islast
         f_hist(bxs, drawCur, drawCur.start)
 
 // ───────────── ציור (רק על הנר האחרון = יום המסחר הנוכחי) ─────────────
-f_draw(line[] lns, label[] lbs, int x1, float y, color c, int w, string st, string name, bool full, int lblX, string sz) =>
+// הקו מצויר מיד; התווית נאספת לרשימה, וכל התוויות מסודרות בסוף כך שלא יעלו אחת על השנייה
+f_draw(line[] lns, label[] lbs, float[] lp, string[] lt, color[] lc, int x1, float y, color c, int w, string st, string name, bool full) =>
     if not na(y) and not na(x1)
         lns.push(line.new(x1, y, x1 + 60000, y, xloc.bar_time, extend.right, c, f_style(st), w))
         if showLabels
-            txt = name + "  " + str.tostring(y, "0.00#") + (full ? "" : " (partial)")
-            lbs.push(label.new(lblX, y, txt, xloc.bar_time, yloc.price, c, label.style_label_left, labelText, sz))
+            lp.push(y)
+            lt.push(name + "  " + str.tostring(y, "0.00#") + (full ? "" : " (partial)"))
+            lc.push(c)
         if showTags
             // שם הקו כתוב מעל הקו, בנקודה שבה הוא מתחיל
             lbs.push(label.new(x1, y, name, xloc.bar_time, yloc.price, color.new(color.white, 100), label.style_label_lower_left, c, size.small))
+
+// Today POC / VAH / VAL - מהפרופיל המתפתח של היום (מהנמוך עד הגבוה של היום, נכון לעכשיו)
+float todPoc = na
+float todVah = na
+float todVal = na
+if showTD and barstate.islast and not na(drawCur) and not na(drawCur.kLo)
+    [tp, th, tl] = f_profile(drawCur.vol, drawCur.kLo, drawCur.kHi, vpRow, vpVA)
+    todPoc := tp
+    todVah := th
+    todVal := tl
 
 var line[]  lns = array.new<line>()
 var label[] lbs = array.new<label>()
@@ -353,22 +375,42 @@ if barstate.islast
     // חלון נחשב שלם אם התחיל אחרי תחילת הנתונים שנטענו
     aFull = dFull or aT > dT
     lFull = dFull or lT > dT
+    lp = array.new<float>()
+    lt = array.new<string>()
+    lc = array.new<color>()
 
     if showPD
-        f_draw(lns, lbs, dT, pdHi, pdColor, pdWidth, pdStyle, "Previous Day High", pdFull, lblX, sz)
-        f_draw(lns, lbs, dT, pdLo, pdColor, pdWidth, pdStyle, "Previous Day Low", pdFull, lblX, sz)
+        f_draw(lns, lbs, lp, lt, lc, dT, pdHi, pdColor, pdWidth, pdStyle, "Previous Day High", pdFull)
+        f_draw(lns, lbs, lp, lt, lc, dT, pdLo, pdColor, pdWidth, pdStyle, "Previous Day Low", pdFull)
     if showVP
-        f_draw(lns, lbs, dT, pPoc, pocColor, pocWidth, pocStyle, "PD POC", pdFull, lblX, sz)
-        f_draw(lns, lbs, dT, pVah, vaColor, vaWidth, vaStyle, "PD VAH", pdFull, lblX, sz)
-        f_draw(lns, lbs, dT, pVal, vaColor, vaWidth, vaStyle, "PD VAL", pdFull, lblX, sz)
+        f_draw(lns, lbs, lp, lt, lc, dT, pPoc, pocColor, pocWidth, pocStyle, "PD POC", pdFull)
+        f_draw(lns, lbs, lp, lt, lc, dT, pVah, vaColor, vaWidth, vaStyle, "PD VAH", pdFull)
+        f_draw(lns, lbs, lp, lt, lc, dT, pVal, vaColor, vaWidth, vaStyle, "PD VAL", pdFull)
+    if showTD
+        f_draw(lns, lbs, lp, lt, lc, dT, todPoc, tdPocCol, tdPocW, tdPocSt, "Today POC", dFull)
+        f_draw(lns, lbs, lp, lt, lc, dT, todVah, tdVaCol, tdVaW, tdVaSt, "Today VAH", dFull)
+        f_draw(lns, lbs, lp, lt, lc, dT, todVal, tdVaCol, tdVaW, tdVaSt, "Today VAL", dFull)
     if showMid
-        f_draw(lns, lbs, dT, mid, midColor, midWidth, midStyle, "50% Daily Range", dFull, lblX, sz)
+        f_draw(lns, lbs, lp, lt, lc, dT, mid, midColor, midWidth, midStyle, "50% Daily Range", dFull)
     if showAsia
-        f_draw(lns, lbs, aT, aHi, asiaColor, asiaWidth, asiaStyle, "Asia High", aFull, lblX, sz)
-        f_draw(lns, lbs, aT, aLo, asiaColor, asiaWidth, asiaStyle, "Asia Low", aFull, lblX, sz)
+        f_draw(lns, lbs, lp, lt, lc, aT, aHi, asiaColor, asiaWidth, asiaStyle, "Asia High", aFull)
+        f_draw(lns, lbs, lp, lt, lc, aT, aLo, asiaColor, asiaWidth, asiaStyle, "Asia Low", aFull)
     if showLon
-        f_draw(lns, lbs, lT, lHi, lonColor, lonWidth, lonStyle, "London High", lFull, lblX, sz)
-        f_draw(lns, lbs, lT, lLo, lonColor, lonWidth, lonStyle, "London Low", lFull, lblX, sz)
+        f_draw(lns, lbs, lp, lt, lc, lT, lHi, lonColor, lonWidth, lonStyle, "London High", lFull)
+        f_draw(lns, lbs, lp, lt, lc, lT, lLo, lonColor, lonWidth, lonStyle, "London Low", lFull)
+
+    // מסדרים את התוויות מהגבוהה לנמוכה; תווית שקרובה מדי לזו שמעליה מוזזת קצת למטה
+    n = lp.size()
+    if n > 0
+        idx = lp.sort_indices(order.descending)
+        float lastY = na
+        for i = 0 to n - 1
+            j = idx.get(i)
+            y = lp.get(j)
+            if not na(lastY) and lastY - y < lblGap
+                y := lastY - lblGap
+            lastY := y
+            lbs.push(label.new(lblX, y, lt.get(j), xloc.bar_time, yloc.price, lc.get(j), label.style_label_left, labelText, sz))
 
 // סימון המחירים על סקאלת המחירים (ערך אחרון בלבד)
 plot(showMid  and barstate.islast ? mid : na, "50% Daily Range", midColor,  display = showScale ? display.price_scale : display.none)
@@ -381,6 +423,9 @@ plot(showPD   and barstate.islast ? pdLo : na, "Previous Day Low",  pdColor, dis
 plot(showVP   and barstate.islast ? pPoc : na, "PD POC", pocColor, display = showScale ? display.price_scale : display.none)
 plot(showVP   and barstate.islast ? pVah : na, "PD VAH", vaColor,  display = showScale ? display.price_scale : display.none)
 plot(showVP   and barstate.islast ? pVal : na, "PD VAL", vaColor,  display = showScale ? display.price_scale : display.none)
+plot(showTD   and barstate.islast ? todPoc : na, "Today POC", tdPocCol, display = showScale ? display.price_scale : display.none)
+plot(showTD   and barstate.islast ? todVah : na, "Today VAH", tdVaCol,  display = showScale ? display.price_scale : display.none)
+plot(showTD   and barstate.islast ? todVal : na, "Today VAL", tdVaCol,  display = showScale ? display.price_scale : display.none)
 
 // ───────────── התראות ─────────────
 // בודקים בכל טיק אם המחיר חצה/נגע בקו מאז הטיק הקודם. varip שומר ערכים בין טיקים.
