@@ -54,7 +54,8 @@ vaStyle  = input.string("Dashed", "סגנון", options = ["Solid", "Dashed", "D
 
 G_VPH = "Volume Profile - היסטוגרמה"
 showHistPD = input.bool(true, "הצג פרופיל של יום קודם", group = G_VPH)
-showHistCD = input.bool(true, "הצג פרופיל מתפתח של היום", group = G_VPH)
+histPDPos  = input.string("על היום הנוכחי", "מיקום הפרופיל של יום קודם", options = ["על היום הנוכחי", "על היום של אתמול"], group = G_VPH)
+showHistCD = input.bool(false, "הצג פרופיל מתפתח של היום", group = G_VPH)
 histRows   = input.int(80, "מספר שורות בהיסטוגרמה", minval = 20, maxval = 200, group = G_VPH)
 histWidth  = input.int(30, "רוחב מקסימלי (% מאורך היום)", minval = 5, maxval = 100, group = G_VPH)
 histVA     = input.color(color.new(#2962FF, 45), "צבע Value Area", group = G_VPH)
@@ -286,7 +287,8 @@ else
     drawCur  := c2
     drawPrev := p2
 
-f_hist(box[] bxs, Prof p) =>
+// x0 = נקודת הזמן שממנה ההיסטוגרמה מתחילה ונמשכת ימינה
+f_hist(box[] bxs, Prof p, int x0) =>
     if not na(p) and not na(p.kLo)
         [poc, vah, val] = f_profile(p.vol, p.kLo, p.kHi, vpRow, vpVA)
         span  = p.kHi - p.kLo + 1
@@ -306,18 +308,19 @@ f_hist(box[] bxs, Prof p) =>
                     top = (p.kLo + (g + 1) * grp) * vpRow
                     ctr = (bot + top) / 2
                     col = (poc >= bot and poc < top) ? histPOC : (ctr >= val and ctr <= vah) ? histVA : histOut
-                    right = p.start + int(maxW * v / mx)
-                    bxs.push(box.new(left = p.start, top = top, right = right, bottom = bot, xloc = xloc.bar_time, border_color = color.new(color.black, 100), border_width = 0, bgcolor = col))
+                    right = x0 + int(maxW * v / mx)
+                    bxs.push(box.new(left = x0, top = top, right = right, bottom = bot, xloc = xloc.bar_time, border_color = color.new(color.black, 100), border_width = 0, bgcolor = col))
 
 var box[] bxs = array.new<box>()
 if barstate.islast
     for b in bxs
         box.delete(b)
     bxs.clear()
-    if showHistPD
-        f_hist(bxs, drawPrev)
-    if showHistCD
-        f_hist(bxs, drawCur)
+    if showHistPD and not na(drawPrev)
+        // ברירת מחדל: מציירים את הפרופיל של אתמול בתחילת היום הנוכחי, כדי שיופיע בלי לגלול אחורה
+        f_hist(bxs, drawPrev, histPDPos == "על היום הנוכחי" and not na(drawCur) ? drawCur.start : drawPrev.start)
+    if showHistCD and not na(drawCur)
+        f_hist(bxs, drawCur, drawCur.start)
 
 // ───────────── ציור (רק על הנר האחרון = יום המסחר הנוכחי) ─────────────
 f_draw(line[] lns, label[] lbs, int x1, float y, color c, int w, string st, string name, bool full, int lblX, string sz) =>
