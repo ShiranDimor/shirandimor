@@ -10,6 +10,7 @@ type Props = {
   items: ClosedItem[];
   onPrevMonth: () => void;
   onNextMonth: () => void;
+  hideUsd?: boolean;
 };
 
 const DOW = ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ש'];
@@ -19,7 +20,7 @@ function pad2(n: number) {
   return String(n).padStart(2, '0');
 }
 
-export default function CalendarHeatmap({ year, month, items, onPrevMonth, onNextMonth }: Props) {
+export default function CalendarHeatmap({ year, month, items, onPrevMonth, onNextMonth, hideUsd = false }: Props) {
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
 
   const firstDow = new Date(year, month, 1).getDay();
@@ -36,6 +37,7 @@ export default function CalendarHeatmap({ year, month, items, onPrevMonth, onNex
   byDay.forEach((arr, day) => dayTotals.set(day, arr.reduce((s, it) => s + it.usd, 0)));
   const maxAbs = Math.max(1, ...Array.from(dayTotals.values()).map((v) => Math.abs(v)));
   const monthTotal = items.reduce((s, it) => s + it.usd, 0);
+  const monthAvgPct = items.length > 0 ? items.reduce((s, it) => s + it.pct, 0) / items.length : 0;
 
   const cells: React.ReactNode[] = [];
   for (let i = 0; i < firstDow; i++) {
@@ -83,10 +85,14 @@ export default function CalendarHeatmap({ year, month, items, onPrevMonth, onNex
             data-story-hide="true"
             style={{
               fontFamily: 'var(--font-mono)', fontSize: '11.5px', fontWeight: 600, marginTop: '2px',
-              color: items.length === 0 ? 'var(--text-tertiary)' : monthTotal >= 0 ? 'var(--profit)' : 'var(--loss)',
+              color: items.length === 0 ? 'var(--text-tertiary)' : (hideUsd ? monthAvgPct : monthTotal) >= 0 ? 'var(--profit)' : 'var(--loss)',
             }}
           >
-            {items.length === 0 ? 'אין עסקאות סגורות' : `סה"כ ${monthTotal >= 0 ? '+' : '-'}$${Math.abs(monthTotal).toFixed(0)}`}
+            {items.length === 0
+              ? 'אין עסקאות סגורות'
+              : hideUsd
+                ? `ממוצע ${monthAvgPct >= 0 ? '+' : ''}${monthAvgPct.toFixed(2)}%`
+                : `סה"כ ${monthTotal >= 0 ? '+' : '-'}$${Math.abs(monthTotal).toFixed(0)}`}
           </div>
         </div>
         <button
@@ -131,7 +137,7 @@ export default function CalendarHeatmap({ year, month, items, onPrevMonth, onNex
               </span>
               <span style={{ display: 'flex', gap: '10px', fontFamily: 'var(--font-mono)' }}>
                 <span style={{ color: it.pct >= 0 ? 'var(--profit)' : 'var(--loss)' }}>{it.pct >= 0 ? '+' : ''}{it.pct.toFixed(2)}%</span>
-                <span style={{ color: it.usd >= 0 ? 'var(--profit)' : 'var(--loss)' }}>{it.usd >= 0 ? '+' : '-'}${Math.abs(it.usd).toFixed(0)}</span>
+                {!hideUsd && <span style={{ color: it.usd >= 0 ? 'var(--profit)' : 'var(--loss)' }}>{it.usd >= 0 ? '+' : '-'}${Math.abs(it.usd).toFixed(0)}</span>}
               </span>
             </div>
           ))}
