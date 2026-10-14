@@ -146,11 +146,6 @@ export default function PortfolioPage() {
     return ((current - trade.entry_price) / trade.entry_price) * 100 * (trade.direction === 'short' ? -1 : 1);
   }
 
-  function unrealizedUsd(trade: Trade) {
-    if (!trade.current_price || !trade.shares_calculated) return null;
-    return (trade.current_price - trade.entry_price) * trade.shares_calculated * (trade.direction === 'short' ? -1 : 1);
-  }
-
   const availableOpenMonths = Array.from(
     new Set(openTrades.map((t) => monthKey(t.opened_at)))
   ).sort().reverse();
@@ -198,6 +193,8 @@ export default function PortfolioPage() {
 
   const tradesThisMonth = [...openTrades, ...closedTrades].filter((t) => monthKey(t.opened_at) === insightsMonthFilter).length;
 
+  // כאן, בניגוד לעמוד הניהול, מציגים את הצמיחה רק באחוזים ולא בסכום דולרי - כדי לא לחשוף
+  // את גודל התיק האמיתי בכסף לכל מי שנכנס לעמוד הציבורי
   const equityPoints = (() => {
     if (initialBalance === null) return [];
     const chronological = closedTrades
@@ -205,10 +202,11 @@ export default function PortfolioPage() {
       .slice()
       .sort((a, b) => new Date(a.closed_at as string).getTime() - new Date(b.closed_at as string).getTime());
     let running = initialBalance;
-    const points = [{ date: 'התחלה', value: Math.round(running) }];
+    const toPct = (balance: number) => Math.round(((balance - initialBalance) / initialBalance) * 1000) / 10;
+    const points = [{ date: 'התחלה', value: toPct(running) }];
     for (const t of chronological) {
       running += t.realized_pnl_usd ?? 0;
-      points.push({ date: formatDate(t.closed_at), value: Math.round(running) });
+      points.push({ date: formatDate(t.closed_at), value: toPct(running) });
     }
     return points;
   })();
@@ -323,13 +321,13 @@ export default function PortfolioPage() {
 
       <div className="section-label"><h2>צמיחת התיק של שירן</h2></div>
       <div className="equity-card">
-        <EquityCurve points={equityPoints} />
+        <EquityCurve points={equityPoints} prefix="" suffix="%" />
       </div>
 
       <div id="portfolio-story-area">
         <div className="section-label"><h2>לוח שנה</h2></div>
         <div className="equity-card" style={{ marginBottom: '28px' }}>
-          <CalendarHeatmap year={calYear} month={calMonthIdx} items={calItems} onPrevMonth={goPrevMonth} onNextMonth={goNextMonth} />
+          <CalendarHeatmap year={calYear} month={calMonthIdx} items={calItems} onPrevMonth={goPrevMonth} onNextMonth={goNextMonth} hideUsd />
         </div>
 
         <div className="section-label"><h2>תובנות התיק של שירן - {monthLabel(insightsMonthFilter)}</h2></div>
@@ -338,7 +336,7 @@ export default function PortfolioPage() {
             <StatsRing
               percent={winRate ?? 0}
               label={`${closedTradesForInsights.length} עסקאות סגורות`}
-              sublabel={`תיק התחלתי $${initialBalance !== null ? initialBalance.toLocaleString() : '—'}`}
+              sublabel="מאז תחילת המעקב"
             />
           </div>
           <div className="insight-grid">
@@ -398,7 +396,6 @@ export default function PortfolioPage() {
               <tbody>
                 {filteredOpenTrades.map((trade) => {
                   const p = pct(trade);
-                  const u = unrealizedUsd(trade);
                   return (
                     <tr key={trade.id}>
                       <td className="sym-cell">
@@ -415,7 +412,6 @@ export default function PortfolioPage() {
                       <td>{trade.max_entry_price !== null ? `עד $${trade.max_entry_price}` : '—'}</td>
                       <td className="pnl-cell" style={{ color: p >= 0 ? 'var(--profit)' : 'var(--loss)' }}>
                         {p >= 0 ? '+' : ''}{p.toFixed(2)}%
-                        {u !== null && <span className="usd-sub">{u >= 0 ? '+' : '-'}${Math.abs(u).toFixed(0)}</span>}
                       </td>
                     </tr>
                   );
