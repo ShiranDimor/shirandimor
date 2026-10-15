@@ -14,7 +14,7 @@ const TRIAL_PRICE = 29;
 const FULL_PRICE = 400;
 
 // קישור התשלום ב-Grow לחודש הניסיון. כל עוד ריק - הדף רק אוסף שם ונייד ושירן חוזרת ידנית
-const TRIAL_PAYMENT_URL = '';
+const TRIAL_PAYMENT_URL = 'https://pay.grow.link/200a7cdcb258ee6ffdea0f423a1ace0e-MzE4MDU5OA';
 
 const PERKS = [
   'עסקאות סווינג עם הנימוק המלא - כניסה, סטופ ויציאה',
