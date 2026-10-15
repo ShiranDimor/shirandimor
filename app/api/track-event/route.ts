@@ -12,6 +12,7 @@ const ALLOWED_EVENTS = [
   'payment_link_click',
   'live_registered',
   'live_registration_lead',
+  'trial_month_lead',
 ] as const;
 
 // POST - רישום אירוע המרה בדאטהבייס (בנוסף ל-Vercel Analytics) - כדי שאפשר יהיה להציג

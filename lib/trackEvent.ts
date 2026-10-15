@@ -8,7 +8,8 @@ export type FunnelEvent =
   | 'trading_plan_completed'
   | 'payment_link_click'
   | 'live_registered'
-  | 'live_registration_lead';
+  | 'live_registration_lead'
+  | 'trial_month_lead';
 
 // מיפוי לאירועי המרה סטנדרטיים של פייסבוק/מטא, כדי שקמפיינים ממומנים ידעו לבצע אופטימיזציה
 // לפי מי שבאמת מתקדם במשפך - לא רק כניסות לעמוד. פועל רק אם ה-Pixel מוגדר (ראו components/MetaPixel).
@@ -20,6 +21,7 @@ const META_PIXEL_EVENT: Record<FunnelEvent, string> = {
   payment_link_click: 'AddPaymentInfo',
   live_registered: 'CompleteRegistration',
   live_registration_lead: 'Lead',
+  trial_month_lead: 'Lead',
 };
 
 // מצב "לא לספור אותי" למי שבודקת/בודק את האתר (שירן או קלוד) - כדי שבדיקות לא יזהמו את משפך

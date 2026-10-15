@@ -5,11 +5,14 @@ import { supabaseAdmin } from '@/lib/instantLogin';
 import { isPhoneBlocked } from '@/lib/blockedContacts';
 
 const TRIAL_SOURCE_LABEL = 'ימי ניסיון - עדכונים (7 ימים)';
+// דף הנחיתה של קמפיין חודש הניסיון בתשלום סמלי (app/join) - מסומן בנפרד כדי שבמאנדיי ובמייל
+// ההתראה יהיה ברור מאיזה מסלול הגיע הליד
+const TRIAL_MONTH_SOURCE_LABEL = 'חודש ניסיון - דף נחיתה (קמפיין)';
 
 // מייל התראה ישיר לשירן, בלי תלות בהתראות של מאנדיי עצמו - מאנדיי לא שולח התראה אוטומטית
 // על כרטיס שנוצר דרך ה-API (רק על פעולות שנעשות ידנית באפליקציה, או דרך אוטומציה שהוגדרה
 // בלוח), אז זו הדרך היחידה שמבטיחה שהיא תדע על ההרשמה מיד, גם אם הסנכרון למאנדיי עצמו נכשל
-async function notifyNewTrialSignup(name: string, phone: string) {
+async function notifyNewTrialSignup(name: string, phone: string, isTrialMonth: boolean) {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
     console.error('RESEND_API_KEY לא מוגדר - לא ניתן לשלוח מייל התראה על הרשמת ניסיון');
@@ -23,8 +26,10 @@ async function notifyNewTrialSignup(name: string, phone: string) {
       body: JSON.stringify({
         from: 'התראות האתר <noreply@shirandimor.com>',
         to: 'shiran@shirandimor.com',
-        subject: 'הרשמה חדשה ל-7 ימי ניסיון',
-        text: `מישהו/י נרשם/ה ל-7 ימי ניסיון.\n\nשם: ${name}\nנייד: ${phone}\n\nלרשימת הנרשמים: https://www.shirandimor.com/admin/trial-signups`,
+        subject: isTrialMonth ? 'ליד חדש לחודש ניסיון (דף הנחיתה)' : 'הרשמה חדשה ל-7 ימי ניסיון',
+        text: isTrialMonth
+          ? `ליד חדש מדף הנחיתה של חודש הניסיון (shirandimor.com/join).\nהליד הועבר לתשלום - אם לא שילם תוך יום, כדאי לחזור אליו.\n\nשם: ${name}\nנייד: ${phone}\n\nלרשימת הנרשמים: https://www.shirandimor.com/admin/trial-signups`
+          : `מישהו/י נרשם/ה ל-7 ימי ניסיון.\n\nשם: ${name}\nנייד: ${phone}\n\nלרשימת הנרשמים: https://www.shirandimor.com/admin/trial-signups`,
       }),
     });
     if (!res.ok) console.error('שגיאה בשליחת מייל התראה על הרשמת ניסיון', await res.text());
@@ -37,7 +42,8 @@ async function notifyNewTrialSignup(name: string, phone: string) {
 // חדש וברור בלידים חדשים (forceNew) - ואם המספר כבר קיים במקום אחר בלוח, הוא מסמן את הכרטיס
 // כ"ליד כפול" במקום ליצור אותו כליד רגיל, כך ששירן יודעת מיד שזה מישהו מוכר
 export async function POST(request: Request) {
-  const { name, phone } = await request.json();
+  const { name, phone, offer } = await request.json();
+  const isTrialMonth = offer === 'trial_month';
 
   if (!name || !phone) {
     return NextResponse.json({ error: 'חסרים פרטים' }, { status: 400 });
@@ -64,13 +70,15 @@ export async function POST(request: Request) {
     console.error('שגיאה בשמירת הרשמת ניסיון', insertError);
   }
 
-  await notifyNewTrialSignup(name, phone);
+  await notifyNewTrialSignup(name, phone, isTrialMonth);
 
   const mondayResult = await syncGenericLead({
     phone,
     name,
-    source: TRIAL_SOURCE_LABEL,
-    note: `נרשם/ה ל-7 ימי ניסיון דרך דף ההרשמה\nנייד: ${phone}`,
+    source: isTrialMonth ? TRIAL_MONTH_SOURCE_LABEL : TRIAL_SOURCE_LABEL,
+    note: isTrialMonth
+      ? `השאיר/ה פרטים בדף הנחיתה של חודש הניסיון והועבר/ה לתשלום\nנייד: ${phone}`
+      : `נרשם/ה ל-7 ימי ניסיון דרך דף ההרשמה\nנייד: ${phone}`,
     // תמיד כרטיס חדש בלידים חדשים - גם אם המספר כבר קיים בקבוצת העדכונים (וזה בדיוק המצב
     // הנפוץ כאן, כי המבצע נשלח למי שכבר בעדכונים) - עדיין יסומן "ליד כפול" אם צריך
     forceNew: true,
