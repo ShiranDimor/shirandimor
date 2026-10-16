@@ -6,7 +6,7 @@
 //   * התוצאות זהות בכל טווח זמן (1 דקה, 5 דקות, שעה, 4 שעות, יומי) של אותו חוזה.
 
 //@version=6
-indicator("NQ Daily Levels (50% / Asia / London / PDH-PDL / VP)", shorttitle = "NQ Levels", overlay = true, max_lines_count = 60, max_labels_count = 60, max_boxes_count = 500)
+indicator("NQ Daily Levels (50% / Asia / London / PDH-PDL / VP)", shorttitle = "NQ Levels", overlay = true, max_lines_count = 60, max_labels_count = 100, max_boxes_count = 500)
 
 const string TZ = "America/New_York"
 
@@ -60,6 +60,20 @@ tdPocSt  = input.string("Solid", "סגנון", options = ["Solid", "Dashed", "Do
 tdVaCol  = input.color(#00E676, "Today VAH / VAL: צבע", inline = "td2", group = G_TD)
 tdVaW    = input.int(1, "עובי", minval = 1, maxval = 10, inline = "td2", group = G_TD)
 tdVaSt   = input.string("Dotted", "סגנון", options = ["Solid", "Dashed", "Dotted"], inline = "td2", group = G_TD)
+
+G_SS = "סשנים לפי שעות הבורסות (קופסה מהגבוה לנמוך)"
+showSess  = input.bool(true, "הצג סשנים", group = G_SS)
+sessDays  = input.int(3, "כמה ימים להציג (כולל היום)", minval = 1, maxval = 10, group = G_SS)
+sessAlpha = input.int(85, "שקיפות הקופסאות (0-100)", minval = 0, maxval = 100, group = G_SS)
+showTok   = input.bool(true, "Asia (טוקיו)", inline = "s1", group = G_SS)
+tokSess   = input.session("0900-1500", "שעון טוקיו", inline = "s1", group = G_SS)
+tokColor  = input.color(#00BCD4, "", inline = "s1", group = G_SS)
+showLdn   = input.bool(true, "London (לונדון)", inline = "s2", group = G_SS)
+ldnSess   = input.session("0800-1630", "שעון לונדון", inline = "s2", group = G_SS)
+ldnColor  = input.color(#E040FB, "", inline = "s2", group = G_SS)
+showNy    = input.bool(true, "New York (ניו יורק)", inline = "s3", group = G_SS)
+nySess    = input.session("0930-1600", "שעון ניו יורק", inline = "s3", group = G_SS)
+nyColor   = input.color(#FF9800, "", inline = "s3", group = G_SS)
 
 G_VPH = "Volume Profile - היסטוגרמה"
 showHistPD = input.bool(true, "הצג פרופיל של יום קודם", group = G_VPH)
@@ -331,6 +345,93 @@ if barstate.islast
         f_hist(bxs, drawPrev, histPDPos == "על היום הנוכחי" and not na(drawCur) ? drawCur.start : drawPrev.start)
     if showHistCD and not na(drawCur)
         f_hist(bxs, drawCur, drawCur.start)
+
+// ───────────── סשנים לפי שעות הבורסות: טוקיו / לונדון / ניו יורק ─────────────
+// כל סשן נמדד לפי השעון של העיר שלו (כולל שעון קיץ/חורף של אותה עיר), מנרות של דקה - לכן
+// הגבוה/נמוך זהים בכל טווח זמן של הגרף. כל קופסה = מתחילת הסשן עד סופו, מהגבוה עד הנמוך שלו
+type Sess
+    int   start
+    int   end
+    float hi
+    float lo
+    int   key
+
+f_inLocal(int t, string tz, int sMin, int eMin) =>
+    m = hour(t, tz) * 60 + minute(t, tz)
+    m >= sMin and m < eMin
+
+// מוסיף נר דקה לסשן: אם הוא בתוך שעות הסשן - מעדכן את הסשן של אותו יום (או פותח חדש)
+f_feed(Sess[] arr, int t, int dur, float h, float l, string tz, int sMin, int eMin, int keep) =>
+    if f_inLocal(t, tz, sMin, eMin)
+        k = year(t, tz) * 10000 + month(t, tz) * 100 + dayofmonth(t, tz)
+        Sess cur = arr.size() > 0 ? arr.last() : na
+        if na(cur) or cur.key != k
+            arr.push(Sess.new(t, t + dur, h, l, k))
+            if arr.size() > keep
+                arr.shift()
+        else
+            cur.end := t + dur
+            cur.hi  := math.max(cur.hi, h)
+            cur.lo  := math.min(cur.lo, l)
+
+f_cloneTail(Sess[] arr) =>
+    Sess[] c = arr.copy()
+    if c.size() > 0
+        c.set(c.size() - 1, c.last().copy())
+    c
+
+f_feedAll(Sess[] tok, Sess[] ldn, Sess[] ny, array<int> ts, array<float> hs, array<float> ls, int dur) =>
+    [tS, tE] = f_parse(tokSess)
+    [dS, dE] = f_parse(ldnSess)
+    [nS, nE] = f_parse(nySess)
+    n = ts.size()
+    if n > 0
+        for i = 0 to n - 1
+            t = ts.get(i)
+            f_feed(tok, t, dur, hs.get(i), ls.get(i), "Asia/Tokyo", tS, tE, sessDays)
+            f_feed(ldn, t, dur, hs.get(i), ls.get(i), "Europe/London", dS, dE, sessDays)
+            f_feed(ny, t, dur, hs.get(i), ls.get(i), "America/New_York", nS, nE, sessDays)
+
+var Sess[] tokArr = array.new<Sess>()
+var Sess[] ldnArr = array.new<Sess>()
+var Sess[] nyArr  = array.new<Sess>()
+ltDur = timeframe.in_seconds(ltf) * 1000
+
+// כמו בפרופיל: מצב קבוע מתעדכן רק בנרות סגורים; לנר החי עובדים על עותק של הסשן האחרון
+Sess[] drawTok = tokArr
+Sess[] drawLdn = ldnArr
+Sess[] drawNy  = nyArr
+if showSess
+    if barstate.isconfirmed
+        f_feedAll(tokArr, ldnArr, nyArr, ltT, ltH, ltL, ltDur)
+    else if barstate.islast
+        drawTok := f_cloneTail(tokArr)
+        drawLdn := f_cloneTail(ldnArr)
+        drawNy  := f_cloneTail(nyArr)
+        f_feedAll(drawTok, drawLdn, drawNy, ltT, ltH, ltL, ltDur)
+
+f_drawSess(box[] sb, label[] sl, Sess[] arr, string name, color c) =>
+    for s in arr
+        sb.push(box.new(left = s.start, top = s.hi, right = s.end, bottom = s.lo, xloc = xloc.bar_time, border_color = c, border_width = 1, border_style = line.style_dashed, bgcolor = color.new(c, sessAlpha)))
+        txt = name + "\nH " + str.tostring(s.hi, "0.00#") + " · L " + str.tostring(s.lo, "0.00#") + " · " + str.tostring(s.hi - s.lo, "0.##") + " נק׳"
+        sl.push(label.new(x = int((s.start + s.end) / 2), y = s.hi, text = txt, xloc = xloc.bar_time, yloc = yloc.price, color = color.new(color.black, 100), style = label.style_label_down, textcolor = c, size = size.small))
+
+var box[]   sessBoxes  = array.new<box>()
+var label[] sessLabels = array.new<label>()
+if barstate.islast
+    for b in sessBoxes
+        box.delete(b)
+    for lb in sessLabels
+        label.delete(lb)
+    sessBoxes.clear()
+    sessLabels.clear()
+    if showSess
+        if showTok
+            f_drawSess(sessBoxes, sessLabels, drawTok, "Asia (Tokyo)", tokColor)
+        if showLdn
+            f_drawSess(sessBoxes, sessLabels, drawLdn, "London", ldnColor)
+        if showNy
+            f_drawSess(sessBoxes, sessLabels, drawNy, "New York", nyColor)
 
 // ───────────── ציור (רק על הנר האחרון = יום המסחר הנוכחי) ─────────────
 // הקו מצויר מיד; התווית נאספת לרשימה, וכל התוויות מסודרות בסוף כך שלא יעלו אחת על השנייה
