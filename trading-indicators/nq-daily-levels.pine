@@ -77,12 +77,13 @@ nyColor   = input.color(#FF9800, "", inline = "s3", group = G_SS)
 
 G_VPH = "Volume Profile - היסטוגרמה"
 showHistPD = input.bool(true, "הצג פרופיל של יום קודם", group = G_VPH)
-histPDPos  = input.string("על היום הנוכחי", "מיקום הפרופיל של יום קודם", options = ["על היום הנוכחי", "על היום של אתמול"], group = G_VPH)
+histPDPos  = input.string("צמוד לימין (ליד המחיר)", "מיקום הפרופיל של יום קודם", options = ["צמוד לימין (ליד המחיר)", "על היום הנוכחי", "על היום של אתמול"], group = G_VPH)
+histBars   = input.int(60, "רוחב מקסימלי כשהפרופיל צמוד לימין (בנרות)", minval = 10, maxval = 300, group = G_VPH)
 showHistCD = input.bool(false, "הצג פרופיל מתפתח של היום", group = G_VPH)
-histRows   = input.int(80, "מספר שורות בהיסטוגרמה", minval = 20, maxval = 200, group = G_VPH)
+histRows   = input.int(120, "מספר שורות בהיסטוגרמה", minval = 20, maxval = 200, group = G_VPH)
 histWidth  = input.int(30, "רוחב מקסימלי (% מאורך היום)", minval = 5, maxval = 100, group = G_VPH)
-histVA     = input.color(color.new(#2962FF, 45), "צבע Value Area", group = G_VPH)
-histOut    = input.color(color.new(#787B86, 65), "צבע מחוץ ל-Value Area", group = G_VPH)
+histVA     = input.color(color.new(#B2B5BE, 55), "צבע Value Area", group = G_VPH)
+histOut    = input.color(color.new(#5D606B, 60), "צבע מחוץ ל-Value Area", group = G_VPH)
 histPOC    = input.color(color.new(#F44336, 20), "צבע שורת POC", group = G_VPH)
 
 G_LBL = "תוויות"
@@ -311,8 +312,9 @@ else
     drawCur  := c2
     drawPrev := p2
 
-// x0 = נקודת הזמן שממנה ההיסטוגרמה מתחילה ונמשכת ימינה
-f_hist(box[] bxs, Prof p, int x0) =>
+// x0 = נקודת העיגון: fromRight=false -> הפסים מתחילים ב-x0 ונמשכים ימינה (רוחב מקסימלי = % מאורך יום);
+// fromRight=true -> הפסים נגמרים ב-x0 וגדלים שמאלה, כמו פרופיל שצמוד לסקאלת המחירים (רוחב מקסימלי = histBars נרות)
+f_hist(box[] bxs, Prof p, int x0, bool fromRight) =>
     if not na(p) and not na(p.kLo)
         [poc, vah, val] = f_profile(p.vol, p.kLo, p.kHi, vpRow, vpVA)
         span  = p.kHi - p.kLo + 1
@@ -323,7 +325,7 @@ f_hist(box[] bxs, Prof p, int x0) =>
             g = int((k - p.kLo) / grp)
             sums.set(g, sums.get(g) + nz(p.vol.get(k)))
         mx = sums.max()
-        maxW = 86400000.0 * histWidth / 100.0
+        maxW = fromRight ? histBars * timeframe.in_seconds() * 1000.0 : 86400000.0 * histWidth / 100.0
         if mx > 0
             for g = 0 to nRows - 1
                 v = sums.get(g)
@@ -332,8 +334,12 @@ f_hist(box[] bxs, Prof p, int x0) =>
                     top = (p.kLo + (g + 1) * grp) * vpRow
                     ctr = (bot + top) / 2
                     col = (poc >= bot and poc < top) ? histPOC : (ctr >= val and ctr <= vah) ? histVA : histOut
-                    right = x0 + int(maxW * v / mx)
-                    bxs.push(box.new(left = x0, top = top, right = right, bottom = bot, xloc = xloc.bar_time, border_color = color.new(color.black, 100), border_width = 0, bgcolor = col))
+                    w = int(maxW * v / mx)
+                    bxs.push(box.new(left = fromRight ? x0 - w : x0, top = top, right = fromRight ? x0 : x0 + w, bottom = bot, xloc = xloc.bar_time, border_color = color.new(color.black, 100), border_width = 0, bgcolor = col))
+
+// כשהפרופיל צמוד לימין: הקצה הימני שלו מעט אחרי הנר האחרון + הרוחב המקסימלי, והתוויות זזות אל מימינו
+histRight  = showHistPD and histPDPos == "צמוד לימין (ליד המחיר)"
+histRightX = time + (histBars + 2) * timeframe.in_seconds() * 1000
 
 var box[] bxs = array.new<box>()
 if barstate.islast
@@ -341,10 +347,13 @@ if barstate.islast
         box.delete(b)
     bxs.clear()
     if showHistPD and not na(drawPrev)
-        // ברירת מחדל: מציירים את הפרופיל של אתמול בתחילת היום הנוכחי, כדי שיופיע בלי לגלול אחורה
-        f_hist(bxs, drawPrev, histPDPos == "על היום הנוכחי" and not na(drawCur) ? drawCur.start : drawPrev.start)
+        // ברירת מחדל: הפרופיל של אתמול צמוד לימין, ליד המחיר הנוכחי - בלי לגלול אחורה
+        if histRight
+            f_hist(bxs, drawPrev, histRightX, true)
+        else
+            f_hist(bxs, drawPrev, histPDPos == "על היום הנוכחי" and not na(drawCur) ? drawCur.start : drawPrev.start, false)
     if showHistCD and not na(drawCur)
-        f_hist(bxs, drawCur, drawCur.start)
+        f_hist(bxs, drawCur, drawCur.start, false)
 
 // ───────────── סשנים לפי שעות הבורסות: טוקיו / לונדון / ניו יורק ─────────────
 // כל סשן נמדד לפי השעון של העיר שלו (כולל שעון קיץ/חורף של אותה עיר), מנרות של דקה - לכן
@@ -472,7 +481,7 @@ if barstate.islast
         "Small" => size.small
         "Large" => size.large
         => size.normal
-    lblX = time + labelOffset * timeframe.in_seconds() * 1000
+    lblX = (histRight ? histRightX : time) + labelOffset * timeframe.in_seconds() * 1000
     // חלון נחשב שלם אם התחיל אחרי תחילת הנתונים שנטענו
     aFull = dFull or aT > dT
     lFull = dFull or lT > dT
