@@ -73,7 +73,7 @@ showTok   = input.bool(true, "Asia (לפי החלון של Asia High / Low)", in
 tokColor  = input.color(#00BCD4, "", inline = "s1", group = G_SS)
 showLdn   = input.bool(true, "London (לפי החלון של London High / Low)", inline = "s2", group = G_SS)
 ldnColor  = input.color(#E040FB, "", inline = "s2", group = G_SS)
-showNy    = input.bool(true, "New York (ניו יורק)", inline = "s3", group = G_SS)
+showNy    = input.bool(false, "New York (ניו יורק)", inline = "s3", group = G_SS)
 nySess    = input.session("0930-1600", "שעון ניו יורק", inline = "s3", group = G_SS)
 nyColor   = input.color(#FF9800, "", inline = "s3", group = G_SS)
 
@@ -94,9 +94,9 @@ G_LBL = "תוויות"
 showLabels  = input.bool(true, "הצג תוויות", group = G_LBL)
 labelOffset = input.int(3, "מרחק מהנר האחרון (בנרות)", minval = 0, maxval = 300, group = G_LBL)
 labelText   = input.color(color.black, "צבע טקסט", group = G_LBL)
-labelSize   = input.string("Normal", "גודל", options = ["Small", "Normal", "Large"], group = G_LBL)
+labelSize   = input.string("Small", "גודל", options = ["Small", "Normal", "Large"], group = G_LBL)
 showTags    = input.bool(true, "הצג את שם הקו גם על הקו עצמו (בתחילתו)", group = G_LBL)
-lblGap      = input.float(15, "מרווח מינימלי בין תוויות (נקודות)", minval = 0, step = 1, tooltip = "כשכמה קווים קרובים במחיר, התוויות מימין מוזזות למטה כך שלא יעלו אחת על השנייה. המחיר בתווית תמיד המחיר המדויק של הקו. אם התוויות עדיין עולות זו על זו - להגדיל; אם הן רחוקות מדי מהקווים - להקטין.", group = G_LBL)
+lblGap      = input.float(5, "מרווח מינימלי בין תוויות (נקודות)", minval = 0, step = 1, tooltip = "כשכמה קווים קרובים במחיר, התוויות מימין מוזזות למטה כך שלא יעלו אחת על השנייה. המחיר בתווית תמיד המחיר המדויק של הקו. אם התוויות עדיין עולות זו על זו - להגדיל; אם הן רחוקות מדי מהקווים - להקטין.", group = G_LBL)
 showScale   = input.bool(true, "הצג מחירים על סקאלת המחירים", group = G_LBL)
 
 G_ALR = "התראות"
