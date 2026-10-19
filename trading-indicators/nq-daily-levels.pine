@@ -383,14 +383,18 @@ f_feed(Sess[] arr, int t, int dur, float h, float l, string tz, int sMin, int eM
     if f_inLocal(t, tz, sMin, eMin)
         k = year(t, tz) * 10000 + month(t, tz) * 100 + dayofmonth(t, tz)
         Sess cur = arr.size() > 0 ? arr.last() : na
+        // שני הענפים מחזירים 0 - Pine דורש שלכל ענפי if/else יהיה אותו סוג ערך
         if na(cur) or cur.key != k
             arr.push(Sess.new(t, t + dur, h, l, k))
             if arr.size() > keep
                 arr.shift()
+            0
         else
             cur.end := t + dur
             cur.hi  := math.max(cur.hi, h)
             cur.lo  := math.min(cur.lo, l)
+            0
+    true
 
 f_cloneTail(Sess[] arr) =>
     Sess[] c = arr.copy()
