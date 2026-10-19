@@ -79,7 +79,8 @@ nyColor   = input.color(#FF9800, "", inline = "s3", group = G_SS)
 
 G_VPH = "Volume Profile - היסטוגרמה"
 sideProf   = input.string("היום (מתעדכן)", "פרופיל בצד ימין, ליד המחיר", options = ["היום (מתעדכן)", "אתמול", "ללא"], tooltip = "המקובל: הפרופיל של היום בצד, והרמות של אתמול כקווים (PD POC / VAH / VAL)", group = G_VPH)
-histBars   = input.int(20, "רוחב הפרופיל בצד ימין (בנרות)", minval = 5, maxval = 300, tooltip = "כמה נרות אחורה נכנסת השורה הארוכה ביותר. מספר קטן = פרופיל דק וצמוד לימין שלא מסתיר את הנרות", group = G_VPH)
+histOffset = input.int(16, "מיקום הפרופיל בצד ימין (בנרות מהנר האחרון)", minval = 2, maxval = 500, tooltip = "הקצה הימני של הפרופיל - כמה נרות ימינה מהנר האחרון. כך הפרופיל יושב בשטח הריק ליד סקאלת המחירים ולא על הנרות. אם הוא נחתך בצד ימין - להקטין; אם הוא רחוק מסקאלת המחירים - להגדיל", group = G_VPH)
+histBars   = input.int(8, "רוחב הפרופיל בצד ימין (בנרות)", minval = 3, maxval = 300, tooltip = "אורך השורה הארוכה ביותר (ה-POC). מספר קטן = פרופיל דק", group = G_VPH)
 showHistPD = input.bool(false, "הצג גם את הפרופיל של אתמול על האזור של אתמול בגרף", group = G_VPH)
 showHistCD = input.bool(false, "הצג גם את הפרופיל של היום על האזור של היום בגרף", group = G_VPH)
 histRows   = input.int(120, "מספר שורות בהיסטוגרמה", minval = 20, maxval = 200, group = G_VPH)
@@ -349,10 +350,9 @@ f_hist(box[] bxs, Prof p, int x0, bool fromRight, color pocCol) =>
                     w = int(maxW * v / mx)
                     bxs.push(box.new(left = fromRight ? x0 - w : x0, top = top, right = fromRight ? x0 : x0 + w, bottom = bot, xloc = xloc.bar_time, border_color = color.new(color.black, 100), border_width = 0, bgcolor = col))
 
-// כשהפרופיל צמוד לימין: הקצה הימני שלו 2 נרות אחרי הנר האחרון והפסים גדלים שמאלה (מעל הנרות, כמו פרופיל רגיל),
-// כך שהוא תמיד בתוך המסך; התוויות זזות אל מימינו
-histRight  = sideProf != "ללא"
-histRightX = time + 2 * timeframe.in_seconds() * 1000
+// הפרופיל בצד ימין יושב בשטח הריק שאחרי הנר האחרון: הקצה הימני שלו histOffset נרות מהנר האחרון
+// והפסים גדלים שמאלה (לכיוון הנרות), כך שהתוויות נשארות בין הנרות לפרופיל
+histRightX = time + histOffset * timeframe.in_seconds() * 1000
 
 var box[] bxs = array.new<box>()
 if barstate.islast
@@ -500,7 +500,7 @@ if barstate.islast
         "Small" => size.small
         "Large" => size.large
         => size.normal
-    lblX = (histRight ? histRightX : time) + labelOffset * timeframe.in_seconds() * 1000
+    lblX = time + labelOffset * timeframe.in_seconds() * 1000
     // חלון נחשב שלם אם התחיל אחרי תחילת הנתונים שנטענו
     aFull = dFull or aT > dT
     lFull = dFull or lT > dT
