@@ -11,6 +11,7 @@ indicator("NQ Daily Levels (50% / Asia / London / PDH-PDL / VP)", shorttitle = "
 const string TZ = "America/New_York"
 
 // ───────────── הגדרות ─────────────
+cleanMode = input.bool(false, "מצב נקי - רק קווי הליבה", tooltip = "משאיר רק: 50% Daily Range, Asia High/Low, London High/Low, Previous Day High/Low ו-PD POC. מסתיר את PD VAH/VAL, את קווי Today, את ההיסטוגרמות, את קופסאות הסשנים ואת השמות הקטנים על הקווים. ביטול הסימון מחזיר את התצוגה המלאה לפי שאר ההגדרות.", group = "מצב תצוגה")
 G_DAY = "יום מסחר (שעון ניו יורק)"
 dayStartH = input.int(18, "תחילת יום: שעה", minval = 0, maxval = 23, inline = "ds", group = G_DAY)
 dayStartM = input.int(0, "דקה", minval = 0, maxval = 59, inline = "ds", group = G_DAY)
@@ -102,6 +103,14 @@ alertPD   = input.bool(false, "התראה כשהמחיר מגיע ל-Previous Da
 alertVP   = input.bool(false, "התראה כשהמחיר מגיע ל-POC / VAH / VAL של יום קודם", group = G_ALR)
 alertMid  = input.bool(false, "התראה כשהמחיר מגיע ל-50% Daily Range", group = G_ALR)
 alertOnce = input.bool(true, "רק פעם אחת ביום לכל קו", group = G_ALR)
+
+// במצב נקי מכבים כל מה שאינו קו ליבה (ההגדרות עצמן נשמרות וחוזרות כשמבטלים את המצב הנקי)
+showTD     := showTD and not cleanMode
+showHistPD := showHistPD and not cleanMode
+showHistCD := showHistCD and not cleanMode
+showSess   := showSess and not cleanMode
+showTags   := showTags and not cleanMode
+showPdVa    = showVP and not cleanMode
 
 if timeframe.isweekly or timeframe.ismonthly
     runtime.error("NQ Daily Levels עובד בטווחי זמן של יום ומטה.")
@@ -494,8 +503,9 @@ if barstate.islast
         f_draw(lns, lbs, lp, lt, lc, dT, pdLo, pdColor, pdWidth, pdStyle, "Previous Day Low", pdFull)
     if showVP
         f_draw(lns, lbs, lp, lt, lc, dT, pPoc, pocColor, pocWidth, pocStyle, "PD POC", pdFull)
-        f_draw(lns, lbs, lp, lt, lc, dT, pVah, vaColor, vaWidth, vaStyle, "PD VAH", pdFull)
-        f_draw(lns, lbs, lp, lt, lc, dT, pVal, vaColor, vaWidth, vaStyle, "PD VAL", pdFull)
+        if showPdVa
+            f_draw(lns, lbs, lp, lt, lc, dT, pVah, vaColor, vaWidth, vaStyle, "PD VAH", pdFull)
+            f_draw(lns, lbs, lp, lt, lc, dT, pVal, vaColor, vaWidth, vaStyle, "PD VAL", pdFull)
     if showTD
         f_draw(lns, lbs, lp, lt, lc, dT, todPoc, tdPocCol, tdPocW, tdPocSt, "Today POC", dFull)
         f_draw(lns, lbs, lp, lt, lc, dT, todVah, tdVaCol, tdVaW, tdVaSt, "Today VAH", dFull)
@@ -531,8 +541,8 @@ plot(showLon  and barstate.islast ? lLo : na, "London Low",      lonColor,  disp
 plot(showPD   and barstate.islast ? pdHi : na, "Previous Day High", pdColor, display = showScale ? display.price_scale : display.none)
 plot(showPD   and barstate.islast ? pdLo : na, "Previous Day Low",  pdColor, display = showScale ? display.price_scale : display.none)
 plot(showVP   and barstate.islast ? pPoc : na, "PD POC", pocColor, display = showScale ? display.price_scale : display.none)
-plot(showVP   and barstate.islast ? pVah : na, "PD VAH", vaColor,  display = showScale ? display.price_scale : display.none)
-plot(showVP   and barstate.islast ? pVal : na, "PD VAL", vaColor,  display = showScale ? display.price_scale : display.none)
+plot(showPdVa and barstate.islast ? pVah : na, "PD VAH", vaColor,  display = showScale ? display.price_scale : display.none)
+plot(showPdVa and barstate.islast ? pVal : na, "PD VAL", vaColor,  display = showScale ? display.price_scale : display.none)
 plot(showTD   and barstate.islast ? todPoc : na, "Today POC", tdPocCol, display = showScale ? display.price_scale : display.none)
 plot(showTD   and barstate.islast ? todVah : na, "Today VAH", tdVaCol,  display = showScale ? display.price_scale : display.none)
 plot(showTD   and barstate.islast ? todVal : na, "Today VAL", tdVaCol,  display = showScale ? display.price_scale : display.none)
