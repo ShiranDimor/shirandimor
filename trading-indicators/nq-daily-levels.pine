@@ -62,16 +62,16 @@ tdVaCol  = input.color(#00E676, "Today VAH / VAL: צבע", inline = "td2", group
 tdVaW    = input.int(1, "עובי", minval = 1, maxval = 10, inline = "td2", group = G_TD)
 tdVaSt   = input.string("Dotted", "סגנון", options = ["Solid", "Dashed", "Dotted"], inline = "td2", group = G_TD)
 
-G_SS = "סשנים לפי שעות הבורסות (קופסה מהגבוה לנמוך)"
+G_SS = "קופסאות סשנים (קופסה מהגבוה לנמוך)"
 showSess  = input.bool(true, "הצג סשנים", group = G_SS)
 sessDays  = input.int(3, "כמה ימים להציג (כולל היום)", minval = 1, maxval = 10, group = G_SS)
 sessAlpha = input.int(85, "שקיפות הקופסאות (0-100)", minval = 0, maxval = 100, group = G_SS)
 sessNums  = input.bool(false, "הצג מחירים מעל הקופסאות (H / L / טווח)", group = G_SS)
-showTok   = input.bool(true, "Asia (טוקיו)", inline = "s1", group = G_SS)
-tokSess   = input.session("0900-1500", "שעון טוקיו", inline = "s1", group = G_SS)
+// קופסאות אסיה ולונדון משתמשות באותם חלונות בדיוק כמו קווי Asia / London High-Low (מההגדרות למעלה),
+// כך שהגבוה/נמוך של כל קופסה תמיד יושב על הקווים של אותו סשן
+showTok   = input.bool(true, "Asia (לפי החלון של Asia High / Low)", inline = "s1", group = G_SS)
 tokColor  = input.color(#00BCD4, "", inline = "s1", group = G_SS)
-showLdn   = input.bool(true, "London (לונדון)", inline = "s2", group = G_SS)
-ldnSess   = input.session("0800-1630", "שעון לונדון", inline = "s2", group = G_SS)
+showLdn   = input.bool(true, "London (לפי החלון של London High / Low)", inline = "s2", group = G_SS)
 ldnColor  = input.color(#E040FB, "", inline = "s2", group = G_SS)
 showNy    = input.bool(true, "New York (ניו יורק)", inline = "s3", group = G_SS)
 nySess    = input.session("0930-1600", "שעון ניו יורק", inline = "s3", group = G_SS)
@@ -370,9 +370,9 @@ if barstate.islast
     if showHistCD and not na(drawCur)
         f_hist(bxs, drawCur, drawCur.start, false, histPOCtd)
 
-// ───────────── סשנים לפי שעות הבורסות: טוקיו / לונדון / ניו יורק ─────────────
-// כל סשן נמדד לפי השעון של העיר שלו (כולל שעון קיץ/חורף של אותה עיר), מנרות של דקה - לכן
-// הגבוה/נמוך זהים בכל טווח זמן של הגרף. כל קופסה = מתחילת הסשן עד סופו, מהגבוה עד הנמוך שלו
+// ───────────── קופסאות סשנים: אסיה / לונדון / ניו יורק ─────────────
+// אסיה ולונדון = אותם חלונות של קווי Asia / London High-Low; ניו יורק = 09:30-16:00. הכל בשעון ניו יורק,
+// מנרות של דקה - לכן הגבוה/נמוך זהים בכל טווח זמן של הגרף. כל קופסה = מתחילת החלון עד סופו, מהגבוה עד הנמוך שלו
 type Sess
     int   start
     int   end
@@ -380,14 +380,11 @@ type Sess
     float lo
     int   key
 
-f_inLocal(int t, string tz, int sMin, int eMin) =>
-    m = hour(t, tz) * 60 + minute(t, tz)
-    m >= sMin and m < eMin
-
 // מוסיף נר דקה לסשן: אם הוא בתוך שעות הסשן - מעדכן את הסשן של אותו יום (או פותח חדש)
-f_feed(Sess[] arr, int t, int dur, float h, float l, string tz, int sMin, int eMin, int keep) =>
-    if f_inLocal(t, tz, sMin, eMin)
-        k = year(t, tz) * 10000 + month(t, tz) * 100 + dayofmonth(t, tz)
+// המפתח הוא יום המסחר (מ-18:00 ניו יורק), כך שחלון שעובר חצות נשאר קופסה אחת
+f_feed(Sess[] arr, int t, int dur, float h, float l, int sMin, int eMin, int keep) =>
+    if f_inWin(hour(t, TZ) * 60 + minute(t, TZ), sMin, eMin)
+        k = f_dayKey(t, dsMin)
         Sess cur = arr.size() > 0 ? arr.last() : na
         // שני הענפים מחזירים 0 - Pine דורש שלכל ענפי if/else יהיה אותו סוג ערך
         if na(cur) or cur.key != k
@@ -409,16 +406,14 @@ f_cloneTail(Sess[] arr) =>
     c
 
 f_feedAll(Sess[] tok, Sess[] ldn, Sess[] ny, array<int> ts, array<float> hs, array<float> ls, int dur) =>
-    [tS, tE] = f_parse(tokSess)
-    [dS, dE] = f_parse(ldnSess)
     [nS, nE] = f_parse(nySess)
     n = ts.size()
     if n > 0
         for i = 0 to n - 1
             t = ts.get(i)
-            f_feed(tok, t, dur, hs.get(i), ls.get(i), "Asia/Tokyo", tS, tE, sessDays)
-            f_feed(ldn, t, dur, hs.get(i), ls.get(i), "Europe/London", dS, dE, sessDays)
-            f_feed(ny, t, dur, hs.get(i), ls.get(i), "America/New_York", nS, nE, sessDays)
+            f_feed(tok, t, dur, hs.get(i), ls.get(i), aS, aE, sessDays)
+            f_feed(ldn, t, dur, hs.get(i), ls.get(i), lS, lE, sessDays)
+            f_feed(ny, t, dur, hs.get(i), ls.get(i), nS, nE, sessDays)
 
 var Sess[] tokArr = array.new<Sess>()
 var Sess[] ldnArr = array.new<Sess>()
@@ -455,7 +450,7 @@ if barstate.islast
     sessLabels.clear()
     if showSess
         if showTok
-            f_drawSess(sessBoxes, sessLabels, drawTok, "Asia (Tokyo)", tokColor)
+            f_drawSess(sessBoxes, sessLabels, drawTok, "Asia", tokColor)
         if showLdn
             f_drawSess(sessBoxes, sessLabels, drawLdn, "London", ldnColor)
         if showNy
