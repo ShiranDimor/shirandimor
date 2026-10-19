@@ -233,7 +233,10 @@ export async function callSupportBot(
     body: JSON.stringify({
       model,
       max_tokens: 1024,
-      system,
+      // cache_control על הפרומפט (בסיס הידע הארוך של דור, כ-11 אלף טוקנים) - בלעדיו כל הודעה
+      // בכל שיחה משלמת מחדש על הפרומפט המלא במחיר input מלא. עם קאש, הודעה שנייה ואילך
+      // באותה שיחה (בתוך כ-5 דקות מההודעה הקודמת) משלמת רק כעשירית מהמחיר על החלק הזה
+      system: [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }],
       messages,
     }),
   });
