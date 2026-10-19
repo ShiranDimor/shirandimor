@@ -66,6 +66,7 @@ G_SS = "סשנים לפי שעות הבורסות (קופסה מהגבוה לנ�
 showSess  = input.bool(true, "הצג סשנים", group = G_SS)
 sessDays  = input.int(3, "כמה ימים להציג (כולל היום)", minval = 1, maxval = 10, group = G_SS)
 sessAlpha = input.int(85, "שקיפות הקופסאות (0-100)", minval = 0, maxval = 100, group = G_SS)
+sessNums  = input.bool(false, "הצג מחירים מעל הקופסאות (H / L / טווח)", group = G_SS)
 showTok   = input.bool(true, "Asia (טוקיו)", inline = "s1", group = G_SS)
 tokSess   = input.session("0900-1500", "שעון טוקיו", inline = "s1", group = G_SS)
 tokColor  = input.color(#00BCD4, "", inline = "s1", group = G_SS)
@@ -348,9 +349,10 @@ f_hist(box[] bxs, Prof p, int x0, bool fromRight, color pocCol) =>
                     w = int(maxW * v / mx)
                     bxs.push(box.new(left = fromRight ? x0 - w : x0, top = top, right = fromRight ? x0 : x0 + w, bottom = bot, xloc = xloc.bar_time, border_color = color.new(color.black, 100), border_width = 0, bgcolor = col))
 
-// כשהפרופיל צמוד לימין: הקצה הימני שלו מעט אחרי הנר האחרון + הרוחב המקסימלי, והתוויות זזות אל מימינו
+// כשהפרופיל צמוד לימין: הקצה הימני שלו 2 נרות אחרי הנר האחרון והפסים גדלים שמאלה (מעל הנרות, כמו פרופיל רגיל),
+// כך שהוא תמיד בתוך המסך; התוויות זזות אל מימינו
 histRight  = sideProf != "ללא"
-histRightX = time + (histBars + 2) * timeframe.in_seconds() * 1000
+histRightX = time + 2 * timeframe.in_seconds() * 1000
 
 var box[] bxs = array.new<box>()
 if barstate.islast
@@ -439,7 +441,7 @@ if showSess
 f_drawSess(box[] sb, label[] sl, Sess[] arr, string name, color c) =>
     for s in arr
         sb.push(box.new(left = s.start, top = s.hi, right = s.end, bottom = s.lo, xloc = xloc.bar_time, border_color = c, border_width = 1, border_style = line.style_dashed, bgcolor = color.new(c, sessAlpha)))
-        txt = name + "\nH " + str.tostring(s.hi, "0.00#") + " · L " + str.tostring(s.lo, "0.00#") + " · " + str.tostring(s.hi - s.lo, "0.##") + " נק׳"
+        txt = sessNums ? name + "\nH " + str.tostring(s.hi, "0.00#") + " · L " + str.tostring(s.lo, "0.00#") + " · " + str.tostring(s.hi - s.lo, "0.##") + " נק׳" : name
         sl.push(label.new(x = int((s.start + s.end) / 2), y = s.hi, text = txt, xloc = xloc.bar_time, yloc = yloc.price, color = color.new(color.black, 100), style = label.style_label_down, textcolor = c, size = size.small))
 
 var box[]   sessBoxes  = array.new<box>()
