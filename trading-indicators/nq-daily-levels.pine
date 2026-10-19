@@ -11,7 +11,7 @@ indicator("NQ Daily Levels (50% / Asia / London / PDH-PDL / VP)", shorttitle = "
 const string TZ = "America/New_York"
 
 // ───────────── הגדרות ─────────────
-cleanMode = input.bool(false, "מצב נקי - רק קווי הליבה", tooltip = "משאיר רק: 50% Daily Range, Asia High/Low, London High/Low, Previous Day High/Low ו-PD POC. מסתיר את PD VAH/VAL, את קווי Today, את ההיסטוגרמות, את קופסאות הסשנים ואת השמות הקטנים על הקווים. ביטול הסימון מחזיר את התצוגה המלאה לפי שאר ההגדרות.", group = "מצב תצוגה")
+cleanMode = input.bool(false, "מצב נקי - רק קווי הליבה", tooltip = "משאיר רק: 50% Daily Range, Asia High/Low, London High/Low, Previous Day High/Low ו-PD POC. מסתיר את PD VAH/VAL, את קווי Today, את פרופילי הנפח, את קופסאות הסשנים ואת השמות הקטנים על הקווים. ביטול הסימון מחזיר את התצוגה המלאה לפי שאר ההגדרות.", group = "מצב תצוגה")
 G_DAY = "יום מסחר (שעון ניו יורק)"
 dayStartH = input.int(18, "תחילת יום: שעה", minval = 0, maxval = 23, inline = "ds", group = G_DAY)
 dayStartM = input.int(0, "דקה", minval = 0, maxval = 59, inline = "ds", group = G_DAY)
@@ -77,15 +77,16 @@ nySess    = input.session("0930-1600", "שעון ניו יורק", inline = "s3"
 nyColor   = input.color(#FF9800, "", inline = "s3", group = G_SS)
 
 G_VPH = "Volume Profile - היסטוגרמה"
-showHistPD = input.bool(true, "הצג פרופיל של יום קודם", group = G_VPH)
-histPDPos  = input.string("צמוד לימין (ליד המחיר)", "מיקום הפרופיל של יום קודם", options = ["צמוד לימין (ליד המחיר)", "על היום הנוכחי", "על היום של אתמול"], group = G_VPH)
-histBars   = input.int(60, "רוחב מקסימלי כשהפרופיל צמוד לימין (בנרות)", minval = 10, maxval = 300, group = G_VPH)
-showHistCD = input.bool(false, "הצג פרופיל מתפתח של היום", group = G_VPH)
+sideProf   = input.string("היום (מתעדכן)", "פרופיל בצד ימין, ליד המחיר", options = ["היום (מתעדכן)", "אתמול", "ללא"], tooltip = "המקובל: הפרופיל של היום בצד, והרמות של אתמול כקווים (PD POC / VAH / VAL)", group = G_VPH)
+histBars   = input.int(60, "רוחב מקסימלי של הפרופיל בצד ימין (בנרות)", minval = 10, maxval = 300, group = G_VPH)
+showHistPD = input.bool(false, "הצג גם את הפרופיל של אתמול על האזור של אתמול בגרף", group = G_VPH)
+showHistCD = input.bool(false, "הצג גם את הפרופיל של היום על האזור של היום בגרף", group = G_VPH)
 histRows   = input.int(120, "מספר שורות בהיסטוגרמה", minval = 20, maxval = 200, group = G_VPH)
-histWidth  = input.int(30, "רוחב מקסימלי (% מאורך היום)", minval = 5, maxval = 100, group = G_VPH)
+histWidth  = input.int(30, "רוחב מקסימלי לפרופיל על אזור היום (% מאורך היום)", minval = 5, maxval = 100, group = G_VPH)
 histVA     = input.color(color.new(#B2B5BE, 55), "צבע Value Area", group = G_VPH)
 histOut    = input.color(color.new(#5D606B, 60), "צבע מחוץ ל-Value Area", group = G_VPH)
-histPOC    = input.color(color.new(#F44336, 20), "צבע שורת POC", group = G_VPH)
+histPOC    = input.color(color.new(#F44336, 20), "צבע שורת POC (אתמול)", group = G_VPH)
+histPOCtd  = input.color(color.new(#FFFFFF, 20), "צבע שורת POC (היום)", group = G_VPH)
 
 G_LBL = "תוויות"
 showLabels  = input.bool(true, "הצג תוויות", group = G_LBL)
@@ -108,6 +109,7 @@ alertOnce = input.bool(true, "רק פעם אחת ביום לכל קו", group = 
 showTD     := showTD and not cleanMode
 showHistPD := showHistPD and not cleanMode
 showHistCD := showHistCD and not cleanMode
+sideProf   := cleanMode ? "ללא" : sideProf
 showSess   := showSess and not cleanMode
 showTags   := showTags and not cleanMode
 showPdVa    = showVP and not cleanMode
@@ -323,7 +325,7 @@ else
 
 // x0 = נקודת העיגון: fromRight=false -> הפסים מתחילים ב-x0 ונמשכים ימינה (רוחב מקסימלי = % מאורך יום);
 // fromRight=true -> הפסים נגמרים ב-x0 וגדלים שמאלה, כמו פרופיל שצמוד לסקאלת המחירים (רוחב מקסימלי = histBars נרות)
-f_hist(box[] bxs, Prof p, int x0, bool fromRight) =>
+f_hist(box[] bxs, Prof p, int x0, bool fromRight, color pocCol) =>
     if not na(p) and not na(p.kLo)
         [poc, vah, val] = f_profile(p.vol, p.kLo, p.kHi, vpRow, vpVA)
         span  = p.kHi - p.kLo + 1
@@ -342,12 +344,12 @@ f_hist(box[] bxs, Prof p, int x0, bool fromRight) =>
                     bot = (p.kLo + g * grp) * vpRow
                     top = (p.kLo + (g + 1) * grp) * vpRow
                     ctr = (bot + top) / 2
-                    col = (poc >= bot and poc < top) ? histPOC : (ctr >= val and ctr <= vah) ? histVA : histOut
+                    col = (poc >= bot and poc < top) ? pocCol : (ctr >= val and ctr <= vah) ? histVA : histOut
                     w = int(maxW * v / mx)
                     bxs.push(box.new(left = fromRight ? x0 - w : x0, top = top, right = fromRight ? x0 : x0 + w, bottom = bot, xloc = xloc.bar_time, border_color = color.new(color.black, 100), border_width = 0, bgcolor = col))
 
 // כשהפרופיל צמוד לימין: הקצה הימני שלו מעט אחרי הנר האחרון + הרוחב המקסימלי, והתוויות זזות אל מימינו
-histRight  = showHistPD and histPDPos == "צמוד לימין (ליד המחיר)"
+histRight  = sideProf != "ללא"
 histRightX = time + (histBars + 2) * timeframe.in_seconds() * 1000
 
 var box[] bxs = array.new<box>()
@@ -355,14 +357,16 @@ if barstate.islast
     for b in bxs
         box.delete(b)
     bxs.clear()
+    // פרופיל בצד ימין (ברירת מחדל: של היום, מתעדכן), צמוד לימין ליד המחיר הנוכחי
+    if sideProf == "היום (מתעדכן)" and not na(drawCur)
+        f_hist(bxs, drawCur, histRightX, true, histPOCtd)
+    if sideProf == "אתמול" and not na(drawPrev)
+        f_hist(bxs, drawPrev, histRightX, true, histPOC)
+    // אופציונלי: כל פרופיל גם על האזור של היום שלו בגרף
     if showHistPD and not na(drawPrev)
-        // ברירת מחדל: הפרופיל של אתמול צמוד לימין, ליד המחיר הנוכחי - בלי לגלול אחורה
-        if histRight
-            f_hist(bxs, drawPrev, histRightX, true)
-        else
-            f_hist(bxs, drawPrev, histPDPos == "על היום הנוכחי" and not na(drawCur) ? drawCur.start : drawPrev.start, false)
+        f_hist(bxs, drawPrev, drawPrev.start, false, histPOC)
     if showHistCD and not na(drawCur)
-        f_hist(bxs, drawCur, drawCur.start, false)
+        f_hist(bxs, drawCur, drawCur.start, false, histPOCtd)
 
 // ───────────── סשנים לפי שעות הבורסות: טוקיו / לונדון / ניו יורק ─────────────
 // כל סשן נמדד לפי השעון של העיר שלו (כולל שעון קיץ/חורף של אותה עיר), מנרות של דקה - לכן
