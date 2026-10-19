@@ -79,15 +79,15 @@ nyColor   = input.color(#FF9800, "", inline = "s3", group = G_SS)
 
 G_VPH = "Volume Profile - היסטוגרמה"
 sideProf   = input.string("היום (מתעדכן)", "פרופיל בצד ימין, ליד המחיר", options = ["היום (מתעדכן)", "אתמול", "ללא"], tooltip = "המקובל: הפרופיל של היום בצד, והרמות של אתמול כקווים (PD POC / VAH / VAL)", group = G_VPH)
-histBars   = input.int(60, "רוחב מקסימלי של הפרופיל בצד ימין (בנרות)", minval = 10, maxval = 300, group = G_VPH)
+histBars   = input.int(20, "רוחב הפרופיל בצד ימין (בנרות)", minval = 5, maxval = 300, tooltip = "כמה נרות אחורה נכנסת השורה הארוכה ביותר. מספר קטן = פרופיל דק וצמוד לימין שלא מסתיר את הנרות", group = G_VPH)
 showHistPD = input.bool(false, "הצג גם את הפרופיל של אתמול על האזור של אתמול בגרף", group = G_VPH)
 showHistCD = input.bool(false, "הצג גם את הפרופיל של היום על האזור של היום בגרף", group = G_VPH)
 histRows   = input.int(120, "מספר שורות בהיסטוגרמה", minval = 20, maxval = 200, group = G_VPH)
 histWidth  = input.int(30, "רוחב מקסימלי לפרופיל על אזור היום (% מאורך היום)", minval = 5, maxval = 100, group = G_VPH)
-histVA     = input.color(color.new(#B2B5BE, 55), "צבע Value Area", group = G_VPH)
-histOut    = input.color(color.new(#5D606B, 60), "צבע מחוץ ל-Value Area", group = G_VPH)
+histVA     = input.color(color.new(#787B86, 65), "צבע Value Area", group = G_VPH)
+histOut    = input.color(color.new(#5D606B, 80), "צבע מחוץ ל-Value Area", group = G_VPH)
 histPOC    = input.color(color.new(#F44336, 20), "צבע שורת POC (אתמול)", group = G_VPH)
-histPOCtd  = input.color(color.new(#FFFFFF, 20), "צבע שורת POC (היום)", group = G_VPH)
+histPOCtd  = input.color(color.new(#FFFFFF, 50), "צבע שורת POC (היום)", group = G_VPH)
 
 G_LBL = "תוויות"
 showLabels  = input.bool(true, "הצג תוויות", group = G_LBL)
