@@ -100,12 +100,12 @@ lblGap      = input.float(15, "מרווח מינימלי בין תוויות (נ
 showScale   = input.bool(true, "הצג מחירים על סקאלת המחירים", group = G_LBL)
 
 G_ALR = "התראות"
-alertAsia = input.bool(true, "התראה כשהמחיר מגיע ל-Asia High / Low", group = G_ALR)
-alertLon  = input.bool(true, "התראה כשהמחיר מגיע ל-London High / Low", group = G_ALR)
-alertPD   = input.bool(false, "התראה כשהמחיר מגיע ל-Previous Day High / Low", group = G_ALR)
-alertVP   = input.bool(false, "התראה כשהמחיר מגיע ל-POC / VAH / VAL של יום קודם", group = G_ALR)
-alertMid  = input.bool(false, "התראה כשהמחיר מגיע ל-50% Daily Range", group = G_ALR)
-alertOnce = input.bool(true, "רק פעם אחת ביום לכל קו", group = G_ALR)
+alertAsia  = input.bool(true, "התראה כשהמחיר מגיע ל-Asia High / Low", group = G_ALR)
+alertLon   = input.bool(true, "התראה כשהמחיר מגיע ל-London High / Low", group = G_ALR)
+alertPD    = input.bool(true, "התראה כשהמחיר מגיע ל-Previous Day High / Low", group = G_ALR)
+alertVP    = input.bool(true, "התראה כשהמחיר מגיע ל-POC / VAH / VAL של יום קודם", group = G_ALR)
+alertMid   = input.bool(true, "התראה כשהמחיר מגיע ל-50% Daily Range", group = G_ALR)
+alertRearm = input.float(10, "התראה חוזרת על אותו קו רק אחרי שהמחיר התרחק ממנו (נקודות)", minval = 1, step = 1, tooltip = "מתריע על כל נגיעה בקו, אבל אחרי נגיעה הקו 'נטען' מחדש רק כשהמחיר התרחק ממנו לפחות כמה נקודות. כך לא מקבלים עשרות התראות כשהמחיר מדשדש על הקו. גם קו שרק נוצר (למשל London Low בסגירת החלון) יתריע רק כשהמחיר יתרחק ממנו ויחזור", group = G_ALR)
 
 // במצב נקי מכבים כל מה שאינו קו ליבה (ההגדרות עצמן נשמרות וחוזרות כשמבטלים את המצב הנקי)
 showTD     := showTD and not cleanMode
@@ -576,6 +576,19 @@ varip bool  hitVAL = false
 f_touched(float prev, float px, float lvl) =>
     not na(prev) and not na(lvl) and ((prev < lvl and px >= lvl) or (prev > lvl and px <= lvl) or px == lvl)
 
+// hit = הקו "לא טעון" (כבר התריע / רק נוצר). נטען מחדש כשהמחיר מתרחק ממנו alertRearm נקודות,
+// ואז נגיעה הבאה מתריעה. מחזיר [האם להתריע עכשיו, מצב hit חדש]
+f_check(float prev, float px, float lvl, bool hit) =>
+    bool fire = false
+    bool h = hit
+    if not na(lvl)
+        if h and math.abs(px - lvl) >= alertRearm
+            h := false
+        if not h and f_touched(prev, px, lvl)
+            h := true
+            fire := true
+    [fire, h]
+
 f_msg(string name, float lvl) =>
     syminfo.ticker + ": המחיר הגיע ל-" + name + " " + str.tostring(lvl, "0.00#")
 
@@ -592,56 +605,56 @@ bool tVAH = false
 bool tVAL = false
 
 if barstate.isrealtime
+    // ביום חדש כל הקווים מתחילים "לא טעונים": קו מתריע רק אחרי שהמחיר התרחק ממנו alertRearm נקודות
     if na(alertDay) or alertDay != dT
         alertDay := dT
-        hitAH := false
-        hitAL := false
-        hitLH := false
-        hitLL := false
-        hitM  := false
-        hitPH := false
-        hitPL := false
-        hitPOC := false
-        hitVAH := false
-        hitVAL := false
+        hitAH := true
+        hitAL := true
+        hitLH := true
+        hitLL := true
+        hitM  := true
+        hitPH := true
+        hitPL := true
+        hitPOC := true
+        hitVAH := true
+        hitVAL := true
 
+    // אסיה/לונדון נבדקים רק אחרי שהחלון נסגר (כשהקו כבר קבוע)
     if alertAsia and aDone
-        if f_touched(lastPx, close, aHi) and not (alertOnce and hitAH)
-            hitAH := true
-            tAH := true
-        if f_touched(lastPx, close, aLo) and not (alertOnce and hitAL)
-            hitAL := true
-            tAL := true
+        [f1, h1] = f_check(lastPx, close, aHi, hitAH)
+        [f2, h2] = f_check(lastPx, close, aLo, hitAL)
+        tAH := f1
+        hitAH := h1
+        tAL := f2
+        hitAL := h2
     if alertLon and lDone
-        if f_touched(lastPx, close, lHi) and not (alertOnce and hitLH)
-            hitLH := true
-            tLH := true
-        if f_touched(lastPx, close, lLo) and not (alertOnce and hitLL)
-            hitLL := true
-            tLL := true
+        [f1, h1] = f_check(lastPx, close, lHi, hitLH)
+        [f2, h2] = f_check(lastPx, close, lLo, hitLL)
+        tLH := f1
+        hitLH := h1
+        tLL := f2
+        hitLL := h2
     if alertMid
-        if f_touched(lastPx, close, mid) and not (alertOnce and hitM)
-            hitM := true
-            tM := true
-
+        [f1, h1] = f_check(lastPx, close, mid, hitM)
+        tM := f1
+        hitM := h1
     if alertPD
-        if f_touched(lastPx, close, pdHi) and not (alertOnce and hitPH)
-            hitPH := true
-            tPH := true
-        if f_touched(lastPx, close, pdLo) and not (alertOnce and hitPL)
-            hitPL := true
-            tPL := true
-
+        [f1, h1] = f_check(lastPx, close, pdHi, hitPH)
+        [f2, h2] = f_check(lastPx, close, pdLo, hitPL)
+        tPH := f1
+        hitPH := h1
+        tPL := f2
+        hitPL := h2
     if alertVP
-        if f_touched(lastPx, close, pPoc) and not (alertOnce and hitPOC)
-            hitPOC := true
-            tPOC := true
-        if f_touched(lastPx, close, pVah) and not (alertOnce and hitVAH)
-            hitVAH := true
-            tVAH := true
-        if f_touched(lastPx, close, pVal) and not (alertOnce and hitVAL)
-            hitVAL := true
-            tVAL := true
+        [f1, h1] = f_check(lastPx, close, pPoc, hitPOC)
+        [f2, h2] = f_check(lastPx, close, pVah, hitVAH)
+        [f3, h3] = f_check(lastPx, close, pVal, hitVAL)
+        tPOC := f1
+        hitPOC := h1
+        tVAH := f2
+        hitVAH := h2
+        tVAL := f3
+        hitVAL := h3
 
     lastPx := close
 
