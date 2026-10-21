@@ -108,6 +108,15 @@ alertMid   = input.bool(true, "התראה כשהמחיר מגיע ל-50% Daily R
 alertCool  = input.int(15, "אחרי התראה על קו - לא להתריע שוב על אותו קו במשך (דקות)", minval = 0, maxval = 240, tooltip = "כל קו מתריע לכל היותר פעם אחת בפרק הזמן הזה, גם אם המחיר נוגע בו שוב ושוב. 0 = בלי הגבלת זמן", group = G_ALR)
 alertRearm = input.float(10, "התראה חוזרת על אותו קו רק אחרי שהמחיר התרחק ממנו (נקודות)", minval = 1, step = 1, tooltip = "מתריע על כל נגיעה בקו, אבל אחרי נגיעה הקו 'נטען' מחדש רק כשהמחיר התרחק ממנו לפחות כמה נקודות. כך לא מקבלים עשרות התראות כשהמחיר מדשדש על הקו. גם קו שרק נוצר (למשל London Low בסגירת החלון) יתריע רק כשהמחיר יתרחק ממנו ויחזור", group = G_ALR)
 
+G_RISK = "טבלת כמות חוזים (סיכון קבוע)"
+showRisk = input.bool(true, "הצג טבלה", tooltip = "לכל קו קרוב: אם הסטופ יושב מעבר לקו - כמה חוזים להיכנס כך שההפסד בסטופ לא יעבור את הסיכון שהוגדר. קו מתחת למחיר = סטופ ללונג, קו מעל המחיר = סטופ לשורט. הכמות מעוגלת תמיד למטה. שווי הנקודה נלקח מהחוזה שבגרף (MNQ = $2, NQ = $20)", group = G_RISK)
+riskUsd  = input.float(500, "סיכון לעסקה ($)", minval = 1, step = 50, group = G_RISK)
+stopBuf  = input.float(2, "מרווח הסטופ מעבר לקו (נקודות)", minval = 0, step = 0.25, tooltip = "הסטופ לא בדיוק על הקו אלא קצת מעבר לו: מתחת לקו בלונג, מעליו בשורט", group = G_RISK)
+riskFee  = input.float(0, "עמלה לחוזה הלוך-חזור ($)", minval = 0, step = 0.1, tooltip = "אופציונלי - נכנס לחישוב ההפסד לחוזה", group = G_RISK)
+riskRows = input.int(3, "כמה קווים להציג מכל צד של המחיר", minval = 1, maxval = 8, group = G_RISK)
+riskPos  = input.string("למטה משמאל", "מיקום", options = ["למעלה משמאל", "למעלה מימין", "באמצע משמאל", "באמצע מימין", "למטה משמאל", "למטה מימין"], group = G_RISK)
+riskSize = input.string("Normal", "גודל טקסט", options = ["Small", "Normal", "Large"], group = G_RISK)
+
 // במצב נקי מכבים כל מה שאינו קו ליבה (ההגדרות עצמן נשמרות וחוזרות כשמבטלים את המצב הנקי)
 showTD     := showTD and not cleanMode
 showHistPD := showHistPD and not cleanMode
@@ -552,6 +561,115 @@ plot(showPdVa and barstate.islast ? pVal : na, "PD VAL", vaColor,  display = sho
 plot(showTD   and barstate.islast ? todPoc : na, "Today POC", tdPocCol, display = showScale ? display.price_scale : display.none)
 plot(showTD   and barstate.islast ? todVah : na, "Today VAH", tdVaCol,  display = showScale ? display.price_scale : display.none)
 plot(showTD   and barstate.islast ? todVal : na, "Today VAL", tdVaCol,  display = showScale ? display.price_scale : display.none)
+
+// ───────────── טבלת כמות חוזים לפי סיכון קבוע ─────────────
+// לכל קו מוצג מעל/מתחת למחיר: סטופ = הקו + מרווח, וכמות החוזים כך שההפסד בסטופ <= riskUsd.
+// סדר השורות כמו בגרף: קווי שורט (מעל המחיר) למעלה, המחיר הנוכחי באמצע, קווי לונג (מתחת) למטה.
+f_pos(string s) =>
+    switch s
+        "למעלה משמאל" => position.top_left
+        "למעלה מימין" => position.top_right
+        "באמצע משמאל" => position.middle_left
+        "באמצע מימין" => position.middle_right
+        "למטה מימין"  => position.bottom_right
+        => position.bottom_left
+
+f_lvl(string[] names, float[] prices, color[] cols, string name, float y, color c) =>
+    if not na(y)
+        names.push(name)
+        prices.push(y)
+        cols.push(c)
+
+const int R_COLS = 6
+riskRowsTotal = riskRows * 2 + 3
+var table riskTbl = na
+
+f_riskRow(table t, int r, bool isShort, string name, color c, float lvl, float px, string sz) =>
+    pv   = syminfo.pointvalue
+    stop = math.round_to_mintick(isShort ? lvl + stopBuf : lvl - stopBuf)
+    dist = math.abs(stop - px)
+    per  = dist * pv + riskFee
+    n    = per > 0 ? int(math.floor(riskUsd / per + 1e-9)) : 0
+    loss = n * per
+    t.cell(0, r, isShort ? "שורט" : "לונג", text_color = isShort ? #F23645 : #089981, text_size = sz)
+    t.cell(1, r, name, text_color = c, text_size = sz, text_halign = text.align_left)
+    t.cell(2, r, str.tostring(stop, format.mintick), text_color = #D1D4DC, text_size = sz)
+    t.cell(3, r, str.tostring(dist, "0.##"), text_color = #D1D4DC, text_size = sz)
+    t.cell(4, r, str.tostring(n), text_color = n > 0 ? color.white : #F23645, bgcolor = n > 0 ? color.new(#2962FF, 40) : color.new(#F23645, 80), text_size = sz, tooltip = n > 0 ? "" : "הסטופ רחוק מדי - גם חוזה אחד עובר את הסיכון שהוגדר")
+    t.cell(5, r, "$" + str.tostring(loss, "#,##0"), text_color = #D1D4DC, text_size = sz)
+
+if barstate.islast
+    // בונים את הטבלה מחדש בכל עדכון (כולל מיזוג התאים) במקום לנקות טבלה קיימת
+    if not na(riskTbl)
+        riskTbl.delete()
+    riskTbl := na
+    if showRisk
+        riskTbl := table.new(f_pos(riskPos), R_COLS, riskRowsTotal, bgcolor = color.new(#131722, 5), frame_color = #434651, frame_width = 1, border_color = #2A2E39, border_width = 1)
+        rsz = switch riskSize
+            "Small" => size.small
+            "Large" => size.large
+            => size.normal
+        rn = array.new<string>()
+        rp = array.new<float>()
+        rc = array.new<color>()
+        if showPD
+            f_lvl(rn, rp, rc, "PD High", pdHi, pdColor)
+            f_lvl(rn, rp, rc, "PD Low", pdLo, pdColor)
+        if showVP
+            f_lvl(rn, rp, rc, "PD POC", pPoc, pocColor)
+            if showPdVa
+                f_lvl(rn, rp, rc, "PD VAH", pVah, vaColor)
+                f_lvl(rn, rp, rc, "PD VAL", pVal, vaColor)
+        if showTD
+            f_lvl(rn, rp, rc, "Today POC", todPoc, tdPocCol)
+            f_lvl(rn, rp, rc, "Today VAH", todVah, tdVaCol)
+            f_lvl(rn, rp, rc, "Today VAL", todVal, tdVaCol)
+        if showMid
+            f_lvl(rn, rp, rc, "50% Daily", mid, midColor)
+        if showAsia
+            f_lvl(rn, rp, rc, "Asia High", aHi, asiaColor)
+            f_lvl(rn, rp, rc, "Asia Low", aLo, asiaColor)
+        if showLon
+            f_lvl(rn, rp, rc, "London High", lHi, lonColor)
+            f_lvl(rn, rp, rc, "London Low", lLo, lonColor)
+
+        px = close
+        // הקווים הקרובים ביותר מכל צד: above = מעל המחיר (מהקרוב לרחוק), below = מתחת למחיר (מהקרוב לרחוק)
+        above = array.new<int>()
+        below = array.new<int>()
+        nL = rp.size()
+        if nL > 0
+            idx = rp.sort_indices(order.ascending)
+            for i = 0 to nL - 1
+                j = idx.get(i)
+                if rp.get(j) > px and above.size() < riskRows
+                    above.push(j)
+            for i = nL - 1 to 0
+                j = idx.get(i)
+                if rp.get(j) < px and below.size() < riskRows
+                    below.push(j)
+
+        riskTbl.cell(0, 0, "סיכון $" + str.tostring(riskUsd, "#,##0") + " · סטופ " + str.tostring(stopBuf, "0.##") + " נק׳ מעבר לקו · " + syminfo.ticker, text_color = color.white, text_size = rsz)
+        riskTbl.merge_cells(0, 0, R_COLS - 1, 0)
+        hdr = array.from("", "קו", "סטופ", "נק׳", "חוזים", "הפסד")
+        for c = 0 to R_COLS - 1
+            riskTbl.cell(c, 1, hdr.get(c), text_color = #787B86, text_size = rsz)
+
+        int r = 2
+        // שורט: מהרחוק (למעלה) לקרוב (צמוד למחיר), כמו בגרף
+        nA = above.size()
+        if nA > 0
+            for i = nA - 1 to 0
+                j = above.get(i)
+                f_riskRow(riskTbl, r, true, rn.get(j), rc.get(j), rp.get(j), px, rsz)
+                r += 1
+        riskTbl.cell(0, r, "מחיר", text_color = color.white, text_size = rsz)
+        riskTbl.cell(1, r, str.tostring(px, format.mintick), text_color = color.white, text_size = rsz)
+        riskTbl.merge_cells(1, r, R_COLS - 1, r)
+        r += 1
+        for j in below
+            f_riskRow(riskTbl, r, false, rn.get(j), rc.get(j), rp.get(j), px, rsz)
+            r += 1
 
 // ───────────── התראות ─────────────
 // בודקים בכל טיק אם המחיר חצה/נגע בקו מאז הטיק הקודם. varip שומר ערכים בין טיקים.
