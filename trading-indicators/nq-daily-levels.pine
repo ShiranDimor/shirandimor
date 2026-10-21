@@ -105,6 +105,7 @@ alertLon   = input.bool(true, "התראה כשהמחיר מגיע ל-London High
 alertPD    = input.bool(true, "התראה כשהמחיר מגיע ל-Previous Day High / Low", group = G_ALR)
 alertVP    = input.bool(true, "התראה כשהמחיר מגיע ל-POC / VAH / VAL של יום קודם", group = G_ALR)
 alertMid   = input.bool(true, "התראה כשהמחיר מגיע ל-50% Daily Range", group = G_ALR)
+alertCool  = input.int(15, "אחרי התראה על קו - לא להתריע שוב על אותו קו במשך (דקות)", minval = 0, maxval = 240, tooltip = "כל קו מתריע לכל היותר פעם אחת בפרק הזמן הזה, גם אם המחיר נוגע בו שוב ושוב. 0 = בלי הגבלת זמן", group = G_ALR)
 alertRearm = input.float(10, "התראה חוזרת על אותו קו רק אחרי שהמחיר התרחק ממנו (נקודות)", minval = 1, step = 1, tooltip = "מתריע על כל נגיעה בקו, אבל אחרי נגיעה הקו 'נטען' מחדש רק כשהמחיר התרחק ממנו לפחות כמה נקודות. כך לא מקבלים עשרות התראות כשהמחיר מדשדש על הקו. גם קו שרק נוצר (למשל London Low בסגירת החלון) יתריע רק כשהמחיר יתרחק ממנו ויחזור", group = G_ALR)
 
 // במצב נקי מכבים כל מה שאינו קו ליבה (ההגדרות עצמן נשמרות וחוזרות כשמבטלים את המצב הנקי)
@@ -567,22 +568,36 @@ varip bool  hitPL = false
 varip bool  hitPOC = false
 varip bool  hitVAH = false
 varip bool  hitVAL = false
+// זמן ההתראה האחרונה של כל קו (להשהיה של alertCool דקות)
+varip int   tmAH = na
+varip int   tmAL = na
+varip int   tmLH = na
+varip int   tmLL = na
+varip int   tmM  = na
+varip int   tmPH = na
+varip int   tmPL = na
+varip int   tmPOC = na
+varip int   tmVAH = na
+varip int   tmVAL = na
 
 f_touched(float prev, float px, float lvl) =>
     not na(prev) and not na(lvl) and ((prev < lvl and px >= lvl) or (prev > lvl and px <= lvl) or px == lvl)
 
-// hit = הקו "לא טעון" (כבר התריע / רק נוצר). נטען מחדש כשהמחיר מתרחק ממנו alertRearm נקודות,
-// ואז נגיעה הבאה מתריעה. מחזיר [האם להתריע עכשיו, מצב hit חדש]
-f_check(float prev, float px, float lvl, bool hit) =>
+// hit = הקו "לא טעון" (כבר התריע / רק נוצר). נטען מחדש כשהמחיר מתרחק ממנו alertRearm נקודות.
+// בנוסף, אחרי התראה הקו שותק alertCool דקות. מחזיר [האם להתריע עכשיו, מצב hit חדש, זמן התראה אחרונה]
+f_check(float prev, float px, float lvl, bool hit, int lastT) =>
     bool fire = false
     bool h = hit
+    int  tm = lastT
     if not na(lvl)
         if h and math.abs(px - lvl) >= alertRearm
             h := false
-        if not h and f_touched(prev, px, lvl)
+        cooled = na(tm) or timenow - tm >= alertCool * 60000
+        if not h and cooled and f_touched(prev, px, lvl)
             h := true
             fire := true
-    [fire, h]
+            tm := timenow
+    [fire, h, tm]
 
 f_msg(string name, float lvl) =>
     syminfo.ticker + ": המחיר הגיע ל-" + name + " " + str.tostring(lvl, "0.00#")
@@ -616,40 +631,50 @@ if barstate.isrealtime
 
     // אסיה/לונדון נבדקים רק אחרי שהחלון נסגר (כשהקו כבר קבוע)
     if alertAsia and aDone
-        [f1, h1] = f_check(lastPx, close, aHi, hitAH)
-        [f2, h2] = f_check(lastPx, close, aLo, hitAL)
+        [f1, h1, m1] = f_check(lastPx, close, aHi, hitAH, tmAH)
+        [f2, h2, m2] = f_check(lastPx, close, aLo, hitAL, tmAL)
         tAH := f1
         hitAH := h1
+        tmAH := m1
         tAL := f2
         hitAL := h2
+        tmAL := m2
     if alertLon and lDone
-        [f1, h1] = f_check(lastPx, close, lHi, hitLH)
-        [f2, h2] = f_check(lastPx, close, lLo, hitLL)
+        [f1, h1, m1] = f_check(lastPx, close, lHi, hitLH, tmLH)
+        [f2, h2, m2] = f_check(lastPx, close, lLo, hitLL, tmLL)
         tLH := f1
         hitLH := h1
+        tmLH := m1
         tLL := f2
         hitLL := h2
+        tmLL := m2
     if alertMid
-        [f1, h1] = f_check(lastPx, close, mid, hitM)
+        [f1, h1, m1] = f_check(lastPx, close, mid, hitM, tmM)
         tM := f1
         hitM := h1
+        tmM := m1
     if alertPD
-        [f1, h1] = f_check(lastPx, close, pdHi, hitPH)
-        [f2, h2] = f_check(lastPx, close, pdLo, hitPL)
+        [f1, h1, m1] = f_check(lastPx, close, pdHi, hitPH, tmPH)
+        [f2, h2, m2] = f_check(lastPx, close, pdLo, hitPL, tmPL)
         tPH := f1
         hitPH := h1
+        tmPH := m1
         tPL := f2
         hitPL := h2
+        tmPL := m2
     if alertVP
-        [f1, h1] = f_check(lastPx, close, pPoc, hitPOC)
-        [f2, h2] = f_check(lastPx, close, pVah, hitVAH)
-        [f3, h3] = f_check(lastPx, close, pVal, hitVAL)
+        [f1, h1, m1] = f_check(lastPx, close, pPoc, hitPOC, tmPOC)
+        [f2, h2, m2] = f_check(lastPx, close, pVah, hitVAH, tmVAH)
+        [f3, h3, m3] = f_check(lastPx, close, pVal, hitVAL, tmVAL)
         tPOC := f1
         hitPOC := h1
+        tmPOC := m1
         tVAH := f2
         hitVAH := h2
+        tmVAH := m2
         tVAL := f3
         hitVAL := h3
+        tmVAL := m3
 
     lastPx := close
 
