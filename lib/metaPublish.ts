@@ -44,7 +44,18 @@ export async function publishPhotoToFacebookPage(params: {
   const { pageId, accessToken: rawToken } = requireCredentials();
   const accessToken = await resolvePageAccessToken(pageId, rawToken);
   const images = params.images.filter(Boolean);
-  if (images.length === 0) throw new Error('אין תמונות לפרסום');
+
+  // בלי תמונה בכלל - פוסט טקסט בלבד לפיד (לא כל פוסט חייב כרטיס גרפי)
+  if (images.length === 0) {
+    const res = await fetch(`https://graph.facebook.com/${GRAPH_API_VERSION}/${pageId}/feed`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: params.caption, access_token: accessToken }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(`שגיאה בפרסום לפייסבוק: ${data?.error?.message || 'שגיאה לא ידועה'}`);
+    return { postId: data.id as string };
+  }
 
   // פוסט עם תמונה אחת בלבד - זורם ישירות עם caption על התמונה עצמה (מוצג ומפורסם מיד)
   if (images.length === 1) {

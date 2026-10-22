@@ -89,6 +89,8 @@ export default function AdminMarketingPage() {
   const [publishingId, setPublishingId] = useState<string | null>(null);
   const [publishError, setPublishError] = useState<Record<string, string>>({});
   const [generatingStoryId, setGeneratingStoryId] = useState<string | null>(null);
+  const [generatingImageId, setGeneratingImageId] = useState<string | null>(null);
+  const [generateImageError, setGenerateImageError] = useState<Record<string, string>>({});
   const [storyError, setStoryError] = useState<Record<string, string>>({});
   const [publishingStoryId, setPublishingStoryId] = useState<string | null>(null);
 
@@ -387,6 +389,28 @@ export default function AdminMarketingPage() {
       const data = await res.json();
       setPosts((prev) => prev.map((p) => (p.id === postId ? data.post : p)));
     }
+  }
+
+  // יצירת כרטיס גרפי אוטומטי (תבנית "תובנה") מתוך ה-hook הקיים של הפוסט - למי שאין לה
+  // תמונה משלה להעלות לפוסט ידני
+  async function handleGenerateImage(postId: string) {
+    setGeneratingImageId(postId);
+    setGenerateImageError((prev) => ({ ...prev, [postId]: '' }));
+    try {
+      const res = await fetch(`/api/admin/marketing/posts/${postId}/generate-image`, {
+        method: 'POST',
+        headers: await authHeaders(),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data) {
+        setGenerateImageError((prev) => ({ ...prev, [postId]: data?.error || 'שגיאה ביצירת התמונה' }));
+      } else {
+        setPosts((prev) => prev.map((p) => (p.id === postId ? data.post : p)));
+      }
+    } catch {
+      setGenerateImageError((prev) => ({ ...prev, [postId]: 'שגיאה בשליחת הבקשה' }));
+    }
+    setGeneratingImageId(null);
   }
 
   async function handleRemoveMainImage(postId: string) {
@@ -766,16 +790,29 @@ export default function AdminMarketingPage() {
             ) : (
               post.source_type === 'manual' && post.content_type !== 'story' && (
                 <div className="field">
-                  <label>כרטיס גרפי (חובה לפרסום - לפוסט מסוג בריף חופשי אין יצירה אוטומטית, יש להעלות תמונה ידנית)</label>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) handleUploadMainImage(post.id, file);
-                    }}
-                    style={{ fontSize: '12.5px' }}
-                  />
+                  <label>כרטיס גרפי (לא חובה - לפוסט מסוג בריף חופשי אין יצירה אוטומטית; אפשר להעלות תמונה, ליצור אחת אוטומטית, או לפרסם טקסט בלבד בלי תמונה)</label>
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleUploadMainImage(post.id, file);
+                      }}
+                      style={{ fontSize: '12.5px' }}
+                    />
+                    <span style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>או</span>
+                    <button
+                      className="nav-link"
+                      style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-hairline-strong)', borderRadius: '8px', padding: '6px 12px', cursor: 'pointer', fontSize: '12px' }}
+                      onClick={() => handleGenerateImage(post.id)}
+                      disabled={generatingImageId === post.id || !post.hook?.trim()}
+                      title={!post.hook?.trim() ? 'צריך קודם הוק/כותרת לפוסט' : undefined}
+                    >
+                      {generatingImageId === post.id ? 'יוצרים...' : '✨ יצירת תמונה אוטומטית'}
+                    </button>
+                  </div>
+                  {generateImageError[post.id] && <p style={{ fontSize: '12px', color: 'var(--loss)', marginTop: '6px' }}>{generateImageError[post.id]}</p>}
                 </div>
               )
             )}
