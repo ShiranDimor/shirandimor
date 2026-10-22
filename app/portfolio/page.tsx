@@ -169,10 +169,9 @@ export default function PortfolioPage() {
     ? allClosedLoss_
     : allClosedLoss_.filter((t) => t.closed_at && monthKey(t.closed_at) === lossMonthFilter);
 
-  // "תובנות התיק" ממוקדות לאותו חודש שמוצג בלוח השנה ממש מעליהן (לא בורר נפרד) - כך שדפדוף
-  // בלוח השנה לחודש אחר מעדכן את התובנות אוטומטית, בלי צורך לבחור את אותו חודש פעמיים
-  const insightsMonthFilter = `${calYear}-${String(calMonthIdx + 1).padStart(2, '0')}`;
-  const closedTradesForInsights = closedTrades.filter((t) => t.closed_at && monthKey(t.closed_at) === insightsMonthFilter);
+  // "תובנות התיק" מציגות נתוני כל-הזמנים, לא רק החודש שמוצג בלוח השנה - שירן ביקשה מפורשות
+  // להסיר את הסינכרון לחודש הנבחר כדי שהמבקרים יראו תמיד את התמונה המלאה
+  const closedTradesForInsights = closedTrades;
 
   const closedProfitForInsights = closedTradesForInsights.filter((t) => pct(t) >= 0).length;
   const winRate = closedTradesForInsights.length > 0 ? (closedProfitForInsights / closedTradesForInsights.length) * 100 : null;
@@ -191,7 +190,7 @@ export default function PortfolioPage() {
     .map((t) => (new Date(t.closed_at as string).getTime() - new Date(t.opened_at).getTime()) / 86400000);
   const avgDaysToClose = daysToClose.length > 0 ? daysToClose.reduce((s, x) => s + x, 0) / daysToClose.length : null;
 
-  const tradesThisMonth = [...openTrades, ...closedTrades].filter((t) => monthKey(t.opened_at) === insightsMonthFilter).length;
+  const totalTradesCount = openTrades.length + closedTrades.length;
 
   // כאן, בניגוד לעמוד הניהול, מציגים את הצמיחה רק באחוזים ולא בסכום דולרי - כדי לא לחשוף
   // את גודל התיק האמיתי בכסף לכל מי שנכנס לעמוד הציבורי
@@ -330,7 +329,7 @@ export default function PortfolioPage() {
           <CalendarHeatmap year={calYear} month={calMonthIdx} items={calItems} onPrevMonth={goPrevMonth} onNextMonth={goNextMonth} hideUsd />
         </div>
 
-        <div className="section-label"><h2>תובנות התיק של שירן - {monthLabel(insightsMonthFilter)}</h2></div>
+        <div className="section-label"><h2>תובנות התיק של שירן - כל הזמנים</h2></div>
         <div className="insights-panel" style={{ marginBottom: '28px' }}>
           <div className="insights-ring-row">
             <StatsRing
@@ -355,8 +354,8 @@ export default function PortfolioPage() {
               <div className="il">יחס סיכון-סיכוי</div>
             </div>
             <div className="insight-tile">
-              <div className="iv">{tradesThisMonth}</div>
-              <div className="il">עסקאות החודש</div>
+              <div className="iv">{totalTradesCount}</div>
+              <div className="il">סה&quot;כ עסקאות</div>
             </div>
           </div>
         </div>

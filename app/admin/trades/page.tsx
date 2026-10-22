@@ -449,10 +449,9 @@ export default function AdminTradesPage() {
     ? closedLossTrades_
     : closedLossTrades_.filter((t) => t.closed_at && monthKey(t.closed_at) === lossMonthFilter);
 
-  // "תובנות התיק" ממוקדות לאותו חודש שמוצג בלוח השנה ממש מעליהן (לא בורר נפרד) - כך שדפדוף
-  // בלוח השנה לחודש אחר מעדכן את התובנות אוטומטית, בלי צורך לבחור את אותו חודש פעמיים
-  const insightsMonthFilter = `${calYear}-${String(calMonthIdx + 1).padStart(2, '0')}`;
-  const closedTradesForInsights = closedTrades.filter((t) => t.closed_at && monthKey(t.closed_at) === insightsMonthFilter);
+  // "תובנות התיק" מציגות נתוני כל-הזמנים, לא רק החודש שמוצג בלוח השנה - שירן ביקשה מפורשות
+  // להסיר את הסינכרון לחודש הנבחר כדי לראות תמיד את התמונה המלאה
+  const closedTradesForInsights = closedTrades;
   const closedProfitForInsights = closedTradesForInsights.filter((t) => (pctPnl(t, true) ?? 0) >= 0);
 
   const winRate = closedTradesForInsights.length > 0 ? (closedProfitForInsights.length / closedTradesForInsights.length) * 100 : null;
@@ -471,7 +470,7 @@ export default function AdminTradesPage() {
     .map((t) => (new Date(t.closed_at as string).getTime() - new Date(t.opened_at).getTime()) / 86400000);
   const avgDaysToClose = daysToClose.length > 0 ? daysToClose.reduce((s, x) => s + x, 0) / daysToClose.length : null;
 
-  const tradesThisMonth = [...openTrades, ...closedTrades].filter((t) => monthKey(t.opened_at) === insightsMonthFilter).length;
+  const totalTradesCount = openTrades.length + closedTrades.length;
 
   const equityPoints = (() => {
     if (initialBalance === null) return [];
@@ -775,7 +774,7 @@ export default function AdminTradesPage() {
       </div>
 
       <div className="section-label">
-        <h2>תובנות התיק - {monthLabel(insightsMonthFilter)}</h2>
+        <h2>תובנות התיק - כל הזמנים</h2>
       </div>
       <div className="insights-panel" style={{ marginBottom: '28px' }}>
         <div className="insights-ring-row">
@@ -801,8 +800,8 @@ export default function AdminTradesPage() {
             <div className="il">יחס סיכון-סיכוי</div>
           </div>
           <div className="insight-tile">
-            <div className="iv">{tradesThisMonth}</div>
-            <div className="il">עסקאות החודש</div>
+            <div className="iv">{totalTradesCount}</div>
+            <div className="il">סה&quot;כ עסקאות</div>
           </div>
         </div>
       </div>
