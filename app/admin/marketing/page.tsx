@@ -543,6 +543,9 @@ export default function AdminMarketingPage() {
       <header>
         <Link href="/admin" className="brand">מסחר <span>אחראי</span> במניות</Link>
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <a href="https://claude.ai/code/session_01CiPkX774J22XSmKphpao6M" target="_blank" rel="noreferrer" className="nav-link" style={{ color: 'var(--teal)' }}>
+            💬 דיבור עם קלוד (עדכונים לסטודיו)
+          </a>
           <Link href="/" className="nav-link">בית</Link>
           <Link href="/admin" className="nav-link">← לניהול</Link>
           <button onClick={handleLogout} className="nav-link" style={{ background: 'none', border: 'none', cursor: 'pointer', font: 'inherit', padding: 0 }}>התנתקות</button>
