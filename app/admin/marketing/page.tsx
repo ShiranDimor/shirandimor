@@ -790,7 +790,7 @@ export default function AdminMarketingPage() {
             ) : (
               post.source_type === 'manual' && post.content_type !== 'story' && (
                 <div className="field">
-                  <label>כרטיס גרפי (חובה לפרסום - לפוסט מסוג בריף חופשי אין יצירה אוטומטית, יש להעלות תמונה ידנית)</label>
+                  <label>כרטיס גרפי (לא חובה - לפוסט מסוג בריף חופשי אין יצירה אוטומטית; אפשר להעלות תמונה, ליצור אחת אוטומטית, או לפרסם טקסט בלבד בלי תמונה)</label>
                   <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
                     <input
                       type="file"

@@ -32,15 +32,16 @@ export async function POST(request: Request) {
   const { data: post, error: postError } = await supabaseAdmin.from('marketing_posts').select('*').eq('id', postId).single();
   if (postError || !post) return NextResponse.json({ error: 'הפוסט לא נמצא' }, { status: 404 });
   if (post.status === 'published') return NextResponse.json({ error: 'הפוסט הזה כבר פורסם' }, { status: 409 });
-  if (!post.image_base64) return NextResponse.json({ error: 'לפוסט הזה אין כרטיס גרפי לפרסום' }, { status: 400 });
+
+  const caption = [post.caption, post.hashtags].filter(Boolean).join('\n\n');
+  const extraImages: string[] = Array.isArray(post.extra_images) ? post.extra_images : [];
+  const images: string[] = [post.image_base64, ...extraImages].filter((img): img is string => Boolean(img));
+  if (images.length === 0 && !caption.trim()) {
+    return NextResponse.json({ error: 'אין לפוסט הזה לא תמונה ולא טקסט לפרסום' }, { status: 400 });
+  }
 
   try {
-    const caption = [post.caption, post.hashtags].filter(Boolean).join('\n\n');
-    const extraImages: string[] = Array.isArray(post.extra_images) ? post.extra_images : [];
-    const { postId: externalPostId } = await publishPhotoToFacebookPage({
-      images: [post.image_base64, ...extraImages],
-      caption,
-    });
+    const { postId: externalPostId } = await publishPhotoToFacebookPage({ images, caption });
 
     const { data, error } = await supabaseAdmin
       .from('marketing_posts')
