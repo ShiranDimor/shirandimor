@@ -12,6 +12,7 @@ const string TZ = "America/New_York"
 
 // ───────────── הגדרות ─────────────
 cleanMode = input.bool(false, "מצב נקי - רק קווי הליבה", tooltip = "משאיר רק: 50% Daily Range, Asia High/Low, London High/Low, Previous Day High/Low ו-PD POC. מסתיר את PD VAH/VAL, את קווי Today, את פרופילי הנפח, את קופסאות הסשנים ואת השמות הקטנים על הקווים. ביטול הסימון מחזיר את התצוגה המלאה לפי שאר ההגדרות.", group = "מצב תצוגה")
+stratMode = input.bool(true, "מצב אסטרטגיה (Sweep & Reclaim)", tooltip = "רמות נזילות = כניסה (Asia / London / Previous Day High-Low), רמות ערך = יעד (PD POC, 50%, Today POC). מסתיר את Today VAH/VAL (זזים כל הזמן) ומשאיר התראות רק על רמות הנזילות. ביטול הסימון מחזיר את ההגדרות הרגילות.", group = "מצב תצוגה")
 G_DAY = "יום מסחר (שעון ניו יורק)"
 dayStartH = input.int(18, "תחילת יום: שעה", minval = 0, maxval = 23, inline = "ds", group = G_DAY)
 dayStartM = input.int(0, "דקה", minval = 0, maxval = 59, inline = "ds", group = G_DAY)
@@ -99,6 +100,13 @@ showTags    = input.bool(true, "הצג את שם הקו גם על הקו עצמ�
 lblGap      = input.float(5, "מרווח מינימלי בין תוויות (נקודות)", minval = 0, step = 1, tooltip = "כשכמה קווים קרובים במחיר, התוויות מימין מוזזות למטה כך שלא יעלו אחת על השנייה. המחיר בתווית תמיד המחיר המדויק של הקו. אם התוויות עדיין עולות זו על זו - להגדיל; אם הן רחוקות מדי מהקווים - להקטין.", group = G_LBL)
 showScale   = input.bool(true, "הצג מחירים על סקאלת המחירים", group = G_LBL)
 
+G_RISK = "טבלת כמות חוזים"
+showRisk  = input.bool(true, "הצג טבלת כמות חוזים", group = G_RISK)
+riskUsd   = input.float(200, "סיכון לעסקה ($)", minval = 1, step = 10, group = G_RISK)
+riskStops = input.string("10,15,20,25,30,40", "גדלי סטופ (נקודות, מופרדים בפסיק)", group = G_RISK)
+riskMax   = input.int(0, "מקסימום חוזים בחשבון (0 = ללא הגבלה)", minval = 0, tooltip = "אם יש לחשבון (למשל Apex) תקרת חוזים - הטבלה לא תציג יותר ממנה", group = G_RISK)
+riskPos   = input.string("Top Right", "מיקום הטבלה", options = ["Top Right", "Bottom Right", "Top Left", "Bottom Left"], group = G_RISK)
+
 G_ALR = "התראות"
 alertAsia  = input.bool(true, "התראה כשהמחיר מגיע ל-Asia High / Low", group = G_ALR)
 alertLon   = input.bool(true, "התראה כשהמחיר מגיע ל-London High / Low", group = G_ALR)
@@ -116,6 +124,10 @@ sideProf   := cleanMode ? "ללא" : sideProf
 showSess   := showSess and not cleanMode
 showTags   := showTags and not cleanMode
 showPdVa    = showVP and not cleanMode
+// במצב אסטרטגיה: Today VAH/VAL מוסתרים, והתראות רק על רמות הנזילות (50% ו-POC/VAH/VAL הם יעדים, לא כניסות)
+showTdVa    = showTD and not stratMode
+alertMid   := alertMid and not stratMode
+alertVP    := alertVP and not stratMode
 
 if timeframe.isweekly or timeframe.ismonthly
     runtime.error("NQ Daily Levels עובד בטווחי זמן של יום ומטה.")
@@ -514,8 +526,9 @@ if barstate.islast
             f_draw(lns, lbs, lp, lt, lc, dT, pVal, vaColor, vaWidth, vaStyle, "PD VAL", pdFull)
     if showTD
         f_draw(lns, lbs, lp, lt, lc, dT, todPoc, tdPocCol, tdPocW, tdPocSt, "Today POC", dFull)
-        f_draw(lns, lbs, lp, lt, lc, dT, todVah, tdVaCol, tdVaW, tdVaSt, "Today VAH", dFull)
-        f_draw(lns, lbs, lp, lt, lc, dT, todVal, tdVaCol, tdVaW, tdVaSt, "Today VAL", dFull)
+        if showTdVa
+            f_draw(lns, lbs, lp, lt, lc, dT, todVah, tdVaCol, tdVaW, tdVaSt, "Today VAH", dFull)
+            f_draw(lns, lbs, lp, lt, lc, dT, todVal, tdVaCol, tdVaW, tdVaSt, "Today VAL", dFull)
     if showMid
         f_draw(lns, lbs, lp, lt, lc, dT, mid, midColor, midWidth, midStyle, "50% Daily Range", dFull)
     if showAsia
@@ -550,8 +563,32 @@ plot(showVP   and barstate.islast ? pPoc : na, "PD POC", pocColor, display = sho
 plot(showPdVa and barstate.islast ? pVah : na, "PD VAH", vaColor,  display = showScale ? display.price_scale : display.none)
 plot(showPdVa and barstate.islast ? pVal : na, "PD VAL", vaColor,  display = showScale ? display.price_scale : display.none)
 plot(showTD   and barstate.islast ? todPoc : na, "Today POC", tdPocCol, display = showScale ? display.price_scale : display.none)
-plot(showTD   and barstate.islast ? todVah : na, "Today VAH", tdVaCol,  display = showScale ? display.price_scale : display.none)
-plot(showTD   and barstate.islast ? todVal : na, "Today VAL", tdVaCol,  display = showScale ? display.price_scale : display.none)
+plot(showTdVa and barstate.islast ? todVah : na, "Today VAH", tdVaCol,  display = showScale ? display.price_scale : display.none)
+plot(showTdVa and barstate.islast ? todVal : na, "Today VAL", tdVaCol,  display = showScale ? display.price_scale : display.none)
+
+// ───────────── טבלת כמות חוזים ─────────────
+// חוזים = סיכון ÷ (נקודות עד הסטופ × שווי נקודה). שווי הנקודה נלקח מהחוזה עצמו (MNQ = 2$, NQ = 20$), מעוגל למטה
+riskList = str.split(str.replace_all(riskStops, " ", ""), ",")
+tblPos = switch riskPos
+    "Bottom Right" => position.bottom_right
+    "Top Left"     => position.top_left
+    "Bottom Left"  => position.bottom_left
+    => position.top_right
+var table riskTbl = table.new(tblPos, 2, riskList.size() + 2, bgcolor = color.new(#131722, 10), frame_color = color.new(#787B86, 50), frame_width = 1, border_color = color.new(#787B86, 80), border_width = 1)
+if showRisk and barstate.islast
+    table.cell(riskTbl, 0, 0, "סיכון $" + str.tostring(riskUsd, "#,###"), text_color = color.white, text_size = size.small)
+    table.cell(riskTbl, 1, 0, syminfo.ticker, text_color = color.white, text_size = size.small)
+    table.cell(riskTbl, 0, 1, "סטופ (נק׳)", text_color = color.gray, text_size = size.small)
+    table.cell(riskTbl, 1, 1, "חוזים", text_color = color.gray, text_size = size.small)
+    for i = 0 to riskList.size() - 1
+        stp = str.tonumber(riskList.get(i))
+        int ctr = na
+        if not na(stp) and stp > 0
+            ctr := int(math.floor(riskUsd / (stp * syminfo.pointvalue)))
+            if riskMax > 0
+                ctr := math.min(ctr, riskMax)
+        table.cell(riskTbl, 0, i + 2, na(stp) ? "?" : str.tostring(stp), text_color = color.white, text_size = size.small)
+        table.cell(riskTbl, 1, i + 2, na(ctr) ? "-" : str.tostring(ctr), text_color = ctr > 0 ? #00E676 : #F44336, text_size = size.small)
 
 // ───────────── התראות ─────────────
 // בודקים בכל טיק אם המחיר חצה/נגע בקו מאז הטיק הקודם. varip שומר ערכים בין טיקים.
