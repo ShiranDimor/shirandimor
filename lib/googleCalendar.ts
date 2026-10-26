@@ -136,7 +136,7 @@ export async function listBookedCallIntervals(timeMin: Date, timeMax: Date): Pro
   return busy;
 }
 
-// יוצר ביומן של שירן אירוע "שיחת התאמה" טלפוני. אם הפונה השאיר/ה מייל - הוא/היא מוזמנ/ת לאירוע ומקבל/ת
+// יוצר ביומן של שירן אירוע "שיחת היכרות" טלפוני. אם הפונה השאיר/ה מייל - הוא/היא מוזמנ/ת לאירוע ומקבל/ת
 // הזמנה ליומן. מחזיר את מזהה האירוע, או null אם החיבור לא מוגדר או שהיצירה נכשלה.
 export async function createFitCallEvent(opts: {
   start: Date;
@@ -156,7 +156,7 @@ export async function createFitCallEvent(opts: {
       body: JSON.stringify({
         summary: opts.summary,
         description: opts.description,
-        location: `שיחת טלפון: ${opts.phone}`,
+        location: `שיחת טלפון - שירן מתקשרת למספר ${opts.phone}`,
         start: { dateTime: opts.start.toISOString(), timeZone: 'Asia/Jerusalem' },
         end: { dateTime: end.toISOString(), timeZone: 'Asia/Jerusalem' },
         attendees: opts.attendeeEmail ? [{ email: opts.attendeeEmail }] : undefined,

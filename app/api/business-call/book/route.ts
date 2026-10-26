@@ -5,6 +5,26 @@ import { CALL_CONFIG, computeSlots, formatSlotForHumans, slotRange } from '@/lib
 
 export const dynamic = 'force-dynamic';
 
+const BUSINESS_PAGE_URL = 'https://www.shirandimor.com/business';
+const WHATSAPP_DISPLAY = '054-716-7419';
+
+// הטקסט שהפונה רואה בזימון ליומן. הוא עוד לא מכיר את שירן, אז מסבירים מי זו ומה השיחה, ומצרפים קישור לעמוד.
+function inviteDescription(name: string, org: string, phone: string) {
+  return [
+    `היי ${name}, תודה על הזמן!`,
+    '',
+    `זו שיחת היכרות קצרה (כ-15 דקות) עם שירן דימור, על מפגש כסף ושוק ההון לעובדים ב${org}.`,
+    `שירן תתקשר אליכם למספר ${phone}.`,
+    '',
+    'רוצים להציץ לפני השיחה? כל הפרטים כאן:',
+    BUSINESS_PAGE_URL,
+    '',
+    `צריך להזיז את השיחה? אפשר לכתוב לשירן בוואטסאפ: ${WHATSAPP_DISPLAY}`,
+    '',
+    'שירן דימור | מדברים עסקאות',
+  ].join('\n');
+}
+
 // קביעת שיחת התאמה מהעמוד לארגונים: בודקת שהזמן עדיין פנוי, יוצרת אירוע ביומן של שירן (עם הזמנה לפונה
 // אם השאיר/ה מייל), יוצרת ליד במאנדיי ושולחת מייל התראה.
 export async function POST(request: Request) {
@@ -47,8 +67,8 @@ export async function POST(request: Request) {
   const eventId = await createFitCallEvent({
     start,
     minutes: CALL_CONFIG.minutes,
-    summary: `שיחת התאמה: ${lead.name} (${lead.org})`,
-    description: `${details}\n\nשירן מתקשרת אל ${lead.name} למספר ${lead.phone}.`,
+    summary: `שיחת היכרות עם שירן דימור | ${lead.org}`,
+    description: inviteDescription(lead.name, lead.org, lead.phone),
     phone: lead.phone,
     attendeeEmail: lead.email || undefined,
   });
