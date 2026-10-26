@@ -140,6 +140,7 @@ export default function HomePage() {
           <Link href="/lessons" className="nav-cta-sky">ספריית שיעורים</Link>
           <Link href="/portfolio" className="nav-cta-teal">תיק מסחר של שירן</Link>
           <Link href="/login" className="nav-cta-profit">כניסה לסוחרים</Link>
+          <Link href="/business" className="nav-cta-biz">לארגונים</Link>
         </div>
       </header>
 
