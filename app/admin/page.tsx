@@ -23,9 +23,6 @@ export default function AdminDashboard() {
   const [salesLeadsInProgress, setSalesLeadsInProgress] = useState(0);
   const [salesLeadsAttention, setSalesLeadsAttention] = useState(0);
 
-  const [refreshing, setRefreshing] = useState(false);
-  const [refreshMessage, setRefreshMessage] = useState('');
-
   const [sendingSummary, setSendingSummary] = useState(false);
   const [summaryMessage, setSummaryMessage] = useState('');
   const [summaryMonth, setSummaryMonth] = useState(() => {
@@ -36,31 +33,6 @@ export default function AdminDashboard() {
 
   const [sendingStopLossTest, setSendingStopLossTest] = useState(false);
   const [stopLossTestMessage, setStopLossTestMessage] = useState('');
-
-  async function handleRefreshAllPrices() {
-    setRefreshing(true);
-    setRefreshMessage('');
-
-    const { data: { session } } = await supabase.auth.getSession();
-
-    try {
-      const res = await fetch('/api/refresh-all-prices', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${session?.access_token}` },
-      });
-      const data = await res.json();
-
-      if (!res.ok) {
-        setRefreshMessage('שגיאה: ' + (data.error || 'לא הצלחנו לעדכן'));
-      } else {
-        setRefreshMessage(`עודכנו מחירים ל-${data.symbolsFetched} מניות · ${data.tradesUpdated} עסקאות בתיק · ${data.entriesUpdated} עסקאות ביומנים של מנויים`);
-      }
-    } catch (e) {
-      setRefreshMessage('שגיאה בעדכון המחירים');
-    }
-
-    setRefreshing(false);
-  }
 
   async function handleSendMonthlySummary() {
     setSendingSummary(true);
@@ -329,15 +301,6 @@ export default function AdminDashboard() {
           <div className="at-count">כלי פנימי</div>
         </Link>
       </div>
-
-      <button className="btn-outline" style={{ width: '100%', marginTop: '8px' }} onClick={handleRefreshAllPrices} disabled={refreshing}>
-        {refreshing ? 'מעדכנים מחירים בכל האתר...' : '🔄 עדכון מחירים בכל האתר'}
-      </button>
-      {refreshMessage && (
-        <p style={{ fontSize: '12px', color: refreshMessage.startsWith('שגיאה') ? 'var(--loss)' : 'var(--profit)', marginTop: '10px', textAlign: 'center' }}>
-          {refreshMessage}
-        </p>
-      )}
 
       <div className="toggle-row" style={{ marginTop: '8px' }}>
         <div className={`toggle-opt ${summaryAudience === 'traders' ? 'long-active' : ''}`} onClick={() => setSummaryAudience('traders')} style={{ cursor: 'pointer' }}>

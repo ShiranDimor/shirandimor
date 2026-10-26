@@ -124,6 +124,8 @@ export default function AdminTradesPage() {
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showAddForm, setShowAddForm] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshMessage, setRefreshMessage] = useState('');
   const [direction, setDirection] = useState<'long' | 'short'>('long');
   const [symbol, setSymbol] = useState('');
   const [entryPrice, setEntryPrice] = useState('');
@@ -380,6 +382,32 @@ export default function AdminTradesPage() {
     if (profile?.role === 'admin') {
       loadTrades();
     }
+  }
+
+  async function handleRefreshAllPrices() {
+    setRefreshing(true);
+    setRefreshMessage('');
+
+    const { data: { session } } = await supabase.auth.getSession();
+
+    try {
+      const res = await fetch('/api/refresh-all-prices', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session?.access_token}` },
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        setRefreshMessage('שגיאה: ' + (data.error || 'לא הצלחנו לעדכן'));
+      } else {
+        setRefreshMessage(`עודכנו מחירים ל-${data.symbolsFetched} מניות · ${data.tradesUpdated} עסקאות בתיק · ${data.entriesUpdated} עסקאות ביומנים של מנויים`);
+        loadTrades();
+      }
+    } catch (e) {
+      setRefreshMessage('שגיאה בעדכון המחירים');
+    }
+
+    setRefreshing(false);
   }
 
   async function handleAddTrade() {
@@ -721,6 +749,15 @@ export default function AdminTradesPage() {
           <button onClick={handleLogout} className="nav-link" style={{ background: 'none', border: 'none', cursor: 'pointer', font: 'inherit', padding: 0 }}>התנתקות</button>
         </div>
       </header>
+
+      <button className="btn-outline" style={{ width: '100%', marginBottom: '10px' }} onClick={handleRefreshAllPrices} disabled={refreshing}>
+        {refreshing ? 'מעדכנים מחירים בכל האתר...' : '🔄 עדכון מחירים בכל האתר'}
+      </button>
+      {refreshMessage && (
+        <p style={{ fontSize: '12px', color: refreshMessage.startsWith('שגיאה') ? 'var(--loss)' : 'var(--profit)', marginBottom: '10px', textAlign: 'center' }}>
+          {refreshMessage}
+        </p>
+      )}
 
       <button className="add-btn" onClick={() => setShowAddForm(!showAddForm)}>+ עסקה חדשה</button>
 
