@@ -4,14 +4,35 @@ import { useState } from 'react';
 
 type Status = 'idle' | 'sending' | 'sent' | 'error';
 
-export default function BusinessLeadForm({ whatsappUrl }: { whatsappUrl: string }) {
+type Props = {
+  whatsappUrl: string;
+  endpoint?: string;
+  extraData?: Record<string, string>;
+  submitLabel?: string;
+  // מחזיר את תוכן מסך ההצלחה לפי תשובת השרת
+  renderSuccess?: (response: Record<string, unknown>) => React.ReactNode;
+  // מאפשר לרכיב העוטף לטפל בשגיאות מיוחדות (למשל זמן שכבר נתפס). מחזיר true אם טופל.
+  onServerError?: (status: number, response: Record<string, unknown>) => boolean;
+  compact?: boolean;
+};
+
+export default function BusinessLeadForm({
+  whatsappUrl,
+  endpoint = '/api/business-lead',
+  extraData,
+  submitLabel = 'שליחה ותיאום שיחת התאמה',
+  renderSuccess,
+  onServerError,
+  compact = false,
+}: Props) {
   const [status, setStatus] = useState<Status>('idle');
   const [error, setError] = useState('');
+  const [response, setResponse] = useState<Record<string, unknown>>({});
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const form = e.currentTarget;
-    const data = Object.fromEntries(new FormData(form).entries());
+    const data = { ...Object.fromEntries(new FormData(form).entries()), ...extraData };
 
     if (String(data.phone || '').replace(/\D/g, '').length < 9) {
       setError('נראה שמספר הנייד חסר או לא מלא');
@@ -21,12 +42,20 @@ export default function BusinessLeadForm({ whatsappUrl }: { whatsappUrl: string 
     setError('');
     setStatus('sending');
     try {
-      const res = await fetch('/api/business-lead', {
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       });
-      if (!res.ok) throw new Error(String(res.status));
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        if (onServerError?.(res.status, json)) {
+          setStatus('idle');
+          return;
+        }
+        throw new Error(String(res.status));
+      }
+      setResponse(json);
       setStatus('sent');
       form.reset();
     } catch {
@@ -37,14 +66,20 @@ export default function BusinessLeadForm({ whatsappUrl }: { whatsappUrl: string 
   if (status === 'sent') {
     return (
       <div className="biz-form-done" role="status">
-        <p className="biz-form-done-title">תודה, הפרטים התקבלו</p>
-        <p>אחזור אליכם בהקדם לתיאום שיחת ההתאמה, ואחריה תקבלו הצעה מסודרת.</p>
+        {renderSuccess ? (
+          renderSuccess(response)
+        ) : (
+          <>
+            <p className="biz-form-done-title">תודה, הפרטים התקבלו</p>
+            <p>אחזור אליכם בהקדם לתיאום שיחת ההתאמה, ואחריה תקבלו הצעה מסודרת.</p>
+          </>
+        )}
       </div>
     );
   }
 
   return (
-    <form className="biz-form" onSubmit={onSubmit} noValidate={false}>
+    <form className="biz-form" onSubmit={onSubmit}>
       <div className="biz-form-grid">
         <label className="biz-field">
           <span>שם מלא *</span>
@@ -55,16 +90,16 @@ export default function BusinessLeadForm({ whatsappUrl }: { whatsappUrl: string 
           <input name="org" required maxLength={120} autoComplete="organization" />
         </label>
         <label className="biz-field">
-          <span>תפקיד</span>
-          <input name="role" maxLength={80} autoComplete="organization-title" />
-        </label>
-        <label className="biz-field">
           <span>נייד *</span>
           <input name="phone" type="tel" required maxLength={20} inputMode="tel" autoComplete="tel" dir="ltr" />
         </label>
         <label className="biz-field">
-          <span>מייל</span>
+          <span>{compact ? 'מייל (לקבלת זימון ליומן)' : 'מייל'}</span>
           <input name="email" type="email" maxLength={120} autoComplete="email" dir="ltr" />
+        </label>
+        <label className="biz-field">
+          <span>תפקיד</span>
+          <input name="role" maxLength={80} autoComplete="organization-title" />
         </label>
         <label className="biz-field">
           <span>כמה עובדים בערך</span>
@@ -76,19 +111,23 @@ export default function BusinessLeadForm({ whatsappUrl }: { whatsappUrl: string 
             <option value="מעל 100">מעל 100</option>
           </select>
         </label>
-        <label className="biz-field biz-field-wide">
-          <span>איזה מסלול מעניין אתכם</span>
-          <select name="track" defaultValue="">
-            <option value="">עוד לא החלטנו</option>
-            <option value="מסלול 1 - מפגש השראה">מסלול 1, מפגש השראה</option>
-            <option value="מסלול 2 - סדנת יסודות">מסלול 2, סדנת יסודות</option>
-            <option value="מסלול 3 - תוכנית מלאה">מסלול 3, תוכנית מלאה</option>
-          </select>
-        </label>
-        <label className="biz-field biz-field-wide">
-          <span>משהו שחשוב לדעת? (תאריכים, מיקום, קהל)</span>
-          <textarea name="message" rows={3} maxLength={1500} />
-        </label>
+        {!compact && (
+          <>
+            <label className="biz-field biz-field-wide">
+              <span>איזה מסלול מעניין אתכם</span>
+              <select name="track" defaultValue="">
+                <option value="">עוד לא החלטנו</option>
+                <option value="מסלול 1 - מפגש השראה">מסלול 1, מפגש השראה</option>
+                <option value="מסלול 2 - סדנת יסודות">מסלול 2, סדנת יסודות</option>
+                <option value="מסלול 3 - תוכנית מלאה">מסלול 3, תוכנית מלאה</option>
+              </select>
+            </label>
+            <label className="biz-field biz-field-wide">
+              <span>משהו שחשוב לדעת? (תאריכים, מיקום, קהל)</span>
+              <textarea name="message" rows={3} maxLength={1500} />
+            </label>
+          </>
+        )}
         {/* שדה מלכודת לבוטים - מוסתר מבני אדם ומקוראי מסך */}
         <label className="biz-hp" aria-hidden="true">
           <span>אתר</span>
@@ -105,7 +144,7 @@ export default function BusinessLeadForm({ whatsappUrl }: { whatsappUrl: string 
       )}
 
       <button type="submit" className="biz-btn biz-btn-primary biz-form-submit" disabled={status === 'sending'}>
-        {status === 'sending' ? 'שולחים...' : 'שליחה ותיאום שיחת התאמה'}
+        {status === 'sending' ? 'שולחים...' : submitLabel}
       </button>
     </form>
   );
