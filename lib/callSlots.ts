@@ -6,12 +6,12 @@ const TZ = 'Asia/Jerusalem';
 export const CALL_CONFIG = {
   minutes: 15, // אורך שיחה
   stepMinutes: 30, // כל כמה זמן מתחילה שיחה אפשרית (10:00, 10:30...)
-  bufferMinutes: 10, // מרווח מינימלי מאירועים אחרים ביומן, לפני ואחרי
+  bufferMinutes: 10, // מרווח מינימלי משיחות אחרות שנקבעו מהעמוד, לפני ואחרי
   days: [0, 1, 2, 3, 4], // ימים פעילים: 0=ראשון ... 4=חמישי (שישי ושבת חסומים תמיד)
   dayStart: '09:00', // השיחה הראשונה האפשרית
   dayEnd: '15:30', // עד מתי השיחה צריכה להסתיים (לפני פתיחת המסחר בארה"ב)
   lookaheadDays: 7, // כמה ימים קדימה מציגים (שבוע מתגלגל)
-  minNoticeHours: 12, // התראה מינימלית לפני שיחה
+  minNoticeHours: 1, // התראה מינימלית לפני שיחה (אפשר לקבוע גם לאותו יום)
 };
 
 export type Slot = { start: string; day: string; dayLabel: string; time: string };
