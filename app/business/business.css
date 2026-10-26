@@ -285,3 +285,43 @@
 @media (prefers-reduced-motion: reduce) {
   .biz-btn { transition: none; }
 }
+
+/* ===== Sticky CTA bar ===== */
+.biz-sticky {
+  position: fixed; left: 0; right: 0; top: 0; z-index: 90;
+  background: rgba(251, 246, 240, 0.96); border-bottom: 1px solid var(--biz-line);
+  box-shadow: 0 6px 20px rgba(42, 34, 56, 0.08);
+  transform: translateY(-110%); opacity: 0; pointer-events: none;
+  transition: transform .25s ease, opacity .25s ease;
+}
+.biz-sticky.is-on { transform: translateY(0); opacity: 1; pointer-events: auto; }
+.biz-sticky-inner { max-width: 1040px; margin: 0 auto; padding: 10px 20px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.biz-sticky-brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 16px; color: var(--biz-ink); }
+.biz-sticky-actions { display: flex; align-items: center; gap: 10px; }
+.biz-sticky-cta { min-height: 44px; padding: 10px 20px; font-size: 15px; }
+.biz-sticky-wa {
+  display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 50%;
+  background: #25D366; flex-shrink: 0;
+}
+.biz-sticky-wa:focus-visible { outline: 3px solid var(--biz-sage); outline-offset: 3px; }
+
+@media (max-width: 720px) {
+  .biz-sticky {
+    top: auto; bottom: 0; border-bottom: 0; border-top: 1px solid var(--biz-line);
+    box-shadow: 0 -6px 20px rgba(42, 34, 56, 0.1);
+    transform: translateY(110%);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .biz-sticky-inner { padding: 10px 16px; }
+  .biz-sticky-brand { display: none; }
+  .biz-sticky-actions { width: 100%; }
+  .biz-sticky-cta { flex: 1; }
+  /* מרימים את הבועה של דור מעל הפס כשהוא מוצג */
+  body.biz-bar-on .dor-float-btn { bottom: calc(84px + env(safe-area-inset-bottom)); }
+  body.biz-bar-on .dor-callout { bottom: calc(152px + env(safe-area-inset-bottom)); }
+  body .dor-float-btn, body .dor-callout { transition: bottom .25s ease; }
+  .biz-foot { padding-bottom: 96px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .biz-sticky, body .dor-float-btn, body .dor-callout { transition: none; }
+}
