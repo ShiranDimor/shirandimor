@@ -8,12 +8,12 @@ import './business.css';
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://shirandimor.com'),
-  title: 'הרצאות וסדנאות לארגונים | שירן דימור',
+  title: 'מפגשים וסדנאות לארגונים | שירן דימור',
   description:
-    'הרצאה וסדנאות לעובדים על כסף ושוק ההון: פרקטי, בגובה העיניים ובלי צורך בידע קודם. בלי המלצות על מניות, בלי הבטחות ובלי מכירות לעובדים.',
+    'מפגשים וסדנאות לעובדים על כסף ושוק ההון: פרקטי, בגובה העיניים ובלי צורך בידע קודם. בלי המלצות על מניות, בלי הבטחות ובלי מכירות לעובדים.',
   openGraph: {
-    title: 'הרצאה על כסף ושוק ההון שהעובדים שלכם באמת ירצו להגיע אליה',
-    description: 'הרצאה וסדנאות לעובדים עם שירן דימור: מפגש אחד, 3 או 5 מפגשים, מותאם לארגון.',
+    title: 'מפגש על כסף ושוק ההון שהעובדים שלכם באמת ירצו להגיע אליו',
+    description: 'מפגשים וסדנאות לעובדים עם שירן דימור: מפגש אחד, 3 או 5 מפגשים, מותאם לארגון.',
     images: ['/business/shiran.jpg'],
     locale: 'he_IL',
     type: 'website',
@@ -25,8 +25,8 @@ const PHONE_TEL = '+972547167419';
 const EMAIL = 'shiran@shirandimor.com';
 const WHATSAPP_URL =
   'https://wa.me/972547167419?text=' +
-  encodeURIComponent('היי שירן, הגעתי מהעמוד לארגונים ואשמח לשמוע על הרצאה לעובדים שלנו');
-const EMAIL_SUBJECT = 'הרצאה לעובדים בארגון שלנו';
+  encodeURIComponent('היי שירן, הגעתי מהעמוד לארגונים ואשמח לשמוע על מפגש לעובדים שלנו');
+const EMAIL_SUBJECT = 'מפגש לעובדים בארגון שלנו';
 const CTA_LABEL = 'בואו נדבר 15 דקות';
 
 function Logo() {
@@ -54,9 +54,9 @@ export default function BusinessPage() {
 
           <div className="biz-hero-grid">
             <div>
-              <span className="biz-pill">הרצאה וסדנאות לעובדים</span>
+              <span className="biz-pill">מפגשים וסדנאות לעובדים</span>
               <h1>
-                הרצאה על כסף ושוק ההון <span className="c1">שהעובדים שלכם</span> <span className="c2">באמת ירצו להגיע אליה.</span>
+                מפגש על כסף ושוק ההון <span className="c1">שהעובדים שלכם</span> <span className="c2">באמת ירצו להגיע אליו.</span>
               </h1>
               <p className="biz-hero-sub">
                 בלי הבטחות להתעשרות, בלי המלצות על מניות ובלי מכירות. מפגש פרקטי בגובה העיניים, שנותן לעובדים כלים
@@ -81,7 +81,7 @@ export default function BusinessPage() {
         <div className="biz-stats">
           <div className="biz-stat"><strong>14 שנה</strong><span>בשוק ההון, כמשקיעה וכסוחרת פעילה</span></div>
           <div className="biz-stat"><strong>+500</strong><span>חברים בקהילה שאני מלווה יום־יום</span></div>
-          <div className="biz-stat"><strong>0</strong><span>מכירות במהלך ההרצאה. זו הבטחה.</span></div>
+          <div className="biz-stat"><strong>0</strong><span>מכירות במהלך המפגש. זו הבטחה.</span></div>
         </div>
 
         {CLIENT_LOGOS.length > 0 && (
@@ -130,7 +130,7 @@ export default function BusinessPage() {
           </h2>
           <p className="biz-lead">
             הם שומעים על מניות מחברים, רואים ״גורואים״ ברשתות, ומרגישים שזה לא בשבילם: אין זמן, אין ידע, ויש פחד
-            לטעות. אז הכסף נשאר בעו״ש, קרן ההשתלמות מתנהלת על אוטומט, וההחלטות נדחות לשנה הבאה. ההרצאה שלי נועדה
+            לטעות. אז הכסף נשאר בעו״ש, קרן ההשתלמות מתנהלת על אוטומט, וההחלטות נדחות לשנה הבאה. המפגש שלי נועד
             בדיוק לרגע הזה.
           </p>
 
@@ -160,7 +160,7 @@ export default function BusinessPage() {
           </div>
 
           <div className="biz-dark" style={{ marginTop: 32 }}>
-            <p className="biz-dark-title">ומה ההרצאה לא</p>
+            <p className="biz-dark-title">ומה המפגש לא</p>
             <ul className="biz-not">
               <li>לא ייעוץ השקעות אישי</li>
               <li>לא המלצות על מניות ספציפיות</li>
@@ -175,13 +175,14 @@ export default function BusinessPage() {
             שלושה מסלולים, <span className="c1">לפי מה שמתאים לכם</span>
           </h2>
           <p className="biz-lead">
-            מהרצאת העשרה חד־פעמית ועד תוכנית שמלווה את העובדים עד שהתיק שלהם בנוי. כל מסלול עומד בפני עצמו.
+            ממפגש אחד ועד תוכנית של 5 מפגשים. כל מסלול שלם בפני עצמו, ובוחרים לפי הזמן והקהל שלכם.
           </p>
 
           <div className="biz-tracks">
-            <div className="biz-track">
+            <div className="biz-track featured">
+              <span className="biz-track-badge">הכי מבוקש</span>
               <span className="biz-track-label">מסלול 1</span>
-              <h3>הרצאת מבוא</h3>
+              <h3>מפגש אחד, תמונה מלאה</h3>
               <span className="biz-track-meta">מפגש אחד, 90 דקות</span>
               <span className="biz-track-for">מתאים ל: כנס חברה, יום העשרה, מפגש הנהלה או צוות</span>
               <ul>
@@ -192,10 +193,9 @@ export default function BusinessPage() {
               </ul>
             </div>
 
-            <div className="biz-track featured">
-              <span className="biz-track-badge">המומלץ שלי</span>
+            <div className="biz-track">
               <span className="biz-track-label">מסלול 2</span>
-              <h3>סדנת יסודות</h3>
+              <h3>סדנה לעומק</h3>
               <span className="biz-track-meta">3 מפגשים, 90 דקות כל אחד</span>
               <ol>
                 <li>הכסף שלי היום: עו״ש, חסכונות, קרן השתלמות, ריבית דריבית</li>
@@ -206,7 +206,7 @@ export default function BusinessPage() {
 
             <div className="biz-track">
               <span className="biz-track-label">מסלול 3</span>
-              <h3>תוכנית מלאה</h3>
+              <h3>מהבנה לפעולה</h3>
               <span className="biz-track-meta">5 מפגשים, 90 דקות כל אחד</span>
               <ol>
                 <li>הכסף שלי היום ולמה הוא נשחק</li>
@@ -305,7 +305,7 @@ export default function BusinessPage() {
             </div>
           </div>
 
-          <div className="biz-sub-head">שאלות ששואלים אותי לפני הרצאה</div>
+          <div className="biz-sub-head">שאלות ששואלים אותי לפני מפגש</div>
           <div className="biz-faq">
             <div>
               <h3>צריך ידע קודם?</h3>
@@ -346,7 +346,7 @@ export default function BusinessPage() {
         </section>
 
         <p className="biz-disclaimer">
-          ההרצאות הן הדרכה פיננסית כללית בלבד, ואינן מהוות ייעוץ השקעות או תחליף לייעוץ המותאם לנתונים ולצרכים של כל
+          המפגשים הם הדרכה פיננסית כללית בלבד, ואינם מהווים ייעוץ השקעות או תחליף לייעוץ המותאם לנתונים ולצרכים של כל
           אדם.
         </p>
 
