@@ -3,16 +3,17 @@ import Link from 'next/link';
 import BackButton from './BackButton';
 import ContactOptions from './ContactOptions';
 import ContactButtons from './ContactButtons';
+import { CLIENT_LOGOS, EVENT_PHOTOS, TESTIMONIALS } from './socialProof';
 import './business.css';
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://shirandimor.com'),
   title: 'הרצאות וסדנאות לארגונים | שירן דימור',
   description:
-    'הרצאה וסדנאות העשרה לעובדים: איך בונים תיק השקעות מציאותי מהחסכונות, מקרן ההשתלמות ומהכסף שבעו״ש. בלי ייעוץ אישי, בלי המלצות על מניות ובלי מכירות במהלך המפגש.',
+    'הרצאה וסדנאות לעובדים על כסף ושוק ההון: פרקטי, בגובה העיניים ובלי צורך בידע קודם. בלי המלצות על מניות, בלי הבטחות ובלי מכירות לעובדים.',
   openGraph: {
-    title: 'הכסף של העובדים שלכם יכול לעבוד קשה כמוהם',
-    description: 'הרצאה וסדנאות העשרה לעובדים עם שירן דימור: מפגש אחד, 3 או 5 מפגשים.',
+    title: 'הרצאה על כסף ושוק ההון שהעובדים שלכם באמת ירצו להגיע אליה',
+    description: 'הרצאה וסדנאות לעובדים עם שירן דימור: מפגש אחד, 3 או 5 מפגשים, מותאם לארגון.',
     images: ['/business/shiran.jpg'],
     locale: 'he_IL',
     type: 'website',
@@ -26,6 +27,7 @@ const WHATSAPP_URL =
   'https://wa.me/972547167419?text=' +
   encodeURIComponent('היי שירן, הגעתי מהעמוד לארגונים ואשמח לשמוע על הרצאה לעובדים שלנו');
 const EMAIL_SUBJECT = 'הרצאה לעובדים בארגון שלנו';
+const CTA_LABEL = 'בואו נדבר 15 דקות';
 
 function Logo() {
   return (
@@ -54,15 +56,15 @@ export default function BusinessPage() {
             <div>
               <span className="biz-pill">הרצאה וסדנאות לעובדים</span>
               <h1>
-                הכסף של העובדים שלכם <span className="c1">יכול לעבוד</span> <span className="c2">קשה כמוהם.</span>
+                הרצאה על כסף ושוק ההון <span className="c1">שהעובדים שלכם</span> <span className="c2">באמת ירצו להגיע אליה.</span>
               </h1>
               <p className="biz-hero-sub">
-                סדנה פרקטית שמלמדת עובדים לבנות תיק השקעות מציאותי, לחסכונות, לקרן ההשתלמות ולכסף שיושב בבנק.
-                בלי קורסים של אלפי שקלים, בלי להפוך את זה למקצוע, ובלי שעות מול המסך.
+                בלי הבטחות להתעשרות, בלי המלצות על מניות ובלי מכירות. מפגש פרקטי בגובה העיניים, שנותן לעובדים כלים
+                להבין איך מתחילים ומה אפשר לעשות עם הכסף שלהם.
               </p>
               <div className="biz-actions">
-                <a className="biz-btn biz-btn-primary" href="#contact">לתיאום שיחת התאמה</a>
-                <a className="biz-btn biz-btn-ghost" href="#tracks">למסלולים</a>
+                <a className="biz-btn biz-btn-primary" href="#contact">{CTA_LABEL}</a>
+                <a className="biz-btn biz-btn-ghost" href="#tracks">לסוגי המפגשים</a>
               </div>
             </div>
             <div className="biz-hero-photo">
@@ -82,6 +84,46 @@ export default function BusinessPage() {
           <div className="biz-stat"><strong>0</strong><span>מכירות במהלך ההרצאה. זו הבטחה.</span></div>
         </div>
 
+        {CLIENT_LOGOS.length > 0 && (
+          <div className="biz-logos">
+            <p className="biz-logos-title">ארגונים שבהם כבר הרציתי</p>
+            <div className="biz-logos-row">
+              {CLIENT_LOGOS.map((l) => (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img key={l.src} src={l.src} alt={l.name} loading="lazy" />
+              ))}
+            </div>
+          </div>
+        )}
+
+        <section className="biz-section">
+          <h2>
+            למה זה <span className="c1">עובד בארגונים?</span>
+          </h2>
+          <div className="biz-why-org">
+            <div className="biz-gain">
+              <h3>נושא שמעניין כמעט כל עובד</h3>
+              <p>בכל תפקיד, בכל גיל ובכל שכר.</p>
+            </div>
+            <div className="biz-gain sage">
+              <h3>מתאים גם למי שמתחיל מאפס</h3>
+              <p>לא צריך שום ידע קודם.</p>
+            </div>
+            <div className="biz-gain">
+              <h3>פרקטי, לא עוד הרצאת השראה</h3>
+              <p>יוצאים עם צעדים ברורים שאפשר לעשות כבר השבוע.</p>
+            </div>
+            <div className="biz-gain sage">
+              <h3>בלי מכירה לעובדים</h3>
+              <p>אין מוצר, אין מנוי ואין ״הצעה מיוחדת״ בסוף.</p>
+            </div>
+            <div className="biz-gain">
+              <h3>מותאם לארגון ולקהל</h3>
+              <p>התוכן נבנה לפי אופי הארגון והעובדים שלכם.</p>
+            </div>
+          </div>
+        </section>
+
         <section className="biz-section">
           <h2>
             רוב העובדים יודעים שהכסף שלהם נשחק. <span className="c2">מעטים יודעים מה לעשות עם זה.</span>
@@ -93,6 +135,7 @@ export default function BusinessPage() {
           </p>
 
           <div className="biz-sub-head">עם מה כל עובד יוצא</div>
+          <p className="biz-note">בלי להפוך את שוק ההון למקצוע, בלי שעות מול המסך ובלי צורך בידע קודם.</p>
           <div className="biz-grid-2">
             <div className="biz-card">
               <span className="biz-num">1</span>
@@ -113,22 +156,6 @@ export default function BusinessPage() {
               <span className="biz-num">4</span>
               <h3>להבדיל בין מידע לרעש</h3>
               <p>איך מזהים הבטחות שווא, ״טיפים חמים״ וקורסים שמוכרים חלומות.</p>
-            </div>
-          </div>
-
-          <div className="biz-sub-head sage">ומה הארגון מרוויח</div>
-          <div className="biz-grid-3">
-            <div className="biz-gain">
-              <h3>נושא שכולם רוצים לשמוע</h3>
-              <p>כסף מעניין כל עובד, בכל תפקיד ובכל גיל.</p>
-            </div>
-            <div className="biz-gain sage">
-              <h3>ערך שנשאר אחרי המפגש</h3>
-              <p>כלים שהעובדים משתמשים בהם בבית, לא רק עוד אירוע.</p>
-            </div>
-            <div className="biz-gain">
-              <h3>שקט נפשי כלכלי</h3>
-              <p>פחות דאגות סביב כסף, יותר תחושת שליטה.</p>
             </div>
           </div>
 
@@ -154,7 +181,7 @@ export default function BusinessPage() {
           <div className="biz-tracks">
             <div className="biz-track">
               <span className="biz-track-label">מסלול 1</span>
-              <h3>מפגש השראה</h3>
+              <h3>הרצאת מבוא</h3>
               <span className="biz-track-meta">מפגש אחד, 90 דקות</span>
               <span className="biz-track-for">מתאים ל: כנס חברה, יום העשרה, מפגש הנהלה או צוות</span>
               <ul>
@@ -170,7 +197,7 @@ export default function BusinessPage() {
               <span className="biz-track-label">מסלול 2</span>
               <h3>סדנת יסודות</h3>
               <span className="biz-track-meta">3 מפגשים, 90 דקות כל אחד</span>
-              <span className="biz-track-gift">מתנה לכל משתתף: חודש בקהילת ״מדברים עסקאות״, בלי כרטיס אשראי ובלי התחייבות</span>
+              <span className="biz-track-gift">כולל 30 יום של המשך למידה ותוכן אחרי הסדנה, ללא עלות וללא התחייבות</span>
               <ol>
                 <li>הכסף שלי היום: עו״ש, חסכונות, קרן השתלמות, ריבית דריבית</li>
                 <li>בונים תיק לטווח ארוך: מדדים, קרנות סל ופיזור</li>
@@ -182,13 +209,13 @@ export default function BusinessPage() {
               <span className="biz-track-label">מסלול 3</span>
               <h3>תוכנית מלאה</h3>
               <span className="biz-track-meta">5 מפגשים, 90 דקות כל אחד</span>
-              <span className="biz-track-gift">מתנה לכל משתתף: חודש בקהילת ״מדברים עסקאות״, בלי כרטיס אשראי ובלי התחייבות</span>
+              <span className="biz-track-gift">כולל 30 יום של המשך למידה ותוכן אחרי הסדנה, ללא עלות וללא התחייבות</span>
               <ol>
                 <li>הכסף שלי היום ולמה הוא נשחק</li>
                 <li>תיק לטווח ארוך: איך בונים, כמה זמן זה לוקח בחודש</li>
                 <li>ניהול סיכונים ופסיכולוגיה: איך לא נכנסים לפאניקה</li>
                 <li>מסחר סווינג: מה זה, למי זה מתאים, ואיך עושים את זה בזמן קצר</li>
-                <li>סדנה מעשית: כל משתתף בונה תוכנית אישית ל־30 יום</li>
+                <li>סדנה מעשית: כל משתתף בונה את תוכנית הפעולה הפיננסית שלו ל־30 הימים הקרובים</li>
               </ol>
             </div>
           </div>
@@ -199,18 +226,51 @@ export default function BusinessPage() {
               <p>פרונטלי, בכל הארץ, עם זמן פתוח לשאלות</p>
             </div>
             <div>
-              <h3>מתנה למשתתפים</h3>
-              <p>גישה לשאלון ״תוכנית מסחר אישית ל־30 יום״</p>
+              <h3>לכל משתתף</h3>
+              <p>״תוכנית הפעולה הפיננסית שלי ל־30 הימים הקרובים״</p>
             </div>
             <div>
               <h3>מחיר</h3>
-              <p>נקבע אחרי שיחת התאמה קצרה, לפי מסלול וגודל הקבוצה</p>
+              <p>נקבע אחרי שיחת היכרות קצרה, לפי מסלול וגודל הקבוצה</p>
             </div>
           </div>
           <div className="biz-mid-cta">
-            <a className="biz-btn biz-btn-primary" href="#contact">לקביעת שיחת התאמה ביומן</a>
+            <p>רוצים לבדוק אם זה מתאים לעובדים שלכם?</p>
+            <a className="biz-btn biz-btn-primary" href="#contact">{CTA_LABEL}</a>
           </div>
         </section>
+
+        {(TESTIMONIALS.length > 0 || EVENT_PHOTOS.length > 0) && (
+          <section className="biz-section">
+            <h2>
+              מה אומרים <span className="c2">בארגונים</span>
+            </h2>
+            {TESTIMONIALS.length > 0 && (
+              <div className="biz-quotes">
+                {TESTIMONIALS.map((t) => (
+                  <figure key={t.quote} className="biz-quote">
+                    <blockquote>״{t.quote}״</blockquote>
+                    <figcaption>
+                      <strong>{t.name}</strong>
+                      <span>{[t.role, t.org].filter(Boolean).join(', ')}</span>
+                    </figcaption>
+                  </figure>
+                ))}
+              </div>
+            )}
+            {EVENT_PHOTOS.length > 0 && (
+              <div className="biz-gallery">
+                {EVENT_PHOTOS.map((p) => (
+                  <figure key={p.src}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={p.src} alt={p.alt} loading="lazy" />
+                    {p.caption && <figcaption>{p.caption}</figcaption>}
+                  </figure>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
 
         <section className="biz-section">
           <div className="biz-about">
@@ -269,11 +329,11 @@ export default function BusinessPage() {
         </section>
 
         <section className="biz-dark biz-contact" id="contact">
-          <h2>בואו נתאים את המפגש לארגון שלכם</h2>
-          <p>כל הרצאה נבנית לפי הארגון והעובדים, ולכן הכול מתחיל בשיחת התאמה קצרה.</p>
+          <h2>{CTA_LABEL}</h2>
+          <p>שיחה קצרה להכיר את הארגון והעובדים, ולבדוק יחד אם זה מתאים לכם. בלי התחייבות.</p>
           <ol className="biz-steps">
             <li><strong>קובעים שיחה או משאירים פרטים</strong><span>בוחרים זמן פנוי ביומן כאן למטה, או משאירים פרטים ואחזור אליכם</span></li>
-            <li><strong>שיחת התאמה של 15 דקות</strong><span>מכירים את הארגון, הקהל והמטרות, ובוחרים מסלול</span></li>
+            <li><strong>שיחת היכרות של 15 דקות</strong><span>מכירים את הארגון, הקהל והמטרות, ובוחרים מסלול</span></li>
             <li><strong>הצעה מסודרת</strong><span>תוכן, מועדים ומחיר, מותאמים לכם</span></li>
           </ol>
           <ContactOptions whatsappUrl={WHATSAPP_URL} />

@@ -6,7 +6,7 @@ import BusinessLeadForm from './BusinessLeadForm';
 type Slot = { start: string; day: string; dayLabel: string; time: string };
 type Mode = 'schedule' | 'details';
 
-// שתי דרכים ליצור קשר: לקבוע שיחת התאמה ישירות ביומן של שירן, או להשאיר פרטים ולקבל שיחה חוזרת.
+// שתי דרכים ליצור קשר: לקבוע שיחת היכרות ישירות ביומן של שירן, או להשאיר פרטים ולקבל שיחה חוזרת.
 // אם היומן לא מחובר/לא זמין - מוצג רק טופס הפרטים.
 export default function ContactOptions({ whatsappUrl }: { whatsappUrl: string }) {
   const [loading, setLoading] = useState(true);
@@ -94,7 +94,7 @@ export default function ContactOptions({ whatsappUrl }: { whatsappUrl: string })
             <>
               <div className="biz-chosen">
                 <span>
-                  שיחת התאמה ב{slot.dayLabel}, בשעה {slot.time}
+                  שיחת היכרות ב{slot.dayLabel}, בשעה {slot.time}
                 </span>
                 <button type="button" className="biz-link-btn" onClick={() => setSlot(null)}>
                   שינוי זמן
