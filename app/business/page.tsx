@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import BackButton from './BackButton';
+import BusinessLeadForm from './BusinessLeadForm';
 import './business.css';
 
 export const metadata: Metadata = {
@@ -40,11 +42,11 @@ export default function BusinessPage() {
       <section className="biz-hero">
         <div className="biz-inner">
           <div className="biz-top">
+            <BackButton />
             <Link href="/" className="biz-brand">
               <Logo />
               מסחר אחראי במניות
             </Link>
-            <Link href="/" className="biz-top-link">לאתר הראשי</Link>
           </div>
 
           <div className="biz-hero-grid">
@@ -58,9 +60,7 @@ export default function BusinessPage() {
                 בלי קורסים של אלפי שקלים, בלי להפוך את זה למקצוע, ובלי שעות מול המסך.
               </p>
               <div className="biz-actions">
-                <a className="biz-btn biz-btn-primary" href={WHATSAPP_URL} target="_blank" rel="noopener noreferrer">
-                  בואו נדבר בוואטסאפ
-                </a>
+                <a className="biz-btn biz-btn-primary" href="#contact">להשארת פרטים ושיחת התאמה</a>
                 <a className="biz-btn biz-btn-ghost" href="#tracks">למסלולים</a>
               </div>
             </div>
@@ -203,8 +203,11 @@ export default function BusinessPage() {
             </div>
             <div>
               <h3>מחיר</h3>
-              <p>הצעה מותאמת לפי מסלול וגודל הקבוצה</p>
+              <p>נקבע אחרי שיחת התאמה קצרה, לפי מסלול וגודל הקבוצה</p>
             </div>
+          </div>
+          <div className="biz-mid-cta">
+            <a className="biz-btn biz-btn-primary" href="#contact">לתיאום שיחת התאמה, השאירו פרטים</a>
           </div>
         </section>
 
@@ -266,7 +269,14 @@ export default function BusinessPage() {
 
         <section className="biz-dark biz-contact" id="contact">
           <h2>בואו נתאים את המפגש לארגון שלכם</h2>
-          <p>שיחה קצרה של 15 דקות, ואחריה הצעה מסודרת.</p>
+          <p>כל הרצאה נבנית לפי הארגון והעובדים, ולכן הכול מתחיל בשיחת התאמה קצרה.</p>
+          <ol className="biz-steps">
+            <li><strong>משאירים פרטים</strong><span>בטופס כאן למטה, לוקח פחות מדקה</span></li>
+            <li><strong>שיחת התאמה של 15 דקות</strong><span>מכירים את הארגון, הקהל והמטרות, ובוחרים מסלול</span></li>
+            <li><strong>הצעה מסודרת</strong><span>תוכן, מועדים ומחיר, מותאמים לכם</span></li>
+          </ol>
+          <BusinessLeadForm whatsappUrl={WHATSAPP_URL} />
+          <p className="biz-contact-or">או פשוט דברו איתי ישירות:</p>
           <div className="biz-contact-links">
             <a className="biz-btn biz-btn-primary" href={WHATSAPP_URL} target="_blank" rel="noopener noreferrer">
               וואטסאפ
