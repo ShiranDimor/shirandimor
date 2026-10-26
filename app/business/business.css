@@ -130,8 +130,6 @@
 .biz-track-meta { align-self: flex-start; font-size: 14px; font-weight: 600; color: var(--biz-coral); background: var(--biz-coral-tint); padding: 5px 12px; border-radius: 999px; }
 .biz-track.featured .biz-track-meta { color: var(--biz-sage); background: var(--biz-sage-tint); }
 .biz-track-for { font-size: 15px; color: var(--biz-muted); }
-.biz-track-gift { font-size: 15px; font-weight: 600; color: var(--biz-sage); line-height: 1.5; }
-.biz-track:last-child .biz-track-gift { color: var(--biz-coral); }
 .biz-track ul, .biz-track ol { margin: 0; padding: 0 20px 0 0; font-size: 15.5px; line-height: 1.55; color: var(--biz-text); display: flex; flex-direction: column; gap: 6px; }
 .biz-track ol li::marker { font-weight: 700; color: var(--biz-ink); }
 
@@ -140,7 +138,31 @@
 .biz-all div:nth-child(2) h3 { color: var(--biz-mint-on-dark); }
 .biz-all p { margin: 4px 0 0; font-size: 15px; line-height: 1.5; color: #E8DFE4; }
 
-.biz-mid-cta { margin-top: 22px; display: flex; justify-content: center; }
+.biz-mid-cta {
+  margin-top: 22px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px 24px;
+  padding: 20px 24px; border-radius: 20px; background: var(--biz-coral-tint);
+}
+.biz-mid-cta p { margin: 0; font-size: 19px; font-weight: 700; }
+
+/* ===== Why it works for organizations ===== */
+.biz-why-org { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 18px; margin-top: 24px; }
+.biz-note { margin: 8px 0 0; font-size: 16px; color: var(--biz-muted); }
+
+/* ===== Social proof (rendered only when socialProof.ts has content) ===== */
+.biz-logos { margin-top: 36px; text-align: center; }
+.biz-logos-title { margin: 0; font-size: 14px; font-weight: 600; color: var(--biz-muted); }
+.biz-logos-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 20px 36px; margin-top: 14px; }
+.biz-logos-row img { height: 34px; width: auto; max-width: 140px; object-fit: contain; filter: grayscale(1); opacity: 0.75; }
+.biz-quotes { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; margin-top: 24px; }
+.biz-quote { margin: 0; background: var(--biz-card); border: 1px solid var(--biz-line); border-radius: 18px; padding: 22px; }
+.biz-quote blockquote { margin: 0; font-size: 17px; line-height: 1.6; color: var(--biz-ink); }
+.biz-quote figcaption { margin-top: 14px; font-size: 15px; }
+.biz-quote figcaption strong { display: block; }
+.biz-quote figcaption span { color: var(--biz-muted); }
+.biz-gallery { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin-top: 24px; }
+.biz-gallery figure { margin: 0; }
+.biz-gallery img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 16px; display: block; }
+.biz-gallery figcaption { margin-top: 6px; font-size: 14px; color: var(--biz-muted); }
 
 /* ===== About ===== */
 .biz-about { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 36px; align-items: start; margin-top: 8px; }
@@ -246,6 +268,7 @@
 @media (max-width: 860px) {
   .biz-tracks { grid-template-columns: minmax(0, 1fr); }
   .biz-all { grid-template-columns: minmax(0, 1fr); }
+  .biz-why-org { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 720px) {
   .biz-hero-grid { grid-template-columns: minmax(0, 1fr); gap: 32px; padding-bottom: 56px; }
@@ -256,6 +279,8 @@
   .biz-about img { max-width: 200px; }
   .biz-section { padding-top: 56px; }
   .biz-dark { padding: 22px 20px; }
+  .biz-why-org { grid-template-columns: minmax(0, 1fr); }
+  .biz-mid-cta { padding: 18px 20px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .biz-btn { transition: none; }

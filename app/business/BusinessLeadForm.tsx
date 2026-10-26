@@ -20,7 +20,7 @@ export default function BusinessLeadForm({
   whatsappUrl,
   endpoint = '/api/business-lead',
   extraData,
-  submitLabel = 'שליחה ותיאום שיחת התאמה',
+  submitLabel = 'שליחה, ואחזור אליכם',
   renderSuccess,
   onServerError,
   compact = false,
@@ -71,7 +71,7 @@ export default function BusinessLeadForm({
         ) : (
           <>
             <p className="biz-form-done-title">תודה, הפרטים התקבלו</p>
-            <p>אחזור אליכם בהקדם לתיאום שיחת ההתאמה, ואחריה תקבלו הצעה מסודרת.</p>
+            <p>אחזור אליכם בהקדם לשיחת היכרות קצרה.</p>
           </>
         )}
       </div>
@@ -86,7 +86,7 @@ export default function BusinessLeadForm({
           <input name="name" required maxLength={80} autoComplete="name" />
         </label>
         <label className="biz-field">
-          <span>שם הארגון *</span>
+          <span>שם החברה *</span>
           <input name="org" required maxLength={120} autoComplete="organization" />
         </label>
         <label className="biz-field">
@@ -97,37 +97,6 @@ export default function BusinessLeadForm({
           <span>{compact ? 'מייל (לקבלת זימון ליומן)' : 'מייל'}</span>
           <input name="email" type="email" maxLength={120} autoComplete="email" dir="ltr" />
         </label>
-        <label className="biz-field">
-          <span>תפקיד</span>
-          <input name="role" maxLength={80} autoComplete="organization-title" />
-        </label>
-        <label className="biz-field">
-          <span>כמה עובדים בערך</span>
-          <select name="groupSize" defaultValue="">
-            <option value="">לא בטוח/ה עדיין</option>
-            <option value="עד 20">עד 20</option>
-            <option value="20-50">20-50</option>
-            <option value="50-100">50-100</option>
-            <option value="מעל 100">מעל 100</option>
-          </select>
-        </label>
-        {!compact && (
-          <>
-            <label className="biz-field biz-field-wide">
-              <span>איזה מסלול מעניין אתכם</span>
-              <select name="track" defaultValue="">
-                <option value="">עוד לא החלטנו</option>
-                <option value="מסלול 1 - מפגש השראה">מסלול 1, מפגש השראה</option>
-                <option value="מסלול 2 - סדנת יסודות">מסלול 2, סדנת יסודות</option>
-                <option value="מסלול 3 - תוכנית מלאה">מסלול 3, תוכנית מלאה</option>
-              </select>
-            </label>
-            <label className="biz-field biz-field-wide">
-              <span>משהו שחשוב לדעת? (תאריכים, מיקום, קהל)</span>
-              <textarea name="message" rows={3} maxLength={1500} />
-            </label>
-          </>
-        )}
         {/* שדה מלכודת לבוטים - מוסתר מבני אדם ומקוראי מסך */}
         <label className="biz-hp" aria-hidden="true">
           <span>אתר</span>
