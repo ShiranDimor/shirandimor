@@ -1,6 +1,6 @@
 // לוגיקה משותפת לפניות מארגונים (טופס פרטים ותיאום שיחה): יצירת ליד במאנדיי ומייל התראה לשירן.
 
-const BUSINESS_GROUP_NAME = 'לידים מארגונים';
+const BUSINESS_GROUP_NAME = 'לידים להרצאות לעסקים';
 const FALLBACK_GROUP_NAME = 'לידים חדשים';
 const CAMPAIGN_COLUMN_TITLE = 'campaign_name';
 export const SOURCE_LABEL = 'הגיע מהאתר - ארגונים';
