@@ -3,6 +3,7 @@ import Link from 'next/link';
 import BackButton from './BackButton';
 import ContactOptions from './ContactOptions';
 import ContactButtons from './ContactButtons';
+import StickyCta from './StickyCta';
 import { CLIENT_LOGOS, EVENT_PHOTOS, TESTIMONIALS } from './socialProof';
 import './business.css';
 
@@ -42,6 +43,7 @@ function Logo() {
 export default function BusinessPage() {
   return (
     <main className="biz">
+      <StickyCta whatsappUrl={WHATSAPP_URL} />
       <section className="biz-hero">
         <div className="biz-inner">
           <div className="biz-top">
