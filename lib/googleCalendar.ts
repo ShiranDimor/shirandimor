@@ -87,10 +87,15 @@ export async function createLiveCalendarEvent(
 
 export type BusyInterval = { start: number; end: number };
 
-// מחזיר את הזמנים התפוסים ביומן הראשי בטווח המבוקש (באלפיות שנייה). משתמש ב-events.list ולא ב-freeBusy,
-// כי הוא עובד עם אותה הרשאת אירועים שכבר קיימת לחיבור של הלייבים. מתעלם מאירועים שסומנו "פנוי"
-// (transparent), מאירועים שבוטלו ומהזמנות שנדחו. מחזיר null אם החיבור לא מוגדר או שהקריאה נכשלה.
-export async function listBusyIntervals(timeMin: Date, timeMax: Date): Promise<BusyInterval[] | null> {
+// סימון פנימי על אירועי שיחות שנקבעו מהעמוד, כדי לזהות אותם ביומן
+const FIT_CALL_TAG = 'businessFitCall';
+// אירועים שנקבעו לפני שהסימון נוסף - מזוהים לפי תחילת הכותרת
+const LEGACY_FIT_CALL_PREFIX = 'שיחת התאמה:';
+
+// מחזיר את הזמנים של שיחות שכבר נקבעו מהעמוד לארגונים (באלפיות שנייה). שאר האירועים ביומן (אישיים, לייבים
+// וכו') לא חוסמים קביעת שיחה - בכוונה, לבקשת שירן. מתעלם משיחות שבוטלו. מחזיר null אם החיבור לא מוגדר
+// או שהקריאה נכשלה.
+export async function listBookedCallIntervals(timeMin: Date, timeMax: Date): Promise<BusyInterval[] | null> {
   const accessToken = await getAccessToken();
   if (!accessToken) return null;
 
@@ -104,7 +109,7 @@ export async function listBusyIntervals(timeMin: Date, timeMax: Date): Promise<B
         singleEvents: 'true',
         orderBy: 'startTime',
         maxResults: '250',
-        fields: 'nextPageToken,items(status,transparency,start,end,attendees(self,responseStatus))',
+        fields: 'nextPageToken,items(status,summary,start,end,extendedProperties)',
       });
       if (pageToken) params.set('pageToken', pageToken);
       const res = await fetch(`${EVENTS_URL}?${params}`, { headers: { Authorization: `Bearer ${accessToken}` }, cache: 'no-store' });
@@ -114,12 +119,12 @@ export async function listBusyIntervals(timeMin: Date, timeMax: Date): Promise<B
       }
       const data = await res.json();
       for (const ev of data.items || []) {
-        if (ev.status === 'cancelled' || ev.transparency === 'transparent') continue;
-        const me = (ev.attendees || []).find((a: { self?: boolean }) => a.self);
-        if (me?.responseStatus === 'declined') continue;
-        // אירוע של יום שלם (start.date) - נחשב תפוס לכל היום לפי שעון ישראל
-        const start = ev.start?.dateTime ? Date.parse(ev.start.dateTime) : ev.start?.date ? israelMidnight(ev.start.date) : NaN;
-        const end = ev.end?.dateTime ? Date.parse(ev.end.dateTime) : ev.end?.date ? israelMidnight(ev.end.date) : NaN;
+        if (ev.status === 'cancelled') continue;
+        const isFitCall =
+          ev.extendedProperties?.private?.[FIT_CALL_TAG] === '1' || String(ev.summary || '').startsWith(LEGACY_FIT_CALL_PREFIX);
+        if (!isFitCall || !ev.start?.dateTime || !ev.end?.dateTime) continue;
+        const start = Date.parse(ev.start.dateTime);
+        const end = Date.parse(ev.end.dateTime);
         if (Number.isFinite(start) && Number.isFinite(end)) busy.push({ start, end });
       }
       pageToken = data.nextPageToken;
@@ -129,17 +134,6 @@ export async function listBusyIntervals(timeMin: Date, timeMax: Date): Promise<B
     return null;
   }
   return busy;
-}
-
-function israelMidnight(ymd: string) {
-  const [y, m, d] = ymd.split('-').map(Number);
-  const guess = Date.UTC(y, m - 1, d);
-  const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone: 'Asia/Jerusalem', hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit',
-  }).formatToParts(new Date(guess));
-  const get = (t: string) => Number(parts.find((p) => p.type === t)?.value);
-  const offsetMs = Date.UTC(get('year'), get('month') - 1, get('day'), get('hour'), get('minute')) - guess;
-  return guess - offsetMs;
 }
 
 // יוצר ביומן של שירן אירוע "שיחת התאמה" טלפוני. אם הפונה השאיר/ה מייל - הוא/היא מוזמנ/ת לאירוע ומקבל/ת
@@ -167,6 +161,7 @@ export async function createFitCallEvent(opts: {
         end: { dateTime: end.toISOString(), timeZone: 'Asia/Jerusalem' },
         attendees: opts.attendeeEmail ? [{ email: opts.attendeeEmail }] : undefined,
         reminders: { useDefault: false, overrides: [{ method: 'popup', minutes: 10 }] },
+        extendedProperties: { private: { [FIT_CALL_TAG]: '1' } },
       }),
     });
     if (!res.ok) {

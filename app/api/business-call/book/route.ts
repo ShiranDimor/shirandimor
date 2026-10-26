@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { clean, isLeadValid, leadDetails, notifyShiran, readLead, sendToMonday } from '@/lib/businessLead';
-import { createFitCallEvent, listBusyIntervals } from '@/lib/googleCalendar';
+import { createFitCallEvent, listBookedCallIntervals } from '@/lib/googleCalendar';
 import { CALL_CONFIG, computeSlots, formatSlotForHumans, slotRange } from '@/lib/callSlots';
 
 export const dynamic = 'force-dynamic';
@@ -30,9 +30,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'לא נבחר זמן לשיחה' }, { status: 400 });
   }
 
-  // בדיקה מחדש מול היומן ברגע הקביעה - כדי שלא ייקבעו שתי שיחות לאותה שעה ושלא יקבעו שעה שלא הוצעה
+  // בדיקה מחדש ברגע הקביעה - כדי שלא ייקבעו שתי שיחות לאותה שעה ושלא יקבעו שעה שלא הוצעה
   const { timeMin, timeMax } = slotRange();
-  const busy = await listBusyIntervals(timeMin, timeMax);
+  const busy = await listBookedCallIntervals(timeMin, timeMax);
   if (!busy) {
     return NextResponse.json({ error: 'היומן לא זמין כרגע' }, { status: 503 });
   }
