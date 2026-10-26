@@ -11,7 +11,7 @@ export const CALL_CONFIG = {
   dayStart: '09:00', // השיחה הראשונה האפשרית
   dayEnd: '15:30', // עד מתי השיחה צריכה להסתיים (לפני פתיחת המסחר בארה"ב)
   lookaheadDays: 7, // כמה ימים קדימה מציגים (שבוע מתגלגל)
-  minNoticeHours: 12, // התראה מינימלית לפני שיחה
+  minNoticeHours: 1, // התראה מינימלית לפני שיחה (אפשר לקבוע גם לאותו יום)
 };
 
 export type Slot = { start: string; day: string; dayLabel: string; time: string };
