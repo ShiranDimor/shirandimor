@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import BackButton from './BackButton';
-import BusinessLeadForm from './BusinessLeadForm';
+import ContactOptions from './ContactOptions';
+import ContactButtons from './ContactButtons';
 import './business.css';
 
 export const metadata: Metadata = {
@@ -24,7 +25,7 @@ const EMAIL = 'shiran@shirandimor.com';
 const WHATSAPP_URL =
   'https://wa.me/972547167419?text=' +
   encodeURIComponent('היי שירן, הגעתי מהעמוד לארגונים ואשמח לשמוע על הרצאה לעובדים שלנו');
-const EMAIL_URL = `mailto:${EMAIL}?subject=${encodeURIComponent('הרצאה לעובדים בארגון שלנו')}`;
+const EMAIL_SUBJECT = 'הרצאה לעובדים בארגון שלנו';
 
 function Logo() {
   return (
@@ -60,7 +61,7 @@ export default function BusinessPage() {
                 בלי קורסים של אלפי שקלים, בלי להפוך את זה למקצוע, ובלי שעות מול המסך.
               </p>
               <div className="biz-actions">
-                <a className="biz-btn biz-btn-primary" href="#contact">להשארת פרטים ושיחת התאמה</a>
+                <a className="biz-btn biz-btn-primary" href="#contact">לתיאום שיחת התאמה</a>
                 <a className="biz-btn biz-btn-ghost" href="#tracks">למסלולים</a>
               </div>
             </div>
@@ -207,7 +208,7 @@ export default function BusinessPage() {
             </div>
           </div>
           <div className="biz-mid-cta">
-            <a className="biz-btn biz-btn-primary" href="#contact">לתיאום שיחת התאמה, השאירו פרטים</a>
+            <a className="biz-btn biz-btn-primary" href="#contact">לקביעת שיחת התאמה ביומן</a>
           </div>
         </section>
 
@@ -271,19 +272,19 @@ export default function BusinessPage() {
           <h2>בואו נתאים את המפגש לארגון שלכם</h2>
           <p>כל הרצאה נבנית לפי הארגון והעובדים, ולכן הכול מתחיל בשיחת התאמה קצרה.</p>
           <ol className="biz-steps">
-            <li><strong>משאירים פרטים</strong><span>בטופס כאן למטה, לוקח פחות מדקה</span></li>
+            <li><strong>קובעים שיחה או משאירים פרטים</strong><span>בוחרים זמן פנוי ביומן כאן למטה, או משאירים פרטים ואחזור אליכם</span></li>
             <li><strong>שיחת התאמה של 15 דקות</strong><span>מכירים את הארגון, הקהל והמטרות, ובוחרים מסלול</span></li>
             <li><strong>הצעה מסודרת</strong><span>תוכן, מועדים ומחיר, מותאמים לכם</span></li>
           </ol>
-          <BusinessLeadForm whatsappUrl={WHATSAPP_URL} />
+          <ContactOptions whatsappUrl={WHATSAPP_URL} />
           <p className="biz-contact-or">או פשוט דברו איתי ישירות:</p>
-          <div className="biz-contact-links">
-            <a className="biz-btn biz-btn-primary" href={WHATSAPP_URL} target="_blank" rel="noopener noreferrer">
-              וואטסאפ
-            </a>
-            <a className="biz-btn biz-btn-ghost" href={`tel:${PHONE_TEL}`} dir="ltr">{PHONE_DISPLAY}</a>
-            <a className="biz-btn biz-btn-ghost" href={EMAIL_URL}>{EMAIL}</a>
-          </div>
+          <ContactButtons
+            whatsappUrl={WHATSAPP_URL}
+            phoneDisplay={PHONE_DISPLAY}
+            phoneTel={PHONE_TEL}
+            email={EMAIL}
+            emailSubject={EMAIL_SUBJECT}
+          />
         </section>
 
         <p className="biz-disclaimer">

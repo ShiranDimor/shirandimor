@@ -178,6 +178,43 @@
 .biz-steps span { display: block; margin-top: 4px; font-size: 14px; line-height: 1.45; color: #E8DFE4; }
 @media (max-width: 720px) { .biz-steps { grid-template-columns: minmax(0, 1fr); } }
 
+/* ===== Contact options: tabs + scheduler ===== */
+.biz-contact-options { margin-top: 22px; }
+.biz-tabs { display: flex; flex-wrap: wrap; gap: 8px; padding: 4px; border-radius: 999px; background: rgba(255, 248, 242, 0.08); width: fit-content; max-width: 100%; }
+.biz-tab {
+  min-height: 44px; padding: 8px 18px; border-radius: 999px; border: 0; background: transparent; color: #E8DFE4;
+  font-family: inherit; font-size: 15px; font-weight: 600; cursor: pointer;
+}
+.biz-tab[aria-selected="true"] { background: var(--biz-peach-on-dark); color: var(--biz-ink); }
+.biz-tab:focus-visible, .biz-chip:focus-visible, .biz-link-btn:focus-visible { outline: 3px solid var(--biz-mint-on-dark); outline-offset: 2px; }
+.biz-contact .biz-sched-loading { margin-top: 18px; font-size: 15px; }
+.biz-sched { margin-top: 18px; }
+.biz-contact .biz-sched-step { margin: 16px 0 10px; font-size: 15px; font-weight: 700; color: #FFF8F2; }
+.biz-days, .biz-times { display: flex; flex-wrap: wrap; gap: 8px; }
+.biz-chip {
+  min-height: 44px; padding: 8px 14px; border-radius: 12px; border: 1px solid #5A4F66; background: rgba(255, 248, 242, 0.04);
+  color: #FFF8F2; font-family: inherit; font-size: 15px; font-weight: 500; cursor: pointer;
+}
+.biz-chip:hover { border-color: var(--biz-peach-on-dark); }
+.biz-chip[aria-pressed="true"] { background: #FFF8F2; color: var(--biz-ink); border-color: #FFF8F2; font-weight: 700; }
+.biz-chip-time { min-width: 76px; font-variant-numeric: tabular-nums; }
+.biz-chosen {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; padding: 14px 18px; border-radius: 14px;
+  background: rgba(168, 213, 191, 0.14); border: 1px solid rgba(168, 213, 191, 0.4); color: #FFF8F2; font-weight: 700;
+}
+.biz-link-btn { background: none; border: 0; padding: 6px 4px; color: var(--biz-peach-on-dark); font-family: inherit; font-size: 15px; font-weight: 600; text-decoration: underline; cursor: pointer; }
+
+/* ===== Direct contact buttons with desktop popover ===== */
+.biz-pop-wrap { position: relative; }
+.biz-pop {
+  position: absolute; bottom: calc(100% + 8px); right: 0; z-index: 5; min-width: 240px; padding: 14px 16px; border-radius: 14px;
+  background: #FFF8F2; color: var(--biz-ink); box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25); font-size: 15px; font-weight: 600;
+}
+.biz-contact .biz-pop p { margin: 0; font-size: 15px; color: var(--biz-ink); }
+.biz-pop-actions { display: flex; flex-direction: column; gap: 2px; margin-top: 10px; }
+.biz-pop-actions a { padding: 8px 0; color: var(--biz-coral); text-decoration: none; font-weight: 600; }
+.biz-pop-actions a:hover { text-decoration: underline; }
+
 /* ===== Lead form (on the dark contact block) ===== */
 .biz-form { margin-top: 22px; }
 .biz-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 18px; }
