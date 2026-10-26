@@ -206,7 +206,7 @@ export default function BusinessPage() {
 
             <div className="biz-track">
               <span className="biz-track-label">מסלול 3</span>
-              <h3>מהבנה לפעולה</h3>
+              <h3>ליווי מלא</h3>
               <span className="biz-track-meta">5 מפגשים, 90 דקות כל אחד</span>
               <ol>
                 <li>הכסף שלי היום ולמה הוא נשחק</li>
