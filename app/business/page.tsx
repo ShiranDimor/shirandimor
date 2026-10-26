@@ -197,7 +197,6 @@ export default function BusinessPage() {
               <span className="biz-track-label">מסלול 2</span>
               <h3>סדנת יסודות</h3>
               <span className="biz-track-meta">3 מפגשים, 90 דקות כל אחד</span>
-              <span className="biz-track-gift">כולל 30 יום של המשך למידה ותוכן אחרי הסדנה, ללא עלות וללא התחייבות</span>
               <ol>
                 <li>הכסף שלי היום: עו״ש, חסכונות, קרן השתלמות, ריבית דריבית</li>
                 <li>בונים תיק לטווח ארוך: מדדים, קרנות סל ופיזור</li>
@@ -209,7 +208,6 @@ export default function BusinessPage() {
               <span className="biz-track-label">מסלול 3</span>
               <h3>תוכנית מלאה</h3>
               <span className="biz-track-meta">5 מפגשים, 90 דקות כל אחד</span>
-              <span className="biz-track-gift">כולל 30 יום של המשך למידה ותוכן אחרי הסדנה, ללא עלות וללא התחייבות</span>
               <ol>
                 <li>הכסף שלי היום ולמה הוא נשחק</li>
                 <li>תיק לטווח ארוך: איך בונים, כמה זמן זה לוקח בחודש</li>
@@ -226,8 +224,8 @@ export default function BusinessPage() {
               <p>פרונטלי, בכל הארץ, עם זמן פתוח לשאלות</p>
             </div>
             <div>
-              <h3>לכל משתתף</h3>
-              <p>״תוכנית הפעולה הפיננסית שלי ל־30 הימים הקרובים״</p>
+              <h3>מתנה לכל משתתף</h3>
+              <p>חודש מתנה בקבוצת ״מדברים עסקאות״, בלי כרטיס אשראי ובלי התחייבות</p>
             </div>
             <div>
               <h3>מחיר</h3>
