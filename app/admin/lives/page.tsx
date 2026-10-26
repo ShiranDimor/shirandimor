@@ -68,6 +68,7 @@ export default function AdminLivesPage() {
   const [deletingRegId, setDeletingRegId] = useState<string | null>(null);
 
   const [backfillingId, setBackfillingId] = useState<string | null>(null);
+  const [togglingOpenToAllId, setTogglingOpenToAllId] = useState<string | null>(null);
   const [backfillMessage, setBackfillMessage] = useState<{ id: string; text: string } | null>(null);
 
   useEffect(() => {
@@ -154,6 +155,19 @@ export default function AdminLivesPage() {
 
     cancelEdit();
     loadLives();
+  }
+
+  async function handleToggleOpenToAll(live: Live) {
+    setTogglingOpenToAllId(live.id);
+    const res = await fetch(`/api/admin/lives/${live.id}`, {
+      method: 'PATCH',
+      headers: await authHeader(),
+      body: JSON.stringify({ openToAll: !live.open_to_all }),
+    });
+    setTogglingOpenToAllId(null);
+    if (res.ok) {
+      setLives((prev) => prev.map((l) => (l.id === live.id ? { ...l, open_to_all: !l.open_to_all } : l)));
+    }
   }
 
   async function handleDelete(id: string, title: string) {
@@ -286,6 +300,16 @@ export default function AdminLivesPage() {
               title="יוצר ליד במאנדיי לכל מי שנרשם ללייב הזה ואינו מנוי ועדיין לא סונכרן"
             >
               {backfillingId === live.id ? 'מסנכרן...' : '🔄 סנכרון לידים'}
+            </button>
+            <button
+              type="button"
+              className="btn-outline"
+              style={{ padding: '8px 12px', fontSize: '12.5px', color: live.open_to_all ? 'var(--profit)' : undefined }}
+              onClick={() => handleToggleOpenToAll(live)}
+              disabled={togglingOpenToAllId === live.id}
+              title="פתיחה/סגירה של הלייב למי שאינו מנוי"
+            >
+              {togglingOpenToAllId === live.id ? '...' : live.open_to_all ? '✓ פתוח לכולם' : 'פתוח רק למנויים'}
             </button>
             <button type="button" className="btn-outline" style={{ padding: '8px 12px', fontSize: '12.5px' }} onClick={() => startEdit(live)}>עריכה</button>
             <button
