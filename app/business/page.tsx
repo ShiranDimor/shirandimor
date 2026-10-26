@@ -139,8 +139,8 @@ export default function BusinessPage() {
           <div className="biz-grid-2">
             <div className="biz-card">
               <span className="biz-num">1</span>
-              <h3>מפה ברורה של הכסף שלו</h3>
-              <p>עו״ש, חסכונות, קרן השתלמות: מה כל אחד מהם עושה היום, ומה הוא יכול לעשות.</p>
+              <h3>איך מתחילים בכלל</h3>
+              <p>מה זה חשבון השקעות ואיפה פותחים אותו: בבנק, בבית השקעות או אצל ברוקר. ומשם להחלטות הראשונות: כמה כסף להשקיע, כמה לסכן בכל עסקה וכמה לקנות.</p>
             </div>
             <div className="biz-card">
               <span className="biz-num sage">2</span>
