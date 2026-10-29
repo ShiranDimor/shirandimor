@@ -534,11 +534,17 @@ function stopPlayback() {
   if (currentAudio) { currentAudio.pause(); currentAudio = null; }
 }
 // Everything we play pauses the mic's noise-floor learning, so our own sound never counts as "Guy spoke".
+// The Hebrew voice guesses vowels from unpointed text and gets some words wrong - add niqqud before speaking.
+const PRONOUNCE = [
+  ['תקועה', 'תְּקוּעָה'], ['תקוע', 'תָּקוּעַ'], ['פנויה', 'פְּנוּיָה'], ['לאיבוד', 'לָאִבּוּד'], ['עזרה', 'עֶזְרָה'],
+];
+const fixPronunciation = text => PRONOUNCE.reduce(
+  (t, [w, pointed]) => t.replace(new RegExp(`(^|[^\u05D0-\u05EA])${w}(?![\u05D0-\u05EA])`, 'g'), `$1${pointed}`), text);
 function speak(text) {
   return new Promise(res => {
     if (!('speechSynthesis' in window) || !text) return res();
     speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(text);
+    const u = new SpeechSynthesisUtterance(fixPronunciation(text));
     u.lang = 'he-IL';
     if (heVoice) u.voice = heVoice;
     u.rate = S.settings.rate;
