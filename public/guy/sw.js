@@ -1,5 +1,5 @@
 // Offline support for the game: network first, cached copy when offline.
-const CACHE = 'guy-rescue-v3';
+const CACHE = 'guy-rescue-v4';
 const CORE = ['./index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {

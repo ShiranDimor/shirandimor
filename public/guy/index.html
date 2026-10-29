@@ -99,6 +99,17 @@
     width: min(22vh, 150px); height: min(22vh, 150px); border-radius: 50%; background: #43a047; color: #fff;
     box-shadow: 0 8px 0 #1b5e20; font-size: min(11vh, 76px); line-height: 1;
   }
+  .rbtns { display: flex; align-items: flex-end; gap: 14px; }
+  .jump {
+    width: min(20vh, 136px); height: min(20vh, 136px); border-radius: 50%; background: #ffca28; color: #fff;
+    box-shadow: 0 8px 0 #c79100; font-size: min(10vh, 68px); line-height: 1; text-shadow: 0 2px 0 rgba(0,0,0,.2);
+  }
+  .jump:active { transform: translateY(6px); box-shadow: 0 2px 0 #c79100; }
+  .jump.hint { animation: pulsey 0.8s ease-in-out infinite; }
+  .jump:disabled { filter: grayscale(1); opacity: .35; animation: none; }
+  @keyframes pulsey { 50% { box-shadow: 0 8px 0 #c79100, 0 0 0 18px rgba(255,202,40,.45); } }
+  .vehicle.bonk span { animation: bonk .5s; }
+  @keyframes bonk { 20% { transform: rotate(-14deg); } 50% { transform: rotate(10deg); } 80% { transform: rotate(-5deg); } }
   .gas.pressed { transform: translateY(6px); box-shadow: 0 2px 0 #1b5e20; }
   .gas.hint { animation: pulse 1.1s ease-in-out infinite; }
   .gas:disabled { filter: grayscale(1); opacity: .35; animation: none; }
@@ -227,7 +238,10 @@
   <div class="bones" id="bones">🦴 0</div>
   <button class="homebtn" id="homeBtn" aria-label="בית">🏠</button>
   <div class="controls">
-    <button class="roundbtn" id="honkBtn" aria-label="צופר">📯</button>
+    <div class="rbtns">
+      <button class="jump" id="jumpBtn" aria-label="לקפוץ">⬆</button>
+      <button class="roundbtn small" id="honkBtn" aria-label="צופר">📯</button>
+    </div>
     <button class="gas" id="gasBtn" aria-label="לנסוע">◀</button>
   </div>
   <div class="wordbox" id="wordbox" hidden>
@@ -263,7 +277,7 @@
 
     <div class="sec">
       <h2>מילים ומשפטים לתרגול</h2>
-      <p class="hint">בכל משימה גיא נוסע עם הגור, ובדרך יש מכשולים. כל מכשול "נעול" על מילה או משפט מהרשימה (קודם אלה שתורגלו הכי מעט): המשחק משמיע את המילה, וכל פעם שגיא חוזר עליה - המכשול מקבל מכה, עד שהוא נעלם והדרך נפתחת. רק מה שמסומן ב-✔ נכנס למשחק. אפשר להוסיף הרבה בבת אחת עם "הוספת רשימה".</p>
+      <p class="hint">בכל משימה גיא נוסע עם הגור, קופץ מעל דברים קטנים בדרך ואוסף עצמות. בדרך יש גם מכשולים גדולים. כל מכשול "נעול" על מילה או משפט מהרשימה (קודם אלה שתורגלו הכי מעט): המשחק משמיע את המילה, וכל פעם שגיא חוזר עליה - המכשול מקבל מכה, עד שהוא נעלם והדרך נפתחת. רק מה שמסומן ב-✔ נכנס למשחק. אפשר להוסיף הרבה בבת אחת עם "הוספת רשימה".</p>
       <div class="btnrow">
         <button class="btn" id="addBtn">➕ הוספה</button>
         <button class="btn sec2" id="bulkBtn">📋 הוספת רשימה</button>
@@ -404,25 +418,25 @@ function show(id) {
 // Original rescue-puppy characters (colors/roles only) - each has one mission.
 const PUPS = [
   { id: 'fire', name: 'כבאי', c: '#e53935', fur: '#ffffff', ear: '#2b2b2b', spots: true, emblem: '🔥', vehicle: '🚒',
-    obstacle: '🔥', fx: '💦', scenery: ['🌳', '🌲', '🏠', '🌻', '🏡'],
+    obstacle: '🔥', fx: '💦', scenery: ['🌳', '🌲', '🏠', '🌻', '🏡'], hop: '🪵',
     place: '🌳', animal: '🐱', title: 'החתול תקוע על העץ!', done: 'הצלנו את החתול!', sky: ['#ffccbc', '#fff8e1'], ground: '#7cb342' },
   { id: 'police', name: 'שוטר', c: '#1e63d6', fur: '#b07a45', ear: '#5b3a1e', emblem: '⭐', vehicle: '🚓',
-    obstacle: '🚧', fx: '⭐', scenery: ['🌳', '🏢', '🚦', '🏠', '🌲'],
+    obstacle: '🚧', fx: '⭐', scenery: ['🌳', '🏢', '🚦', '🏠', '🌲'], hop: '🛢️',
     place: '🌲', animal: '🐥', title: 'האפרוח הלך לאיבוד!', done: 'מצאנו את האפרוח!', sky: ['#bbdefb', '#e3f2fd'], ground: '#8bc34a' },
   { id: 'air', name: 'טייסת', c: '#ec407a', fur: '#ead0ae', ear: '#b98a5e', emblem: '✈️', vehicle: '🚁',
-    obstacle: '⛈️', fx: '💨', fly: true, scenery: ['⛰️', '🌲', '🌳', '🏔️'],
+    obstacle: '⛈️', fx: '💨', fly: true, scenery: ['⛰️', '🌲', '🌳', '🏔️'], hop: '🐦',
     place: '⛰️', animal: '🐑', title: 'הכבשה תקועה על ההר!', done: 'הצלנו את הכבשה!', sky: ['#f8bbd0', '#fce4ec'], ground: '#9ccc65' },
   { id: 'build', name: 'בנאי', c: '#f9a825', fur: '#d9a066', ear: '#9c6b3c', emblem: '🔨', vehicle: '🚜',
-    obstacle: '🪨', fx: '💥', scenery: ['🏗️', '🌳', '🏠', '🌲'],
+    obstacle: '🪨', fx: '💥', scenery: ['🏗️', '🌳', '🏠', '🌲'], hop: '🧱',
     place: '🌉', animal: '🐰', title: 'הארנב תקוע מעבר לגשר!', done: 'הצלנו את הארנב!', sky: ['#fff59d', '#fffde7'], ground: '#a1887f' },
   { id: 'recycle', name: 'ממחזר', c: '#43a047', fur: '#a5a5a5', ear: '#616161', emblem: '♻️', vehicle: '🚛',
-    obstacle: '🗑️', fx: '♻️', scenery: ['🌳', '🌷', '🌲', '🏡', '🌼'],
+    obstacle: '🗑️', fx: '♻️', scenery: ['🌳', '🌷', '🌲', '🏡', '🌼'], hop: '🥫',
     place: '🌳', animal: '🐿️', title: 'הסנאי צריך עזרה בפארק!', done: 'עזרנו לסנאי!', sky: ['#c8e6c9', '#f1f8e9'], ground: '#66bb6a' },
   { id: 'sea', name: 'ימאי', c: '#fb8c00', fur: '#6d4c41', ear: '#4e342e', emblem: '⚓', vehicle: '🚤',
-    obstacle: '🪵', fx: '🌊', scenery: ['🐟', '⛵', '🐠', '🐚', '🐬'],
+    obstacle: '🪵', fx: '🌊', scenery: ['🐟', '⛵', '🐠', '🐚', '🐬'], hop: '🦀',
     place: '🏝️', animal: '🐢', title: 'הצב צריך עזרה בים!', done: 'הצלנו את הצב!', sky: ['#b3e5fc', '#e1f5fe'], ground: '#29b6f6' },
   { id: 'snow', name: 'שלגית', c: '#8e24aa', fur: '#cfd8dc', ear: '#78909c', emblem: '❄️', vehicle: '🛷',
-    obstacle: '🧊', fx: '❄️', scenery: ['🌲', '⛄', '🏔️', '🌲'],
+    obstacle: '🧊', fx: '❄️', scenery: ['🌲', '⛄', '🏔️', '🌲'], hop: '⛄',
     place: '🏔️', animal: '🐧', title: 'הפינגווין תקוע בשלג!', done: 'הצלנו את הפינגווין!', sky: ['#e1bee7', '#f3e5f5'], ground: '#eceff1' },
 ];
 
@@ -602,6 +616,9 @@ const SND = {
   bone: () => sfx([988, 1319], 'sine', 0.08, 0.06, 0.12),
   honk: () => sfx([392, 392], 'square', 0.18, 0.22, 0.1),
   vroom: () => sfx([98, 131, 165], 'sawtooth', 0.15, 0.07, 0.07),
+  jump: () => sfx([523, 784], 'sine', 0.12, 0.07, 0.12),
+  boing: () => sfx([300, 180], 'triangle', 0.16, 0.1, 0.14),
+  clear: () => sfx([1047, 1319], 'triangle', 0.1, 0.07, 0.1),
   hit: () => sfx([220, 150], 'square', 0.1, 0.06, 0.1),
   fanfare: () => sfx([523, 659, 784, 1047, 784, 1047, 1319], 'triangle', 0.22, 0.13, 0.2),
 };
@@ -695,7 +712,9 @@ const STOP_GAP = 170;      // a blocking obstacle stays this far ahead of the tr
 const OBST_GAP = 1300;     // road between obstacles
 const MAX_SPEED = 380;     // units per second
 const M = { pup: null, obs: [], cur: null, token: 0, silent: 0, useMic: false, state: 'idle', running: false };
-const G = { dist: 0, speed: 0, gas: false, objs: [], raf: 0, last: 0, finishD: 0, finished: false, bones: 0, unit: 1, vehX: 0, base: 90 };
+const G = { dist: 0, speed: 0, gas: false, objs: [], raf: 0, last: 0, finishD: 0, finished: false, bones: 0, unit: 1, vehX: 0, base: 90,
+  y: 0, vy: 0, bonkUntil: 0, toldJump: false };
+const FIRST_OBST = 1300; // first word obstacle; the road before it has hops and bones
 const curItem = () => M.cur && S.items.find(i => i.id === M.cur.id);
 const GO = ['יופי! הדרך פנויה!', 'קדימה, סע!', 'מעולה! ממשיכים!'];
 
@@ -729,15 +748,24 @@ function buildWorld(p) {
   document.querySelectorAll('#world .obj').forEach(e => e.remove());
   G.objs = [];
   const b = G.base, r = (lo, hi) => lo + Math.random() * (hi - lo);
-  G.finishD = 900 + M.obs.length * OBST_GAP;
+  const low = G.lift + b * 0.15, high = G.lift + b * 1.45;
+  const bone = (d, y) => addObj({ d, emoji: '🦴', size: b * 0.5, y, bone: true });
+  G.finishD = FIRST_OBST + M.obs.length * OBST_GAP;
   for (let d = -300; d < G.finishD * 0.4 + 1500; d += r(350, 650)) addObj({ d, far: true, emoji: '☁️', size: b * r(0.8, 1.4), y: r(0, b) });
   for (let d = -400; d < G.finishD + 900; d += r(170, 380)) addObj({ d, emoji: rand(p.scenery), size: b * r(0.8, 1.4), y: -b * 0.06 });
-  M.obs.forEach((ob, i) => {
-    ob.d = 900 + i * OBST_GAP;
-    for (let k = 0; k < 4; k++) addObj({ d: ob.d - OBST_GAP + 380 + k * 170, emoji: '🦴', size: b * 0.5, y: G.lift + b * 0.15, bone: true });
-    addObj(Object.assign(ob, { emoji: p.obstacle, size: b * 1.25, y: G.lift }));
-  });
-  for (let k = 0; k < 4; k++) addObj({ d: G.finishD - OBST_GAP + 380 + k * 170, emoji: '🦴', size: b * 0.5, y: G.lift + b * 0.15, bone: true });
+  // every stretch of road (before each word obstacle and before the animal): bones, 2 things to jump over with bones above them
+  for (let i = 0; i <= M.obs.length; i++) {
+    const s0 = FIRST_OBST + (i - 1) * OBST_GAP;
+    const start = Math.max(0, s0);
+    bone(start + 220, low); bone(start + 320, low);
+    for (const h of [s0 + 600, s0 + 950]) {
+      if (h < 400) continue;
+      addObj({ d: h, emoji: p.hop, size: b * 0.6, y: G.lift, hop: true });
+      bone(h - 70, high); bone(h, high + b * 0.15); bone(h + 70, high);
+    }
+    bone(s0 + 1100, low);
+    if (i < M.obs.length) addObj(Object.assign(M.obs[i], { d: FIRST_OBST + i * OBST_GAP, emoji: p.obstacle, size: b * 1.25, y: G.lift }));
+  }
   addObj({ d: G.finishD, emoji: p.place, size: b * 2.2, y: 0 });
   G.animal = addObj({ d: G.finishD, emoji: p.animal, size: b * 0.9, y: b * 1.1 });
 }
@@ -749,11 +777,25 @@ function placeObj(o) {
   if (!off) o.el.style.transform = `translate(${x.toFixed(1)}px, ${-(o.y || 0)}px) translateX(-50%)`;
 }
 
+function jump() {
+  if (M.cur || G.finished || G.y > 2) return;
+  G.vy = Math.sqrt(2 * G.base * 30 * G.base * 1.9); // apex ≈ 1.9 × vehicle size
+  SND.jump();
+  jumpBtn.classList.remove('hint');
+}
+
 function loop(t) {
   const dt = Math.min(0.05, (t - G.last) / 1000 || 0);
   G.last = t;
-  if (G.gas && !M.cur && !G.finished) G.speed = Math.min(MAX_SPEED, G.speed + 750 * dt);
+  const b = G.base;
+  if (G.gas && !M.cur && !G.finished && t > G.bonkUntil) G.speed = Math.min(MAX_SPEED, G.speed + 750 * dt);
   else G.speed = Math.max(0, G.speed - 1100 * dt);
+  // jump physics (pixels above the road)
+  if (G.y > 0 || G.vy > 0) {
+    G.vy -= b * 30 * dt;
+    G.y = Math.max(0, G.y + G.vy * dt);
+    if (G.y === 0) G.vy = 0;
+  }
   let next = G.dist + G.speed * dt;
   const ob = M.obs.find(o => o.hp > 0);
   if (ob && next >= ob.d - STOP_GAP) {
@@ -762,13 +804,33 @@ function loop(t) {
   }
   G.dist = next;
   if (!ob && !G.finished && G.dist >= G.finishD - STOP_GAP - 30) { G.finished = true; G.speed = 0; finishMission(); }
+  let hopNear = false;
   for (const o of G.objs) {
-    if (o.bone && !o.got && Math.abs(o.d - G.dist) < 30) {
-      o.got = true; o.el.classList.add('got'); G.bones++; updateBones(); SND.bone();
+    const dd = o.d - G.dist;
+    if (o.bone && !o.got && Math.abs(dd) < 32) {
+      const rel = o.y - G.lift - G.y; // bone height relative to the bottom of the truck
+      if (rel > -b * 0.4 && rel < b * 1.05) { o.got = true; o.el.classList.add('got'); G.bones++; updateBones(); SND.bone(); }
+    }
+    if (o.hop && !o.done) {
+      if (dd > 0 && dd < 330) hopNear = true;
+      if (Math.abs(dd) < 45 && G.y < b * 0.5) {          // bumped into it
+        o.done = true;
+        G.speed = 0; G.bonkUntil = t + 700;
+        SND.boing();
+        const v = $('#veh'); v.classList.remove('bonk'); void v.offsetWidth; v.classList.add('bonk');
+        o.el.classList.add('gone');
+      } else if (dd < -45) {                              // jumped over it
+        o.done = true;
+        SND.clear();
+      }
     }
     placeObj(o);
   }
-  $('#veh').classList.toggle('driving', G.speed > 5);
+  if (hopNear && !G.toldJump && G.speed > 0) { G.toldJump = true; if (!M.cur) speak('קפוץ!'); }
+  jumpBtn.classList.toggle('hint', hopNear && G.y === 0 && !M.cur);
+  const veh = $('#veh');
+  veh.style.transform = `translateX(${G.vehX}px) translateX(-50%) translateY(${-G.y.toFixed(1)}px)`;
+  veh.classList.toggle('driving', G.speed > 5 && G.y === 0);
   G.raf = requestAnimationFrame(loop);
 }
 
@@ -789,7 +851,7 @@ async function startMission(p) {
   const tok = ++M.token;
   stopPlayback();
   Object.assign(M, { pup: p, cur: null, silent: 0, running: true, obs: items.map(it => ({ id: it.id, hp: S.settings.reps, max: S.settings.reps })) });
-  Object.assign(G, { dist: 0, speed: 0, gas: false, finished: false, bones: 0 });
+  Object.assign(G, { dist: 0, speed: 0, gas: false, finished: false, bones: 0, y: 0, vy: 0, bonkUntil: 0, toldJump: false });
   const ms = $('#mission');
   ms.style.setProperty('--sky1', p.sky[0]); ms.style.setProperty('--sky2', p.sky[1]);
   ms.style.setProperty('--ground', p.ground); ms.style.setProperty('--c', p.c);
@@ -804,6 +866,7 @@ async function startMission(p) {
   $('#wordbox').hidden = true;
   $('#done').hidden = true;
   gasBtn.disabled = false;
+  jumpBtn.disabled = false;
   gasBtn.classList.add('hint');
   show('mission');
   cancelAnimationFrame(G.raf);
@@ -821,6 +884,9 @@ async function startMission(p) {
 
 // --- driving controls
 const gasBtn = $('#gasBtn');
+const jumpBtn = $('#jumpBtn');
+jumpBtn.addEventListener('pointerdown', e => { e.preventDefault(); jump(); });
+jumpBtn.addEventListener('contextmenu', e => e.preventDefault());
 function gasDown(e) {
   if (gasBtn.disabled || M.cur || G.finished) return;
   e.preventDefault();
@@ -846,6 +912,7 @@ function blockAt(ob) {
   M.cur = ob;
   gasUp();
   gasBtn.disabled = true;
+  jumpBtn.disabled = true;
   gasBtn.classList.remove('hint');
   M.silent = 0;
   $('#skipBtn').hidden = true;
@@ -967,6 +1034,7 @@ async function clearObstacle() {
   M.cur = null;
   setMicState('idle');
   gasBtn.disabled = false;
+  jumpBtn.disabled = false;
   gasBtn.classList.add('hint');
   if (S.settings.praise && M.obs.some(o => o.hp > 0)) speak(rand(GO));
 }
