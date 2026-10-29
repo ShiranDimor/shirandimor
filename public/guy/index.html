@@ -187,6 +187,8 @@
   .row .t { font-size: 19px; }
   .row .meta { font-size: 13px; color: #667085; }
   .row button.ic { width: 44px; height: 44px; border-radius: 12px; background: #eef2f7; font-size: 20px; flex: none; }
+  .row .rt input[type=text] { margin-top: 4px; font-size: 17px; padding: 6px 10px; }
+  .row.rec .ic[data-ph-act="rec"] { background: #ffcdd2; }
   .row input[type=checkbox] { width: 26px; height: 26px; flex: none; }
   label.f { display: block; margin: 12px 0 4px; font-size: 16px; color: #475467; }
   input[type=text], input[type=number], textarea, select {
@@ -311,6 +313,12 @@
         <p class="hint" id="voiceStatus"></p>
         <button class="btn sec2" id="voiceTest">🔊 בדיקת קול</button>
       </div>
+    </div>
+
+    <div class="sec">
+      <h2>המשפטים של המשחק</h2>
+      <p class="hint">אם הקול אומר משפט לא נכון: אפשר להקליט אותו בקול שלך 🎙️ (הקלטה תמיד מושמעת במקום הקול הממוחשב), או לשנות בתיבה איך הוא נכתב לקול - עם ניקוד או בכתיב אחר - וללחוץ 🔊 כדי לשמוע מיד. ↺ מחזיר לנוסח המקורי.</p>
+      <div id="phrases"></div>
     </div>
 
     <div class="sec">
@@ -494,7 +502,7 @@ const DB = {
 };
 
 const DEFAULT_SETTINGS = { mode: 'mic', reps: 2, perMission: 5, rate: 0.85, sens: 0.6, praise: true };
-const S = { items: [], settings: { ...DEFAULT_SETTINGS }, badges: {}, names: {} };
+const S = { items: [], settings: { ...DEFAULT_SETTINGS }, badges: {}, names: {}, phrases: {} };
 const save = key => DB.set('kv', key, S[key]).catch(e => console.warn('save failed', e));
 const pupName = p => S.names[p.id] || p.name;
 
@@ -726,6 +734,31 @@ const FIRST_OBST = 1300; // first word obstacle; the road before it has hops and
 const curItem = () => M.cur && S.items.find(i => i.id === M.cur.id);
 const GO = ['יוֹפִי! הַדֶּרֶךְ פְּנוּיָה!', 'קָדִימָה, סַע!', 'מְעוּלֶּה! מַמְשִׁיכִים!'];
 
+// Every sentence the game itself says. The parent can re-spell any of them or record it (S.phrases[key] = { text, audioId }).
+const unpoint = t => t.replace(/[\u0591-\u05C7]/g, '');
+const PHRASES = [
+  ...PUPS.flatMap(p => [
+    { key: 'title:' + p.id, label: `${p.vehicle} ${p.title}`, say: p.sayTitle },
+    { key: 'done:' + p.id, label: `${p.vehicle} ${p.done}`, say: p.sayDone },
+  ]),
+  { key: 'start', label: 'יוצאים לדרך!', say: 'יוֹצְאִים לַדֶּרֶךְ!' },
+  { key: 'jump', label: 'קפוץ!', say: 'קְפוֹץ!' },
+  { key: 'bravo', label: 'כל הכבוד! (בסוף משימה)', say: 'כָּל הַכָּבוֹד!' },
+  ...PRAISE.map((t, i) => ({ key: 'praise' + i, label: unpoint(t), say: t })),
+  ...GO.map((t, i) => ({ key: 'go' + i, label: unpoint(t), say: t })),
+];
+const PHRASE = Object.fromEntries(PHRASES.map(ph => [ph.key, ph]));
+const phraseText = key => S.phrases[key]?.text || PHRASE[key].say;
+async function sayPhrase(key) {
+  const audioId = S.phrases[key]?.audioId;
+  if (audioId) {
+    const u = await blobURL(audioId);
+    if (u) { stopPlayback(); return playURL(u); }
+  }
+  return speak(phraseText(key));
+}
+const randKey = (prefix, n) => prefix + Math.floor(Math.random() * n);
+
 function pickItems() {
   const active = S.items.filter(i => i.active !== false && i.text.trim());
   const n = Math.min(S.settings.perMission, active.length);
@@ -834,7 +867,7 @@ function loop(t) {
     }
     placeObj(o);
   }
-  if (hopNear && !G.toldJump && G.speed > 0) { G.toldJump = true; if (!M.cur) speak('קְפוֹץ!'); }
+  if (hopNear && !G.toldJump && G.speed > 0) { G.toldJump = true; if (!M.cur) sayPhrase('jump'); }
   jumpBtn.classList.toggle('hint', hopNear && G.y === 0 && !M.cur);
   const veh = $('#veh');
   veh.style.transform = `translateX(${G.vehX}px) translateX(-50%) translateY(${-G.y.toFixed(1)}px)`;
@@ -887,7 +920,9 @@ async function startMission(p) {
     if (!M.useMic) toast('אין גישה למיקרופון - משחקים עם כפתור 🗣️');
   }
   if (tok !== M.token) return;
-  if (!M.cur) await speak(p.sayTitle + ' יוֹצְאִים לַדֶּרֶךְ!');
+  if (!M.cur) await sayPhrase('title:' + p.id);
+  if (tok !== M.token || M.cur) return;
+  await sayPhrase('start');
 }
 
 // --- driving controls
@@ -1002,7 +1037,7 @@ async function onSaid() {
   if (ob.hp > 0) {
     await sleep(700);
     if (tok !== M.token) return;
-    if (S.settings.praise && Math.random() < 0.5) await speak(rand(PRAISE)); else await sleep(300);
+    if (S.settings.praise && Math.random() < 0.5) await sayPhrase(randKey('praise', PRAISE.length)); else await sleep(300);
     if (tok !== M.token) return;
     M.silent = 0;
     $('#skipBtn').hidden = true;
@@ -1044,7 +1079,7 @@ async function clearObstacle() {
   gasBtn.disabled = false;
   jumpBtn.disabled = false;
   gasBtn.classList.add('hint');
-  if (S.settings.praise && M.obs.some(o => o.hp > 0)) speak(rand(GO));
+  if (S.settings.praise && M.obs.some(o => o.hp > 0)) sayPhrase(randKey('go', GO.length));
 }
 
 function skip() {
@@ -1075,7 +1110,9 @@ async function finishMission() {
   confetti();
   await sleep(1200);
   if (tok !== M.token) return;
-  await speak(p.sayDone + ' כָּל הַכָּבוֹד!');
+  await sayPhrase('done:' + p.id);
+  if (tok !== M.token) return;
+  await sayPhrase('bravo');
 }
 
 function goHome() {
@@ -1163,10 +1200,11 @@ $('#gateA').addEventListener('keydown', e => { if (e.key === 'Enter') $('#gateOk
 // ---------------------------------------------------------------- parent area
 function openParent() {
   renderList();
+  renderPhrases();
   renderSettings();
   show('parent');
 }
-$('#backToGame').onclick = () => { stopMicTest(); renderHome(); show('home'); };
+$('#backToGame').onclick = () => { stopMicTest(); Rec.stop(); renderHome(); show('home'); };
 
 function renderList() {
   const list = $('#list');
@@ -1339,6 +1377,67 @@ const Rec = {
   },
 };
 
+// --- the game's own phrases: re-spell or record
+let recPhrase = null;
+function renderPhrases() {
+  $('#phrases').innerHTML = PHRASES.map(ph => {
+    const cur = S.phrases[ph.key] || {};
+    return `<div class="row ${recPhrase === ph.key ? 'rec' : ''}">
+      <div class="rt">
+        <div class="t">${esc(ph.label)}${cur.audioId ? ' · 🎙️' : ''}</div>
+        <input type="text" data-ph="${ph.key}" value="${esc(phraseText(ph.key))}" aria-label="איך הקול אומר">
+      </div>
+      <button class="ic" data-ph-act="play" data-key="${ph.key}" aria-label="השמעה">🔊</button>
+      <button class="ic" data-ph-act="rec" data-key="${ph.key}" aria-label="הקלטה">${recPhrase === ph.key ? '⏹️' : '🎙️'}</button>
+      ${cur.audioId ? `<button class="ic" data-ph-act="delrec" data-key="${ph.key}" aria-label="מחיקת הקלטה">🗑️</button>` : ''}
+      ${cur.text ? `<button class="ic" data-ph-act="reset" data-key="${ph.key}" aria-label="נוסח מקורי">↺</button>` : ''}
+    </div>`;
+  }).join('');
+}
+function setPhrase(key, patch) {
+  const cur = { ...(S.phrases[key] || {}), ...patch };
+  Object.keys(cur).forEach(k => cur[k] == null && delete cur[k]);
+  if (Object.keys(cur).length) S.phrases[key] = cur; else delete S.phrases[key];
+  save('phrases');
+}
+$('#phrases').addEventListener('change', e => {
+  const key = e.target.dataset.ph;
+  if (!key) return;
+  const v = e.target.value.trim();
+  setPhrase(key, { text: v && v !== PHRASE[key].say ? v : null });
+  renderPhrases();
+});
+$('#phrases').addEventListener('click', async e => {
+  const b = e.target.closest('[data-ph-act]');
+  if (!b) return;
+  const key = b.dataset.key, act = b.dataset.phAct;
+  if (act === 'play') {
+    const input = $(`#phrases [data-ph="${key}"]`);
+    if (S.phrases[key]?.audioId) sayPhrase(key); else speak(input.value.trim() || PHRASE[key].say);
+  }
+  if (act === 'reset') { setPhrase(key, { text: null }); renderPhrases(); }
+  if (act === 'delrec') {
+    await dropBlob(S.phrases[key].audioId);
+    setPhrase(key, { audioId: null });
+    renderPhrases();
+  }
+  if (act === 'rec') {
+    if (Rec.active) { Rec.stop(); return; }
+    recPhrase = key;
+    const ok = await Rec.start(async blob => {
+      recPhrase = null;
+      const id = uid();
+      await DB.set('blobs', id, blob);
+      await dropBlob(S.phrases[key]?.audioId);
+      setPhrase(key, { audioId: id });
+      renderPhrases();
+      toast('ההקלטה נשמרה');
+    });
+    if (!ok) { recPhrase = null; toast('אין גישה למיקרופון'); }
+    renderPhrases();
+  }
+});
+
 // --- settings
 function renderSettings() {
   const st = S.settings;
@@ -1370,7 +1469,7 @@ $('#names').addEventListener('change', e => {
   if (v) S.names[id] = v; else delete S.names[id];
   save('names');
 });
-$('#voiceTest').onclick = () => speak('שָׁלוֹם גַּיְא! בּוֹא נֵצֵא לִמְשִׂימַת חִלּוּץ!');
+$('#voiceTest').onclick = () => sayPhrase('title:fire');
 
 async function startMicTest() {
   if (!(await Mic.start())) { toast('אין גישה למיקרופון'); return; }
@@ -1388,12 +1487,12 @@ $('#micTest').onclick = () => ($('#meter').hidden ? startMicTest() : stopMicTest
 const toDataURL = b => new Promise(res => { const r = new FileReader(); r.onload = () => res(r.result); r.readAsDataURL(b); });
 $('#exportBtn').onclick = async () => {
   const blobs = {};
-  for (const it of S.items) for (const k of ['imageId', 'audioId']) {
-    if (!it[k]) continue;
-    const b = await DB.get('blobs', it[k]);
-    if (b) blobs[it[k]] = await toDataURL(b);
+  const ids = [...S.items.flatMap(it => [it.imageId, it.audioId]), ...Object.values(S.phrases).map(ph => ph.audioId)].filter(Boolean);
+  for (const id of ids) {
+    const b = await DB.get('blobs', id);
+    if (b) blobs[id] = await toDataURL(b);
   }
-  const data = { app: 'guy-rescue', v: 1, at: new Date().toISOString(), items: S.items, settings: S.settings, badges: S.badges, names: S.names, blobs };
+  const data = { app: 'guy-rescue', v: 1, at: new Date().toISOString(), items: S.items, settings: S.settings, badges: S.badges, names: S.names, phrases: S.phrases, blobs };
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([JSON.stringify(data)], { type: 'application/json' }));
   a.download = `guy-rescue-backup-${new Date().toISOString().slice(0, 10)}.json`;
@@ -1416,7 +1515,8 @@ $('#importFile').onchange = async e => {
   S.settings = { ...DEFAULT_SETTINGS, ...(data.settings || {}) };
   S.badges = data.badges || {};
   S.names = data.names || {};
-  await Promise.all(['items', 'settings', 'badges', 'names'].map(save));
+  S.phrases = data.phrases || {};
+  await Promise.all(['items', 'settings', 'badges', 'names', 'phrases'].map(save));
   openParent();
   toast('הגיבוי נטען');
 };
@@ -1436,6 +1536,7 @@ document.addEventListener('contextmenu', e => { if (!e.target.closest('input, te
     S.settings = { ...DEFAULT_SETTINGS, ...((await DB.get('kv', 'settings')) || {}) };
     S.badges = (await DB.get('kv', 'badges')) || {};
     S.names = (await DB.get('kv', 'names')) || {};
+    S.phrases = (await DB.get('kv', 'phrases')) || {};
     save('items');
   } catch (e) {
     console.warn(e);
