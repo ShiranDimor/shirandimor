@@ -43,8 +43,32 @@ export function speak(text: string, opts: { lang?: 'en' | 'he'; rate?: number } 
   });
 }
 
+export interface Line {
+  lang: 'en' | 'he';
+  text: string;
+}
+export const he = (text: string): Line => ({ lang: 'he', text });
+export const en = (text: string): Line => ({ lang: 'en', text });
+
+// מונה רצפים: כשמתחיל רצף חדש (או עוצרים), רצף קודם שעוד באמצע מפסיק לדבר
+let seq = 0;
+
+// אומר כמה שורות ברצף - הוראה בעברית ואז המילה/המשפט באנגלית, כל אחת בקול של השפה שלה
+export async function speakLines(lines: Line[]) {
+  const mine = ++seq;
+  for (const l of lines) {
+    if (mine !== seq) return;
+    await speak(l.text, { lang: l.lang });
+  }
+}
+
 export function stopSpeaking() {
+  seq++;
   if (typeof window !== 'undefined') window.speechSynthesis?.cancel();
+}
+
+export function hasHebrewVoice() {
+  return Boolean(heVoice);
 }
 
 /* eslint-disable @typescript-eslint/no-explicit-any */

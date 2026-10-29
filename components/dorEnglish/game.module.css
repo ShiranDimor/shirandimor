@@ -175,6 +175,7 @@
   min-height: 56px;
 }
 .replay { font-size: 18px; opacity: 0.6; }
+.bubbleHe { font-family: 'Rubik', sans-serif; font-size: 0.82em; font-weight: 500; color: #4a5272; }
 .partner { position: absolute; left: 6px; bottom: 0; }
 @media (max-width: 560px) {
   .partner { bottom: auto; top: 10px; }
@@ -230,6 +231,10 @@
 .table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 12px; overflow: hidden; font-size: 15px; }
 .table td { padding: 6px 8px; border-bottom: 1px solid #eef1f6; }
 .parentsNote { color: #5b6380; font-size: 14px; margin-top: 14px; line-height: 1.6; }
+.toggle { display: flex; gap: 12px; align-items: flex-start; background: #fff; border-radius: 16px; padding: 14px; margin-top: 16px; box-shadow: 0 3px 0 #c9d3e6; cursor: pointer; }
+.toggle input { width: 22px; height: 22px; margin-top: 2px; flex-shrink: 0; }
+.toggle span { display: flex; flex-direction: column; font-weight: 600; }
+.toggle small { font-weight: 400; color: #5b6380; font-size: 13px; margin-top: 4px; line-height: 1.5; }
 .dangerBtn { margin-top: 18px; background: #fff0f0 !important; color: #c62828 !important; padding: 10px 18px; border-radius: 12px; font-family: 'Rubik', sans-serif !important; }
 
 /* ---------- אנימציות ---------- */
