@@ -38,7 +38,7 @@ function Sprite({ id, size, hidden, className }: { id: number; size: number; hid
     // eslint-disable-next-line @next/next/no-img-element
     <img
       src={spriteUrl(id)}
-      alt={hidden ? '?' : nameOf(id)}
+      alt={hidden ? '?' : heNameOf(id)}
       width={size}
       height={size}
       className={`${className ?? ''} ${hidden ? s.silhouette : ''}`}
@@ -240,8 +240,8 @@ export default function Game() {
           <div className={s.titleBalls}>
             <Sprite id={starter ?? 25} size={170} className={s.bounce} />
           </div>
-          <h1 className={s.logo}>Dor&apos;s Pokémon<br />English Adventure</h1>
-          <p className={s.sub}>ההרפתקה האנגלית של דור</p>
+          <h1 className={s.logo}>ההרפתקה<br />של דור</h1>
+          <p className={s.sub}>פוקימונים באנגלית</p>
           <button
             className={s.bigBtn}
             onClick={() => {
@@ -251,7 +251,7 @@ export default function Game() {
               setScreen(starter ? 'map' : 'starter');
             }}
           >
-            ▶ Play!
+            ▶ בואי נשחק!
           </button>
         </div>
       </div>
@@ -283,13 +283,13 @@ export default function Game() {
         <div className={s.caught}>
           <div className={s.confetti}>🎉 ⭐ 🎉 ⭐ 🎉</div>
           <Sprite id={wildId} size={220} className={s.pop} />
-          <h2 className={s.caughtTitle}>Gotcha!</h2>
-          <p className={s.caughtSub}>You caught <b>{nameOf(wildId)}</b>!</p>
-          <p className={s.he}>תפסת את {POKEMON[wildId]?.he}! <span dir="ltr">+5 ⭐</span></p>
+          <h2 className={s.caughtTitle}>תפסת!</h2>
+          <p className={s.caughtSub}>תפסת את <b>{heNameOf(wildId)}</b>!</p>
+          <p className={s.he}><span dir="ltr">+5 ⭐</span></p>
           <div className={s.row}>
-            <button className={s.bigBtn} onClick={() => startBattle(world)}>⚡ Again!</button>
-            <button className={s.midBtn} onClick={() => { stopSpeaking(); setScreen('map'); }}>🗺️ Map</button>
-            <button className={s.midBtn} onClick={() => setScreen('pokedex')}>📕 Pokédex</button>
+            <button className={s.bigBtn} onClick={() => startBattle(world)}>⚡ עוד פעם!</button>
+            <button className={s.midBtn} onClick={() => { stopSpeaking(); setScreen('map'); }}>🗺️ למפה</button>
+            <button className={s.midBtn} onClick={() => setScreen('pokedex')}>📕 האוסף שלי</button>
           </div>
         </div>
       </div>
@@ -341,7 +341,7 @@ export default function Game() {
                 ) : null}
                 {(!micSupported || sayFails >= 1) && (
                   <button className={s.midBtn} onClick={() => onHit(true)} disabled={busy || listening}>
-                    🗣️ I said it! <small>(אמרתי!)</small>
+                    🗣️ אמרתי!
                   </button>
                 )}
               </div>
@@ -360,7 +360,7 @@ export default function Game() {
               </div>
             )}
             <div className={s.helpRow}>
-              <button className={s.smallBtn} onClick={() => talk(ch.lines)}>🔊 Again</button>
+              <button className={s.smallBtn} onClick={() => talk(ch.lines)}>🔊 שוב</button>
               <button className={s.smallBtn} onClick={hint}>🇮🇱 עזרה</button>
             </div>
           </div>
@@ -376,18 +376,18 @@ export default function Game() {
         <div className={s.trainer}>
           {starter && <Sprite id={starter} size={56} />}
           <div>
-            <div className={s.trainerName}>Trainer Dor</div>
+            <div className={s.trainerName}>המאמנת דור</div>
             <div className={s.trainerSub}>⭐ {p.stars} · 📕 {p.caught.length}</div>
           </div>
         </div>
-        <button className={s.midBtn} onClick={() => { setScreen('pokedex'); speakLines(heb ? [en('Pokédex!'), he('כאן כל הפוקימונים שתפסת')] : [en('Pokédex!')]); }}>📕 Pokédex</button>
+        <button className={s.midBtn} onClick={() => { setScreen('pokedex'); speakLines(heb ? [he('האוסף שלי! כאן כל הפוקימונים שתפסת')] : [en('My Pokémon!')]); }}>📕 האוסף שלי</button>
       </div>
 
       <h2
         className={s.mapTitle}
         onClick={() => speakLines(heb ? [en('Where do you want to go?'), he('לאן את רוצה ללכת? תלחצי על עולם.')] : [en('Where do you want to go?')])}
       >
-        Where do you want to go? 🔊
+        לאן הולכים? 🔊
       </h2>
 
       <div className={s.worlds}>
@@ -406,8 +406,7 @@ export default function Game() {
               }}
             >
               <span className={s.worldIcon}>{open ? w.icon : '🔒'}</span>
-              <span className={s.worldName}>{w.name}</span>
-              <span className={s.worldHe}>{w.he}</span>
+              <span className={s.worldName}>{w.he}</span>
               <span className={s.worldMons}>
                 {w.pokemon.map((id) => (
                   <Sprite key={id} id={id} size={34} hidden={!p.caught.includes(id)} />
@@ -436,8 +435,8 @@ function StarterPick({ heb, onDone }: { heb: boolean; onDone: (id: number) => vo
   }, []);
   return (
     <div className={s.root}>
-      <h2 className={s.mapTitle} onClick={() => speakLines(intro)}>Choose your partner! 🔊</h2>
-      <p className={s.he}>בחרי את הפוקימון שילווה אותך</p>
+      <h2 className={s.mapTitle} onClick={() => speakLines(intro)}>בחרי שותף לדרך! 🔊</h2>
+      <p className={s.he}>לוחצים על פוקימון כדי לשמוע את השם שלו</p>
       <div className={s.starters}>
         {STARTERS.map((id) => (
           <button
@@ -446,11 +445,11 @@ function StarterPick({ heb, onDone }: { heb: boolean; onDone: (id: number) => vo
             onClick={() => { setSel(id); speak(`${nameOf(id)}!`); }}
           >
             <Sprite id={id} size={110} />
-            <span>{nameOf(id)}</span>
+            <span>{heNameOf(id)}</span>
           </button>
         ))}
       </div>
-      {sel && <button className={s.bigBtn} onClick={() => onDone(sel)}>I choose you! ✨</button>}
+      {sel && <button className={s.bigBtn} onClick={() => onDone(sel)}>בחרתי! ✨</button>}
     </div>
   );
 }
@@ -461,7 +460,7 @@ function Pokedex({ p, heb, onBack }: { p: Progress; heb: boolean; onBack: () => 
     <div className={s.root}>
       <div className={s.mapTop}>
         <button className={s.iconBtn} onClick={onBack} aria-label="back">🗺️</button>
-        <h2 className={s.mapTitle}>Pokédex · {p.caught.length + (p.starter ? 1 : 0)}/{all.length}</h2>
+        <h2 className={s.mapTitle}>האוסף שלי · {p.caught.length + (p.starter ? 1 : 0)}/{all.length}</h2>
       </div>
       <div className={s.dex}>
         {all.map((id) => {
@@ -477,7 +476,7 @@ function Pokedex({ p, heb, onBack }: { p: Progress; heb: boolean; onBack: () => 
               }}
             >
               <Sprite id={id} size={80} hidden={!have} />
-              <span>{have ? nameOf(id) : '???'}</span>
+              <span>{have ? heNameOf(id) : '???'}</span>
             </button>
           );
         })}
