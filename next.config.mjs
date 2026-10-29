@@ -3,7 +3,11 @@ const nextConfig = {
   // Guy's speech-practice game is a standalone static page in public/guy (no site layout, chat or tracking).
   async redirects() {
     // Case-insensitive: Android keyboards often type "Guy".
-    return [{ source: '/:slug([gG][uU][yY])', destination: '/guy/index.html', permanent: false }];
+    return [
+      { source: '/:slug([gG][uU][yY])', destination: '/guy/index.html', permanent: false },
+      // Dor's Pokémon English game - short, case-insensitive address that's easy to type on a tablet.
+      { source: '/:slug([dD][oO][rR])', destination: '/dor-english', permanent: false },
+    ];
   },
   experimental: {
     serverComponentsExternalPackages: ['@sparticuz/chromium', 'puppeteer-core'],
