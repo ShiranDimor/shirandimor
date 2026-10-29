@@ -4,7 +4,15 @@ import { useEffect, useState } from 'react';
 
 // פס צף עם הקריאה לפעולה: מופיע אחרי שגוללים מתחת לפתיח, ונעלם כשמגיעים לחלק של קביעת השיחה.
 // בטלפון - בתחתית המסך (עם וואטסאפ). במחשב - פס עליון דק.
-export default function StickyCta({ whatsappUrl }: { whatsappUrl: string }) {
+export default function StickyCta({
+  whatsappUrl,
+  label = 'שירן דימור, הרצאות לארגונים',
+  ctaText = 'לתיאום שיחת התאמה',
+}: {
+  whatsappUrl: string;
+  label?: string;
+  ctaText?: string;
+}) {
   const [heroVisible, setHeroVisible] = useState(true);
   const [contactVisible, setContactVisible] = useState(false);
 
@@ -40,11 +48,11 @@ export default function StickyCta({ whatsappUrl }: { whatsappUrl: string }) {
             <rect x="8" y="11" width="32" height="6" rx="3" fill="#4E7262" />
             <rect x="16" y="22" width="24" height="6" rx="3" fill="#C0533D" />
           </svg>
-          שירן דימור, הרצאות לארגונים
+          {label}
         </span>
         <div className="biz-sticky-actions">
           <a className="biz-btn biz-btn-primary biz-sticky-cta" href="#contact" tabIndex={show ? 0 : -1}>
-            לתיאום שיחת התאמה
+            {ctaText}
           </a>
           <a
             className="biz-sticky-wa"
