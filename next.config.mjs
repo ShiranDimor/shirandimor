@@ -1,5 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Guy's speech-practice game is a standalone static page in public/guy (no site layout, chat or tracking).
+  async redirects() {
+    // Case-insensitive: Android keyboards often type "Guy".
+    return [{ source: '/:slug([gG][uU][yY])', destination: '/guy/index.html', permanent: false }];
+  },
   experimental: {
     serverComponentsExternalPackages: ['@sparticuz/chromium', 'puppeteer-core'],
     outputFileTracingIncludes: {
