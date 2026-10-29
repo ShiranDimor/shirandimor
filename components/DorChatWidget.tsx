@@ -61,7 +61,7 @@ export default function DorChatWidget() {
   // לב למי שמגיע/ה לאתר בפעם הראשונה ולא בהכרח שם/ה לב שיש בכלל צ'אט. נשארת עד שלוחצים עליה/על
   // הכפתור או על ה-X שלה - לא נעלמת לבד, כדי לא לפספס מי שלא הספיק/ה לשים לב מיד
   useEffect(() => {
-    if (pathname?.startsWith('/admin')) return;
+    if (pathname?.startsWith('/admin') || pathname?.startsWith('/dor-english')) return;
     let seen = true;
     try { seen = localStorage.getItem(CALLOUT_SEEN_KEY) === '1'; } catch {}
     if (seen) return;
@@ -75,7 +75,8 @@ export default function DorChatWidget() {
     try { localStorage.setItem(CALLOUT_SEEN_KEY, '1'); } catch {}
   }
 
-  if (pathname?.startsWith('/admin')) return null;
+  // גם במשחק האנגלית של דור (עמוד פרטי לילדה) לא מציגים את הצ'אט
+  if (pathname?.startsWith('/admin') || pathname?.startsWith('/dor-english')) return null;
 
   async function authHeader(): Promise<Record<string, string>> {
     const { data: { session } } = await supabase.auth.getSession();
