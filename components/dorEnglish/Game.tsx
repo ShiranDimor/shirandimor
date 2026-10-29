@@ -6,10 +6,12 @@ import {
   type Word, type World,
 } from './data';
 import {
-  EMPTY, distractors, isKnown, isUnlocked, loadProgress, pickWord, recordAnswer, saveProgress, shuffle,
+  EMPTY, distractors, hebrewOn, isKnown, isUnlocked, loadProgress, pickWord, recordAnswer, saveProgress, shuffle,
   type Progress,
 } from './progress';
-import { canListen, heardWord, listenOnce, speak, stopSpeaking } from './speech';
+import {
+  canListen, en, hasHebrewVoice, he, heardWord, listenOnce, speak, speakLines, stopSpeaking, type Line,
+} from './speech';
 import s from './game.module.css';
 
 type Screen = 'title' | 'starter' | 'map' | 'battle' | 'caught' | 'pokedex' | 'parents';
@@ -19,14 +21,15 @@ interface Challenge {
   kind: Kind;
   word: Word;
   options: Word[];
-  prompt: string;
-  modeled: boolean; // בתרגיל דיבור: האם הדמות אומרת לה קודם את המילה (מילים חדשות) או רק שואלת
+  lines: Line[]; // מה הפוקימון אומר כשהמשימה מתחילה (הוראה בעברית + השאלה באנגלית)
+  target: Line[]; // החלק באנגלית בלבד - חוזרים עליו אחרי טעות
 }
 
 const HITS_TO_CATCH = 5;
 
 const rand = <T,>(arr: T[]) => arr[Math.floor(Math.random() * arr.length)];
 const nameOf = (id: number) => POKEMON[id]?.name ?? 'Pokémon';
+const heNameOf = (id: number) => POKEMON[id]?.he ?? 'פוקימון';
 
 function Sprite({ id, size, hidden, className }: { id: number; size: number; hidden?: boolean; className?: string }) {
   const [broken, setBroken] = useState(false);
@@ -51,18 +54,32 @@ function askQuestion(world: World) {
   return 'What is this?';
 }
 
-function buildChallenge(p: Progress, world: World, kind: Kind, wildName: string, avoid: string[]): Challenge {
+function buildChallenge(p: Progress, world: World, kind: Kind, wildId: number, avoid: string[]): Challenge {
   const { word, world: source } = pickWord(p, world, avoid);
   const optionCount = WORLDS.indexOf(world) === 0 && Object.keys(p.words).length < 15 ? 3 : 4;
   const options = shuffle([word, ...distractors(source, word, optionCount - 1)]);
+  const heb = hebrewOn(p);
   if (kind === 'say') {
+    // מילה חדשה (עוד לא אמרה אותה בהצלחה פעמיים) - קודם אומרים לה אותה; מילה מוכרת - רק שואלים
     const modeled = (p.words[word.en]?.said ?? 0) < 2;
     const q = askQuestion(source);
-    const prompt = modeled ? `${q} It is ${withArticle(word)}. Now you say: ${word.en}!` : q;
-    return { kind, word, options, prompt, modeled };
+    const target = [en(word.en)];
+    if (!heb) {
+      const prompt = modeled ? `${q} It is ${withArticle(word)}. Now you say: ${word.en}!` : q;
+      return { kind, word, options, lines: [en(prompt)], target };
+    }
+    const lines = modeled
+      ? [en(q), he(`זה ${word.he}. באנגלית אומרים:`), en(withArticle(word)), he('עכשיו תלחצי על המיקרופון ותגידי:'), en(word.en)]
+      : [en(q), he('איך אומרים את זה באנגלית? תלחצי על המיקרופון ותגידי.')];
+    return { kind, word, options, lines, target: modeled ? target : [en(q)] };
   }
   const template = kind === 'story' ? rand(source.stories) : rand(source.listen);
-  return { kind, word, options, prompt: fill(template, word, wildName), modeled: true };
+  const target = [en(fill(template, word, nameOf(wildId)))];
+  if (!heb) return { kind, word, options, lines: target, target };
+  const intro = kind === 'story'
+    ? he(`${heNameOf(wildId)} מספר לך משהו באנגלית. תקשיבי, ותלחצי על התמונה הנכונה:`)
+    : he('תקשיבי, ותלחצי על התמונה הנכונה:');
+  return { kind, word, options, lines: [intro, ...target], target };
 }
 
 export default function Game() {
@@ -93,27 +110,30 @@ export default function Game() {
   const [busy, setBusy] = useState(false);
   const [listening, setListening] = useState(false);
   const [sayFails, setSayFails] = useState(0);
-  const [bubble, setBubble] = useState('');
+  const [bubble, setBubble] = useState<Line[]>([]);
   const [throwing, setThrowing] = useState(false);
   const recent = useRef<string[]>([]);
   const pRef = useRef(p);
   pRef.current = p;
 
-  const say = useCallback(async (text: string, lang: 'en' | 'he' = 'en') => {
-    if (lang === 'en') setBubble(text);
-    await speak(text, { lang });
+  const heb = hebrewOn(p);
+
+  // הפוקימון "מדבר": מציג את השורות בבועה ואומר אותן ברצף
+  const talk = useCallback(async (lines: Line[]) => {
+    setBubble(lines);
+    await speakLines(lines);
   }, []);
 
   const nextChallenge = useCallback((w: World, wild: number, kinds: Kind[], hitIndex: number) => {
     const kind = kinds[hitIndex] ?? 'listen';
-    const c = buildChallenge(pRef.current, w, kind, nameOf(wild), recent.current);
+    const c = buildChallenge(pRef.current, w, kind, wild, recent.current);
     recent.current = [...recent.current.slice(-3), c.word.en];
     setCh(c);
     setWrongPicks([]);
     setSayFails(0);
     setBusy(false);
-    setTimeout(() => say(c.prompt), 350);
-  }, [say]);
+    setTimeout(() => talk(c.lines), 350);
+  }, [talk]);
 
   const startBattle = useCallback(async (w: World) => {
     const notCaught = w.pokemon.filter((id) => !pRef.current.caught.includes(id));
@@ -128,9 +148,11 @@ export default function Game() {
     setScreen('battle');
     recent.current = [];
     setBusy(true);
-    await say(`A wild ${nameOf(wild)} appeared! Let's catch it!`);
+    await talk(hebrewOn(pRef.current)
+      ? [en(`A wild ${nameOf(wild)} appeared!`), he(`${heNameOf(wild)} פראי הופיע! כדי לתפוס אותו צריך לענות נכון חמש פעמים. בהצלחה!`)]
+      : [en(`A wild ${nameOf(wild)} appeared! Let's catch it!`)]);
     nextChallenge(w, wild, kinds, 0);
-  }, [nextChallenge, say]);
+  }, [nextChallenge, talk]);
 
   const onHit = useCallback(async (spoken: boolean) => {
     if (!ch) return;
@@ -138,11 +160,13 @@ export default function Game() {
     update((prev) => ({ ...recordAnswer(prev, ch.word.en, true, spoken), stars: prev.stars + 1 }));
     const newHits = hits + 1;
     setHits(newHits);
-    await say(`${rand(PRAISE)} ${spoken ? '' : ch.word.en + '!'}`);
+    await talk([
+      en(`${rand(PRAISE)} ${spoken ? '' : ch.word.en + '!'}`),
+      ...(heb ? [he(rand(['כל הכבוד!', 'מעולה!', 'יפה מאוד!', 'נכון!']))] : []),
+    ]);
     if (newHits >= HITS_TO_CATCH) {
       setThrowing(true);
-      setBubble('Go, Poké Ball!');
-      await speak('Go, Poké Ball!');
+      await talk([en('Go, Poké Ball!')]);
       await new Promise((r) => setTimeout(r, 1600));
       update((prev) => ({
         ...prev,
@@ -150,11 +174,13 @@ export default function Game() {
         stars: prev.stars + 5,
       }));
       setScreen('caught');
-      say(`Gotcha! You caught ${nameOf(wildId)}! Great job, Dor!`);
+      talk(heb
+        ? [en('Gotcha!'), he(`תפסת את ${heNameOf(wildId)}! כל הכבוד דור!`)]
+        : [en(`Gotcha! You caught ${nameOf(wildId)}! Great job, Dor!`)]);
       return;
     }
     nextChallenge(world, wildId, plan, newHits);
-  }, [ch, hits, nextChallenge, plan, say, update, wildId, world]);
+  }, [ch, heb, hits, nextChallenge, plan, talk, update, wildId, world]);
 
   const onPick = useCallback(async (opt: Word) => {
     if (!ch || busy) return;
@@ -163,15 +189,16 @@ export default function Game() {
     setWrongPicks((w) => [...w, opt.en]);
     update((prev) => recordAnswer(prev, ch.word.en, false));
     // גם טעות מלמדת: אומרים לה מה היא בחרה, ואז חוזרים על השאלה
-    await say(`${rand(TRY_AGAIN)} That is ${withArticle(opt)}.`);
-    await say(ch.prompt);
+    await talk(heb
+      ? [he('אופס! זה'), en(`${withArticle(opt)}.`), he('נסי שוב. תקשיבי:'), ...ch.target]
+      : [en(`${rand(TRY_AGAIN)} That is ${withArticle(opt)}.`), ...ch.target]);
     setBusy(false);
-  }, [busy, ch, onHit, say, update]);
+  }, [busy, ch, heb, onHit, talk, update]);
 
   const onMic = useCallback(async () => {
     if (!ch || busy || listening) return;
     setListening(true);
-    setBubble('I am listening... 👂');
+    setBubble([heb ? he('אני מקשיב... 👂') : en('I am listening... 👂')]);
     const heard = await listenOnce();
     setListening(false);
     if (heardWord(heard, ch.word.en, ch.word.accept)) return onHit(true);
@@ -181,18 +208,22 @@ export default function Game() {
       // לא נותנים לה להיתקע ולהתבאס - אחרי 3 ניסיונות ממשיכים הלאה (ונרשם כטעות לתרגול חוזר)
       update((prev) => recordAnswer(prev, ch.word.en, false));
       setBusy(true);
-      await say(`Good try! It is ${ch.word.en}. ${ch.word.en}!`);
+      await talk(heb
+        ? [he('ניסיון יפה! באנגלית אומרים:'), en(`${ch.word.en}.`), he('נמשיך הלאה.')]
+        : [en(`Good try! It is ${ch.word.en}. ${ch.word.en}!`)]);
       nextChallenge(world, wildId, plan, hits);
       return;
     }
-    await say(heard.length ? `Hmm, say it again: ${ch.word.en}!` : `I didn't hear you. Say: ${ch.word.en}!`);
-  }, [busy, ch, hits, listening, nextChallenge, onHit, plan, say, sayFails, update, wildId, world]);
+    const again = heard.length ? 'כמעט! תלחצי על המיקרופון ותגידי שוב:' : 'לא שמעתי. תלחצי על המיקרופון ותגידי:';
+    await talk(heb
+      ? [he(again), en(ch.word.en)]
+      : [en(heard.length ? `Hmm, say it again: ${ch.word.en}!` : `I didn't hear you. Say: ${ch.word.en}!`)]);
+  }, [busy, ch, heb, hits, listening, nextChallenge, onHit, plan, sayFails, talk, update, wildId, world]);
 
   const hint = useCallback(async () => {
     if (!ch) return;
-    await speak(ch.word.he, { lang: 'he' });
-    await say(`${ch.word.en}.`);
-  }, [ch, say]);
+    await talk([he(`${ch.word.he}. באנגלית:`), en(`${ch.word.en}.`)]);
+  }, [ch, talk]);
 
   useEffect(() => () => stopSpeaking(), []);
 
@@ -215,7 +246,8 @@ export default function Game() {
             className={s.bigBtn}
             onClick={() => {
               // הלחיצה הראשונה "פותחת" את הסאונד בספארי - בלי זה הקראה לא תעבוד באייפד
-              speak(starter ? `Welcome back, Dor! Let's play!` : `Hello Dor! Let's go on a Pokémon adventure!`);
+              const hi = starter ? en("Welcome back, Dor! Let's play!") : en("Hello Dor! Let's go on a Pokémon adventure!");
+              speakLines(heb ? [hi, he(starter ? 'ברוכה השבה דור! בואי נשחק!' : 'שלום דור! בואי נצא להרפתקת פוקימונים באנגלית!')] : [hi]);
               setScreen(starter ? 'map' : 'starter');
             }}
           >
@@ -226,11 +258,24 @@ export default function Game() {
     );
   }
 
-  if (screen === 'starter') return <StarterPick onDone={(id) => { update((prev) => ({ ...prev, starter: id })); setScreen('map'); speak(`${nameOf(id)} is your partner! Now, let's catch Pokémon!`); }} />;
+  if (screen === 'starter') {
+    return (
+      <StarterPick
+        heb={heb}
+        onDone={(id) => {
+          update((prev) => ({ ...prev, starter: id }));
+          setScreen('map');
+          speakLines(heb
+            ? [en(`${nameOf(id)}, I choose you!`), he(`${heNameOf(id)} הוא השותף שלך! עכשיו בחרי עולם, ובואי נתפוס פוקימונים!`)]
+            : [en(`${nameOf(id)} is your partner! Now, let's catch Pokémon!`)]);
+        }}
+      />
+    );
+  }
 
-  if (screen === 'pokedex') return <Pokedex p={p} onBack={() => { stopSpeaking(); setScreen('map'); }} />;
+  if (screen === 'pokedex') return <Pokedex p={p} heb={heb} onBack={() => { stopSpeaking(); setScreen('map'); }} />;
 
-  if (screen === 'parents') return <Parents p={p} onBack={() => setScreen('map')} onReset={() => { update(() => EMPTY); setScreen('title'); }} />;
+  if (screen === 'parents') return <Parents p={p} onBack={() => setScreen('map')} onToggleHebrew={() => update((prev) => ({ ...prev, hebrew: !hebrewOn(prev) }))} onReset={() => { update(() => EMPTY); setScreen('title'); }} />;
 
   if (screen === 'caught') {
     return (
@@ -269,8 +314,13 @@ export default function Game() {
             <Sprite id={wildId} size={150} className={throwing ? '' : s.float} />
             {throwing && <span className={s.thrownBall} />}
           </div>
-          <div className={s.bubble} onClick={() => ch && say(ch.prompt)}>
-            {bubble} <span className={s.replay}>🔊</span>
+          <div className={s.bubble} onClick={() => ch && talk(ch.lines)}>
+            {bubble.map((l, i) => (
+              <div key={i} dir={l.lang === 'he' ? 'rtl' : 'ltr'} className={l.lang === 'he' ? s.bubbleHe : undefined}>
+                {l.text}
+              </div>
+            ))}
+            <span className={s.replay}>🔊</span>
           </div>
           {starter && (
             <div className={s.partner}>
@@ -310,7 +360,7 @@ export default function Game() {
               </div>
             )}
             <div className={s.helpRow}>
-              <button className={s.smallBtn} onClick={() => say(ch.prompt)}>🔊 Again</button>
+              <button className={s.smallBtn} onClick={() => talk(ch.lines)}>🔊 Again</button>
               <button className={s.smallBtn} onClick={hint}>🇮🇱 עזרה</button>
             </div>
           </div>
@@ -330,10 +380,15 @@ export default function Game() {
             <div className={s.trainerSub}>⭐ {p.stars} · 📕 {p.caught.length}</div>
           </div>
         </div>
-        <button className={s.midBtn} onClick={() => { setScreen('pokedex'); speak('Pokédex!'); }}>📕 Pokédex</button>
+        <button className={s.midBtn} onClick={() => { setScreen('pokedex'); speakLines(heb ? [en('Pokédex!'), he('כאן כל הפוקימונים שתפסת')] : [en('Pokédex!')]); }}>📕 Pokédex</button>
       </div>
 
-      <h2 className={s.mapTitle} onClick={() => speak('Where do you want to go?')}>Where do you want to go? 🔊</h2>
+      <h2
+        className={s.mapTitle}
+        onClick={() => speakLines(heb ? [en('Where do you want to go?'), he('לאן את רוצה ללכת? תלחצי על עולם.')] : [en('Where do you want to go?')])}
+      >
+        Where do you want to go? 🔊
+      </h2>
 
       <div className={s.worlds}>
         {WORLDS.map((w, i) => {
@@ -345,7 +400,8 @@ export default function Game() {
               className={`${s.world} ${open ? '' : s.locked}`}
               style={{ ['--world' as string]: w.color }}
               onClick={() => {
-                if (open) { speak(w.name); startBattle(w); }
+                if (open) startBattle(w);
+                else if (heb) speakLines([he(`העולם הזה עוד נעול. קודם צריך לתפוס ${CATCHES_TO_UNLOCK} פוקימונים ב${WORLDS[i - 1].he}.`)]);
                 else speak(`Locked! Catch ${CATCHES_TO_UNLOCK} Pokémon in ${WORLDS[i - 1].name} first.`);
               }}
             >
@@ -368,15 +424,19 @@ export default function Game() {
   );
 }
 
-function StarterPick({ onDone }: { onDone: (id: number) => void }) {
+function StarterPick({ heb, onDone }: { heb: boolean; onDone: (id: number) => void }) {
   const [sel, setSel] = useState<number | null>(null);
+  const intro = heb
+    ? [en('Choose your partner!'), he('בחרי את הפוקימון שילווה אותך בהרפתקה. תלחצי עליו, ואז על הכפתור האדום.')]
+    : [en('Choose your partner Pokémon!')];
   useEffect(() => {
-    const t = setTimeout(() => speak('Choose your partner Pokémon!'), 2200);
+    const t = setTimeout(() => speakLines(intro), 2200);
     return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   return (
     <div className={s.root}>
-      <h2 className={s.mapTitle} onClick={() => speak('Choose your partner Pokémon!')}>Choose your partner! 🔊</h2>
+      <h2 className={s.mapTitle} onClick={() => speakLines(intro)}>Choose your partner! 🔊</h2>
       <p className={s.he}>בחרי את הפוקימון שילווה אותך</p>
       <div className={s.starters}>
         {STARTERS.map((id) => (
@@ -395,7 +455,7 @@ function StarterPick({ onDone }: { onDone: (id: number) => void }) {
   );
 }
 
-function Pokedex({ p, onBack }: { p: Progress; onBack: () => void }) {
+function Pokedex({ p, heb, onBack }: { p: Progress; heb: boolean; onBack: () => void }) {
   const all = [...(p.starter ? [p.starter] : []), ...WORLDS.flatMap((w) => w.pokemon)];
   return (
     <div className={s.root}>
@@ -410,7 +470,11 @@ function Pokedex({ p, onBack }: { p: Progress; onBack: () => void }) {
             <button
               key={id}
               className={s.dexCard}
-              onClick={() => speak(have ? `${nameOf(id)}! Hello, Dor!` : 'Who is this? Catch it to find out!')}
+              onClick={() => {
+                if (have) speak(`${nameOf(id)}! Hello, Dor!`);
+                else if (heb) speakLines([he('מי זה? צריך לתפוס אותו כדי לגלות!')]);
+                else speak('Who is this? Catch it to find out!');
+              }}
             >
               <Sprite id={id} size={80} hidden={!have} />
               <span>{have ? nameOf(id) : '???'}</span>
@@ -422,7 +486,9 @@ function Pokedex({ p, onBack }: { p: Progress; onBack: () => void }) {
   );
 }
 
-function Parents({ p, onBack, onReset }: { p: Progress; onBack: () => void; onReset: () => void }) {
+function Parents({ p, onBack, onToggleHebrew, onReset }: {
+  p: Progress; onBack: () => void; onToggleHebrew: () => void; onReset: () => void;
+}) {
   const allWords = WORLDS.flatMap((w) => w.words);
   const known = allWords.filter((w) => isKnown(p.words[w.en])).length;
   const hardest = allWords
@@ -439,6 +505,19 @@ function Parents({ p, onBack, onReset }: { p: Progress; onBack: () => void; onRe
           <div><b>{known}/{allWords.length}</b><span>מילים שהיא יודעת</span></div>
           <div><b>{p.caught.length}</b><span>פוקימונים נתפסו</span></div>
         </div>
+        <label className={s.toggle}>
+          <input type="checkbox" checked={hebrewOn(p)} onChange={onToggleHebrew} />
+          <span>
+            הוראות בעברית
+            <small>הפוקימון מסביר בעברית מה לעשות, והמילים עצמן באנגלית. כשהיא תבין יותר - אפשר לכבות ולעבור לאנגלית בלבד.</small>
+          </span>
+        </label>
+        {hebrewOn(p) && !hasHebrewVoice() && (
+          <p className={s.parentsNote}>
+            ⚠️ לא נמצא במכשיר הזה קול בעברית, אז ההוראות עלולות להישמע לא ברור. באייפד/אייפון יש קול עברי מובנה;
+            באנדרואיד אפשר להוסיף עברית בהגדרות ← &quot;המרת טקסט לדיבור&quot;.
+          </p>
+        )}
         {hardest.length > 0 && (
           <>
             <h3>מילים שכדאי לתרגל איתה</h3>

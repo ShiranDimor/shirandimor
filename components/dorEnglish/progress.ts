@@ -16,6 +16,11 @@ export interface Progress {
   stars: number;
   words: Record<string, WordStat>;
   days: string[]; // ימים ששיחקה (YYYY-MM-DD) - לרצף ולמסך ההורים
+  hebrew?: boolean; // הוראות בעברית (ברירת מחדל: כן). כשהיא תתקדם אפשר לכבות במסך ההורים
+}
+
+export function hebrewOn(p: Progress) {
+  return p.hebrew !== false;
 }
 
 const KEY = 'dor-english-v1';
