@@ -55,64 +55,79 @@
   .empty-note { grid-column: 1 / -1; background: #fff; border-radius: 20px; padding: 18px; text-align: center; font-size: 20px; }
 
   /* ---------- mission ---------- */
-  #mission { background: #fff; }
-  .scene {
-    position: relative; height: 40%; min-height: 190px; overflow: hidden;
-    background: linear-gradient(var(--sky1), var(--sky2));
+  #mission { background: linear-gradient(var(--sky1), var(--sky2)); overflow: hidden; }
+  .world { position: absolute; inset: 0; overflow: hidden; touch-action: none; }
+  .ground { position: absolute; left: 0; right: 0; bottom: 0; height: 26%; background: var(--ground); border-top: 6px solid rgba(0,0,0,.08); }
+  .obj { position: absolute; left: 0; bottom: 26%; line-height: 1; pointer-events: none; will-change: transform; }
+  .obj .inner { display: block; transform-origin: 50% 100%; transform: scale(var(--s, 1)); transition: transform .3s; }
+  .obj.far { bottom: 50%; opacity: .85; }
+  .obj.got .inner { animation: got .45s forwards; }
+  .obj.shake .inner { animation: shake .4s; }
+  .obj.gone .inner { animation: gone .7s forwards; }
+  .obj.saved .inner { animation: jump .45s ease-in-out infinite alternate; }
+  @keyframes got { to { transform: translateY(-90px) scale(1.6); opacity: 0; } }
+  @keyframes shake { 25% { transform: scale(var(--s)) rotate(-10deg); } 75% { transform: scale(var(--s)) rotate(10deg); } }
+  @keyframes gone { to { transform: translateY(-140px) scale(0) rotate(40deg); opacity: 0; } }
+  @keyframes jump { to { transform: translateY(-18px) rotate(-8deg); } }
+  .vehicle {
+    position: absolute; left: 0; bottom: 24%; font-size: min(15vh, 104px); line-height: 1; z-index: 2;
+    display: flex; flex-direction: column; align-items: center; will-change: transform;
   }
-  .scene .ground { position: absolute; left: 0; right: 0; bottom: 0; height: 30%; background: var(--ground); }
+  .vehicle.fly { bottom: 44%; }
+  .vehicle svg { width: .85em; height: .85em; margin-bottom: -.3em; position: relative; z-index: 1; }
+  .vehicle.driving span { animation: bump .2s infinite alternate; }
+  .vehicle.honk span { animation: honk .35s; }
+  @keyframes bump { to { transform: translateY(-4px) rotate(1.5deg); } }
+  @keyframes honk { 50% { transform: scale(1.15); } }
+
+  .hud { position: absolute; top: 10px; left: 0; right: 0; display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none; z-index: 3; }
   .mtitle {
-    position: absolute; top: 12px; left: 50%; transform: translateX(-50%); max-width: calc(100% - 150px); text-align: center;
-    font-size: clamp(22px, 3.6vw, 34px); color: #fff; background: var(--c); padding: 6px 22px; border-radius: 999px;
-    box-shadow: 0 4px 0 rgba(0,0,0,.18);
+    max-width: calc(100% - 220px); text-align: center; font-size: clamp(20px, 3.4vw, 32px); color: #fff;
+    background: var(--c); padding: 6px 22px; border-radius: 999px; box-shadow: 0 4px 0 rgba(0,0,0,.18);
   }
+  .track { display: flex; gap: 8px; background: rgba(255,255,255,.8); padding: 4px 14px; border-radius: 999px; font-size: 26px; direction: ltr; flex-direction: row-reverse; }
+  .track .todo { filter: grayscale(1); opacity: .45; }
+  .bones { position: absolute; top: 12px; left: 12px; background: rgba(255,255,255,.85); border-radius: 999px; padding: 6px 16px; font-size: 26px; z-index: 3; }
+  .bones.bump { animation: pop .3s; }
   .homebtn {
     position: absolute; top: 10px; right: 10px; width: 56px; height: 56px; border-radius: 50%;
-    background: rgba(255,255,255,.8); font-size: 28px; z-index: 3;
+    background: rgba(255,255,255,.85); font-size: 28px; z-index: 4;
   }
-  .road {
-    position: absolute; left: 18%; right: 6%; bottom: 13%; display: flex; justify-content: space-between;
-    align-items: center; flex-direction: row-reverse;
+  .controls { position: absolute; bottom: 14px; left: 16px; right: 16px; display: flex; justify-content: space-between; align-items: flex-end; pointer-events: none; z-index: 4; }
+  .controls button { pointer-events: auto; touch-action: none; }
+  .gas {
+    width: min(22vh, 150px); height: min(22vh, 150px); border-radius: 50%; background: #43a047; color: #fff;
+    box-shadow: 0 8px 0 #1b5e20; font-size: min(11vh, 76px); line-height: 1;
   }
-  .dot { width: 16px; height: 16px; border-radius: 50%; background: rgba(255,255,255,.7); border: 3px solid rgba(0,0,0,.15); transition: background .4s, transform .4s; }
-  .dot.done { background: #ffd600; transform: scale(1.3); }
-  .target { position: absolute; left: 2%; bottom: 10%; font-size: min(17vh, 120px); line-height: 1; }
-  .target .animal { position: absolute; font-size: .42em; top: 8%; left: 34%; }
-  .target.saved .animal { animation: jump .5s ease-in-out infinite alternate; }
-  .vehicle {
-    position: absolute; bottom: 9%; right: 3%; font-size: min(13vh, 92px); line-height: 1;
-    display: flex; flex-direction: column; align-items: center; transition: right 1.1s cubic-bezier(.3,1.3,.6,1);
-  }
-  .vehicle svg { width: .85em; height: .85em; margin-bottom: -.3em; position: relative; z-index: 1; }
-  .vehicle.hop { animation: hop .45s; }
-  @keyframes hop { 40% { transform: translateY(-22px); } }
-  @keyframes jump { to { transform: translateY(-18px) rotate(-8deg); } }
+  .gas.pressed { transform: translateY(6px); box-shadow: 0 2px 0 #1b5e20; }
+  .gas.hint { animation: pulse 1.1s ease-in-out infinite; }
+  .gas:disabled { filter: grayscale(1); opacity: .35; animation: none; }
+  @keyframes pulse { 50% { box-shadow: 0 8px 0 #1b5e20, 0 0 0 18px rgba(67,160,71,.35); } }
 
-  .stage { flex: 1; display: flex; align-items: center; justify-content: center; gap: 5vw; padding: 14px; min-height: 0; }
+  .wordbox { position: absolute; top: 17%; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 18px; z-index: 5; }
   .card {
-    background: #fff; border-radius: 34px; border: 7px solid var(--c); box-shadow: 0 10px 26px rgba(0,0,0,.15);
-    padding: 14px 18px; display: flex; flex-direction: column; align-items: center; min-width: min(50vw, 300px);
-    max-width: 60vw;
+    background: #fff; border-radius: 30px; border: 7px solid var(--c); box-shadow: 0 10px 26px rgba(0,0,0,.2);
+    padding: 12px 18px; display: flex; flex-direction: column; align-items: center; min-width: min(40vw, 260px);
   }
   .card.pop { animation: pop .45s cubic-bezier(.3,1.6,.6,1); }
   @keyframes pop { from { transform: scale(.4); opacity: 0; } }
-  .pic { width: min(27vh, 230px); height: min(27vh, 230px); display: flex; align-items: center; justify-content: center; font-size: min(21vh, 170px); line-height: 1; }
-  .pic img { width: 100%; height: 100%; object-fit: contain; border-radius: 20px; }
-  .ptxt { font-size: clamp(24px, 4vw, 40px); margin-top: 6px; text-align: center; }
-  .reps { display: flex; gap: 8px; margin-top: 8px; }
+  .pic { width: min(24vh, 190px); height: min(24vh, 190px); display: flex; align-items: center; justify-content: center; font-size: min(19vh, 150px); line-height: 1; }
+  .pic img { width: 100%; height: 100%; object-fit: contain; border-radius: 18px; }
+  .ptxt { font-size: clamp(22px, 3.6vw, 36px); margin-top: 4px; text-align: center; }
+  .reps { display: flex; gap: 8px; margin-top: 6px; }
   .reps i { width: 16px; height: 16px; border-radius: 50%; background: #e0e0e0; }
   .reps i.on { background: #ffc107; }
-  .side { display: flex; flex-direction: column; align-items: center; gap: 18px; }
+  .side { display: flex; flex-direction: column; align-items: center; gap: 14px; }
   .roundbtn {
-    width: min(17vh, 116px); height: min(17vh, 116px); border-radius: 50%; font-size: min(8.5vh, 56px);
+    width: min(15vh, 104px); height: min(15vh, 104px); border-radius: 50%; font-size: min(7.5vh, 50px);
     background: #ffca28; box-shadow: 0 7px 0 #c79100;
   }
   .roundbtn:active { transform: translateY(5px); box-shadow: 0 2px 0 #c79100; }
   .roundbtn.green { background: #66bb6a; box-shadow: 0 7px 0 #2e7d32; }
   .roundbtn.small { width: min(11vh, 76px); height: min(11vh, 76px); font-size: min(6vh, 36px); background: #e0e0e0; box-shadow: 0 5px 0 #9e9e9e; }
   .mic {
-    --lvl: 0; position: relative; width: min(19vh, 128px); height: min(19vh, 128px); border-radius: 50%;
-    display: flex; align-items: center; justify-content: center; font-size: min(9vh, 60px); background: #eceff1;
+    --lvl: 0; position: relative; width: min(16vh, 112px); height: min(16vh, 112px); border-radius: 50%;
+    display: flex; align-items: center; justify-content: center; font-size: min(8vh, 54px); background: #eceff1;
   }
   .mic::before {
     content: ''; position: absolute; inset: 0; border-radius: 50%; background: rgba(102,187,106,.35);
@@ -123,13 +138,9 @@
   .mic.good { background: #fff59d; }
   .mic.speak { background: #e3f2fd; }
   @keyframes breathe { 50% { box-shadow: 0 0 0 14px rgba(102,187,106,.25); } }
-  @media (orientation: portrait) {
-    .stage { flex-direction: column; gap: 18px; }
-    .side { flex-direction: row; }
-    .card { max-width: 90vw; }
-  }
-  .float-star { position: fixed; font-size: 60px; pointer-events: none; z-index: 20; animation: floatup 1s ease-out forwards; }
-  @keyframes floatup { to { transform: translateY(-160px) scale(1.6); opacity: 0; } }
+  @media (orientation: portrait) { .wordbox { top: 15%; } }
+  .fx { position: fixed; font-size: 46px; pointer-events: none; z-index: 6; animation: burst .9s ease-out forwards; }
+  @keyframes burst { from { transform: translate(-50%, -50%) scale(.5); opacity: 1; } to { transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(1.3); opacity: 0; } }
 
   #done {
     position: fixed; inset: 0; background: rgba(13,71,161,.55); display: flex; align-items: center; justify-content: center; z-index: 10;
@@ -142,7 +153,7 @@
   #done .hero svg { width: min(26vh, 170px); height: min(26vh, 170px); }
   #done .hero span { font-size: min(18vh, 120px); animation: jump .5s ease-in-out infinite alternate; }
   #done h2 { font-size: clamp(28px, 5vw, 48px); margin: 8px 0; color: var(--c); }
-  #done .badge { font-size: 54px; }
+  #done .badge { font-size: 40px; }
   #done .btns { display: flex; justify-content: center; gap: 26px; margin-top: 12px; }
   #confetti { position: fixed; inset: 0; pointer-events: none; z-index: 15; }
 
@@ -205,15 +216,21 @@
 
 <!-- ===== mission ===== -->
 <section id="mission" class="screen">
-  <div class="scene" id="scene">
+  <div class="world" id="world">
     <div class="ground"></div>
-    <button class="homebtn" id="homeBtn" aria-label="בית">🏠</button>
-    <div class="mtitle" id="mtitle"></div>
-    <div class="target" id="target"><span class="place"></span><span class="animal"></span></div>
-    <div class="road" id="road"></div>
     <div class="vehicle" id="veh"></div>
   </div>
-  <div class="stage">
+  <div class="hud">
+    <div class="mtitle" id="mtitle"></div>
+    <div class="track" id="track"></div>
+  </div>
+  <div class="bones" id="bones">🦴 0</div>
+  <button class="homebtn" id="homeBtn" aria-label="בית">🏠</button>
+  <div class="controls">
+    <button class="roundbtn" id="honkBtn" aria-label="צופר">📯</button>
+    <button class="gas" id="gasBtn" aria-label="לנסוע">◀</button>
+  </div>
+  <div class="wordbox" id="wordbox" hidden>
     <div class="card" id="card">
       <div class="pic" id="pic"></div>
       <div class="ptxt" id="ptxt"></div>
@@ -246,7 +263,7 @@
 
     <div class="sec">
       <h2>מילים ומשפטים לתרגול</h2>
-      <p class="hint">בכל משימה המשחק בוחר כמה מילים/משפטים מהרשימה (קודם את אלה שתורגלו הכי מעט), משמיע כל אחד, ומחכה שגיא יחזור. רק מה שמסומן ב-✔ נכנס למשחק. אפשר להוסיף הרבה בבת אחת עם "הוספת רשימה".</p>
+      <p class="hint">בכל משימה גיא נוסע עם הגור, ובדרך יש מכשולים. כל מכשול "נעול" על מילה או משפט מהרשימה (קודם אלה שתורגלו הכי מעט): המשחק משמיע את המילה, וכל פעם שגיא חוזר עליה - המכשול מקבל מכה, עד שהוא נעלם והדרך נפתחת. רק מה שמסומן ב-✔ נכנס למשחק. אפשר להוסיף הרבה בבת אחת עם "הוספת רשימה".</p>
       <div class="btnrow">
         <button class="btn" id="addBtn">➕ הוספה</button>
         <button class="btn sec2" id="bulkBtn">📋 הוספת רשימה</button>
@@ -262,8 +279,8 @@
           <option value="button">כפתור "אמרתי" 🗣️</option>
         </select>
       </div>
-      <div class="set"><span>כמה פעמים לחזור על כל מילה</span><input type="number" id="sReps" min="1" max="6"></div>
-      <div class="set"><span>כמה מילים בכל משימה</span><input type="number" id="sPer" min="2" max="15"></div>
+      <div class="set"><span>כמה פעמים להגיד כל מילה (כמה "מכות" למכשול)</span><input type="number" id="sReps" min="1" max="6"></div>
+      <div class="set"><span>כמה מכשולים (מילים) בכל משימה</span><input type="number" id="sPer" min="2" max="15"></div>
       <div class="set"><span>מהירות הקול <small id="sRateV"></small></span><input type="range" id="sRate" min="0.5" max="1.2" step="0.05"></div>
       <div class="set"><span>שבחים בקול ("כל הכבוד!")</span><input type="checkbox" id="sPraise" style="width:26px;height:26px"></div>
       <div class="set" style="display:block">
@@ -387,18 +404,25 @@ function show(id) {
 // Original rescue-puppy characters (colors/roles only) - each has one mission.
 const PUPS = [
   { id: 'fire', name: 'כבאי', c: '#e53935', fur: '#ffffff', ear: '#2b2b2b', spots: true, emblem: '🔥', vehicle: '🚒',
+    obstacle: '🔥', fx: '💦', scenery: ['🌳', '🌲', '🏠', '🌻', '🏡'],
     place: '🌳', animal: '🐱', title: 'החתול תקוע על העץ!', done: 'הצלנו את החתול!', sky: ['#ffccbc', '#fff8e1'], ground: '#7cb342' },
   { id: 'police', name: 'שוטר', c: '#1e63d6', fur: '#b07a45', ear: '#5b3a1e', emblem: '⭐', vehicle: '🚓',
+    obstacle: '🚧', fx: '⭐', scenery: ['🌳', '🏢', '🚦', '🏠', '🌲'],
     place: '🌲', animal: '🐥', title: 'האפרוח הלך לאיבוד!', done: 'מצאנו את האפרוח!', sky: ['#bbdefb', '#e3f2fd'], ground: '#8bc34a' },
   { id: 'air', name: 'טייסת', c: '#ec407a', fur: '#ead0ae', ear: '#b98a5e', emblem: '✈️', vehicle: '🚁',
+    obstacle: '⛈️', fx: '💨', fly: true, scenery: ['⛰️', '🌲', '🌳', '🏔️'],
     place: '⛰️', animal: '🐑', title: 'הכבשה תקועה על ההר!', done: 'הצלנו את הכבשה!', sky: ['#f8bbd0', '#fce4ec'], ground: '#9ccc65' },
   { id: 'build', name: 'בנאי', c: '#f9a825', fur: '#d9a066', ear: '#9c6b3c', emblem: '🔨', vehicle: '🚜',
-    place: '🌉', animal: '🐰', title: 'הגשר נשבר!', done: 'תיקנו את הגשר!', sky: ['#fff59d', '#fffde7'], ground: '#a1887f' },
+    obstacle: '🪨', fx: '💥', scenery: ['🏗️', '🌳', '🏠', '🌲'],
+    place: '🌉', animal: '🐰', title: 'הארנב תקוע מעבר לגשר!', done: 'הצלנו את הארנב!', sky: ['#fff59d', '#fffde7'], ground: '#a1887f' },
   { id: 'recycle', name: 'ממחזר', c: '#43a047', fur: '#a5a5a5', ear: '#616161', emblem: '♻️', vehicle: '🚛',
-    place: '🌳', animal: '🐿️', title: 'צריך לנקות את הפארק!', done: 'הפארק נקי!', sky: ['#c8e6c9', '#f1f8e9'], ground: '#66bb6a' },
+    obstacle: '🗑️', fx: '♻️', scenery: ['🌳', '🌷', '🌲', '🏡', '🌼'],
+    place: '🌳', animal: '🐿️', title: 'הסנאי צריך עזרה בפארק!', done: 'עזרנו לסנאי!', sky: ['#c8e6c9', '#f1f8e9'], ground: '#66bb6a' },
   { id: 'sea', name: 'ימאי', c: '#fb8c00', fur: '#6d4c41', ear: '#4e342e', emblem: '⚓', vehicle: '🚤',
+    obstacle: '🪵', fx: '🌊', scenery: ['🐟', '⛵', '🐠', '🐚', '🐬'],
     place: '🏝️', animal: '🐢', title: 'הצב צריך עזרה בים!', done: 'הצלנו את הצב!', sky: ['#b3e5fc', '#e1f5fe'], ground: '#29b6f6' },
   { id: 'snow', name: 'שלגית', c: '#8e24aa', fur: '#cfd8dc', ear: '#78909c', emblem: '❄️', vehicle: '🛷',
+    obstacle: '🧊', fx: '❄️', scenery: ['🌲', '⛄', '🏔️', '🌲'],
     place: '🏔️', animal: '🐧', title: 'הפינגווין תקוע בשלג!', done: 'הצלנו את הפינגווין!', sky: ['#e1bee7', '#f3e5f5'], ground: '#eceff1' },
 ];
 
@@ -569,6 +593,10 @@ const SND = {
   tap: () => sfx([520], 'sine', 0.07, 0, 0.1),
   turn: () => sfx([660, 990], 'sine', 0.12, 0.08, 0.12),
   good: () => sfx([523, 659, 784, 1047]),
+  bone: () => sfx([988, 1319], 'sine', 0.08, 0.06, 0.12),
+  honk: () => sfx([392, 392], 'square', 0.18, 0.22, 0.1),
+  vroom: () => sfx([98, 131, 165], 'sawtooth', 0.15, 0.07, 0.07),
+  hit: () => sfx([220, 150], 'square', 0.1, 0.06, 0.1),
   fanfare: () => sfx([523, 659, 784, 1047, 784, 1047, 1319], 'triangle', 0.22, 0.13, 0.2),
 };
 const PRAISE = ['כל הכבוד!', 'יופי!', 'מעולה!', 'איזה גיבור!', 'נהדר!', 'וואו!'];
@@ -655,41 +683,126 @@ $('#pups').addEventListener('click', e => {
   if (b) startMission(PUPS.find(p => p.id === b.dataset.pup));
 });
 
-// ---------------------------------------------------------------- mission
-const M = { pup: null, plan: [], step: 0, token: 0, silent: 0, useMic: false, state: 'idle', running: false };
-const curItem = () => S.items.find(i => i.id === M.plan[M.step]?.id);
+// ---------------------------------------------------------------- mission: drive, get blocked, say the word to clear the way
+// World distances are in "units" (1000 units = screen width). The truck stays put on screen; the world slides past it.
+const STOP_GAP = 170;      // a blocking obstacle stays this far ahead of the truck
+const OBST_GAP = 1300;     // road between obstacles
+const MAX_SPEED = 380;     // units per second
+const M = { pup: null, obs: [], cur: null, token: 0, silent: 0, useMic: false, state: 'idle', running: false };
+const G = { dist: 0, speed: 0, gas: false, objs: [], raf: 0, last: 0, finishD: 0, finished: false, bones: 0, unit: 1, vehX: 0, base: 90 };
+const curItem = () => M.cur && S.items.find(i => i.id === M.cur.id);
+const GO = ['יופי! הדרך פנויה!', 'קדימה, סע!', 'מעולה! ממשיכים!'];
 
-function buildPlan() {
+function pickItems() {
   const active = S.items.filter(i => i.active !== false && i.text.trim());
   const n = Math.min(S.settings.perMission, active.length);
   // least-practiced first, with some randomness so missions differ
-  const picked = active.map(i => ({ i, k: (i.said || 0) + Math.random() * 4 }))
+  return active.map(i => ({ i, k: (i.said || 0) + Math.random() * 4 }))
     .sort((a, b) => a.k - b.k).slice(0, n).map(x => x.i);
-  const plan = [];
-  for (const it of picked) for (let r = 0; r < S.settings.reps; r++) plan.push({ id: it.id, rep: r });
-  return plan;
+}
+
+function measure() {
+  G.unit = innerWidth / 1000;
+  G.vehX = innerWidth * 0.8;
+  G.base = Math.min(innerHeight * 0.15, 104);
+  G.lift = M.pup?.fly ? innerHeight * 0.18 : 0;
+}
+addEventListener('resize', () => { if (M.running) measure(); });
+
+function addObj(o) {
+  const el = document.createElement('div');
+  el.className = 'obj' + (o.far ? ' far' : '');
+  el.innerHTML = `<span class="inner" style="font-size:${Math.round(o.size)}px">${o.emoji}</span>`;
+  $('#world').insertBefore(el, $('#veh'));
+  Object.assign(o, { el, inner: el.firstChild, off: false });
+  G.objs.push(o);
+  return o;
+}
+
+function buildWorld(p) {
+  document.querySelectorAll('#world .obj').forEach(e => e.remove());
+  G.objs = [];
+  const b = G.base, r = (lo, hi) => lo + Math.random() * (hi - lo);
+  G.finishD = 900 + M.obs.length * OBST_GAP;
+  for (let d = -300; d < G.finishD * 0.4 + 1500; d += r(350, 650)) addObj({ d, far: true, emoji: '☁️', size: b * r(0.8, 1.4), y: r(0, b) });
+  for (let d = -400; d < G.finishD + 900; d += r(170, 380)) addObj({ d, emoji: rand(p.scenery), size: b * r(0.8, 1.4), y: -b * 0.06 });
+  M.obs.forEach((ob, i) => {
+    ob.d = 900 + i * OBST_GAP;
+    for (let k = 0; k < 4; k++) addObj({ d: ob.d - OBST_GAP + 380 + k * 170, emoji: '🦴', size: b * 0.5, y: G.lift + b * 0.15, bone: true });
+    addObj(Object.assign(ob, { emoji: p.obstacle, size: b * 1.25, y: G.lift }));
+  });
+  for (let k = 0; k < 4; k++) addObj({ d: G.finishD - OBST_GAP + 380 + k * 170, emoji: '🦴', size: b * 0.5, y: G.lift + b * 0.15, bone: true });
+  addObj({ d: G.finishD, emoji: p.place, size: b * 2.2, y: 0 });
+  G.animal = addObj({ d: G.finishD, emoji: p.animal, size: b * 0.9, y: b * 1.1 });
+}
+
+function placeObj(o) {
+  const x = G.vehX - (o.d - G.dist * (o.far ? 0.35 : 1)) * G.unit;
+  const off = x < -250 || x > innerWidth + 250;
+  if (off !== o.off) { o.el.style.display = off ? 'none' : ''; o.off = off; }
+  if (!off) o.el.style.transform = `translate(${x.toFixed(1)}px, ${-(o.y || 0)}px) translateX(-50%)`;
+}
+
+function loop(t) {
+  const dt = Math.min(0.05, (t - G.last) / 1000 || 0);
+  G.last = t;
+  if (G.gas && !M.cur && !G.finished) G.speed = Math.min(MAX_SPEED, G.speed + 750 * dt);
+  else G.speed = Math.max(0, G.speed - 1100 * dt);
+  let next = G.dist + G.speed * dt;
+  const ob = M.obs.find(o => o.hp > 0);
+  if (ob && next >= ob.d - STOP_GAP) {
+    next = ob.d - STOP_GAP; G.speed = 0;
+    if (!M.cur) blockAt(ob);
+  }
+  G.dist = next;
+  if (!ob && !G.finished && G.dist >= G.finishD - STOP_GAP - 30) { G.finished = true; G.speed = 0; finishMission(); }
+  for (const o of G.objs) {
+    if (o.bone && !o.got && Math.abs(o.d - G.dist) < 30) {
+      o.got = true; o.el.classList.add('got'); G.bones++; updateBones(); SND.bone();
+    }
+    placeObj(o);
+  }
+  $('#veh').classList.toggle('driving', G.speed > 5);
+  G.raf = requestAnimationFrame(loop);
+}
+
+function updateBones() {
+  const el = $('#bones');
+  el.textContent = `🦴 ${G.bones}`;
+  el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump');
+}
+function updateTrack() {
+  const p = M.pup;
+  $('#track').innerHTML = M.obs.map(o => o.hp > 0 ? `<span class="todo">${p.obstacle}</span>` : '<span>⭐</span>').join('') + `<span>${p.animal}</span>`;
 }
 
 async function startMission(p) {
   SND.tap();
-  const plan = buildPlan();
-  if (!plan.length) { toast('אין מילים לתרגול - צריך להוסיף באזור ההורים'); return; }
+  const items = pickItems();
+  if (!items.length) { toast('אין מילים לתרגול - צריך להוסיף באזור ההורים'); return; }
   const tok = ++M.token;
-  Object.assign(M, { pup: p, plan, step: 0, silent: 0, running: true });
-  const sc = $('#scene');
-  sc.style.setProperty('--sky1', p.sky[0]); sc.style.setProperty('--sky2', p.sky[1]); sc.style.setProperty('--ground', p.ground);
-  $('#mission').style.setProperty('--c', p.c);
+  stopPlayback();
+  Object.assign(M, { pup: p, cur: null, silent: 0, running: true, obs: items.map(it => ({ id: it.id, hp: S.settings.reps, max: S.settings.reps })) });
+  Object.assign(G, { dist: 0, speed: 0, gas: false, finished: false, bones: 0 });
+  const ms = $('#mission');
+  ms.style.setProperty('--sky1', p.sky[0]); ms.style.setProperty('--sky2', p.sky[1]);
+  ms.style.setProperty('--ground', p.ground); ms.style.setProperty('--c', p.c);
   $('#mtitle').textContent = p.title;
-  $('#target .place').textContent = p.place;
-  $('#target .animal').textContent = p.animal;
-  $('#target').classList.remove('saved');
   $('#veh').innerHTML = pupSVG(p) + `<span>${p.vehicle}</span>`;
-  $('#road').innerHTML = plan.map(() => '<i class="dot"></i>').join('');
+  $('#veh').classList.toggle('fly', !!p.fly);
+  measure();
+  $('#veh').style.transform = `translateX(${G.vehX}px) translateX(-50%)`;
+  buildWorld(p);
+  updateTrack();
+  $('#bones').textContent = '🦴 0';
+  $('#wordbox').hidden = true;
   $('#done').hidden = true;
-  $('#pic').innerHTML = ''; $('#ptxt').textContent = ''; $('#reps').innerHTML = '';
-  updateProgress();
-  setMicState('speak');
+  gasBtn.disabled = false;
+  gasBtn.classList.add('hint');
   show('mission');
+  cancelAnimationFrame(G.raf);
+  G.last = performance.now();
+  G.raf = requestAnimationFrame(loop);
 
   M.useMic = false;
   if (S.settings.mode === 'mic') {
@@ -697,15 +810,45 @@ async function startMission(p) {
     if (!M.useMic) toast('אין גישה למיקרופון - משחקים עם כפתור 🗣️');
   }
   if (tok !== M.token) return;
-  await speak(p.title);
-  if (tok !== M.token) return;
-  nextPrompt(true);
+  if (!M.cur) await speak(p.title + ' יוצאים לדרך!');
 }
 
-function updateProgress() {
-  const f = M.plan.length ? M.step / M.plan.length : 0;
-  $('#veh').style.right = `${3 + f * 66}%`;
-  document.querySelectorAll('#road .dot').forEach((d, i) => d.classList.toggle('done', i < M.step));
+// --- driving controls
+const gasBtn = $('#gasBtn');
+function gasDown(e) {
+  if (gasBtn.disabled || M.cur || G.finished) return;
+  e.preventDefault();
+  if (!G.gas) SND.vroom();
+  G.gas = true;
+  gasBtn.classList.add('pressed');
+  gasBtn.classList.remove('hint');
+}
+function gasUp() { G.gas = false; gasBtn.classList.remove('pressed'); }
+gasBtn.addEventListener('pointerdown', e => { gasDown(e); try { gasBtn.setPointerCapture(e.pointerId); } catch (_) {} });
+$('#world').addEventListener('pointerdown', gasDown); // holding anywhere on the road drives too
+['pointerup', 'pointercancel'].forEach(ev => { gasBtn.addEventListener(ev, gasUp); $('#world').addEventListener(ev, gasUp); });
+$('#world').addEventListener('pointerleave', gasUp);
+gasBtn.addEventListener('contextmenu', e => e.preventDefault());
+$('#honkBtn').onclick = () => {
+  SND.honk();
+  const v = $('#veh');
+  v.classList.remove('honk'); void v.offsetWidth; v.classList.add('honk');
+};
+
+// --- blocked by an obstacle: say the word to hit it
+function blockAt(ob) {
+  M.cur = ob;
+  gasUp();
+  gasBtn.disabled = true;
+  gasBtn.classList.remove('hint');
+  M.silent = 0;
+  $('#skipBtn').hidden = true;
+  const it = curItem();
+  if (!it) { ob.hp = 0; clearObstacle(); return; }
+  $('#wordbox').hidden = false;
+  renderCard(it);
+  renderReps();
+  promptTurn(it);
 }
 
 function setMicState(st) {
@@ -733,21 +876,10 @@ async function renderCard(it) {
   card.classList.remove('pop'); void card.offsetWidth; card.classList.add('pop');
 }
 function renderReps() {
-  const cur = M.plan[M.step];
-  $('#reps').innerHTML = S.settings.reps > 1
-    ? Array.from({ length: S.settings.reps }, (_, i) => `<i class="${i < cur.rep ? 'on' : ''}"></i>`).join('')
+  const ob = M.cur;
+  $('#reps').innerHTML = ob && ob.max > 1
+    ? Array.from({ length: ob.max }, (_, i) => `<i class="${i < ob.max - ob.hp ? 'on' : ''}"></i>`).join('')
     : '';
-}
-
-async function nextPrompt(forceCard = false) {
-  if (M.step >= M.plan.length) return finishMission();
-  const it = curItem();
-  if (!it) { M.step++; return nextPrompt(true); }
-  M.silent = 0;
-  $('#skipBtn').hidden = true;
-  if (forceCard || M.plan[M.step].rep === 0) await renderCard(it);
-  renderReps();
-  promptTurn(it);
 }
 
 async function promptTurn(it) {
@@ -778,48 +910,83 @@ async function promptTurn(it) {
 
 async function onSaid() {
   const tok = ++M.token;
-  const it = curItem();
+  const ob = M.cur, it = curItem();
+  if (!ob) return;
   setMicState('good');
   SND.good();
-  floatStar();
   if (it) { it.said = (it.said || 0) + 1; it.last = Date.now(); save('items'); }
-  M.step++;
-  updateProgress();
-  const veh = $('#veh');
-  veh.classList.remove('hop'); void veh.offsetWidth; veh.classList.add('hop');
-  await sleep(500);
+  ob.hp--;
+  hitObstacle(ob);
+  renderReps();
+  if (ob.hp > 0) {
+    await sleep(700);
+    if (tok !== M.token) return;
+    if (S.settings.praise && Math.random() < 0.5) await speak(rand(PRAISE)); else await sleep(300);
+    if (tok !== M.token) return;
+    M.silent = 0;
+    $('#skipBtn').hidden = true;
+    return promptTurn(it);
+  }
+  clearObstacle();
+}
+
+function hitObstacle(ob) {
+  SND.hit();
+  ob.inner.style.setProperty('--s', (0.45 + 0.55 * ob.hp / ob.max).toFixed(2));
+  ob.el.classList.remove('shake'); void ob.el.offsetWidth; ob.el.classList.add('shake');
+  const r = ob.inner.getBoundingClientRect();
+  for (let i = 0; i < 9; i++) {
+    const s = document.createElement('div');
+    s.className = 'fx';
+    s.textContent = M.pup.fx;
+    const a = Math.random() * Math.PI * 2, dist = 70 + Math.random() * 90;
+    s.style.left = r.left + r.width / 2 + 'px';
+    s.style.top = r.top + r.height / 2 + 'px';
+    s.style.setProperty('--dx', Math.cos(a) * dist + 'px');
+    s.style.setProperty('--dy', Math.sin(a) * dist - 40 + 'px');
+    document.body.appendChild(s);
+    setTimeout(() => s.remove(), 950);
+  }
+}
+
+async function clearObstacle() {
+  const tok = M.token;
+  const ob = M.cur;
+  ob.hp = 0;
+  ob.el.classList.add('gone');
+  updateTrack();
+  await sleep(700);
   if (tok !== M.token) return;
-  if (S.settings.praise && Math.random() < 0.6 && M.step < M.plan.length) await speak(rand(PRAISE));
-  else await sleep(500);
-  if (tok !== M.token) return;
-  nextPrompt();
+  $('#wordbox').hidden = true;
+  M.cur = null;
+  setMicState('idle');
+  gasBtn.disabled = false;
+  gasBtn.classList.add('hint');
+  if (S.settings.praise && M.obs.some(o => o.hp > 0)) speak(rand(GO));
 }
 
 function skip() {
   const it = curItem();
+  if (!M.cur) return;
   if (it) { it.skipped = (it.skipped || 0) + 1; save('items'); }
   M.token++;
   stopPlayback();
-  // skip the remaining repetitions of this word too
-  const id = M.plan[M.step]?.id;
-  while (M.step < M.plan.length && M.plan[M.step].id === id) M.step++;
-  updateProgress();
-  nextPrompt(true);
+  clearObstacle();
 }
 
 async function finishMission() {
   const tok = ++M.token;
   const p = M.pup;
-  setMicState('good');
-  $('#target').classList.add('saved');
+  G.animal.el.classList.add('saved');
   S.badges[p.id] = (S.badges[p.id] || 0) + 1;
   save('badges');
-  await sleep(700);
+  SND.good();
+  await sleep(1000);
   if (tok !== M.token) return;
   $('#doneHero').innerHTML = pupSVG(p) + `<span>${p.animal}</span>`;
   $('#doneText').textContent = p.done;
   const n = S.badges[p.id];
-  $('#doneBadge').textContent = n <= 5 ? '⭐'.repeat(n) : `⭐ × ${n}`;
+  $('#doneBadge').textContent = (n <= 5 ? '⭐'.repeat(n) : `⭐ × ${n}`) + `   🦴 ${G.bones}`;
   $('#done').style.setProperty('--c', p.c);
   $('#done').hidden = false;
   SND.fanfare();
@@ -832,6 +999,9 @@ async function finishMission() {
 function goHome() {
   M.token++;
   M.running = false;
+  M.cur = null;
+  cancelAnimationFrame(G.raf);
+  gasUp();
   stopPlayback();
   Mic.stop();
   renderHome();
@@ -841,19 +1011,9 @@ function goHome() {
 $('#homeBtn').onclick = goHome;
 $('#doneHomeBtn').onclick = goHome;
 $('#againBtn').onclick = () => startMission(M.pup);
-$('#replayBtn').onclick = () => { if (M.state !== 'good') { const it = curItem(); if (it) promptTurn(it); } };
+$('#replayBtn').onclick = () => { if (M.cur && M.state !== 'good') { const it = curItem(); if (it) promptTurn(it); } };
 $('#saidBtn').onclick = () => { if (M.state === 'listen') onSaid(); };
 $('#skipBtn').onclick = skip;
-
-function floatStar() {
-  const r = $('#card').getBoundingClientRect();
-  const s = document.createElement('div');
-  s.className = 'float-star'; s.textContent = '⭐';
-  s.style.left = r.left + r.width / 2 - 30 + 'px';
-  s.style.top = r.top + 10 + 'px';
-  document.body.appendChild(s);
-  setTimeout(() => s.remove(), 1100);
-}
 
 function confetti() {
   const cv = $('#confetti'), ctx = cv.getContext('2d');
@@ -876,16 +1036,18 @@ function confetti() {
   })(t0);
 }
 
-// Leaving the app mid-mission: stop talking and release the mic; pick up the same word on return.
+// Leaving the app mid-mission: stop talking and release the mic; ask for the same word on return.
 document.addEventListener('visibilitychange', async () => {
   if (document.hidden) {
     M.token++;
+    gasUp();
     stopPlayback();
     Mic.stop();
     if (!$('#meter').hidden) stopMicTest();
   } else if (M.running && $('#mission').classList.contains('on') && $('#done').hidden) {
     if (S.settings.mode === 'mic') M.useMic = await Mic.start();
-    nextPrompt(true);
+    const it = curItem();
+    if (it) promptTurn(it);
   }
 });
 
