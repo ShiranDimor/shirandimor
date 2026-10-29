@@ -1,0 +1,25 @@
+/* עמוד הליווי האישי - נשען על business.css ומוסיף רק את מה שחסר שם */
+
+.mnt-tracks { grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: 860px; }
+
+.mnt-value { color: var(--biz-muted); font-size: 14px; white-space: nowrap; }
+
+.mnt-price { margin-top: 6px; padding-top: 14px; border-top: 1px solid var(--biz-line); display: flex; flex-direction: column; gap: 4px; }
+.mnt-price strong { font-size: 34px; font-weight: 800; line-height: 1.1; color: var(--biz-ink); }
+.biz-track.featured .mnt-price strong { color: var(--biz-sage); }
+.mnt-price span { font-size: 15px; color: var(--biz-muted); }
+
+.mnt-track-cta { margin-top: 4px; text-align: center; }
+
+.mnt-sessions { list-style: none; margin: 20px 0 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.mnt-sessions li { display: flex; gap: 14px; align-items: flex-start; }
+.mnt-sessions .biz-num { flex: none; }
+.mnt-sessions h3 { margin: 0; font-size: 18px; font-weight: 700; }
+.mnt-sessions p { margin: 4px 0 0; font-size: 15.5px; line-height: 1.55; color: var(--biz-text); }
+
+@media (max-width: 860px) {
+  .mnt-tracks { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 720px) {
+  .mnt-sessions { grid-template-columns: minmax(0, 1fr); }
+}
