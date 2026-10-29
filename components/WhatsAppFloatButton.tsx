@@ -6,6 +6,8 @@ export default function WhatsAppFloatButton() {
   const pathname = usePathname();
   // בעמוד לארגונים יש פס צף משלו (כולל וואטסאפ) - לא מציגים שם את הכפתור הכללי כדי לא להעמיס
   if (pathname?.startsWith('/business')) return null;
+  // המשחק של דור - עמוד פרטי לילדה, בלי כפתורים צפים של האתר
+  if (pathname?.startsWith('/dor-english')) return null;
 
   return (
     <a href="https://wa.me/972547167419" target="_blank" rel="noopener noreferrer" className="wa-float-btn">
