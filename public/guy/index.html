@@ -419,25 +419,32 @@ function show(id) {
 const PUPS = [
   { id: 'fire', name: 'כבאי', c: '#e53935', fur: '#ffffff', ear: '#2b2b2b', spots: true, emblem: '🔥', vehicle: '🚒',
     obstacle: '🔥', fx: '💦', scenery: ['🌳', '🌲', '🏠', '🌻', '🏡'], hop: '🪵',
-    place: '🌳', animal: '🐱', title: 'החתול תקוע על העץ!', done: 'הצלנו את החתול!', sky: ['#ffccbc', '#fff8e1'], ground: '#7cb342' },
+    place: '🌳', animal: '🐱', title: 'החתול תקוע על העץ!', done: 'הצלנו את החתול!',
+    sayTitle: 'הַחָתוּל תָּקוּעַ עַל הָעֵץ!', sayDone: 'הִצַּלְנוּ אֶת הַחָתוּל!', sky: ['#ffccbc', '#fff8e1'], ground: '#7cb342' },
   { id: 'police', name: 'שוטר', c: '#1e63d6', fur: '#b07a45', ear: '#5b3a1e', emblem: '⭐', vehicle: '🚓',
     obstacle: '🚧', fx: '⭐', scenery: ['🌳', '🏢', '🚦', '🏠', '🌲'], hop: '🛢️',
-    place: '🌲', animal: '🐥', title: 'האפרוח הלך לאיבוד!', done: 'מצאנו את האפרוח!', sky: ['#bbdefb', '#e3f2fd'], ground: '#8bc34a' },
+    place: '🌲', animal: '🐥', title: 'האפרוח הלך לאיבוד!', done: 'מצאנו את האפרוח!',
+    sayTitle: 'הָאֶפְרוֹחַ הָלַךְ לְאִבּוּד!', sayDone: 'מָצָאנוּ אֶת הָאֶפְרוֹחַ!', sky: ['#bbdefb', '#e3f2fd'], ground: '#8bc34a' },
   { id: 'air', name: 'טייסת', c: '#ec407a', fur: '#ead0ae', ear: '#b98a5e', emblem: '✈️', vehicle: '🚁',
     obstacle: '⛈️', fx: '💨', fly: true, scenery: ['⛰️', '🌲', '🌳', '🏔️'], hop: '🐦',
-    place: '⛰️', animal: '🐑', title: 'הכבשה תקועה על ההר!', done: 'הצלנו את הכבשה!', sky: ['#f8bbd0', '#fce4ec'], ground: '#9ccc65' },
+    place: '⛰️', animal: '🐑', title: 'הכבשה תקועה על ההר!', done: 'הצלנו את הכבשה!',
+    sayTitle: 'הַכִּבְשָׂה תְּקוּעָה עַל הָהָר!', sayDone: 'הִצַּלְנוּ אֶת הַכִּבְשָׂה!', sky: ['#f8bbd0', '#fce4ec'], ground: '#9ccc65' },
   { id: 'build', name: 'בנאי', c: '#f9a825', fur: '#d9a066', ear: '#9c6b3c', emblem: '🔨', vehicle: '🚜',
     obstacle: '🪨', fx: '💥', scenery: ['🏗️', '🌳', '🏠', '🌲'], hop: '🧱',
-    place: '🌉', animal: '🐰', title: 'הארנב תקוע מעבר לגשר!', done: 'הצלנו את הארנב!', sky: ['#fff59d', '#fffde7'], ground: '#a1887f' },
+    place: '🌉', animal: '🐰', title: 'הארנב תקוע מעבר לגשר!', done: 'הצלנו את הארנב!',
+    sayTitle: 'הָאַרְנָב תָּקוּעַ מֵעֵבֶר לַגֶּשֶׁר!', sayDone: 'הִצַּלְנוּ אֶת הָאַרְנָב!', sky: ['#fff59d', '#fffde7'], ground: '#a1887f' },
   { id: 'recycle', name: 'ממחזר', c: '#43a047', fur: '#a5a5a5', ear: '#616161', emblem: '♻️', vehicle: '🚛',
     obstacle: '🗑️', fx: '♻️', scenery: ['🌳', '🌷', '🌲', '🏡', '🌼'], hop: '🥫',
-    place: '🌳', animal: '🐿️', title: 'הסנאי צריך עזרה בפארק!', done: 'עזרנו לסנאי!', sky: ['#c8e6c9', '#f1f8e9'], ground: '#66bb6a' },
+    place: '🌳', animal: '🐿️', title: 'הסנאי צריך עזרה בפארק!', done: 'עזרנו לסנאי!',
+    sayTitle: 'הַסְּנָאִי צָרִיךְ עֶזְרָה בַּפַּארְק!', sayDone: 'עָזַרְנוּ לַסְּנָאִי!', sky: ['#c8e6c9', '#f1f8e9'], ground: '#66bb6a' },
   { id: 'sea', name: 'ימאי', c: '#fb8c00', fur: '#6d4c41', ear: '#4e342e', emblem: '⚓', vehicle: '🚤',
     obstacle: '🪵', fx: '🌊', scenery: ['🐟', '⛵', '🐠', '🐚', '🐬'], hop: '🦀',
-    place: '🏝️', animal: '🐢', title: 'הצב צריך עזרה בים!', done: 'הצלנו את הצב!', sky: ['#b3e5fc', '#e1f5fe'], ground: '#29b6f6' },
+    place: '🏝️', animal: '🐢', title: 'הצב צריך עזרה בים!', done: 'הצלנו את הצב!',
+    sayTitle: 'הַצָּב צָרִיךְ עֶזְרָה בַּיָּם!', sayDone: 'הִצַּלְנוּ אֶת הַצָּב!', sky: ['#b3e5fc', '#e1f5fe'], ground: '#29b6f6' },
   { id: 'snow', name: 'שלגית', c: '#8e24aa', fur: '#cfd8dc', ear: '#78909c', emblem: '❄️', vehicle: '🛷',
     obstacle: '🧊', fx: '❄️', scenery: ['🌲', '⛄', '🏔️', '🌲'], hop: '⛄',
-    place: '🏔️', animal: '🐧', title: 'הפינגווין תקוע בשלג!', done: 'הצלנו את הפינגווין!', sky: ['#e1bee7', '#f3e5f5'], ground: '#eceff1' },
+    place: '🏔️', animal: '🐧', title: 'הפינגווין תקוע בשלג!', done: 'הצלנו את הפינגווין!',
+    sayTitle: 'הַפִּינְגְּוִין תָּקוּעַ בַּשֶּׁלֶג!', sayDone: 'הִצַּלְנוּ אֶת הַפִּינְגְּוִין!', sky: ['#e1bee7', '#f3e5f5'], ground: '#eceff1' },
 ];
 
 function pupSVG(p) {
@@ -622,7 +629,8 @@ const SND = {
   hit: () => sfx([220, 150], 'square', 0.1, 0.06, 0.1),
   fanfare: () => sfx([523, 659, 784, 1047, 784, 1047, 1319], 'triangle', 0.22, 0.13, 0.2),
 };
-const PRAISE = ['כל הכבוד!', 'יופי!', 'מעולה!', 'איזה גיבור!', 'נהדר!', 'וואו!'];
+// Spoken only (never shown), so written with niqqud for the Hebrew voice.
+const PRAISE = ['כָּל הַכָּבוֹד!', 'יוֹפִי!', 'מְעוּלֶּה!', 'אֵיזֶה גִּבּוֹר!', 'נֶהְדָּר!', 'וָאוּ!'];
 
 // ---------------------------------------------------------------- sound in: "did he say something?"
 // Not speech recognition - it only detects that Guy made a voiced sound long enough to be a word.
@@ -716,7 +724,7 @@ const G = { dist: 0, speed: 0, gas: false, objs: [], raf: 0, last: 0, finishD: 0
   y: 0, vy: 0, bonkUntil: 0, toldJump: false };
 const FIRST_OBST = 1300; // first word obstacle; the road before it has hops and bones
 const curItem = () => M.cur && S.items.find(i => i.id === M.cur.id);
-const GO = ['יופי! הדרך פנויה!', 'קדימה, סע!', 'מעולה! ממשיכים!'];
+const GO = ['יוֹפִי! הַדֶּרֶךְ פְּנוּיָה!', 'קָדִימָה, סַע!', 'מְעוּלֶּה! מַמְשִׁיכִים!'];
 
 function pickItems() {
   const active = S.items.filter(i => i.active !== false && i.text.trim());
@@ -826,7 +834,7 @@ function loop(t) {
     }
     placeObj(o);
   }
-  if (hopNear && !G.toldJump && G.speed > 0) { G.toldJump = true; if (!M.cur) speak('קפוץ!'); }
+  if (hopNear && !G.toldJump && G.speed > 0) { G.toldJump = true; if (!M.cur) speak('קְפוֹץ!'); }
   jumpBtn.classList.toggle('hint', hopNear && G.y === 0 && !M.cur);
   const veh = $('#veh');
   veh.style.transform = `translateX(${G.vehX}px) translateX(-50%) translateY(${-G.y.toFixed(1)}px)`;
@@ -879,7 +887,7 @@ async function startMission(p) {
     if (!M.useMic) toast('אין גישה למיקרופון - משחקים עם כפתור 🗣️');
   }
   if (tok !== M.token) return;
-  if (!M.cur) await speak(p.title + ' יוצאים לדרך!');
+  if (!M.cur) await speak(p.sayTitle + ' יוֹצְאִים לַדֶּרֶךְ!');
 }
 
 // --- driving controls
@@ -1067,7 +1075,7 @@ async function finishMission() {
   confetti();
   await sleep(1200);
   if (tok !== M.token) return;
-  await speak(p.done + ' כל הכבוד!');
+  await speak(p.sayDone + ' כָּל הַכָּבוֹד!');
 }
 
 function goHome() {
@@ -1362,7 +1370,7 @@ $('#names').addEventListener('change', e => {
   if (v) S.names[id] = v; else delete S.names[id];
   save('names');
 });
-$('#voiceTest').onclick = () => speak('שלום גיא! בוא נצא למשימת חילוץ!');
+$('#voiceTest').onclick = () => speak('שָׁלוֹם גַּיְא! בּוֹא נֵצֵא לִמְשִׂימַת חִלּוּץ!');
 
 async function startMicTest() {
   if (!(await Mic.start())) { toast('אין גישה למיקרופון'); return; }
