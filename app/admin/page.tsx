@@ -34,6 +34,9 @@ export default function AdminDashboard() {
   const [sendingStopLossTest, setSendingStopLossTest] = useState(false);
   const [stopLossTestMessage, setStopLossTestMessage] = useState('');
 
+  const [sendingPushReminder, setSendingPushReminder] = useState(false);
+  const [pushReminderMessage, setPushReminderMessage] = useState('');
+
   async function handleSendMonthlySummary() {
     setSendingSummary(true);
     setSummaryMessage('');
@@ -102,6 +105,31 @@ export default function AdminDashboard() {
     }
 
     setSendingStopLossTest(false);
+  }
+
+  async function handleSendPushReminder() {
+    setSendingPushReminder(true);
+    setPushReminderMessage('');
+
+    const { data: { session } } = await supabase.auth.getSession();
+
+    try {
+      const res = await fetch('/api/admin/send-push-reminder', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session?.access_token}` },
+      });
+      const data = await res.json();
+
+      setPushReminderMessage(
+        res.ok
+          ? `נשלח ל-${data.sent} מנויים שעדיין לא הפעילו התראות (${data.skipped} כבר הפעילו - לא קיבלו שוב)`
+          : 'שגיאה: ' + (data.error || 'לא הצלחנו לשלוח')
+      );
+    } catch (e) {
+      setPushReminderMessage('שגיאה בשליחת התזכורת');
+    }
+
+    setSendingPushReminder(false);
   }
 
   useEffect(() => {
@@ -337,6 +365,21 @@ export default function AdminDashboard() {
           {stopLossTestMessage}
         </p>
       )}
+
+      <button className="btn-outline" style={{ width: '100%', marginTop: '18px' }} onClick={handleSendPushReminder} disabled={sendingPushReminder}>
+        {sendingPushReminder ? 'שולחים תזכורת...' : '🔔 תזכורת למנויים שלא הפעילו התראות פוש'}
+      </button>
+      {pushReminderMessage && (
+        <p style={{ fontSize: '12px', color: pushReminderMessage.startsWith('שגיאה') ? 'var(--loss)' : 'var(--profit)', marginTop: '10px', textAlign: 'center' }}>
+          {pushReminderMessage}
+        </p>
+      )}
+
+      <Link href="/admin/push-subscriptions" className="admin-tile" style={{ marginTop: '18px' }}>
+        <div className="at-icon">🔔</div>
+        <div className="at-title">ניהול התראות פוש</div>
+        <div className="at-count">מנויים ולידים</div>
+      </Link>
     </div>
   );
 }
