@@ -11,6 +11,9 @@ const UPDATES_GROUP_NAME = 'קבוצת עדכונים';
 const TRIAL_GROUP_NAME = 'בעדכונים ובימי ניסיון';
 const CAMPAIGN_COLUMN_TITLE = 'campaign_name';
 const STATUS_COLUMN_TITLE = 'סטטוס טיפול';
+// עמודת סטטוס ייעודית ונפרדת (לא "סטטוס טיפול") למעקב אחרי הפעלת התראות פוש - כדי לא לדרוס
+// את הסטטוסים החשובים שכבר קיימים בעמודת הטיפול הרגילה
+const PUSH_ACTIVATED_COLUMN_TITLE = 'הוריד את האתר';
 const FOLLOWUP_COLUMN_TITLE = 'תאריך פולואפ';
 // שם העמודה חייב להתאים בדיוק לזה שב-lib/grow.ts (REGISTRATION_DATE_COLUMN_TITLE) - זו אותה
 // עמודה ("תאריך הרשמה") ולא עמודת "תאריך תשלום" נפרדת
@@ -66,6 +69,7 @@ async function getBoardSchema(token: string, boardId: string) {
     emailColumnId: columns.find((c) => c.type === 'email')?.id,
     campaignColumnId: columns.find((c) => c.title === CAMPAIGN_COLUMN_TITLE)?.id,
     statusColumnId: columns.find((c) => c.title === STATUS_COLUMN_TITLE)?.id,
+    pushActivatedColumnId: columns.find((c) => c.title === PUSH_ACTIVATED_COLUMN_TITLE)?.id,
     monthlyCostColumnId: columns.find((c) => c.title === MONTHLY_COST_COLUMN_TITLE)?.id,
     followupColumnId: columns.find((c) => c.title === FOLLOWUP_COLUMN_TITLE && c.type === 'date')?.id,
     joinDateColumnId: columns.find((c) => c.type === 'date' && c.title === JOIN_DATE_COLUMN_TITLE)?.id,
@@ -666,9 +670,9 @@ async function findItemIdByContactAnywhere(
 }
 
 // מסמן שאיש קשר הפעיל התראות פוש באתר. אם כבר יש לו כרטיס קיים במקום כלשהו בלוח (מנוי, קבוצת
-// עדכונים, ניסיון, או כל קבוצה אחרת) - מעדכן את הסטטוס על הכרטיס הקיים שלו (בלי לפתוח כרטיס
-// נוסף). רק אם אין לו שום כרטיס קיים בכלל - פותח ליד חדש, עם הסטטוס מוגדר מראש. כך יש תמונת
-// מעקב אחת נקייה במאנדיי (עמודת "סטטוס טיפול") של מי כבר עבר להתראות, בלי כרטיסים כפולים
+// עדכונים, ניסיון, או כל קבוצה אחרת) - מעדכן על הכרטיס הקיים שלו רק את עמודת "הוריד את האתר"
+// הייעודית (לא נוגע בעמודת "סטטוס טיפול" הרגילה, כדי לא לדרוס סטטוסים חשובים אחרים). רק אם
+// אין לו שום כרטיס קיים בכלל - פותח ליד חדש, עם העמודה הזו מוגדרת מראש
 export async function markAppDownloadOnMonday(params: { name?: string | null; phone?: string | null; email?: string | null }): Promise<{ ok: boolean; matched: boolean }> {
   const token = process.env.MONDAY_API_TOKEN;
   const boardId = process.env.MONDAY_BOARD_ID;
@@ -676,21 +680,21 @@ export async function markAppDownloadOnMonday(params: { name?: string | null; ph
   if (!params.phone && !params.email) return { ok: false, matched: false };
 
   try {
-    const { groupId, phoneColumnId, emailColumnId, campaignColumnId, statusColumnId } = await getBoardSchema(token, boardId);
+    const { groupId, phoneColumnId, emailColumnId, campaignColumnId, pushActivatedColumnId } = await getBoardSchema(token, boardId);
     const targetPhone = params.phone ? normalizePhone(params.phone) : null;
     const targetEmail = params.email ? params.email.trim().toLowerCase() : null;
 
     const existingItemId = await findItemIdByContactAnywhere(token, boardId, phoneColumnId, emailColumnId, targetPhone, targetEmail);
 
     if (existingItemId) {
-      if (statusColumnId) {
+      if (pushActivatedColumnId) {
         await mondayRequest(
           token,
           `mutation ($boardId: ID!, $itemId: ID!, $columnId: String!, $value: String!) {
             change_simple_column_value (board_id: $boardId, item_id: $itemId, column_id: $columnId, value: $value) { id }
           }`,
-          { boardId, itemId: existingItemId, columnId: statusColumnId, value: APP_DOWNLOAD_SOURCE_VALUE }
-        ).catch((e) => console.error('Monday.com: נכשל עדכון סטטוס "הוריד את האתר" על כרטיס קיים', e));
+          { boardId, itemId: existingItemId, columnId: pushActivatedColumnId, value: APP_DOWNLOAD_SOURCE_VALUE }
+        ).catch((e) => console.error('Monday.com: נכשל עדכון עמודת "הוריד את האתר" על כרטיס קיים', e));
       }
       return { ok: true, matched: true };
     }
@@ -699,7 +703,7 @@ export async function markAppDownloadOnMonday(params: { name?: string | null; ph
     if (phoneColumnId && params.phone) columnValues[phoneColumnId] = { phone: params.phone.startsWith('0') ? `972${params.phone.slice(1)}` : params.phone, countryShortName: 'IL' };
     if (emailColumnId && params.email) columnValues[emailColumnId] = { email: params.email, text: params.email };
     if (campaignColumnId) columnValues[campaignColumnId] = APP_DOWNLOAD_SOURCE_VALUE;
-    if (statusColumnId) columnValues[statusColumnId] = { label: APP_DOWNLOAD_SOURCE_VALUE };
+    if (pushActivatedColumnId) columnValues[pushActivatedColumnId] = { label: APP_DOWNLOAD_SOURCE_VALUE };
 
     const createData: any = await mondayRequest(
       token,
