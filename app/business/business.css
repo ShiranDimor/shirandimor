@@ -220,6 +220,8 @@
 .biz-contact .biz-sched-loading { margin-top: 18px; font-size: 15px; }
 .biz-sched { margin-top: 18px; }
 .biz-contact .biz-sched-step { margin: 16px 0 10px; font-size: 15px; font-weight: 700; color: #FFF8F2; }
+/* תגובה ויזואלית ברורה לבחירת יום - כדי שבחירה לא תרגיש "חסרת תגובה" */
+.biz-contact .biz-sched-step-active { color: var(--biz-mint-on-dark); }
 .biz-days, .biz-times { display: flex; flex-wrap: wrap; gap: 8px; }
 .biz-chip {
   min-height: 44px; padding: 8px 14px; border-radius: 12px; border: 1px solid #5A4F66; background: rgba(255, 248, 242, 0.04);
