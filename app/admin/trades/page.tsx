@@ -8,6 +8,7 @@ import EquityCurve from '@/components/EquityCurve';
 import StatsRing from '@/components/StatsRing';
 import CalendarHeatmap from '@/components/CalendarHeatmap';
 import { realizeShares } from '@/lib/tradeClose';
+import PushNotificationButton from '@/components/PushNotificationButton';
 
 type Trade = {
   id: string;
@@ -454,6 +455,13 @@ export default function AdminTradesPage() {
       setOpenDate('');
       setShowAddForm(false);
       loadTrades();
+
+      const { data: { session } } = await supabase.auth.getSession();
+      fetch('/api/admin/notify-trade-opened', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
+        body: JSON.stringify({ symbol: symbol.toUpperCase(), direction }),
+      }).catch(() => {});
     }
   }
 
@@ -749,6 +757,8 @@ export default function AdminTradesPage() {
           <button onClick={handleLogout} className="nav-link" style={{ background: 'none', border: 'none', cursor: 'pointer', font: 'inherit', padding: 0 }}>התנתקות</button>
         </div>
       </header>
+
+      <PushNotificationButton />
 
       <button className="btn-outline" style={{ width: '100%', marginBottom: '10px' }} onClick={handleRefreshAllPrices} disabled={refreshing}>
         {refreshing ? 'מעדכנים מחירים בכל האתר...' : '🔄 עדכון מחירים בכל האתר'}

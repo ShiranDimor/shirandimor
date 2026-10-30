@@ -7,6 +7,7 @@ import ClearableInput from '@/components/ClearableInput';
 import StatsRing from '@/components/StatsRing';
 import EquityCurve from '@/components/EquityCurve';
 import CalendarHeatmap from '@/components/CalendarHeatmap';
+import PushNotificationButton from '@/components/PushNotificationButton';
 
 type Trade = {
   id: string;
@@ -303,6 +304,8 @@ export default function PortfolioPage() {
 
       {hasFullAccess && (
         <>
+          <PushNotificationButton />
+
           <div className="section-label"><h2>מחשבון גודל פוזיציה</h2></div>
           <div className="calc-panel" style={{ padding: '18px 16px', marginBottom: '28px' }}>
             <div className="form-row" style={{ marginBottom: '10px' }}>

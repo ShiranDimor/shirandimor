@@ -8,6 +8,7 @@ import './globals.css';
 export const metadata: Metadata = {
   title: 'שירן דימור | מסחר אחראי במניות',
   description: 'קהילת המסחר של שירן דימור, בלי הבטחות ובלי גורואים. בניית תיק אמיתית, שיטתית וישרה.',
+  manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
