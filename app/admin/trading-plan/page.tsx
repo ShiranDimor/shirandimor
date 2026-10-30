@@ -247,7 +247,7 @@ export default function AdminTradingPlanAbandonedPage() {
             <div className="name">
               {r.name || 'ללא שם'}
               {!r.viewed && (
-                <span style={{ marginRight: '8px', fontSize: '10.5px', fontWeight: 700, color: '#0b0d12', background: '#E8A33D', borderRadius: '5px', padding: '2px 6px', verticalAlign: 'middle' }}>
+                <span style={{ marginRight: '8px', fontSize: '10.5px', fontWeight: 700, color: '#FCF1E6', background: '#B4791F', borderRadius: '5px', padding: '2px 6px', verticalAlign: 'middle' }}>
                   חדש
                 </span>
               )}
@@ -285,7 +285,7 @@ export default function AdminTradingPlanAbandonedPage() {
               href={`/my-plan/${r.id}?admin=1`}
               target="_blank"
               rel="noopener noreferrer"
-              style={{ textDecoration: 'none', display: 'inline-block', padding: '8px 12px', fontSize: '12.5px', fontWeight: 700, color: '#E8A33D', background: 'rgba(232,163,61,0.1)', border: '1px solid rgba(232,163,61,0.3)', borderRadius: '8px', flex: '0 0 auto' }}
+              style={{ textDecoration: 'none', display: 'inline-block', padding: '8px 12px', fontSize: '12.5px', fontWeight: 700, color: '#B4791F', background: 'rgba(180, 121, 31,0.1)', border: '1px solid rgba(180, 121, 31,0.3)', borderRadius: '8px', flex: '0 0 auto' }}
             >
               מעקב התקדמות ←
             </a>
@@ -452,7 +452,7 @@ export default function AdminTradingPlanAbandonedPage() {
                   href={`/my-plan/${r.id}?admin=1`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  style={{ textDecoration: 'none', display: 'inline-block', padding: '8px 12px', fontSize: '12.5px', fontWeight: 700, color: '#E8A33D', background: 'rgba(232,163,61,0.1)', border: '1px solid rgba(232,163,61,0.3)', borderRadius: '8px', alignSelf: 'flex-start' }}
+                  style={{ textDecoration: 'none', display: 'inline-block', padding: '8px 12px', fontSize: '12.5px', fontWeight: 700, color: '#B4791F', background: 'rgba(180, 121, 31,0.1)', border: '1px solid rgba(180, 121, 31,0.3)', borderRadius: '8px', alignSelf: 'flex-start' }}
                 >
                   מעקב התקדמות ←
                 </a>

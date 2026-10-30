@@ -204,7 +204,7 @@ export default function DorChatWidget() {
                   alignSelf: 'flex-end',
                   maxWidth: '92%',
                   background: 'var(--teal)',
-                  color: '#08131a',
+                  color: '#FFFFFF',
                   borderRadius: '12px',
                   padding: '12px 14px',
                   fontSize: '14px',
@@ -234,7 +234,7 @@ export default function DorChatWidget() {
                 <button
                   type="button"
                   onClick={submitPhoneGate}
-                  style={{ width: '100%', background: '#08131a', color: '#fff', border: 'none', borderRadius: '8px', padding: '9px', fontSize: '13.5px', fontWeight: 700, cursor: 'pointer' }}
+                  style={{ width: '100%', background: '#FFFFFF', color: '#fff', border: 'none', borderRadius: '8px', padding: '9px', fontSize: '13.5px', fontWeight: 700, cursor: 'pointer' }}
                 >
                   המשך לצ'אט
                 </button>
@@ -248,7 +248,7 @@ export default function DorChatWidget() {
                     alignSelf: 'flex-end',
                     maxWidth: '85%',
                     background: 'var(--teal)',
-                    color: '#08131a',
+                    color: '#FFFFFF',
                     borderRadius: '12px',
                     padding: '10px 14px',
                     fontSize: '14px',
@@ -276,7 +276,7 @@ export default function DorChatWidget() {
                   alignSelf: m.role === 'user' ? 'flex-start' : 'flex-end',
                   maxWidth: '85%',
                   background: m.role === 'user' ? 'var(--bg-secondary)' : 'var(--teal)',
-                  color: m.role === 'user' ? 'var(--text-primary)' : '#08131a',
+                  color: m.role === 'user' ? 'var(--text-primary)' : '#FFFFFF',
                   borderRadius: '12px',
                   padding: '10px 14px',
                   fontSize: '14px',

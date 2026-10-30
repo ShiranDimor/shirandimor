@@ -165,9 +165,9 @@ export default function AdminAnalyticsPage() {
               borderRadius: '20px',
               fontSize: '13px',
               cursor: 'pointer',
-              border: r.key === range ? '1px solid #E8A33D' : '1px solid var(--border-hairline-strong)',
-              background: r.key === range ? 'rgba(232,163,61,0.12)' : 'transparent',
-              color: r.key === range ? '#E8A33D' : 'var(--text-secondary)',
+              border: r.key === range ? '1px solid #B4791F' : '1px solid var(--border-hairline-strong)',
+              background: r.key === range ? 'rgba(180, 121, 31,0.12)' : 'transparent',
+              color: r.key === range ? '#B4791F' : 'var(--text-secondary)',
             }}
           >
             {r.label}
@@ -200,7 +200,7 @@ export default function AdminAnalyticsPage() {
             disabled={!customFrom}
             style={{
               padding: '8px 18px', borderRadius: '8px', fontSize: '13px', fontWeight: 700, cursor: customFrom ? 'pointer' : 'not-allowed',
-              border: 'none', background: '#E8A33D', color: '#0b0d12', opacity: customFrom ? 1 : 0.5,
+              border: 'none', background: '#B4791F', color: '#FCF1E6', opacity: customFrom ? 1 : 0.5,
             }}
           >
             החלה
@@ -252,7 +252,7 @@ export default function AdminAnalyticsPage() {
                 <div className="at-title">{e.label}</div>
                 <div className="at-count">{counts[e.key] ?? 0}</div>
                 {selectedSource && spendNum > 0 && (
-                  <div style={{ fontSize: '11px', color: '#E8A33D', marginTop: '2px' }}>{costPer(spendNum, counts[e.key] ?? 0)} לתוצאה</div>
+                  <div style={{ fontSize: '11px', color: '#B4791F', marginTop: '2px' }}>{costPer(spendNum, counts[e.key] ?? 0)} לתוצאה</div>
                 )}
               </div>
             ))}
@@ -261,15 +261,15 @@ export default function AdminAnalyticsPage() {
           <div className="section-label" style={{ marginTop: '30px' }}><h2>אחוזי המרה בין שלבים</h2></div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             <div className="stat-callout">
-              <div className="sc-num" style={{ color: '#E8A33D' }}>{pct(whatsappOpens, leads)}</div>
+              <div className="sc-num" style={{ color: '#B4791F' }}>{pct(whatsappOpens, leads)}</div>
               <p>מהלידים שמילאו פרטים לקבוצת העדכונים, פתחו בפועל את קבוצת הוואטסאפ</p>
             </div>
             <div className="stat-callout">
-              <div className="sc-num" style={{ color: '#E8A33D' }}>{pct(completed, started)}</div>
+              <div className="sc-num" style={{ color: '#B4791F' }}>{pct(completed, started)}</div>
               <p>ממי שהתחיל למלא את שאלון תוכנית המסחר, סיים אותו עד הסוף</p>
             </div>
             <div className="stat-callout">
-              <div className="sc-num" style={{ color: '#E8A33D' }}>{pct(paymentClicks, completed)}</div>
+              <div className="sc-num" style={{ color: '#B4791F' }}>{pct(paymentClicks, completed)}</div>
               <p>ממי שהשלים את שאלון תוכנית המסחר, לחץ על קישור התשלום לקבוצת הסוחרים</p>
             </div>
           </div>

@@ -32,11 +32,11 @@ type ProgressData = {
 // עיצוב לכל סטטוס משבצת - "future" מוצג כריק (מסגרת מקווקוות בלבד) כדי שיהיה ברור שזה שונה
 // מהותית מ"no_checkin" (מועד דיווח שכבר עבר ולא סומן) ולא רק גוון כהה נוסף שקשה להבחין בו
 const DAY_STYLES: Record<DayStatus, { background: string; border: string }> = {
-  followed: { background: '#4FB876', border: '1px solid #4FB876' },
-  broke: { background: '#C9635E', border: '1px solid #C9635E' },
+  followed: { background: '#5C7A3D', border: '1px solid #5C7A3D' },
+  broke: { background: '#C14A3E', border: '1px solid #C14A3E' },
   no_activity: { background: '#5A6478', border: '1px solid #5A6478' },
   no_checkin: { background: '#3a4152', border: '1px solid #545b6e' },
-  today_pending: { background: '#E8A33D', border: '1px solid #E8A33D' },
+  today_pending: { background: '#B4791F', border: '1px solid #B4791F' },
   future: { background: 'transparent', border: '1px dashed #2a2f3a' },
 };
 
@@ -89,11 +89,11 @@ function ProgressRing({ dayNumber, totalDays, unitLabel }: { dayNumber: number; 
   const offset = circumference * (1 - pct);
 
   return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ filter: 'drop-shadow(0 0 14px rgba(79,201,196,0.35))' }}>
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ filter: 'drop-shadow(0 0 14px rgba(230, 98, 27,0.35))' }}>
       <defs>
         <linearGradient id="ringGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#4FC9C4" />
-          <stop offset="100%" stopColor="#E8A33D" />
+          <stop offset="0%" stopColor="#E6621B" />
+          <stop offset="100%" stopColor="#B4791F" />
         </linearGradient>
       </defs>
       <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth={strokeWidth} />
@@ -112,7 +112,7 @@ function ProgressRing({ dayNumber, totalDays, unitLabel }: { dayNumber: number; 
       />
       <text x="50%" y="45%" textAnchor="middle" dominantBaseline="middle" style={{ fill: '#fff', fontSize: '34px', fontWeight: 800 }}>{dayNumber}</text>
       <text x="50%" y="63%" textAnchor="middle" dominantBaseline="middle" style={{ fill: 'var(--text-tertiary)', fontSize: '11.5px' }}>{`מתוך ${totalDays} ${unitLabel}`}</text>
-      <text x="50%" y="76%" textAnchor="middle" dominantBaseline="middle" style={{ fill: '#E8A33D', fontSize: '11px', fontWeight: 700 }}>{`${Math.round(pct * 100)}% מהדרך`}</text>
+      <text x="50%" y="76%" textAnchor="middle" dominantBaseline="middle" style={{ fill: '#B4791F', fontSize: '11px', fontWeight: 700 }}>{`${Math.round(pct * 100)}% מהדרך`}</text>
     </svg>
   );
 }
@@ -190,14 +190,14 @@ function MyPlanProgressPageInner() {
             style={{
               position: 'relative',
               overflow: 'hidden',
-              background: 'radial-gradient(circle at 15% 0%, rgba(79,201,196,0.22), transparent 55%), radial-gradient(circle at 100% 100%, rgba(232,163,61,0.18), transparent 55%), linear-gradient(160deg, var(--bg-surface-raised) 0%, #0b0f18 100%)',
+              background: 'radial-gradient(circle at 15% 0%, rgba(230, 98, 27,0.22), transparent 55%), radial-gradient(circle at 100% 100%, rgba(180, 121, 31,0.18), transparent 55%), linear-gradient(160deg, var(--bg-surface-raised) 0%, #0b0f18 100%)',
               border: '1px solid var(--border-hairline-strong)',
               borderRadius: '18px',
               padding: '24px 20px',
               marginBottom: '16px',
             }}
           >
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontWeight: 700, color: '#E8A33D', background: 'rgba(232,163,61,0.12)', border: '1px solid rgba(232,163,61,0.3)', borderRadius: '20px', padding: '5px 12px', marginBottom: '14px' }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontWeight: 700, color: '#B4791F', background: 'rgba(180, 121, 31,0.12)', border: '1px solid rgba(180, 121, 31,0.3)', borderRadius: '20px', padding: '5px 12px', marginBottom: '14px' }}>
               ✦ {data.profileTitle}
             </div>
             <div className="form-title" style={{ fontSize: '23px', marginBottom: '6px' }}>המעקב האישי שלך{firstName ? `, ${firstName}` : ''}</div>
@@ -227,9 +227,9 @@ function MyPlanProgressPageInner() {
                         height: size,
                         borderRadius: '6px',
                         ...DAY_STYLES[d.status],
-                        outline: isToday ? '2px solid #E8A33D' : 'none',
+                        outline: isToday ? '2px solid #B4791F' : 'none',
                         outlineOffset: '2px',
-                        boxShadow: d.status === 'today_pending' ? '0 0 8px rgba(232,163,61,0.6)' : 'none',
+                        boxShadow: d.status === 'today_pending' ? '0 0 8px rgba(180, 121, 31,0.6)' : 'none',
                       }}
                     />
                     {data.periodic && (
@@ -251,9 +251,9 @@ function MyPlanProgressPageInner() {
               ))}
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(232,163,61,0.1)', border: '1px solid rgba(232,163,61,0.3)', borderRadius: '20px', padding: '8px 18px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(180, 121, 31,0.1)', border: '1px solid rgba(180, 121, 31,0.3)', borderRadius: '20px', padding: '8px 18px' }}>
               <span style={{ fontSize: '18px' }}>🔥</span>
-              <span style={{ fontSize: '18px', fontWeight: 800, color: '#E8A33D' }}>{data.streak}</span>
+              <span style={{ fontSize: '18px', fontWeight: 800, color: '#B4791F' }}>{data.streak}</span>
               <span style={{ fontSize: '12.5px', color: 'var(--text-tertiary)' }}>{streakLabel}</span>
             </div>
           </div>
@@ -266,14 +266,14 @@ function MyPlanProgressPageInner() {
           {(data.dream || data.fear) && (
             <div
               style={{
-                background: 'linear-gradient(160deg, rgba(232,163,61,0.1) 0%, var(--bg-surface) 65%)',
-                border: '1px solid rgba(232,163,61,0.3)',
+                background: 'linear-gradient(160deg, rgba(180, 121, 31,0.1) 0%, var(--bg-surface) 65%)',
+                border: '1px solid rgba(180, 121, 31,0.3)',
                 borderRadius: '14px',
                 padding: '18px',
                 marginBottom: '18px',
               }}
             >
-              <div style={{ fontSize: '10.5px', color: '#E8A33D', textTransform: 'uppercase', fontWeight: 700, marginBottom: '12px', letterSpacing: '0.5px' }}>למה זה חשוב לך - בדיוק במילים שלך</div>
+              <div style={{ fontSize: '10.5px', color: '#B4791F', textTransform: 'uppercase', fontWeight: 700, marginBottom: '12px', letterSpacing: '0.5px' }}>למה זה חשוב לך - בדיוק במילים שלך</div>
               {data.dream && (
                 <div style={{ display: 'flex', gap: '10px', fontSize: '13.5px', color: '#fff', lineHeight: 1.6, marginBottom: data.fear ? '12px' : 0 }}>
                   <span style={{ fontSize: '16px', flexShrink: 0 }}>🎯</span>
@@ -286,7 +286,7 @@ function MyPlanProgressPageInner() {
                   <span><b>מה שרצית לנצח:</b> {data.fear}</span>
                 </div>
               )}
-              <div style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginTop: '12px', lineHeight: 1.6, borderTop: '1px solid rgba(232,163,61,0.2)', paddingTop: '10px' }}>
+              <div style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginTop: '12px', lineHeight: 1.6, borderTop: '1px solid rgba(180, 121, 31,0.2)', paddingTop: '10px' }}>
                 כל פעם שעמדת בכלל שלך - כולל הרגעים שבהם נמנעת מלהיכנס כי זה לא היה מתאים - זה עוד צעד לכיוון החלום, ועוד רגע שבו לא נתת לפחד לנצח.
               </div>
             </div>
@@ -320,9 +320,9 @@ function MyPlanProgressPageInner() {
                   onClick={() => checkIn('no_activity')}
                   disabled={saving}
                   style={{
-                    background: data.todayOutcome === 'no_activity' ? 'rgba(232,163,61,0.12)' : 'transparent',
-                    border: data.todayOutcome === 'no_activity' ? '1px solid #E8A33D' : '1px dashed var(--border-hairline-strong)',
-                    color: data.todayOutcome === 'no_activity' ? '#E8A33D' : 'var(--text-tertiary)',
+                    background: data.todayOutcome === 'no_activity' ? 'rgba(180, 121, 31,0.12)' : 'transparent',
+                    border: data.todayOutcome === 'no_activity' ? '1px solid #B4791F' : '1px dashed var(--border-hairline-strong)',
+                    color: data.todayOutcome === 'no_activity' ? '#B4791F' : 'var(--text-tertiary)',
                     borderRadius: '8px',
                     padding: '11px',
                     fontSize: '13.5px',
@@ -347,7 +347,7 @@ function MyPlanProgressPageInner() {
               <p className="tp-personal-note" style={{ marginBottom: '6px' }}>
                 ✓ סימנת - {data.periodic ? `נחזור ב${data.nextDueWeekday ? `יום ${data.nextDueWeekday}` : 'הדיווח הבא'}` : 'חוזרים מחר'}
               </p>
-              <button type="button" onClick={() => setEditing(true)} style={{ background: 'none', border: 'none', color: '#E8A33D', fontSize: '12px', cursor: 'pointer', fontFamily: 'var(--font-body)', textDecoration: 'underline' }}>
+              <button type="button" onClick={() => setEditing(true)} style={{ background: 'none', border: 'none', color: '#B4791F', fontSize: '12px', cursor: 'pointer', fontFamily: 'var(--font-body)', textDecoration: 'underline' }}>
                 לשנות את הדיווח
               </button>
             </div>
@@ -356,7 +356,7 @@ function MyPlanProgressPageInner() {
               <p className="tp-personal-note" style={{ marginBottom: '6px' }}>
                 היום אין צורך לעדכן - הדיווח הבא שלך ביום {data.nextDueWeekday || ''}
               </p>
-              <button type="button" onClick={() => setEditing(true)} style={{ background: 'none', border: 'none', color: '#E8A33D', fontSize: '12px', cursor: 'pointer', fontFamily: 'var(--font-body)', textDecoration: 'underline' }}>
+              <button type="button" onClick={() => setEditing(true)} style={{ background: 'none', border: 'none', color: '#B4791F', fontSize: '12px', cursor: 'pointer', fontFamily: 'var(--font-body)', textDecoration: 'underline' }}>
                 יש לך בכל זאת מה לדווח היום?
               </button>
             </div>
@@ -366,7 +366,7 @@ function MyPlanProgressPageInner() {
             href={buildReminderLink(planUrl)}
             target="_blank"
             rel="noopener noreferrer"
-            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontSize: '13px', fontWeight: 600, color: '#E8A33D', border: '1px dashed rgba(232,163,61,0.4)', borderRadius: '10px', padding: '11px', marginBottom: '20px', textDecoration: 'none' }}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontSize: '13px', fontWeight: 600, color: '#B4791F', border: '1px dashed rgba(180, 121, 31,0.4)', borderRadius: '10px', padding: '11px', marginBottom: '20px', textDecoration: 'none' }}
           >
             📅 הוספת תזכורת אישית ליומן
           </a>
@@ -395,8 +395,8 @@ function MyPlanProgressPageInner() {
                   </div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', marginTop: '14px', paddingTop: '12px', borderTop: '1px solid var(--border-hairline)' }}>
-                  <span style={{ fontSize: '11.5px', color: '#E8A33D', fontWeight: 700 }}>🔒 נעול - למנויי קבוצת הסוחרים בלבד</span>
-                  <a href="https://pay.grow.link/200a7cdcb258ee6ffdea0f423a1ace0e-MzE4MDU5OA" style={{ fontSize: '11.5px', fontWeight: 700, color: '#08131a', background: '#E8A33D', borderRadius: '8px', padding: '6px 12px', textDecoration: 'none', flexShrink: 0 }}>
+                  <span style={{ fontSize: '11.5px', color: '#B4791F', fontWeight: 700 }}>🔒 נעול - למנויי קבוצת הסוחרים בלבד</span>
+                  <a href="https://pay.grow.link/200a7cdcb258ee6ffdea0f423a1ace0e-MzE4MDU5OA" style={{ fontSize: '11.5px', fontWeight: 700, color: '#FFFFFF', background: '#B4791F', borderRadius: '8px', padding: '6px 12px', textDecoration: 'none', flexShrink: 0 }}>
                     לפתוח גישה
                   </a>
                 </div>
@@ -412,7 +412,7 @@ function MyPlanProgressPageInner() {
           {data.isSubscriber ? (
             <div
               style={{
-                background: 'linear-gradient(160deg, rgba(79,201,196,0.1) 0%, var(--bg-surface-raised) 100%)',
+                background: 'linear-gradient(160deg, rgba(230, 98, 27,0.1) 0%, var(--bg-surface-raised) 100%)',
                 border: '1px solid var(--border-hairline-strong)',
                 borderRadius: '14px',
                 padding: '18px',
@@ -427,7 +427,7 @@ function MyPlanProgressPageInner() {
           ) : (
             <div
               style={{
-                background: 'linear-gradient(160deg, rgba(79,201,196,0.1) 0%, var(--bg-surface-raised) 100%)',
+                background: 'linear-gradient(160deg, rgba(230, 98, 27,0.1) 0%, var(--bg-surface-raised) 100%)',
                 border: '1px solid var(--border-hairline-strong)',
                 borderRadius: '14px',
                 padding: '18px',
@@ -440,7 +440,7 @@ function MyPlanProgressPageInner() {
               </p>
               <a
                 href="https://pay.grow.link/200a7cdcb258ee6ffdea0f423a1ace0e-MzE4MDU5OA"
-                style={{ display: 'inline-block', fontSize: '13.5px', fontWeight: 700, color: '#08131a', background: '#E8A33D', borderRadius: '10px', padding: '12px 22px', textDecoration: 'none' }}
+                style={{ display: 'inline-block', fontSize: '13.5px', fontWeight: 700, color: '#FFFFFF', background: '#B4791F', borderRadius: '10px', padding: '12px 22px', textDecoration: 'none' }}
               >
                 הצטרפות לקבוצת הסוחרים ←
               </a>

@@ -120,7 +120,7 @@ export default function LessonDetailPage() {
         <>
           <div className="form-title" style={{ fontSize: '22px' }}>{lesson.title}</div>
           <div style={{ fontSize: '12.5px', color: 'var(--text-tertiary)', marginBottom: '18px' }}>
-            {lesson.category && <span style={{ color: '#E8A33D', fontWeight: 600 }}>{lesson.category}</span>}
+            {lesson.category && <span style={{ color: '#B4791F', fontWeight: 600 }}>{lesson.category}</span>}
             {lesson.category && lesson.durationMinutes ? ' · ' : ''}
             {lesson.durationMinutes ? `${lesson.durationMinutes} דק'` : ''}
           </div>

@@ -926,7 +926,7 @@ export default function AdminTradesPage() {
         <div style={{
           position: 'fixed', bottom: 0, right: 0, left: 0, zIndex: 90,
           background: 'var(--bg-void)', borderTop: '1px solid var(--border-hairline-strong)',
-          padding: '10px 16px calc(10px + env(safe-area-inset-bottom))', boxShadow: '0 -4px 16px rgba(0,0,0,0.25)',
+          padding: '10px 16px calc(10px + env(safe-area-inset-bottom))', boxShadow: '0 -4px 16px rgba(60,35,20,0.18)',
         }}>
           <div style={{ display: 'flex', gap: '8px', maxWidth: '480px', margin: '0 auto' }}>
             <button
