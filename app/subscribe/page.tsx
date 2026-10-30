@@ -19,6 +19,9 @@ export default function SubscribePage() {
 
       <div className="form-title">הצטרפות ל&quot;מדברים עסקאות&quot;</div>
       <div className="form-sub">מנוי חודשי · ללא התחייבות</div>
+      <p style={{ fontSize: '13px', color: 'var(--text-secondary)', textAlign: 'center', lineHeight: 1.6, marginBottom: '20px' }}>
+        <strong style={{ color: 'var(--lavender)' }}>סוחרים ביחד איתי</strong>, בזמן אמת, ובונים <strong style={{ color: 'var(--lavender)' }}>תיק השקעות אמיתי</strong> - גם אם אין לך שום ידע מוקדם, ובקצב שלך.
+      </p>
 
       <div className="price-card">
         <div style={{ display: 'inline-block', background: 'var(--profit-bg)', color: 'var(--profit)', fontSize: '11.5px', fontWeight: 700, padding: '4px 12px', borderRadius: '20px', marginBottom: '14px' }}>
@@ -29,12 +32,12 @@ export default function SubscribePage() {
         <div className="period">לאחר מכן ₪400/חודש · ללא התחייבות וללא תקופת מינימום</div>
 
         <div className="perk-list">
-          <div>מסחר תוך-יומי לייב - כניסות ויציאות בזמן אמת</div>
-          <div>מסחר סווינג - עסקאות Short Squeeze עם הנימוק המלא</div>
-          <div>השקעות לטווח ארוך - בניית תיק שיטתית, לא "טיפים"</div>
-          <div>ליווי אישי - לצד קהילה סגורה לדיון מעמיק</div>
-          <div>יומן מסחר שקוף - כולל עסקאות מפסידות</div>
-          <div>תיק מסחר אישי וניתוח העסקאות ע"י שירן</div>
+          <div><strong>מסחר תוך-יומי לייב</strong> - כניסות ויציאות בזמן אמת</div>
+          <div><strong>מסחר סווינג</strong> - עסקאות Short Squeeze עם הנימוק המלא</div>
+          <div><strong>השקעות לטווח ארוך</strong> - בניית תיק שיטתית, לא "טיפים"</div>
+          <div><strong>ליווי אישי ממני</strong> - לצד קהילה סגורה לדיון מעמיק</div>
+          <div><strong>יומן מסחר שקוף</strong> - כולל עסקאות מפסידות</div>
+          <div><strong>תיק מסחר אישי</strong> וניתוח העסקאות שלך איתי</div>
         </div>
 
         <p style={{ fontSize: '11.5px', color: 'var(--text-tertiary)', lineHeight: 1.6, textAlign: 'center', marginBottom: '14px' }}>
