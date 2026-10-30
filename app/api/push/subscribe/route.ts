@@ -80,7 +80,21 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true });
   }
 
-  await markAppDownloadOnMonday({ name, phone, email: email || null }).catch(() => ({ ok: false, matched: false }));
+  // אם איש הקשר הזה כבר נרשם קודם ממכשיר אחר (יש לו כבר שורת מינוי אחרת עם אותו טלפון/מייל) -
+  // כבר נוצר לו ליד במאנדיי בפעם הקודמת, אז רק שומרים את המכשיר החדש בלי לפתוח ליד נוסף
+  const { data: existingByContact } = await supabaseAdmin
+    .from('push_subscriptions')
+    .select('id, phone, email')
+    .neq('endpoint', endpoint)
+    .is('user_id', null);
+
+  const alreadyKnownContact = (existingByContact || []).some(
+    (s) => (targetPhone && normalizePhone(s.phone) === targetPhone) || (targetEmail && s.email && normalizeEmail(s.email) === targetEmail)
+  );
+
+  if (!alreadyKnownContact) {
+    await markAppDownloadOnMonday({ name, phone, email: email || null }).catch(() => ({ ok: false, matched: false }));
+  }
 
   const { error } = await supabaseAdmin
     .from('push_subscriptions')
