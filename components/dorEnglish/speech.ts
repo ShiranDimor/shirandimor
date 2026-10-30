@@ -127,18 +127,36 @@ function editDistance(a: string, b: string) {
   return dp[a.length][b.length];
 }
 
-// בדיקה סלחנית: ילדה בת 7 עם מבטא ישראלי - מספיק שהמילה מופיעה באחת החלופות,
-// או שמילה שנשמעה קרובה מספיק (טעות אות אחת במילים ארוכות)
+const NUMBER_ALIASES: Record<string, string[]> = {
+  one: ['1', 'won'],
+  two: ['2', 'to', 'too'],
+  three: ['3', 'tree', 'free'],
+  four: ['4', 'for'],
+  five: ['5'],
+};
+const FILLER = new Set(['a', 'an', 'the', 'some']);
+
+const singular = (w: string) => (w.length > 3 && w.endsWith('s') ? w.slice(0, -1) : w);
+
+function tokenHeard(words: string[], token: string) {
+  const options = [token, ...(NUMBER_ALIASES[token] ?? [])];
+  const tolerance = token.length >= 5 ? 1 : 0;
+  return words.some((w) => options.includes(w) || singular(w) === singular(token) || (tolerance && editDistance(w, token) <= tolerance));
+}
+
+// בדיקה סלחנית: ילדה בת 7 עם מבטא ישראלי. במילה אחת - מספיק שהיא מופיעה באחת החלופות (או קרובה
+// מספיק במילים ארוכות). בצירוף ("two red hearts") - כל אחת מהמילים החשובות צריכה להישמע, בלי חשיבות
+// ליחיד/רבים או לסדר
 export function heardWord(transcripts: string[], target: string, accept: string[] = []) {
   const targets = [target, ...accept].map((t) => t.toLowerCase());
   for (const t of transcripts) {
     const clean = t.replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
-    const padded = ` ${clean} `;
+    const words = clean.split(' ');
     for (const target of targets) {
-      if (padded.includes(` ${target} `)) return true;
+      if (` ${clean} `.includes(` ${target} `)) return true;
       if (clean.replace(/ /g, '') === target.replace(/ /g, '')) return true;
-      const tolerance = target.length >= 5 ? 1 : 0;
-      if (tolerance && clean.split(' ').some((w) => editDistance(w, target) <= tolerance)) return true;
+      const tokens = target.split(' ').filter((w) => !FILLER.has(w));
+      if (tokens.length && tokens.every((tok) => tokenHeard(words, tok))) return true;
     }
   }
   return false;
