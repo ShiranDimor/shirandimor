@@ -57,6 +57,7 @@ async function getBoardSchema(token: string, boardId: string) {
   const groups: { id: string; title: string }[] = board?.groups || [];
 
   return {
+    allGroups: groups,
     groupId: groups.find((g) => g.title === LEAD_GROUP_NAME)?.id,
     subscriberGroupId: groups.find((g) => g.title === SUBSCRIBER_GROUP_NAME)?.id,
     updatesGroupId: groups.find((g) => g.title === UPDATES_GROUP_NAME)?.id,
@@ -609,6 +610,116 @@ export async function syncGenericLead(params: {
 
 const LIVE_REGISTRATION_CAMPAIGN_VALUE = 'הרשמה ללייב';
 const DUPLICATE_STATUS_LABEL = 'ליד כפול';
+// ערך עמודת ה"מקור/קמפיין" לליד שנוצר מהפעלת התראות באתר - לא קשור לעמודת הסטטוס
+const APP_DOWNLOAD_SOURCE_VALUE = 'הוריד את האתר';
+
+// מחפש איש קשר לפי טלפון/מייל בכל הלוח - לא מוגבל לקבוצה ספציפית, בניגוד ל-classifyContactMonday
+// שבודק רק 3 קבוצות ידועות (סוחרים/ניסיון/עדכונים). משמש כדי לדעת אם איש קשר קיים בכלל באיזשהו
+// מקום בלוח (כולל קבוצות כמו "לידים לא רלוונטיים"/"ביטלו" וכו') לפני שמחליטים אם לפתוח כרטיס חדש
+async function findItemIdByContactAnywhere(
+  token: string,
+  boardId: string,
+  phoneColumnId: string | undefined,
+  emailColumnId: string | undefined,
+  targetPhone: string | null,
+  targetEmail: string | null
+): Promise<string | null> {
+  const columnIds = [phoneColumnId, emailColumnId].filter(Boolean) as string[];
+  if (columnIds.length === 0 || (!targetPhone && !targetEmail)) return null;
+
+  let cursor: string | null = null;
+  do {
+    const itemsData: any = await mondayRequest(
+      token,
+      `query ($boardId: ID!, $cursor: String, $columnIds: [String!]) {
+        boards (ids: [$boardId]) {
+          items_page (limit: 100, cursor: $cursor) {
+            cursor
+            items { id column_values (ids: $columnIds) { id text } }
+          }
+        }
+      }`,
+      { boardId, cursor, columnIds }
+    );
+
+    const page = itemsData?.data?.boards?.[0]?.items_page;
+    const items: { id: string; column_values: { id: string; text: string | null }[] }[] = page?.items || [];
+
+    const found = items.find((item) => {
+      if (targetPhone && phoneColumnId) {
+        const text = item.column_values?.find((cv) => cv.id === phoneColumnId)?.text;
+        if (text && normalizePhone(text) === targetPhone) return true;
+      }
+      if (targetEmail && emailColumnId) {
+        const text = item.column_values?.find((cv) => cv.id === emailColumnId)?.text;
+        if (text && text.trim().toLowerCase() === targetEmail) return true;
+      }
+      return false;
+    });
+    if (found) return found.id;
+
+    cursor = page?.cursor || null;
+  } while (cursor);
+
+  return null;
+}
+
+// יוצר תמיד ליד חדש כשמי שאינו מנוי מוריד/מפעיל התראות באתר - בדיוק כמו createLiveRegistrationLead.
+// מחפש בכל הלוח (לא רק בקבוצות ידועות, וגם לפי מייל ולא רק טלפון) האם האיש קשר כבר קיים במקום
+// כלשהו - אם כן, הכרטיס החדש מסומן "ליד כפול" כדי שלא יתפספס ולא יתבלבל עם ליד אמיתי חדש
+export async function markAppDownloadOnMonday(params: { name: string; phone: string; email: string | null }): Promise<{ ok: boolean; matched: boolean }> {
+  const token = process.env.MONDAY_API_TOKEN;
+  const boardId = process.env.MONDAY_BOARD_ID;
+  if (!token || !boardId) return { ok: false, matched: false };
+
+  try {
+    const { groupId, phoneColumnId, emailColumnId, campaignColumnId, statusColumnId } = await getBoardSchema(token, boardId);
+    const targetPhone = params.phone ? normalizePhone(params.phone) : null;
+    const targetEmail = params.email ? params.email.trim().toLowerCase() : null;
+
+    const existingItemId = await findItemIdByContactAnywhere(token, boardId, phoneColumnId, emailColumnId, targetPhone, targetEmail);
+
+    const columnValues: Record<string, unknown> = {};
+    if (phoneColumnId) columnValues[phoneColumnId] = { phone: params.phone.startsWith('0') ? `972${params.phone.slice(1)}` : params.phone, countryShortName: 'IL' };
+    if (emailColumnId && params.email) columnValues[emailColumnId] = { email: params.email, text: params.email };
+    if (campaignColumnId) columnValues[campaignColumnId] = APP_DOWNLOAD_SOURCE_VALUE;
+
+    const createData: any = await mondayRequest(
+      token,
+      `mutation ($boardId: ID!, $groupId: String, $itemName: String!, $columnValues: JSON) {
+        create_item (board_id: $boardId, group_id: $groupId, item_name: $itemName, column_values: $columnValues) { id }
+      }`,
+      { boardId, groupId: groupId || null, itemName: params.name, columnValues: JSON.stringify(columnValues) }
+    );
+
+    const itemId = createData?.data?.create_item?.id;
+    if (!itemId) return { ok: false, matched: !!existingItemId };
+
+    if (existingItemId && statusColumnId) {
+      await mondayRequest(
+        token,
+        `mutation ($boardId: ID!, $itemId: ID!, $columnId: String!, $value: String!) {
+          change_simple_column_value (board_id: $boardId, item_id: $itemId, column_id: $columnId, value: $value) { id }
+        }`,
+        { boardId, itemId, columnId: statusColumnId, value: DUPLICATE_STATUS_LABEL }
+      ).catch((e) => console.error('Monday.com: נכשל סימון "ליד כפול" (הורדת האתר)', e));
+    }
+
+    await mondayRequest(
+      token,
+      `mutation ($itemId: ID!, $body: String!) { create_update (item_id: $itemId, body: $body) { id } }`,
+      {
+        itemId,
+        body: `נייד: ${params.phone}${params.email ? `\nאימייל: ${params.email}` : ''}\nמקור: הפעלת התראות באתר${existingItemId ? '\n⚠ כבר קיים ליד/מנוי אחר עם אותו נייד/מייל - סומן כ"ליד כפול"' : ''}`,
+      }
+    ).catch((e) => console.error('Monday.com: נכשל הוספת הערה (הורדת האתר)', e));
+
+    return { ok: true, matched: !!existingItemId };
+  } catch (e) {
+    console.error('שגיאה בסימון הורדת האתר ב-Monday.com', e);
+    return { ok: false, matched: false };
+  }
+}
 
 // יוצר תמיד כרטיס ליד חדש עבור מי שנרשם ללייב ואינו מנוי - בלי קשר לשאלה אם הלייב פתוח לכולם
 // או לא. אם הטלפון כבר מוכר במקום אחר בלוח, הכרטיס עדיין נוצר אבל מסומן כ"ליד כפול" - כדי

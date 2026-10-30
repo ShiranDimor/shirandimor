@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/instantLogin';
-import { sendPushToActiveSubscribers } from '@/lib/webPush';
+import { sendPushToActiveSubscribers, sendPushToNonSubscribers } from '@/lib/webPush';
 
 async function requireAdmin(request: Request) {
   const authHeader = request.headers.get('Authorization') || '';
@@ -15,8 +15,9 @@ async function requireAdmin(request: Request) {
   return user;
 }
 
-// POST - שולח התראת פוש למנויים שהסטופ לוס של עסקה פתוחה עודכן - רק למנויים (לא ללידים),
-// כי זה מידע ניהולי על עסקה שהם ממילא לא רואים את הסימבול שלה אם אינם מנויים
+// POST - שולח התראת פוש שהסטופ לוס של עסקה פתוחה עודכן - גם למנויים (עם הסימבול) וגם ללא-
+// מנויים (מטושטש), בדיוק כמו כל עדכון אחר בעסקה פתוחה - אין יותר הבדל בין סוגי ההתראות עצמן,
+// רק בחשיפת הסימבול בעסקאות פתוחות
 export async function POST(request: Request) {
   const admin = await requireAdmin(request);
   if (!admin) return NextResponse.json({ error: 'אין הרשאת ניהול' }, { status: 403 });
@@ -31,6 +32,12 @@ export async function POST(request: Request) {
     title: `🔁 סטופ לוס עודכן - ${symbol}`,
     body: `הסטופ החדש: $${newStopLoss}`,
     url: '/portfolio',
+  });
+
+  await sendPushToNonSubscribers({
+    title: '🔁 סטופ לוס עודכן בעסקה פתוחה',
+    body: 'הסימבול גלוי למנויים - ל-7 ימי ניסיון ללא עלות ←',
+    url: '/trial',
   });
 
   return NextResponse.json({ ok: true });

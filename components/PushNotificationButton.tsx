@@ -202,7 +202,7 @@ export default function PushNotificationButton() {
         onClick={status === 'on' ? handleDisable : handleEnable}
         disabled={busy}
       >
-        {busy ? '...' : status === 'on' ? '🔔 התראות פוש פעילות - לכיבוי' : '🔔 הפעלת התראות פוש'}
+        {busy ? '...' : status === 'on' ? '🔔 העדכונים שלי פעילים - לכיבוי' : '🔔 אישור קבלת עדכונים'}
       </button>
       {status === 'off' && (
         <p style={{ fontSize: '11px', color: 'var(--text-tertiary)', textAlign: 'center', marginBottom: '10px' }}>
