@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import ClearableInput from '@/components/ClearableInput';
 
 // ממיר את מפתח ה-VAPID הציבורי (מחרוזת base64) לפורמט הבינארי ש-pushManager.subscribe דורש
 function urlBase64ToUint8Array(base64String: string) {
@@ -13,14 +14,19 @@ function urlBase64ToUint8Array(base64String: string) {
   return outputArray;
 }
 
-type Status = 'checking' | 'unsupported' | 'needs-install' | 'off' | 'on' | 'denied';
+type Status = 'checking' | 'unsupported' | 'needs-install' | 'off' | 'on' | 'denied' | 'lead-form';
 
 // כפתור הפעלת התראות פוש - לדפדפן שתומך (Chrome/Edge/Firefox בכל פלטפורמה, Safari רק אחרי
-// שהאתר נוסף למסך הבית ב-iOS). שומר את הרישום בטבלת push_subscriptions כדי שהשרת יוכל לשלוח
-// התראות בהמשך (עסקה חדשה, סטופ לוס, עסקה נסגרה וכו')
+// שהאתר נוסף למסך הבית ב-iOS). מנוי מחובר נרשם ישר; מי שאינו מנוי (גם בלי להיות מחובר בכלל)
+// עובר קודם "שער הרשמה" קצר (שם+נייד+מייל) שהופך אותו לליד, בדיוק כמו טפסי ליד אחרים באתר
 export default function PushNotificationButton() {
   const [status, setStatus] = useState<Status>('checking');
   const [busy, setBusy] = useState(false);
+  const [isSubscriber, setIsSubscriber] = useState(false);
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
+  const [formError, setFormError] = useState('');
 
   useEffect(() => {
     checkStatus();
@@ -30,6 +36,12 @@ export default function PushNotificationButton() {
     if (typeof window === 'undefined' || !('serviceWorker' in navigator) || !('PushManager' in window)) {
       setStatus('unsupported');
       return;
+    }
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { data: profile } = await supabase.from('profiles').select('role, subscription_status').eq('id', user.id).maybeSingle();
+      setIsSubscriber(profile?.role === 'admin' || (profile?.role === 'subscriber' && profile?.subscription_status === 'active'));
     }
 
     const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent);
@@ -53,38 +65,69 @@ export default function PushNotificationButton() {
     }
   }
 
+  async function subscribeDevice(leadDetails?: { name: string; phone: string; email: string }) {
+    const permission = await Notification.requestPermission();
+    if (permission !== 'granted') {
+      setStatus('denied');
+      return false;
+    }
+
+    const reg = await navigator.serviceWorker.register('/sw.js');
+    await navigator.serviceWorker.ready;
+
+    const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+    if (!vapidKey) throw new Error('VAPID key לא מוגדר');
+
+    const sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(vapidKey),
+    });
+    const subJson = sub.toJSON();
+
+    const { data: { session } } = await supabase.auth.getSession();
+    const res = await fetch('/api/push/subscribe', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+      },
+      body: JSON.stringify({ endpoint: subJson.endpoint, keys: subJson.keys, ...leadDetails }),
+    });
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.error || 'שגיאה');
+    }
+    return true;
+  }
+
   async function handleEnable() {
+    if (!isSubscriber) {
+      setStatus('lead-form');
+      return;
+    }
     setBusy(true);
     try {
-      const permission = await Notification.requestPermission();
-      if (permission !== 'granted') {
-        setStatus('denied');
-        setBusy(false);
-        return;
-      }
-
-      const reg = await navigator.serviceWorker.register('/sw.js');
-      await navigator.serviceWorker.ready;
-
-      const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-      if (!vapidKey) throw new Error('VAPID key לא מוגדר');
-
-      const sub = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(vapidKey),
-      });
-
-      const { data: { session } } = await supabase.auth.getSession();
-      const subJson = sub.toJSON();
-      await fetch('/api/push/subscribe', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
-        body: JSON.stringify({ endpoint: subJson.endpoint, keys: subJson.keys }),
-      });
-
-      setStatus('on');
+      const ok = await subscribeDevice();
+      if (ok) setStatus('on');
     } catch (e) {
       console.error('שגיאה בהפעלת התראות פוש', e);
+    }
+    setBusy(false);
+  }
+
+  async function handleLeadFormSubmit() {
+    if (!name.trim() || !/^05\d{8}$/.test(phone)) {
+      setFormError('צריך שם ומספר נייד תקין (לדוגמה 0501234567)');
+      return;
+    }
+    setFormError('');
+    setBusy(true);
+    try {
+      const ok = await subscribeDevice({ name: name.trim(), phone, email: email.trim() });
+      if (ok) setStatus('on');
+    } catch (e) {
+      setFormError('משהו השתבש - כדאי לנסות שוב');
     }
     setBusy(false);
   }
@@ -97,11 +140,7 @@ export default function PushNotificationButton() {
       if (sub) {
         const endpoint = sub.endpoint;
         await sub.unsubscribe();
-        const { data: { session } } = await supabase.auth.getSession();
-        await fetch(`/api/push/subscribe?endpoint=${encodeURIComponent(endpoint)}`, {
-          method: 'DELETE',
-          headers: { Authorization: `Bearer ${session?.access_token}` },
-        });
+        await fetch(`/api/push/subscribe?endpoint=${encodeURIComponent(endpoint)}`, { method: 'DELETE' });
       }
       setStatus('off');
     } catch (e) {
@@ -125,6 +164,32 @@ export default function PushNotificationButton() {
       <p style={{ fontSize: '12px', color: 'var(--text-tertiary)', textAlign: 'center', marginBottom: '10px' }}>
         ההתראות חסומות בדפדפן - אפשר לאפשר אותן מהגדרות האתר בדפדפן.
       </p>
+    );
+  }
+
+  if (status === 'lead-form') {
+    return (
+      <div className="journal-form" style={{ marginBottom: '10px' }}>
+        <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '10px' }}>
+          השארת פרטים פותחת התראות על עסקאות ועדכונים מהתיק - בלי לפתוח חשבון ובלי עלות.
+        </p>
+        <div className="field" style={{ marginBottom: '8px' }}>
+          <ClearableInput type="text" value={name} onChange={(e) => setName(e.target.value)} onClear={() => setName('')} placeholder="שם מלא" />
+        </div>
+        <div className="field" style={{ marginBottom: '8px' }}>
+          <ClearableInput type="tel" inputMode="numeric" value={phone} onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))} onClear={() => setPhone('')} placeholder="0501234567" maxLength={10} />
+        </div>
+        <div className="field" style={{ marginBottom: '10px' }}>
+          <ClearableInput type="email" value={email} onChange={(e) => setEmail(e.target.value)} onClear={() => setEmail('')} placeholder="אימייל (לא חובה)" />
+        </div>
+        {formError && <p style={{ color: 'var(--loss)', fontSize: '12px', marginBottom: '8px' }}>{formError}</p>}
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button type="button" className="btn-primary" style={{ flex: 1 }} onClick={handleLeadFormSubmit} disabled={busy}>
+            {busy ? 'שולחים...' : '🔔 הפעלת התראות'}
+          </button>
+          <button type="button" className="btn-outline" onClick={() => setStatus('off')}>ביטול</button>
+        </div>
+      </div>
     );
   }
 

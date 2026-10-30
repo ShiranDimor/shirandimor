@@ -317,6 +317,14 @@ export default function AdminTradesPage() {
     setSavingEdit(false);
 
     if (!error) {
+      if (!isClosed && stop !== trade.stop_loss) {
+        const { data: { session } } = await supabase.auth.getSession();
+        fetch('/api/admin/notify-trade-updated', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
+          body: JSON.stringify({ symbol: editSymbol.toUpperCase(), newStopLoss: stop }),
+        }).catch(() => {});
+      }
       setEditingId(null);
       loadTrades();
     }
@@ -460,7 +468,7 @@ export default function AdminTradesPage() {
       fetch('/api/admin/notify-trade-opened', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
-        body: JSON.stringify({ symbol: symbol.toUpperCase(), direction }),
+        body: JSON.stringify({ symbol: symbol.toUpperCase(), direction, entryPrice: entry, stopLoss: stop }),
       }).catch(() => {});
     }
   }
