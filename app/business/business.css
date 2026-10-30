@@ -208,7 +208,15 @@
   font-family: inherit; font-size: 15px; font-weight: 600; cursor: pointer;
 }
 .biz-tab[aria-selected="true"] { background: var(--biz-peach-on-dark); color: var(--biz-ink); }
+/* שובר את הכתום הקבוע - כרטיסיית "לקבוע שיחה ביומן" ירוקה-מנטה (אותו גוון שכבר קיים בעמוד הזה) */
+.biz-tabs .biz-tab-mint[aria-selected="true"] { background: var(--biz-mint-on-dark); }
 .biz-tab:focus-visible, .biz-chip:focus-visible, .biz-link-btn:focus-visible { outline: 3px solid var(--biz-mint-on-dark); outline-offset: 2px; }
+/* במסך צר, כששתי הכרטיסיות לא נכנסות באותה שורה - עוברים למבנה מלא-רוחב במקום שתי "כדורי"
+   לא-אחידים זה מתחת לזה (זו הייתה הבעיה במובייל) */
+@media (max-width: 480px) {
+  .biz-tabs { flex-direction: column; width: 100%; border-radius: 14px; padding: 5px; }
+  .biz-tab { width: 100%; }
+}
 .biz-contact .biz-sched-loading { margin-top: 18px; font-size: 15px; }
 .biz-sched { margin-top: 18px; }
 .biz-contact .biz-sched-step { margin: 16px 0 10px; font-size: 15px; font-weight: 700; color: #FFF8F2; }
