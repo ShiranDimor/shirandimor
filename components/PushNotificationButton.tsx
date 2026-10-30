@@ -16,10 +16,20 @@ function urlBase64ToUint8Array(base64String: string) {
 
 type Status = 'checking' | 'unsupported' | 'needs-install' | 'off' | 'on' | 'denied' | 'lead-form';
 
+type Props = {
+  // 'hero' - גרסה בולטת לכפתור הראשי בעמוד הבית (צבע מלא + תג "ללא עלות"), עם ניסוח שמדבר על
+  // הצטרפות לקהילה/עדכונים בזמן אמת במקום הניסוח הכללי של הפעמון. 'default' הוא הכפתור הרגיל
+  // (/portfolio, הפעמון, אדמין) - ללא שינוי בהתנהגות הקיימת
+  variant?: 'default' | 'hero';
+  // כשמגיעים מקישור עם ?join=1 (מעמודים אחרים שמפנים לכאן) - פותח ישר את שער ההרשמה בלי
+  // ללחוץ קודם על הכפתור, בדיוק כמו ההתנהגות הישנה של showLeadForm=true מה-URL
+  autoOpenLeadForm?: boolean;
+};
+
 // כפתור הפעלת התראות פוש - לדפדפן שתומך (Chrome/Edge/Firefox בכל פלטפורמה, Safari רק אחרי
 // שהאתר נוסף למסך הבית ב-iOS). מנוי מחובר נרשם ישר; מי שאינו מנוי (גם בלי להיות מחובר בכלל)
 // עובר קודם "שער הרשמה" קצר (שם+נייד+מייל) שהופך אותו לליד, בדיוק כמו טפסי ליד אחרים באתר
-export default function PushNotificationButton() {
+export default function PushNotificationButton({ variant = 'default', autoOpenLeadForm = false }: Props) {
   const [status, setStatus] = useState<Status>('checking');
   const [busy, setBusy] = useState(false);
   const [isSubscriber, setIsSubscriber] = useState(false);
@@ -39,9 +49,11 @@ export default function PushNotificationButton() {
     }
 
     const { data: { user } } = await supabase.auth.getUser();
+    let subscriberNow = false;
     if (user) {
       const { data: profile } = await supabase.from('profiles').select('role, subscription_status').eq('id', user.id).maybeSingle();
-      setIsSubscriber(profile?.role === 'admin' || (profile?.role === 'subscriber' && profile?.subscription_status === 'active'));
+      subscriberNow = profile?.role === 'admin' || (profile?.role === 'subscriber' && profile?.subscription_status === 'active');
+      setIsSubscriber(subscriberNow);
     }
 
     const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent);
@@ -59,9 +71,15 @@ export default function PushNotificationButton() {
     try {
       const reg = await navigator.serviceWorker.getRegistration();
       const sub = await reg?.pushManager.getSubscription();
-      setStatus(sub ? 'on' : 'off');
+      if (sub) {
+        setStatus('on');
+      } else if (autoOpenLeadForm && !subscriberNow) {
+        setStatus('lead-form');
+      } else {
+        setStatus('off');
+      }
     } catch (e) {
-      setStatus('off');
+      setStatus(autoOpenLeadForm && !subscriberNow ? 'lead-form' : 'off');
     }
   }
 
@@ -171,7 +189,9 @@ export default function PushNotificationButton() {
     return (
       <div className="journal-form" style={{ marginBottom: '10px' }}>
         <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '10px' }}>
-          השארת פרטים פותחת התראות על עסקאות ועדכונים מהתיק - בלי לפתוח חשבון ובלי עלות.
+          {variant === 'hero'
+            ? 'קהילת הסוחרים שבונים תיק השקעות וסוחרים ביחד איתי בזמן אמת - עדכונים על עסקאות, שיעורים ולייבים ישר לנייד, בלי לפתוח חשבון ובלי עלות.'
+            : 'השארת פרטים פותחת התראות על עסקאות ועדכונים מהתיק - בלי לפתוח חשבון ובלי עלות.'}
         </p>
         <div className="field" style={{ marginBottom: '8px' }}>
           <ClearableInput type="text" value={name} onChange={(e) => setName(e.target.value)} onClear={() => setName('')} placeholder="שם מלא" />
@@ -190,6 +210,30 @@ export default function PushNotificationButton() {
           <button type="button" className="btn-outline" style={{ width: 'auto', flex: 'none', padding: '12px 16px' }} onClick={() => setStatus('off')}>ביטול</button>
         </div>
       </div>
+    );
+  }
+
+  if (variant === 'hero') {
+    if (status === 'on') {
+      return (
+        <p style={{ fontSize: '13.5px', color: 'var(--profit)', fontWeight: 700, textAlign: 'center', marginBottom: '6px' }}>
+          ✓ ההתראות שלכם פעילות
+          <button type="button" onClick={handleDisable} disabled={busy} style={{ background: 'none', border: 'none', color: 'var(--text-tertiary)', fontSize: '11.5px', fontWeight: 400, textDecoration: 'underline', cursor: 'pointer', marginRight: '8px', padding: 0 }}>
+            לכיבוי
+          </button>
+        </p>
+      );
+    }
+    return (
+      <>
+        <button type="button" className="cta-main" style={{ border: 'none', cursor: 'pointer', width: '100%' }} onClick={handleEnable} disabled={busy}>
+          {busy ? '...' : 'הצטרפות לעדכונים בזמן אמת'}
+          <span className="free-tag">ללא עלות</span>
+        </button>
+        <p style={{ fontSize: '11px', color: 'var(--text-tertiary)', textAlign: 'center', marginTop: '8px', marginBottom: '10px' }}>
+          באנדרואיד זה עובד ישר. באייפון צריך קודם להוסיף את האתר למסך הבית (שיתוף ← הוספה למסך הבית).
+        </p>
+      </>
     );
   }
 

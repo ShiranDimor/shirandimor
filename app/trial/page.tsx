@@ -50,11 +50,11 @@ export default function TrialSignupPage() {
         <Link href="/" className="nav-link">בית</Link>
       </header>
 
-      <div className="form-title" style={{ fontSize: '22px' }}>7 ימי ניסיון בקבוצת הסוחרים - ללא עלות</div>
+      <div className="form-title" style={{ fontSize: '22px' }}>7 ימי ניסיון ב&quot;מדברים עסקאות&quot; - ללא עלות</div>
       <div style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.7, marginBottom: '20px' }}>
-        פתחתי סבב חדש של 7 ימי ניסיון לקבוצת הסוחרים "מדברים עסקאות" - בלי עלות ובלי התחייבות. המקום מוגבל, אז כדי לשריין השאירו שם ונייד ואני אחזור אליכם.
+        פתחתי סבב חדש של 7 ימי ניסיון ל&quot;מדברים עסקאות&quot; - בלי עלות ובלי התחייבות. המקום מוגבל, אז כדי לשריין השאירו שם ונייד ואני אחזור אליכם.
         <br /><br />
-        לפני ההצטרפות תתקיים שיחה קצרה איתי כדי לוודא התאמה לקבוצה.
+        לפני ההצטרפות תתקיים שיחה קצרה איתי כדי לוודא התאמה.
       </div>
 
       {!done && (

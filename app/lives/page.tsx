@@ -192,12 +192,12 @@ export default function LivesPage() {
           )}
           {confirmedLeadIds.has(live.id) && (
             <div style={{ background: 'var(--profit-bg)', border: '1px solid var(--profit)', borderRadius: '8px', padding: '12px 14px', marginBottom: '10px', fontSize: '13px', lineHeight: 1.6 }}>
-              <p style={{ marginBottom: '10px' }}>✓ הפרטים נקלטו! הלייבים האלה פתוחים למנויי קבוצת הסוחרים &quot;מדברים עסקאות&quot;. אפשר להצטרף ל-7 ימי ניסיון בלי עלות ולקבל גישה מיידית:</p>
+              <p style={{ marginBottom: '10px' }}>✓ הפרטים נקלטו! הלייבים האלה פתוחים למנויי &quot;מדברים עסקאות&quot;. אפשר להצטרף ל-7 ימי ניסיון בלי עלות ולקבל גישה מיידית:</p>
               <Link href="/trial" className="btn-primary" style={{ display: 'block', textAlign: 'center', textDecoration: 'none', marginBottom: '10px', background: accentColor }}>
                 ל-7 ימי ניסיון ללא עלות ←
               </Link>
               <p style={{ textAlign: 'center', marginBottom: '10px' }}>
-                <Link href="/?join=1" style={{ color: 'var(--text-tertiary)', fontSize: '12px', textDecoration: 'underline' }}>עדיין לא בטוח/ה? אפשר להתחיל מקבוצת העדכונים החינמית ←</Link>
+                <Link href="/?join=1" style={{ color: 'var(--text-tertiary)', fontSize: '12px', textDecoration: 'underline' }}>עדיין לא בטוח/ה? אפשר להתחיל מעדכונים בזמן אמת, בחינם ←</Link>
               </p>
               <p style={{ marginBottom: '8px' }}>יש שאלות לפני שמצטרפים? אפשר לשלוח לי הודעה בוואטסאפ:</p>
               <a href="https://wa.me/972547167419" target="_blank" rel="noopener noreferrer" style={{ display: 'block', textAlign: 'center', background: '#25D366', color: '#fff', textDecoration: 'none', fontWeight: 700, padding: '10px', borderRadius: '8px' }}>

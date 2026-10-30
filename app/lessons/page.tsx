@@ -211,7 +211,7 @@ export default function LessonsLibraryPage() {
       <div className="lessons-hero">
         <div className="lessons-hero-icon">🎬</div>
         <h1>ספריית שיעורים</h1>
-        <p>וובינרים, הרצאות ומצגות על מסחר - פתוחות לצפייה לכל מי שמחובר לקהילה שלנו.</p>
+        <p>וובינרים, הרצאות ומצגות על מסחר - פתוחות לצפייה לכל מי שחלק מהקהילה שלנו.</p>
         {!gateNeeded && lessons.length > 0 && (
           <div className="lessons-hero-stats">
             <div className="lessons-hero-stat"><b>{lessons.length}</b><span>שיעורים</span></div>
@@ -241,7 +241,7 @@ export default function LessonsLibraryPage() {
         <div className="tp-question-card">
           <div className="tp-question-title">עוד רגע - איך קוראים לך?</div>
           <div className="tp-step-intro" style={{ marginBottom: '14px' }}>
-            לא זיהינו אתכם אצלנו - השארת שם פותחת גישה חינמית לספרייה, ומצטרפת אתכם לקבוצת העדכונים.
+            לא זיהינו אתכם אצלנו - השארת שם פותחת גישה חינמית לספרייה ולעדכונים שלנו.
           </div>
 
           <input className="tp-text-input" style={{ minHeight: 'auto', marginBottom: '10px' }} placeholder="שם" value={name} onChange={(e) => setName(e.target.value)} autoFocus />
@@ -258,7 +258,7 @@ export default function LessonsLibraryPage() {
         <div className="tp-question-card">
           <div className="tp-question-title">כבר יש לך גישה מלאה 🎉</div>
           <div className="tp-step-intro" style={{ marginBottom: '14px' }}>
-            את/ה כבר חלק מקבוצת הסוחרים - אין צורך להשאיר שום פרטים, הכל כבר פתוח לך כמנוי/ה.
+            את/ה כבר מנוי/ה ב"מדברים עסקאות" - אין צורך להשאיר שום פרטים, הכל כבר פתוח לך.
           </div>
           <button type="button" className="btn-primary" onClick={continueToLibrary}>כניסה לספרייה</button>
         </div>
@@ -266,9 +266,9 @@ export default function LessonsLibraryPage() {
 
       {gateNeeded && enterResult === 'updates' && (
         <div className="tp-question-card">
-          <div className="tp-question-title">כבר את/ה בקבוצת העדכונים 👋</div>
+          <div className="tp-question-title">כבר מכירים אותך 👋</div>
           <div className="tp-step-intro" style={{ marginBottom: '14px' }}>
-            הספרייה פתוחה לך. רוצה גישה גם לתוכן הבלעדי ולליווי של קבוצת הסוחרים?
+            הספרייה פתוחה לך. רוצה גישה גם לתוכן הבלעדי ולליווי של &quot;מדברים עסקאות&quot;?
           </div>
           <a
             href="https://pay.grow.link/200a7cdcb258ee6ffdea0f423a1ace0e-MzE4MDU5OA"
@@ -277,7 +277,7 @@ export default function LessonsLibraryPage() {
             className="btn-outline"
             style={{ display: 'block', textAlign: 'center', textDecoration: 'none', marginBottom: '10px' }}
           >
-            הצטרפות לקבוצת הסוחרים ←
+            הצטרפות ל&quot;מדברים עסקאות&quot; ←
           </a>
           <button type="button" className="btn-primary" onClick={continueToLibrary}>כניסה לספרייה</button>
         </div>

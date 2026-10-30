@@ -50,7 +50,7 @@ const LEGEND: { status: DayStatus; label: string }[] = [
 // טיזרים נעולים למי שעדיין לא מנוי - מתחלפים לפי ההתקדמות, כדי שתמיד יהיה עוד משהו שמזכיר שיש עוד בפנים.
 // כל תוכן כאן אמיתי (מבוסס על מה שבאמת ניתן בקבוצת הסוחרים) - לא הבטחה מומצאת.
 const LOCKED_TEASERS = [
-  { icon: '🎥', title: 'וובינרים לייב', text: 'שאלות בזמן אמת וניתוחים חיים עם קבוצה שכבר בפנים - במקום ללמוד לבד מהצד.' },
+  { icon: '🎥', title: 'וובינרים לייב', text: 'שאלות בזמן אמת וניתוחים חיים עם מי שכבר בפנים - במקום ללמוד לבד מהצד.' },
   { icon: '📓', title: 'יומן מסחר שקוף', text: 'לראות איך זה נראה אצל מי שכבר במסלול - כולל עסקאות מפסידות, לא רק הצלחות.' },
   { icon: '🧭', title: 'ליווי אישי', text: 'כשמשהו לא ברור באמצע הדרך - יש למי לפנות, במקום לנחש לבד ולחכות לתוצאה.' },
   { icon: '📊', title: 'ניתוח אישי של ההחלטות שלך', text: 'שירן עצמה עוברת על התיק ועל ההחלטות - ומראה מה עובד ומה כדאי לשנות.' },
@@ -395,7 +395,7 @@ function MyPlanProgressPageInner() {
                   </div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', marginTop: '14px', paddingTop: '12px', borderTop: '1px solid var(--border-hairline)' }}>
-                  <span style={{ fontSize: '11.5px', color: '#B4791F', fontWeight: 700 }}>🔒 נעול - למנויי קבוצת הסוחרים בלבד</span>
+                  <span style={{ fontSize: '11.5px', color: '#B4791F', fontWeight: 700 }}>🔒 נעול - למנויי &quot;מדברים עסקאות&quot; בלבד</span>
                   <a href="https://pay.grow.link/200a7cdcb258ee6ffdea0f423a1ace0e-MzE4MDU5OA" style={{ fontSize: '11.5px', fontWeight: 700, color: '#FFFFFF', background: '#B4791F', borderRadius: '8px', padding: '6px 12px', textDecoration: 'none', flexShrink: 0 }}>
                     לפתוח גישה
                   </a>
@@ -419,9 +419,9 @@ function MyPlanProgressPageInner() {
                 textAlign: 'center',
               }}
             >
-              <div style={{ fontSize: '13.5px', color: 'var(--text-primary)', fontWeight: 600 }}>כבר חלק מקבוצת הסוחרים 💜</div>
+              <div style={{ fontSize: '13.5px', color: 'var(--text-primary)', fontWeight: 600 }}>כבר מנוי/ה ב&quot;מדברים עסקאות&quot; 💜</div>
               <p style={{ fontSize: '12.5px', color: 'var(--text-tertiary)', lineHeight: 1.6, marginTop: '6px' }}>
-                המעקב האישי הזה הוא רק תוספת קטנה למה שכבר יש לך בקבוצה. אז פשוט להמשיך ככה.
+                המעקב האישי הזה הוא רק תוספת קטנה למה שכבר יש לך. אז פשוט להמשיך ככה.
               </p>
             </div>
           ) : (
@@ -434,15 +434,15 @@ function MyPlanProgressPageInner() {
                 textAlign: 'center',
               }}
             >
-              <div style={{ fontSize: '13.5px', color: 'var(--text-primary)', fontWeight: 600, marginBottom: '6px' }}>וזה עוד לפני שהצטרפת לקבוצת הסוחרים</div>
+              <div style={{ fontSize: '13.5px', color: 'var(--text-primary)', fontWeight: 600, marginBottom: '6px' }}>וזה עוד לפני שהצטרפת ל&quot;מדברים עסקאות&quot;</div>
               <p style={{ fontSize: '12.5px', color: 'var(--text-tertiary)', lineHeight: 1.6, marginBottom: '14px' }}>
-                המעקב האישי הזה חינמי לגמרי. מי שכבר בקבוצה מקבל את כל זה - ועוד ליווי, תשובות בזמן אמת ואנשים שעוברים בדיוק את השלב הזה עכשיו. לא צריך קורס יקר כדי לדעת אם זה בשבילך - חודש ניסיון אחד מראה את זה הרבה יותר טוב.
+                המעקב האישי הזה חינמי לגמרי. מנויים מקבלים את כל זה - ועוד ליווי, תשובות בזמן אמת ואנשים שעוברים בדיוק את השלב הזה עכשיו. לא צריך קורס יקר כדי לדעת אם זה בשבילך - חודש ניסיון אחד מראה את זה הרבה יותר טוב.
               </p>
               <a
                 href="https://pay.grow.link/200a7cdcb258ee6ffdea0f423a1ace0e-MzE4MDU5OA"
                 style={{ display: 'inline-block', fontSize: '13.5px', fontWeight: 700, color: '#FFFFFF', background: '#B4791F', borderRadius: '10px', padding: '12px 22px', textDecoration: 'none' }}
               >
-                הצטרפות לקבוצת הסוחרים ←
+                הצטרפות ל&quot;מדברים עסקאות&quot; ←
               </a>
             </div>
           )}
