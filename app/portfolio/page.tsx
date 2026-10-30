@@ -288,6 +288,8 @@ export default function PortfolioPage() {
 
       <div className="section-label"><h2>התיק של שירן</h2></div>
 
+      <PushNotificationButton />
+
       {!hasFullAccess && (
         <div className="lock-banner">
           <div className="lb-icon">🔒</div>
@@ -304,8 +306,6 @@ export default function PortfolioPage() {
 
       {hasFullAccess && (
         <>
-          <PushNotificationButton />
-
           <div className="section-label"><h2>מחשבון גודל פוזיציה</h2></div>
           <div className="calc-panel" style={{ padding: '18px 16px', marginBottom: '28px' }}>
             <div className="form-row" style={{ marginBottom: '10px' }}>

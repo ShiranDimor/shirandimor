@@ -22,16 +22,16 @@ export type PushPayload = {
   url?: string;
 };
 
-// שולח התראת פוש לכל המכשירים הרשומים של משתמש אחד. מוחק אוטומטית מינויים שפגו (410/404 -
-// המשתמש ביטל הרשאה או הסיר את האתר ממסך הבית) כדי שלא ננסה לשלוח אליהם שוב בכל פעם
-export async function sendPushToUser(userId: string, payload: PushPayload) {
-  if (!ensureConfigured()) return;
+type SubscriptionRow = { id: string; endpoint: string; p256dh: string; auth: string };
 
-  const { data: subs } = await supabaseAdmin.from('push_subscriptions').select('id, endpoint, p256dh, auth').eq('user_id', userId);
-  if (!subs || subs.length === 0) return;
+// שולח לרשימת שורות מינוי גולמית (לא לפי user_id - כך גם לידים בלי חשבון, ששורת המינוי שלהם
+// user_id=null, מקבלים התראות). מוחק אוטומטית מינויים שפגו (404/410 - המשתמש ביטל הרשאה או
+// הסיר את האתר ממסך הבית) כדי שלא ננסה לשלוח אליהם שוב בכל פעם
+async function sendToRows(rows: SubscriptionRow[], payload: PushPayload) {
+  if (!ensureConfigured() || rows.length === 0) return;
 
   await Promise.all(
-    subs.map(async (sub) => {
+    rows.map(async (sub) => {
       try {
         await webpush.sendNotification(
           { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
@@ -49,14 +49,41 @@ export async function sendPushToUser(userId: string, payload: PushPayload) {
   );
 }
 
+export async function sendPushToUser(userId: string, payload: PushPayload) {
+  const { data: subs } = await supabaseAdmin.from('push_subscriptions').select('id, endpoint, p256dh, auth').eq('user_id', userId);
+  await sendToRows(subs || [], payload);
+}
+
 export async function sendPushToUsers(userIds: string[], payload: PushPayload) {
   await Promise.all(userIds.map((id) => sendPushToUser(id, payload)));
 }
 
-// שולח התראת פוש לכל המנויים הפעילים (ולשירן עצמה) - ל-user_id-ים, לא טלפון/מייל, כי
-// push_subscriptions מקושר למשתמש מחובר ולא לפרטי קשר
-export async function sendPushToActiveSubscribers(payload: PushPayload) {
+async function getActiveSubscriberUserIds(): Promise<string[]> {
   const { data: rows } = await supabaseAdmin.from('profiles').select('id').or('role.eq.admin,and(role.eq.subscriber,subscription_status.eq.active)');
-  if (!rows || rows.length === 0) return;
-  await sendPushToUsers(rows.map((r) => r.id), payload);
+  return (rows || []).map((r) => r.id);
+}
+
+// שולח התראת פוש לכל המנויים הפעילים (ולשירן עצמה) - לכל מי שה-user_id שלו שייך למנוי פעיל/אדמין
+export async function sendPushToActiveSubscribers(payload: PushPayload) {
+  const ids = await getActiveSubscriberUserIds();
+  if (ids.length === 0) return;
+  const { data: subs } = await supabaseAdmin.from('push_subscriptions').select('id, endpoint, p256dh, auth').in('user_id', ids);
+  await sendToRows(subs || [], payload);
+}
+
+// שולח לכל מי שאינו מנוי פעיל כרגע - גם לידים בלי חשבון בכלל (user_id null, נרשמו דרך שער
+// ההרשמה), וגם למי שכן מחובר עם חשבון אבל אינו מנוי פעיל (למשל מנוי שפג)
+export async function sendPushToNonSubscribers(payload: PushPayload) {
+  const subscriberIds = await getActiveSubscriberUserIds();
+  const query = supabaseAdmin.from('push_subscriptions').select('id, endpoint, p256dh, auth, user_id');
+  const { data: allSubs } = await query;
+  const rows = (allSubs || []).filter((s) => !s.user_id || !subscriberIds.includes(s.user_id));
+  await sendToRows(rows, payload);
+}
+
+// שולח ללא יוצא מן הכלל - גם מנויים וגם לא-מנויים (לשימוש בהתראות שרוצים שכולם יראו, כמו
+// עסקה שנסגרה)
+export async function sendPushToEveryone(payload: PushPayload) {
+  const { data: rows } = await supabaseAdmin.from('push_subscriptions').select('id, endpoint, p256dh, auth');
+  await sendToRows(rows || [], payload);
 }
