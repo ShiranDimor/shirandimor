@@ -90,7 +90,6 @@ export default function TrialSignupPage() {
         </div>
       )}
 
-      <footer>מסחר בשוק ההון כרוך בסיכון. אין באמור המלצה לפעולה כלשהי.</footer>
     </div>
   );
 }

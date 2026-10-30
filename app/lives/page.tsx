@@ -257,7 +257,6 @@ export default function LivesPage() {
 
       <Link className="cta-sub-link" href="/trial">מנויים נרשמים ללייבים בלחיצה אחת - ל-7 ימי ניסיון ללא עלות <span>←</span></Link>
 
-      <footer>מסחר בשוק ההון כרוך בסיכון. אין באמור המלצה לפעולה כלשהי.</footer>
     </div>
   );
 }

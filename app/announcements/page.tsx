@@ -48,7 +48,6 @@ export default function AnnouncementsPage() {
         </div>
       ))}
 
-      <footer>מסחר בשוק ההון כרוך בסיכון. אין באמור המלצה לפעולה כלשהי.</footer>
     </div>
   );
 }

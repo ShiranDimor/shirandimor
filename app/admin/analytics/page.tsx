@@ -281,7 +281,6 @@ export default function AdminAnalyticsPage() {
         </>
       )}
 
-      <footer>מסחר בשוק ההון כרוך בסיכון. אין באמור המלצה לפעולה כלשהי.</footer>
     </div>
   );
 }

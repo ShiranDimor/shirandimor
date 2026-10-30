@@ -375,11 +375,6 @@ export default function HomePage() {
         <span className="qauthor">שירן דימור</span>
       </div>
 
-      <footer>
-        מסחר בשוק ההון כרוך בסיכון. אין באמור המלצה לפעולה כלשהי.<br />
-        <Link href="/terms" style={{ color: 'var(--text-tertiary)', textDecoration: 'underline' }}>תקנון</Link> · <Link href="/privacy" style={{ color: 'var(--text-tertiary)', textDecoration: 'underline' }}>מדיניות פרטיות</Link>
-      </footer>
-
       {showStickyCta && !showLeadForm && !alreadyInFreeGroup && (
         <div className="sticky-cta">
           <button onClick={() => { window.scrollTo(0, 0); setShowLeadForm(true); }}>
