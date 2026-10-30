@@ -51,7 +51,7 @@ export default function ContactOptions({ whatsappUrl }: { whatsappUrl: string })
     <div className="biz-contact-options">
       {showTabs && (
         <div className="biz-tabs" role="tablist" aria-label="איך נוח לכם להתקדם">
-          <button type="button" role="tab" aria-selected={activeMode === 'schedule'} className="biz-tab" onClick={() => setMode('schedule')}>
+          <button type="button" role="tab" aria-selected={activeMode === 'schedule'} className="biz-tab biz-tab-mint" onClick={() => setMode('schedule')}>
             לקבוע שיחה ביומן
           </button>
           <button type="button" role="tab" aria-selected={activeMode === 'details'} className="biz-tab" onClick={() => setMode('details')}>
