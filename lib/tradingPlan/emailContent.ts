@@ -136,8 +136,11 @@ export function buildUserPlanEmailHtml(r: PlanRow): string {
           ${CHECKLIST.map((c) => `<div style="font-size:13.5px;color:#444;padding:6px 0;border-bottom:1px solid #eee;">☐ ${c}</div>`).join('')}
         </div>
 
+        <p style="font-size:13px;color:#555;line-height:1.7;text-align:center;margin-bottom:12px;">
+          רוצה ללכת צעד רחוק יותר? <strong style="color:#8C3B5E;">סוחרים ביחד איתי</strong>. בלי ידע מוקדם.
+        </p>
         <a href="${SITE_URL}/subscribe" style="display:block;text-align:center;background:#4fc9c4;color:#08131a;text-decoration:none;font-weight:700;padding:13px;border-radius:10px;">
-          רוצה לראות איך זה עובד בקבוצת הסוחרים? ←
+          להכיר את &quot;מדברים עסקאות&quot; ←
         </a>
       </div>
     </div>
@@ -260,14 +263,14 @@ export function buildAbandonedEmailHtml(r: AbandonedRow, reminderNumber: 1 | 2 =
 
         ${isLast ? `
         <p style="font-size:13.5px;color:#444;line-height:1.7;margin-top:24px;">כבר הושקעו כמה דקות יקרות בהתחלת הדרך - ממש חבל שזה יישאר תקוע ככה, בלי סיום.</p>
-        <p style="font-size:13.5px;color:#444;line-height:1.7;">ואם בכל זאת יש רצון לדלג ישר לשלב הבא, ולא רק לעקוב מהצד - קבוצת הסוחרים תמיד פתוחה:</p>
+        <p style="font-size:13.5px;color:#444;line-height:1.7;">ואם בכל זאת יש רצון לדלג ישר לשלב הבא, ולא רק לעקוב מהצד - <strong style="color:#8C3B5E;">&quot;מדברים עסקאות&quot;</strong> תמיד פתוח: סוחרים ביחד איתי, בלי ידע מוקדם.</p>
         ` : `
-        <p style="font-size:13.5px;color:#444;line-height:1.7;margin-top:24px;">להישאר רק בקבוצת העדכונים ולקרוא על שוק ההון זה נחמד להתחלה - אבל מתישהו כדאי לעבור לשלב הבא, ולבנות תוכנית אמיתית שעובדים לפיה.</p>
+        <p style="font-size:13.5px;color:#444;line-height:1.7;margin-top:24px;">להישאר רק עם עדכונים בזמן אמת ולקרוא על שוק ההון זה נחמד להתחלה - אבל מתישהו כדאי לעבור לשלב הבא, ולבנות תוכנית אמיתית שעובדים לפיה.</p>
         <p style="font-size:13.5px;color:#444;line-height:1.7;">זה הרבה יותר פשוט ממה שזה נראה: כמה דקות כל כמה ימים, לא יותר. עם קצת עקביות, התיק יכול להיראות אחרי כמה חודשים לגמרי אחרת.</p>
         `}
 
         <a href="https://pay.grow.link/200a7cdcb258ee6ffdea0f423a1ace0e-MzE4MDU5OA" style="display:block;text-align:center;background:transparent;color:#0f766e;text-decoration:none;font-weight:700;padding:12px;border-radius:10px;border:2px solid #4fc9c4;margin-top:10px;">
-          הצטרפות לקבוצת הסוחרים ←
+          הצטרפות ל&quot;מדברים עסקאות&quot; ←
         </a>
 
         <p style="font-size:12.5px;color:#888;line-height:1.7;margin-top:20px;margin-bottom:8px;text-align:center;">אם יש שאלה בדרך - אפשר תמיד לכתוב לי בוואטסאפ:</p>
@@ -281,16 +284,16 @@ export function buildAbandonedEmailHtml(r: AbandonedRow, reminderNumber: 1 | 2 =
 
 // כל שורה כאן היא זווית שיווקית מלאה: מוכרים חלום, נוגעים בפחד הספציפי שהאדם עצמו כתב, ומזמינים
 // לפעולה מיידית ואימפולסיבית - לא רק "עוד מייל תזכורת". מתחלף בין שליחות כדי שלא ירגיש כמו תבנית קבועה.
-function buildGroupPitch(dream: string | null, fear: string | null): string {
+function buildSubscribePitch(dream: string | null, fear: string | null): string {
   const pitches: string[] = [];
 
   if (dream) {
-    pitches.push(`לדמיין לרגע שזה כבר קרה: ${dream}. זה בדיוק הכיוון שנקבע כאן באופן אישי - והקבוצה קיימת בשביל לקצר את הדרך לשם, לא ללכת אותה לבד.`);
+    pitches.push(`לדמיין לרגע שזה כבר קרה: ${dream}. זה בדיוק הכיוון שנקבע כאן באופן אישי - ו"מדברים עסקאות" קיים בשביל לקצר את הדרך לשם: סוחרים ביחד, לא לבד.`);
   }
   if (fear) {
     pitches.push(`זה בדיוק מה שסומן כאן כהכי מטריד: "${fear}". זה בדיוק למה שווה להיות בסביבה שבה אפשר לשאול בזמן אמת, במקום להישאר עם זה לבד.`);
   }
-  pitches.push('מי שכבר בקבוצה חוזרים על דבר אחד בעקביות: הרגע שהכי מתחרטים עליו הוא לא ההצטרפות - הוא כל החודש שחיכו לפני.');
+  pitches.push('מי שכבר מנויים חוזרים על דבר אחד בעקביות: הרגע שהכי מתחרטים עליו הוא לא ההצטרפות - הוא כל החודש שחיכו לפני.');
   pitches.push('אין כאן הבטחות גדולות - יש תהליך, ואנשים שכבר עברו בדיוק את השלב הזה עכשיו. שווה להציץ, גם רק כדי לראות.');
 
   return pitches[Math.floor(Math.random() * pitches.length)];
@@ -304,7 +307,7 @@ export function buildDailyProgressReminderEmailHtml(r: ProgressReminderRow, isSu
   const link = `${SITE_URL}/my-plan/${r.id}`;
   const dream = firstLabel(r.trading_motivation, 'trading_motivation');
   const fear = firstLabel(r.money_fear, 'money_fear') || firstLabel(r.self_talk, 'self_talk');
-  const pitch = buildGroupPitch(dream, fear);
+  const pitch = buildSubscribePitch(dream, fear);
 
   return wrapEmail(`
   <div dir="rtl" style="font-family: Arial, Helvetica, sans-serif; background:#f4f4f5; padding:24px 12px;">

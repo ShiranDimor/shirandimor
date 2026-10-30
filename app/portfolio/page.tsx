@@ -295,7 +295,7 @@ export default function PortfolioPage() {
           <div className="lb-icon">🔒</div>
           <div className="lb-text">
             <p className="lb-title">יש כאן עסקאות אמיתיות, אבל הן שמורות למנויים</p>
-            <p className="lb-sub">הסימבולים מוסתרים כדי לשמור על פרטיות המנויים - ההצטרפות פותחת גישה לתמונה המלאה: מספרים אמיתיים, כולל הפסדים.</p>
+            <p className="lb-sub">הסימבולים מוסתרים כדי לשמור על פרטיות המנויים - ההצטרפות פותחת גישה לתמונה המלאה: מספרים אמיתיים, כולל הפסדים, ותיק השקעות שבונים <strong style={{ color: 'var(--lavender)' }}>ביחד איתי</strong>.</p>
           </div>
           <div className="lb-cta-row">
             <Link href="/subscribe" className="lb-cta">לגישה מלאה ←</Link>

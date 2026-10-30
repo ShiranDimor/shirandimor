@@ -190,7 +190,7 @@ export default function PushNotificationButton({ variant = 'default', autoOpenLe
       <div className="journal-form" style={{ marginBottom: '10px' }}>
         <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '10px' }}>
           {variant === 'hero'
-            ? 'קהילת הסוחרים שבונים תיק השקעות וסוחרים ביחד איתי בזמן אמת - עדכונים על עסקאות, שיעורים ולייבים ישר לנייד, בלי לפתוח חשבון ובלי עלות.'
+            ? 'קהילת סוחרים שבונה תיק השקעות ביחד איתי, בזמן אמת - עדכונים על עסקאות, שיעורים ולייבים ישר לנייד. בלי לפתוח חשבון, בלי עלות.'
             : 'השארת פרטים פותחת התראות על עסקאות ועדכונים מהתיק - בלי לפתוח חשבון ובלי עלות.'}
         </p>
         <div className="field" style={{ marginBottom: '8px' }}>
