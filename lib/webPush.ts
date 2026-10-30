@@ -28,9 +28,11 @@ type SubscriptionRow = { id: string; endpoint: string; p256dh: string; auth: str
 
 // רישום לטבלת "יומן התראות" - מקור האמת היחיד למרכז ההתראות (הפעמון) באתר, כדי שההיסטוריה
 // שמוצגת שם תהיה תמיד בדיוק מה שבאמת נשלח כהתראת פוש, כולל הניסוח המדויק לכל קהל (למנויים
-// עם הסימבול, ללא-מנויים בגרסה מטושטשת) - בלי לשחזר את זה בדיעבד מכמה טבלאות שונות
-async function logNotification(kind: NotificationKind, audience: 'subscribers' | 'non_subscribers' | 'everyone', payload: PushPayload) {
-  await supabaseAdmin.from('notification_log').insert({ kind, audience, title: payload.title, body: payload.body, url: payload.url || null });
+// עם הסימבול, ללא-מנויים בגרסה מטושטשת) - בלי לשחזר את זה בדיעבד מכמה טבלאות שונות.
+// sourceId (כשיש) הוא ה-id של השורה המקורית (שיעור/לייב/מודעה) - כדי שמחיקת הפריט המקורי
+// תוכל למחוק גם את רשומת היומן המתאימה, ולא תישאר "רפאים" בפעמון אחרי שהתוכן כבר לא קיים
+async function logNotification(kind: NotificationKind, audience: 'subscribers' | 'non_subscribers' | 'everyone', payload: PushPayload, sourceId?: string) {
+  await supabaseAdmin.from('notification_log').insert({ kind, audience, title: payload.title, body: payload.body, url: payload.url || null, source_id: sourceId || null });
 }
 
 // שולח לרשימת שורות מינוי גולמית (לא לפי user_id - כך גם לידים בלי חשבון, ששורת המינוי שלהם
@@ -73,8 +75,8 @@ async function getActiveSubscriberUserIds(): Promise<string[]> {
 }
 
 // שולח התראת פוש לכל המנויים הפעילים (ולשירן עצמה) - לכל מי שה-user_id שלו שייך למנוי פעיל/אדמין
-export async function sendPushToActiveSubscribers(payload: PushPayload, kind: NotificationKind) {
-  await logNotification(kind, 'subscribers', payload);
+export async function sendPushToActiveSubscribers(payload: PushPayload, kind: NotificationKind, sourceId?: string) {
+  await logNotification(kind, 'subscribers', payload, sourceId);
   const ids = await getActiveSubscriberUserIds();
   if (ids.length === 0) return;
   const { data: subs } = await supabaseAdmin.from('push_subscriptions').select('id, endpoint, p256dh, auth').in('user_id', ids);
@@ -83,8 +85,8 @@ export async function sendPushToActiveSubscribers(payload: PushPayload, kind: No
 
 // שולח לכל מי שאינו מנוי פעיל כרגע - גם לידים בלי חשבון בכלל (user_id null, נרשמו דרך שער
 // ההרשמה), וגם למי שכן מחובר עם חשבון אבל אינו מנוי פעיל (למשל מנוי שפג)
-export async function sendPushToNonSubscribers(payload: PushPayload, kind: NotificationKind) {
-  await logNotification(kind, 'non_subscribers', payload);
+export async function sendPushToNonSubscribers(payload: PushPayload, kind: NotificationKind, sourceId?: string) {
+  await logNotification(kind, 'non_subscribers', payload, sourceId);
   const subscriberIds = await getActiveSubscriberUserIds();
   const query = supabaseAdmin.from('push_subscriptions').select('id, endpoint, p256dh, auth, user_id');
   const { data: allSubs } = await query;
@@ -94,8 +96,8 @@ export async function sendPushToNonSubscribers(payload: PushPayload, kind: Notif
 
 // שולח ללא יוצא מן הכלל - גם מנויים וגם לא-מנויים (לשימוש בהתראות שרוצים שכולם יראו, כמו
 // עסקה שנסגרה)
-export async function sendPushToEveryone(payload: PushPayload, kind: NotificationKind) {
-  await logNotification(kind, 'everyone', payload);
+export async function sendPushToEveryone(payload: PushPayload, kind: NotificationKind, sourceId?: string) {
+  await logNotification(kind, 'everyone', payload, sourceId);
   const { data: rows } = await supabaseAdmin.from('push_subscriptions').select('id, endpoint, p256dh, auth');
   await sendToRows(rows || [], payload);
 }

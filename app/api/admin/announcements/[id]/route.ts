@@ -14,13 +14,16 @@ async function requireAdmin(request: Request) {
   return user;
 }
 
-// DELETE - מחיקת הודעה מלוח המודעות
+// DELETE - מחיקת הודעה מלוח המודעות, וגם רשומת ההתראה שנשלחה עליה (אם נשלחה) - כדי שלא תישאר
+// "רפאים" בפעמון ההתראות אחרי שהתוכן המקורי כבר לא קיים
 export async function DELETE(request: Request, { params }: { params: { id: string } }) {
   const admin = await requireAdmin(request);
   if (!admin) return NextResponse.json({ error: 'אין הרשאת ניהול' }, { status: 403 });
 
   const { error } = await supabaseAdmin.from('announcements').delete().eq('id', params.id);
   if (error) return NextResponse.json({ error: 'שגיאה במחיקה' }, { status: 500 });
+
+  await supabaseAdmin.from('notification_log').delete().eq('source_id', params.id);
 
   return NextResponse.json({ ok: true });
 }

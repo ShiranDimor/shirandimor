@@ -44,13 +44,16 @@ export async function PATCH(request: Request, { params }: { params: { id: string
   return NextResponse.json({ live: data });
 }
 
-// DELETE - מחיקת לייב (וכל ההרשמות שלו, בזכות on delete cascade)
+// DELETE - מחיקת לייב (וכל ההרשמות שלו, בזכות on delete cascade), וגם רשומת ההתראה שנשלחה
+// עליו (אם נשלחה) - כדי שלא תישאר "רפאים" בפעמון ההתראות אחרי שהתוכן המקורי כבר לא קיים
 export async function DELETE(request: Request, { params }: { params: { id: string } }) {
   const admin = await requireAdmin(request);
   if (!admin) return NextResponse.json({ error: 'אין הרשאת ניהול' }, { status: 403 });
 
   const { error } = await supabaseAdmin.from('lives').delete().eq('id', params.id);
   if (error) return NextResponse.json({ error: 'שגיאה במחיקה' }, { status: 500 });
+
+  await supabaseAdmin.from('notification_log').delete().eq('source_id', params.id);
 
   return NextResponse.json({ ok: true });
 }
