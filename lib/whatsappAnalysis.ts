@@ -55,7 +55,7 @@ export async function analyzeWhatsappExport(rawText: string, groupType: 'סוח�
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error('ANTHROPIC_API_KEY לא מוגדר');
 
-  const model = process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-5-20250929';
+  const model = process.env.ANTHROPIC_MODEL || 'claude-sonnet-5-5';
   const cleanedText = stripSystemNoise(rawText);
 
   const res = await fetch('https://api.anthropic.com/v1/messages', {
@@ -68,6 +68,7 @@ export async function analyzeWhatsappExport(rawText: string, groupType: 'סוח�
     body: JSON.stringify({
       model,
       max_tokens: 4096,
+      output_config: { effort: 'low' },
       system: WHATSAPP_ANALYSIS_SYSTEM_PROMPT,
       messages: [{ role: 'user', content: `זהו ייצוא של קבוצת "${groupType === 'סוחרים' ? 'מדברים עסקאות (קבוצת הסוחרים, בתשלום)' : 'מדברים עסקאות - קבוצת עדכונים (חינמית)'}" (הודעות מערכת כמו הצטרפויות/יציאות כבר הוסרו):\n\n${cleanedText}` }],
     }),

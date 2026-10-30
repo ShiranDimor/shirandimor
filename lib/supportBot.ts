@@ -231,7 +231,7 @@ export async function callSupportBot(
     throw new Error('ANTHROPIC_API_KEY לא מוגדר');
   }
 
-  const model = process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-5-20250929';
+  const model = process.env.ANTHROPIC_MODEL || 'claude-sonnet-5-5';
   const system = runtimeContext ? `${SUPPORT_BOT_SYSTEM_PROMPT}\n\n${runtimeContext}` : SUPPORT_BOT_SYSTEM_PROMPT;
 
   const res = await fetch('https://api.anthropic.com/v1/messages', {
@@ -244,6 +244,9 @@ export async function callSupportBot(
     body: JSON.stringify({
       model,
       max_tokens: 1024,
+      // effort נמוך - זו שיחת צ'אט רגילה, לא צריך חשיבה מורחבת; בלי זה סונט 5.5 חושב כברירת
+      // מחדל גם על "שלום" ומוסיף השהייה לפני התשובה הראשונה
+      output_config: { effort: 'low' },
       // cache_control על הפרומפט (בסיס הידע הארוך של דור, כ-11 אלף טוקנים) - בלעדיו כל הודעה
       // בכל שיחה משלמת מחדש על הפרומפט המלא במחיר input מלא. עם קאש, הודעה שנייה ואילך
       // באותה שיחה (בתוך כ-5 דקות מההודעה הקודמת) משלמת רק כעשירית מהמחיר על החלק הזה
@@ -290,7 +293,7 @@ export async function summarizeConversation(messages: { role: 'user' | 'assistan
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return 'אין סיכום זמין (המפתח לא מוגדר).';
 
-  const model = process.env.ANTHROPIC_SUMMARY_MODEL || process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-5-20250929';
+  const model = process.env.ANTHROPIC_SUMMARY_MODEL || process.env.ANTHROPIC_MODEL || 'claude-sonnet-5-5';
 
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -302,6 +305,7 @@ export async function summarizeConversation(messages: { role: 'user' | 'assistan
     body: JSON.stringify({
       model,
       max_tokens: 450,
+      output_config: { effort: 'low' },
       system: SUMMARY_SYSTEM_PROMPT,
       messages: [{ role: 'user', content: `סכמי את השיחה הבאה:\n\n${messages.map((m) => `${m.role === 'user' ? 'המשתמש/ת' : 'דור'}: ${m.content}`).join('\n')}` }],
     }),
