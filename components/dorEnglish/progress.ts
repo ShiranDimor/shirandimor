@@ -101,6 +101,11 @@ export function shuffle<T>(arr: T[]): T[] {
   return a;
 }
 
+// אפשרויות שגויות: קודם מאותה קבוצה (למשל "שני חתולים" מול "שלושה חתולים") - ככה היא חייבת
+// באמת להקשיב למספר/לצבע ולא רק לזהות את החיה
 export function distractors(world: World, target: Word, count: number): Word[] {
-  return shuffle(world.words.filter((w) => w.en !== target.en)).slice(0, count);
+  const others = world.words.filter((w) => w.en !== target.en);
+  const same = target.group ? shuffle(others.filter((w) => w.group === target.group)) : [];
+  const rest = shuffle(others.filter((w) => !same.includes(w)));
+  return [...same, ...rest].slice(0, count);
 }

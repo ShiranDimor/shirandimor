@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  CATCHES_TO_UNLOCK, POKEMON, PRAISE, STARTERS, TRY_AGAIN, WORLDS, fill, spriteUrl, withArticle,
+  CATCHES_TO_UNLOCK, MOVES, POKEMON, PRAISE, STARTERS, TRY_AGAIN, WORLDS, fill, spriteUrl, withArticle,
   type Word, type World,
 } from './data';
 import {
@@ -16,6 +16,7 @@ import s from './game.module.css';
 
 type Screen = 'title' | 'starter' | 'map' | 'battle' | 'caught' | 'pokedex' | 'parents';
 type Kind = 'listen' | 'story' | 'say';
+type Phase = 'quiz' | 'throw' | 'catching';
 
 interface Challenge {
   kind: Kind;
@@ -26,6 +27,9 @@ interface Challenge {
 }
 
 const HITS_TO_CATCH = 5;
+// משחק הזריקה: העיגול סביב הפוקימון מתכווץ בלולאה; זורקים בזמן שהוא קטן
+const RING_MS = 1700;
+const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 const rand = <T,>(arr: T[]) => arr[Math.floor(Math.random() * arr.length)];
 const nameOf = (id: number) => POKEMON[id]?.name ?? 'Pokémon';
@@ -48,12 +52,6 @@ function Sprite({ id, size, hidden, className }: { id: number; size: number; hid
   );
 }
 
-function askQuestion(world: World) {
-  if (world.id === 'colors') return 'What color is this?';
-  if (world.id === 'numbers') return 'How many stars?';
-  return 'What is this?';
-}
-
 function buildChallenge(p: Progress, world: World, kind: Kind, wildId: number, avoid: string[]): Challenge {
   const { word, world: source } = pickWord(p, world, avoid);
   const optionCount = WORLDS.indexOf(world) === 0 && Object.keys(p.words).length < 15 ? 3 : 4;
@@ -62,10 +60,10 @@ function buildChallenge(p: Progress, world: World, kind: Kind, wildId: number, a
   if (kind === 'say') {
     // מילה חדשה (עוד לא אמרה אותה בהצלחה פעמיים) - קודם אומרים לה אותה; מילה מוכרת - רק שואלים
     const modeled = (p.words[word.en]?.said ?? 0) < 2;
-    const q = askQuestion(source);
+    const q = source.question;
     const target = [en(word.en)];
     if (!heb) {
-      const prompt = modeled ? `${q} It is ${withArticle(word)}. Now you say: ${word.en}!` : q;
+      const prompt = modeled ? `${q} ${withArticle(word)}! Now you say: ${word.en}!` : q;
       return { kind, word, options, lines: [en(prompt)], target };
     }
     const lines = modeled
@@ -111,7 +109,13 @@ export default function Game() {
   const [listening, setListening] = useState(false);
   const [sayFails, setSayFails] = useState(0);
   const [bubble, setBubble] = useState<Line[]>([]);
-  const [throwing, setThrowing] = useState(false);
+  const [phase, setPhase] = useState<Phase>('quiz');
+  // אנימציה על הפוקימון הפראי: 'hit' = ההתקפה פגעה (תשובה נכונה), 'dodge' = התחמק (טעות). n מתחלף כדי להפעיל מחדש
+  const [fx, setFx] = useState<{ kind: 'hit' | 'dodge'; n: number }>({ kind: 'hit', n: 0 });
+  const [ball, setBall] = useState<'none' | 'miss' | 'catch'>('none');
+  const [misses, setMisses] = useState(0);
+  const [result, setResult] = useState({ great: false, isNew: false });
+  const ringStart = useRef(0);
   const recent = useRef<string[]>([]);
   const pRef = useRef(p);
   pRef.current = p;
@@ -144,15 +148,27 @@ export default function Game() {
     setHits(0);
     setPlan(kinds);
     setCh(null);
-    setThrowing(false);
+    setPhase('quiz');
+    setBall('none');
+    setFx({ kind: 'hit', n: 0 });
     setScreen('battle');
     recent.current = [];
     setBusy(true);
     await talk(hebrewOn(pRef.current)
-      ? [en(`A wild ${nameOf(wild)} appeared!`), he(`${heNameOf(wild)} פראי הופיע! כדי לתפוס אותו צריך לענות נכון חמש פעמים. בהצלחה!`)]
+      ? [en(`A wild ${nameOf(wild)} appeared!`), he(`${heNameOf(wild)} פראי הופיע! כל תשובה נכונה - הפוקימון שלך תוקף. כשהוא יהיה חלש, נזרוק עליו כדור פוקימון!`)]
       : [en(`A wild ${nameOf(wild)} appeared! Let's catch it!`)]);
     nextChallenge(w, wild, kinds, 0);
   }, [nextChallenge, talk]);
+
+  const startThrow = useCallback((wild: number) => {
+    setPhase('throw');
+    setMisses(0);
+    ringStart.current = performance.now();
+    setBusy(false);
+    talk(hebrewOn(pRef.current)
+      ? [en(`${nameOf(wild)} is weak!`), he(`${heNameOf(wild)} חלש! עכשיו זורקים עליו כדור פוקימון. תלחצי על הכפתור האדום כשהעיגול הכי קטן!`)]
+      : [en(`${nameOf(wild)} is weak! Throw a Poké Ball when the circle is small!`)]);
+  }, [talk]);
 
   const onHit = useCallback(async (spoken: boolean) => {
     if (!ch) return;
@@ -160,33 +176,61 @@ export default function Game() {
     update((prev) => ({ ...recordAnswer(prev, ch.word.en, true, spoken), stars: prev.stars + 1 }));
     const newHits = hits + 1;
     setHits(newHits);
+    setFx((f) => ({ kind: 'hit', n: f.n + 1 }));
+    const partner = pRef.current.starter;
+    const move = partner ? MOVES[partner] : undefined;
     await talk([
       en(`${rand(PRAISE)} ${spoken ? '' : ch.word.en + '!'}`),
-      ...(heb ? [he(rand(['כל הכבוד!', 'מעולה!', 'יפה מאוד!', 'נכון!']))] : []),
+      ...(partner && move ? [en(`${nameOf(partner)}, use ${move.en}!`)] : []),
     ]);
-    if (newHits >= HITS_TO_CATCH) {
-      setThrowing(true);
-      await talk([en('Go, Poké Ball!')]);
-      await new Promise((r) => setTimeout(r, 1600));
-      update((prev) => ({
-        ...prev,
-        caught: prev.caught.includes(wildId) ? prev.caught : [...prev.caught, wildId],
-        stars: prev.stars + 5,
-      }));
-      setScreen('caught');
-      talk(heb
-        ? [en('Gotcha!'), he(`תפסת את ${heNameOf(wildId)}! כל הכבוד דור!`)]
-        : [en(`Gotcha! You caught ${nameOf(wildId)}! Great job, Dor!`)]);
+    if (newHits >= HITS_TO_CATCH) return startThrow(wildId);
+    nextChallenge(world, wildId, plan, newHits);
+  }, [ch, hits, nextChallenge, plan, startThrow, talk, update, wildId, world]);
+
+  const onThrow = useCallback(async () => {
+    if (busy || phase !== 'throw') return;
+    setBusy(true);
+    stopSpeaking();
+    const t = ((performance.now() - ringStart.current) % RING_MS) / RING_MS;
+    // אחרי 2 פספוסים הזריקה השלישית תמיד מצליחה - שלא תתבאס
+    const good = t > 0.55 || misses >= 2;
+    if (!good) {
+      setBall('miss');
+      await wait(900);
+      setBall('none');
+      setMisses((m) => m + 1);
+      await talk(heb
+        ? [en('Oh no!'), he('פספסת! נסי שוב - תלחצי כשהעיגול קטן וירוק.')]
+        : [en('Oh no, missed! Try again when the circle is small!')]);
+      setBusy(false);
       return;
     }
-    nextChallenge(world, wildId, plan, newHits);
-  }, [ch, heb, hits, nextChallenge, plan, talk, update, wildId, world]);
+    const great = t > 0.8;
+    const isNew = !pRef.current.caught.includes(wildId);
+    setPhase('catching');
+    setBall('catch');
+    await Promise.all([talk([en(great ? 'Excellent throw!' : 'Nice throw!')]), wait(3000)]);
+    update((prev) => ({
+      ...prev,
+      caught: prev.caught.includes(wildId) ? prev.caught : [...prev.caught, wildId],
+      stars: prev.stars + 5 + (great ? 3 : 0),
+    }));
+    setResult({ great, isNew });
+    setScreen('caught');
+    const partner = pRef.current.starter;
+    const levelUp = partner && isNew ? [en(`${nameOf(partner)} grew to level ${6 + pRef.current.caught.length}!`)] : [];
+    talk(heb
+      ? [en('Gotcha!'), he(`תפסת את ${heNameOf(wildId)}! כל הכבוד דור!`), ...levelUp]
+      : [en(`Gotcha! You caught ${nameOf(wildId)}! Great job, Dor!`), ...levelUp]);
+    setBusy(false);
+  }, [busy, heb, misses, phase, talk, update, wildId]);
 
   const onPick = useCallback(async (opt: Word) => {
     if (!ch || busy) return;
     if (opt.en === ch.word.en) return onHit(false);
     setBusy(true);
     setWrongPicks((w) => [...w, opt.en]);
+    setFx((f) => ({ kind: 'dodge', n: f.n + 1 }));
     update((prev) => recordAnswer(prev, ch.word.en, false));
     // גם טעות מלמדת: אומרים לה מה היא בחרה, ואז חוזרים על השאלה
     await talk(heb
@@ -208,6 +252,7 @@ export default function Game() {
       // לא נותנים לה להיתקע ולהתבאס - אחרי 3 ניסיונות ממשיכים הלאה (ונרשם כטעות לתרגול חוזר)
       update((prev) => recordAnswer(prev, ch.word.en, false));
       setBusy(true);
+      setFx((f) => ({ kind: 'dodge', n: f.n + 1 }));
       await talk(heb
         ? [he('ניסיון יפה! באנגלית אומרים:'), en(`${ch.word.en}.`), he('נמשיך הלאה.')]
         : [en(`Good try! It is ${ch.word.en}. ${ch.word.en}!`)]);
@@ -285,7 +330,13 @@ export default function Game() {
           <Sprite id={wildId} size={220} className={s.pop} />
           <h2 className={s.caughtTitle}>תפסת!</h2>
           <p className={s.caughtSub}>תפסת את <b>{heNameOf(wildId)}</b>!</p>
-          <p className={s.he}><span dir="ltr">+5 ⭐</span></p>
+          {result.great && <p className={s.caughtSub}>זריקה מושלמת! 🎯</p>}
+          <p className={s.he}><span dir="ltr">+{5 + (result.great ? 3 : 0)} ⭐</span></p>
+          {starter && result.isNew && (
+            <p className={s.levelUp}>
+              <Sprite id={starter} size={44} /> {heNameOf(starter)} עלה לרמה {5 + p.caught.length}! ⬆️
+            </p>
+          )}
           <div className={s.row}>
             <button className={s.bigBtn} onClick={() => startBattle(world)}>⚡ עוד פעם!</button>
             <button className={s.midBtn} onClick={() => { stopSpeaking(); setScreen('map'); }}>🗺️ למפה</button>
@@ -297,24 +348,35 @@ export default function Game() {
   }
 
   if (screen === 'battle') {
+    const hpLeft = HITS_TO_CATCH - hits;
+    const move = starter ? MOVES[starter] : undefined;
+    const wildAnim = phase === 'throw' ? s.sway : fx.n ? (fx.kind === 'hit' ? s.hit : s.dodge) : '';
     return (
       <div className={s.root} style={{ ['--world' as string]: world.color }}>
         <div className={s.battleTop}>
           <button className={s.iconBtn} onClick={() => { stopSpeaking(); setScreen('map'); }} aria-label="map">🗺️</button>
-          <div className={s.balls}>
-            {Array.from({ length: HITS_TO_CATCH }, (_, i) => (
-              <span key={i} className={`${s.ball} ${i < hits ? s.ballOn : ''}`} />
-            ))}
-          </div>
           <span className={s.stars}>⭐ {p.stars}</span>
         </div>
 
         <div className={s.arena}>
-          <div className={`${s.wild} ${throwing ? s.wildCaught : ''}`}>
-            <Sprite id={wildId} size={150} className={throwing ? '' : s.float} />
-            {throwing && <span className={s.thrownBall} />}
+          <div className={s.hpBox}>
+            <span className={s.hpName}>{heNameOf(wildId)}</span>
+            <div className={s.hpBar}>
+              <div className={`${s.hpFill} ${hpLeft <= 2 ? s.hpLow : ''}`} style={{ width: `${(hpLeft / HITS_TO_CATCH) * 100}%` }} />
+            </div>
           </div>
-          <div className={s.bubble} onClick={() => ch && talk(ch.lines)}>
+          <div className={s.wild}>
+            <div key={`${phase}-${fx.kind}-${fx.n}`} className={`${wildAnim} ${phase === 'catching' ? s.wildCaught : ''}`}>
+              <Sprite id={wildId} size={150} className={phase === 'quiz' ? s.float : ''} />
+            </div>
+            {phase === 'throw' && <span className={s.ring} style={{ animationDuration: `${RING_MS}ms` }} />}
+            {ball === 'catch' && <span className={s.ballCatch} />}
+            {ball === 'miss' && <span className={s.ballMiss} />}
+          </div>
+          {move && fx.kind === 'hit' && fx.n > 0 && phase === 'quiz' && (
+            <span key={`atk-${fx.n}`} className={s.attack}>{move.fx}</span>
+          )}
+          <div className={s.bubble} onClick={() => ch && phase === 'quiz' && talk(ch.lines)}>
             {bubble.map((l, i) => (
               <div key={i} dir={l.lang === 'he' ? 'rtl' : 'ltr'} className={l.lang === 'he' ? s.bubbleHe : undefined}>
                 {l.text}
@@ -325,11 +387,20 @@ export default function Game() {
           {starter && (
             <div className={s.partner}>
               <Sprite id={starter} size={84} />
+              <span className={s.lvl}>Lv {5 + p.caught.length}</span>
             </div>
           )}
         </div>
 
-        {ch && !throwing && (
+        {phase === 'throw' && (
+          <div className={s.challenge}>
+            <button className={s.throwBtn} onClick={onThrow} disabled={busy}>
+              <span className={s.pokeball} /> זרקי!
+            </button>
+          </div>
+        )}
+
+        {ch && phase === 'quiz' && (
           <div className={s.challenge}>
             {ch.kind === 'say' ? (
               <div className={s.sayBox}>
@@ -352,7 +423,7 @@ export default function Game() {
                     key={o.en}
                     className={`${s.option} ${wrongPicks.includes(o.en) ? s.optionWrong : ''}`}
                     onClick={() => onPick(o)}
-                    disabled={wrongPicks.includes(o.en)}
+                    disabled={wrongPicks.includes(o.en) || busy}
                   >
                     <span className={s.optionPic}>{o.pic}</span>
                   </button>
@@ -377,7 +448,7 @@ export default function Game() {
           {starter && <Sprite id={starter} size={56} />}
           <div>
             <div className={s.trainerName}>המאמנת דור</div>
-            <div className={s.trainerSub}>⭐ {p.stars} · 📕 {p.caught.length}</div>
+            <div className={s.trainerSub}>⭐ {p.stars} · 📕 {p.caught.length} · Lv {5 + p.caught.length}</div>
           </div>
         </div>
         <button className={s.midBtn} onClick={() => { setScreen('pokedex'); speakLines(heb ? [he('האוסף שלי! כאן כל הפוקימונים שתפסת')] : [en('My Pokémon!')]); }}>📕 האוסף שלי</button>
@@ -528,7 +599,8 @@ function Parents({ p, onBack, onToggleHebrew, onReset }: {
             <h3>{w.icon} {w.he}</h3>
             <table className={s.table}>
               <tbody>
-                {w.words.map((word) => {
+                {/* בעולם הצירופים יש עשרות צירופים - מציגים רק את מה שכבר תרגלה */}
+                {w.words.filter((word) => w.id !== 'combos' || p.words[word.en]).map((word) => {
                   const st = p.words[word.en];
                   return (
                     <tr key={word.en}>

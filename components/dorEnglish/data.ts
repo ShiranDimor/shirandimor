@@ -6,7 +6,8 @@ export interface Word {
   he: string;
   pic: string; // אימוג'י שמשמש כתמונה - הילדה עוד לא קוראת, אז כל תשובה היא תמונה
   article?: string; // 'a' כברירת מחדל; 'an' / 'some' / '' לפי הצורך במשפט
-  accept?: string[]; // הגיות/תעתיקים נוספים שזיהוי הדיבור עשוי להחזיר (למשל "two" -> "2")
+  accept?: string[]; // הגיות/תעתיקים נוספים שזיהוי הדיבור עשוי להחזיר
+  group?: string; // מילים מאותה קבוצה מוצגות יחד כאפשרויות (למשל "שלושה חתולים" מול "שני חתולים")
 }
 
 export interface World {
@@ -17,13 +18,22 @@ export interface World {
   color: string;
   pokemon: number[]; // מספרי פוקדקס שאפשר לתפוס בעולם הזה
   words: Word[];
-  // משפט "סיפור" שהפוקימון אומר - {p} = שם הפוקימון, {w} = המילה עם ה-article שלה
+  question: string; // השאלה בתרגיל הדיבור ("What is this?")
+  // משפט "סיפור" שהפוקימון אומר - {p} = שם הפוקימון, {w} = המילה עם ה-article שלה, {x} = המילה בלבד
   stories: string[];
-  // שאלת הקשבה קצרה - {w} = המילה עם ה-article / {x} = המילה בלבד
   listen: string[];
 }
 
 export const STARTERS = [25, 1, 4, 7, 133];
+
+// ההתקפה של הפוקימון השותף בכל תשובה נכונה
+export const MOVES: Record<number, { en: string; fx: string }> = {
+  25: { en: 'Thunderbolt', fx: '⚡' },
+  1: { en: 'Vine Whip', fx: '🍃' },
+  4: { en: 'Ember', fx: '🔥' },
+  7: { en: 'Water Gun', fx: '💧' },
+  133: { en: 'Swift', fx: '⭐' },
+};
 
 export const POKEMON: Record<number, { name: string; he: string }> = {
   1: { name: 'Bulbasaur', he: 'בולבזאור' },
@@ -49,33 +59,107 @@ export const POKEMON: Record<number, { name: string; he: string }> = {
   54: { name: 'Psyduck', he: 'סיידאק' },
   35: { name: 'Clefairy', he: 'קלפיירי' },
   175: { name: 'Togepi', he: 'טוגפי' },
+  60: { name: 'Poliwag', he: 'פוליוואג' },
+  63: { name: 'Abra', he: 'אברה' },
+  77: { name: 'Ponyta', he: 'פוניטה' },
+  79: { name: 'Slowpoke', he: 'סלופוק' },
+  104: { name: 'Cubone', he: 'קיובון' },
+  393: { name: 'Piplup', he: 'פיפלאפ' },
 };
 
 export function spriteUrl(id: number) {
   return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${id}.png`;
 }
 
+// ---------- עולם הצבעים והמספרים: את המילים עצמן היא כבר יודעת, אז כאן מחברים אותן לצירופים ----------
+// ("three cats", "two blue hearts") - רבים, מספר + שם עצם, מספר + צבע + שם עצם
+
+const NUMS = [
+  { en: 'one', he: 'אחד' },
+  { en: 'two', he: 'שני' },
+  { en: 'three', he: 'שלושה' },
+  { en: 'four', he: 'ארבעה' },
+  { en: 'five', he: 'חמישה' },
+];
+
+// רק שמות עצם בזכר - כדי שהתרגום לעברית (מספר + צבע) ייצא תקין
+const COUNT_NOUNS = [
+  { en: 'cat', pl: 'cats', he: 'חתול', hePl: 'חתולים', pic: '🐱' },
+  { en: 'dog', pl: 'dogs', he: 'כלב', hePl: 'כלבים', pic: '🐶' },
+  { en: 'fish', pl: 'fish', he: 'דג', hePl: 'דגים', pic: '🐟' },
+  { en: 'apple', pl: 'apples', he: 'תפוח', hePl: 'תפוחים', pic: '🍎' },
+  { en: 'star', pl: 'stars', he: 'כוכב', hePl: 'כוכבים', pic: '⭐' },
+  { en: 'ball', pl: 'balls', he: 'כדור', hePl: 'כדורים', pic: '⚽' },
+  { en: 'duck', pl: 'ducks', he: 'ברווז', hePl: 'ברווזים', pic: '🦆' },
+];
+
+const COLORS: Record<string, [string, string]> = {
+  red: ['אדום', 'אדומים'],
+  blue: ['כחול', 'כחולים'],
+  green: ['ירוק', 'ירוקים'],
+  yellow: ['צהוב', 'צהובים'],
+  orange: ['כתום', 'כתומים'],
+  purple: ['סגול', 'סגולים'],
+  pink: ['ורוד', 'ורודים'],
+  black: ['שחור', 'שחורים'],
+  white: ['לבן', 'לבנים'],
+};
+
+const HEARTS: Record<string, string> = {
+  red: '❤️', blue: '💙', green: '💚', yellow: '💛', orange: '🧡', purple: '💜', pink: '🩷', black: '🖤', white: '🤍',
+};
+const BOOKS: Record<string, string> = { red: '📕', green: '📗', blue: '📘', orange: '📙' };
+
+// 4-5 פריטים נשברים לשתי שורות כדי שיהיה קל לספור
+function repeat(pic: string, n: number) {
+  if (n <= 3) return pic.repeat(n);
+  return `${pic.repeat(Math.ceil(n / 2))}\n${pic.repeat(Math.floor(n / 2))}`;
+}
+
+function buildCombos(): Word[] {
+  const out: Word[] = [];
+  for (const noun of COUNT_NOUNS) {
+    NUMS.forEach((num, i) => {
+      const n = i + 1;
+      out.push({
+        en: `${num.en} ${n === 1 ? noun.en : noun.pl}`,
+        he: n === 1 ? `${noun.he} אחד` : `${num.he} ${noun.hePl}`,
+        pic: repeat(noun.pic, n),
+        article: '',
+        group: `count-${noun.en}`,
+      });
+    });
+  }
+  for (const [color, [heS, heP]] of Object.entries(COLORS)) {
+    out.push({ en: `${color} heart`, he: `לב ${heS}`, pic: HEARTS[color], group: 'heart' });
+    for (const n of [2, 3]) {
+      out.push({
+        en: `${NUMS[n - 1].en} ${color} hearts`,
+        he: `${NUMS[n - 1].he} לבבות ${heP}`,
+        pic: HEARTS[color].repeat(n),
+        article: '',
+        group: 'heart',
+      });
+    }
+  }
+  for (const [color, pic] of Object.entries(BOOKS)) {
+    out.push({ en: `${color} book`, he: `ספר ${COLORS[color][0]}`, pic, group: 'book' });
+  }
+  return out;
+}
+
 export const WORLDS: World[] = [
   {
-    id: 'colors',
-    name: 'Rainbow Meadow',
-    he: 'אחו הקשת',
-    icon: '🌈',
+    id: 'combos',
+    name: 'Color & Number Mountain',
+    he: 'הר הצבעים והמספרים',
+    icon: '⛰️',
     color: '#ff8fb1',
-    pokemon: [39, 43, 10],
-    words: [
-      { en: 'red', he: 'אדום', pic: '🔴', article: '' },
-      { en: 'blue', he: 'כחול', pic: '🔵', article: '' },
-      { en: 'green', he: 'ירוק', pic: '🟢', article: '' },
-      { en: 'yellow', he: 'צהוב', pic: '🟡', article: '' },
-      { en: 'orange', he: 'כתום', pic: '🟠', article: '' },
-      { en: 'purple', he: 'סגול', pic: '🟣', article: '' },
-      { en: 'pink', he: 'ורוד', pic: '🩷', article: '' },
-      { en: 'black', he: 'שחור', pic: '⚫', article: '' },
-      { en: 'white', he: 'לבן', pic: '⚪', article: '' },
-    ],
-    stories: ['{p} wants the {x} ball!', '{p} loves the color {x}!', 'My favorite color is {x}. Find {x}!'],
-    listen: ['Where is {x}?', 'Touch {x}!', 'Find the color {x}!'],
+    pokemon: [39, 51, 81],
+    words: buildCombos(),
+    question: 'What do you see?',
+    stories: ['{p} has {w}!', '{p} found {w}!', '{p} wants {w}!'],
+    listen: ['Find {w}!', 'Show me {w}!', 'Touch {w}!'],
   },
   {
     id: 'animals',
@@ -95,7 +179,12 @@ export const WORLDS: World[] = [
       { en: 'duck', he: 'ברווז', pic: '🦆' },
       { en: 'frog', he: 'צפרדע', pic: '🐸' },
       { en: 'lion', he: 'אריה', pic: '🦁' },
+      { en: 'monkey', he: 'קוף', pic: '🐵' },
+      { en: 'elephant', he: 'פיל', pic: '🐘', article: 'an' },
+      { en: 'turtle', he: 'צב', pic: '🐢' },
+      { en: 'snake', he: 'נחש', pic: '🐍' },
     ],
+    question: 'What is this?',
     stories: ['{p} has a new friend. It is {w}!', '{p} is playing with {w}!', 'Look! {p} found {w}!'],
     listen: ['Where is the {x}?', 'Find the {x}!', 'Can you see the {x}?'],
   },
@@ -117,27 +206,63 @@ export const WORLDS: World[] = [
       { en: 'ice cream', he: 'גלידה', pic: '🍦', article: 'an', accept: ['icecream', 'ice-cream'] },
       { en: 'water', he: 'מים', pic: '💧', article: 'some' },
       { en: 'carrot', he: 'גזר', pic: '🥕' },
+      { en: 'cookie', he: 'עוגייה', pic: '🍪' },
+      { en: 'cheese', he: 'גבינה', pic: '🧀', article: 'some' },
+      { en: 'grapes', he: 'ענבים', pic: '🍇', article: 'some' },
+      { en: 'strawberry', he: 'תות', pic: '🍓' },
     ],
+    question: 'What is this?',
     stories: ['{p} is hungry. {p} wants {w}!', 'Yummy! {p} is eating {w}!', '{p} says: I like {w}!'],
     listen: ['Where is the {x}?', 'Give me the {x}, please!', 'Find the {x}!'],
   },
   {
-    id: 'numbers',
-    name: 'Number Mountain',
-    he: 'הר המספרים',
-    icon: '⛰️',
-    color: '#7fa7ff',
-    pokemon: [51, 81, 102],
+    id: 'actions',
+    name: 'Action Park',
+    he: 'פארק התנועה',
+    icon: '🎢',
+    color: '#4fc3f7',
+    pokemon: [60, 77, 106],
     words: [
-      { en: 'one', he: 'אחת', pic: '⭐', article: '', accept: ['1', 'won'] },
-      { en: 'two', he: 'שתיים', pic: '⭐⭐', article: '', accept: ['2', 'to', 'too'] },
-      { en: 'three', he: 'שלוש', pic: '⭐⭐⭐', article: '', accept: ['3', 'tree', 'free'] },
-      { en: 'four', he: 'ארבע', pic: '⭐⭐\n⭐⭐', article: '', accept: ['4', 'for'] },
-      { en: 'five', he: 'חמש', pic: '⭐⭐⭐\n⭐⭐', article: '', accept: ['5'] },
-      { en: 'six', he: 'שש', pic: '⭐⭐⭐\n⭐⭐⭐', article: '', accept: ['6', 'sicks'] },
+      { en: 'run', he: 'לרוץ', pic: '🏃', article: '' },
+      { en: 'swim', he: 'לשחות', pic: '🏊', article: '' },
+      { en: 'sleep', he: 'לישון', pic: '😴', article: '' },
+      { en: 'drink', he: 'לשתות', pic: '🥤', article: '' },
+      { en: 'read', he: 'לקרוא', pic: '📖', article: '', accept: ['red'] },
+      { en: 'sing', he: 'לשיר', pic: '🎤', article: '' },
+      { en: 'dance', he: 'לרקוד', pic: '💃', article: '' },
+      { en: 'fly', he: 'לעוף', pic: '✈️', article: '' },
+      { en: 'ride', he: 'לרכוב', pic: '🚴', article: '' },
+      { en: 'paint', he: 'לצייר', pic: '🎨', article: '' },
+      { en: 'climb', he: 'לטפס', pic: '🧗', article: '' },
+      { en: 'write', he: 'לכתוב', pic: '✍️', article: '', accept: ['right'] },
     ],
-    stories: ['{p} has {x} stars. Find {x} stars!', '{p} can count to {x}!', 'Let\'s count with {p}: {x}!'],
-    listen: ['Where are {x} stars?', 'Find {x}!', 'Touch {x} stars!'],
+    question: 'What can you do?',
+    stories: ['{p} likes to {x}!', '{p} wants to {x}!', "Let's {x} with {p}!"],
+    listen: ['Show me: {x}!', 'Who can {x}?', 'Find: {x}!'],
+  },
+  {
+    id: 'feelings',
+    name: 'Feelings Lake',
+    he: 'אגם הרגשות',
+    icon: '💗',
+    color: '#f48fb1',
+    pokemon: [54, 79, 104],
+    words: [
+      { en: 'happy', he: 'שמח', pic: '😀', article: '' },
+      { en: 'sad', he: 'עצוב', pic: '😢', article: '' },
+      { en: 'angry', he: 'כועס', pic: '😠', article: '' },
+      { en: 'scared', he: 'מפחד', pic: '😱', article: '' },
+      { en: 'tired', he: 'עייף', pic: '🥱', article: '' },
+      { en: 'sick', he: 'חולה', pic: '🤒', article: '' },
+      { en: 'silly', he: 'מצחיק', pic: '🤪', article: '' },
+      { en: 'surprised', he: 'מופתע', pic: '😮', article: '' },
+      { en: 'hungry', he: 'רעב', pic: '😋', article: '' },
+      { en: 'cold', he: 'קר לו', pic: '🥶', article: '' },
+      { en: 'hot', he: 'חם לו', pic: '🥵', article: '' },
+    ],
+    question: 'How does he feel?',
+    stories: ['{p} is {x}!', 'Oh! {p} feels {x}.', '{p} says: I am {x}!'],
+    listen: ['Who is {x}?', 'Find {x}!', 'Show me {x}!'],
   },
   {
     id: 'body',
@@ -145,9 +270,9 @@ export const WORLDS: World[] = [
     he: 'דוג׳ו הגוף',
     icon: '🥋',
     color: '#c58cff',
-    pokemon: [66, 106, 122],
+    pokemon: [66, 63, 102],
     words: [
-      { en: 'eye', he: 'עין', pic: '👁️', article: 'an', accept: ['i', 'eyes'] },
+      { en: 'eye', he: 'עין', pic: '👁️', article: 'an', accept: ['eyes'] },
       { en: 'ear', he: 'אוזן', pic: '👂', article: 'an', accept: ['ears'] },
       { en: 'nose', he: 'אף', pic: '👃', accept: ['knows'] },
       { en: 'mouth', he: 'פה', pic: '👄' },
@@ -155,9 +280,35 @@ export const WORLDS: World[] = [
       { en: 'foot', he: 'כף רגל', pic: '🦶', accept: ['feet'] },
       { en: 'leg', he: 'רגל', pic: '🦵', accept: ['legs'] },
       { en: 'tooth', he: 'שן', pic: '🦷', accept: ['teeth'] },
+      { en: 'brain', he: 'מוח', pic: '🧠' },
+      { en: 'arm', he: 'זרוע', pic: '💪', article: 'an', accept: ['arms'] },
     ],
+    question: 'What is this?',
     stories: ['{p} says: touch your {x}!', 'Ouch! {p} hurt his {x}!', '{p} is washing his {x}!'],
     listen: ['Where is the {x}?', 'Show me the {x}!', 'Find the {x}!'],
+  },
+  {
+    id: 'clothes',
+    name: 'Clothes Shop',
+    he: 'חנות הבגדים',
+    icon: '👕',
+    color: '#9fa8da',
+    pokemon: [122, 10, 393],
+    words: [
+      { en: 'shirt', he: 'חולצה', pic: '👕' },
+      { en: 'hat', he: 'כובע', pic: '🧢' },
+      { en: 'shoes', he: 'נעליים', pic: '👟', article: 'the', accept: ['shoe'] },
+      { en: 'dress', he: 'שמלה', pic: '👗' },
+      { en: 'socks', he: 'גרביים', pic: '🧦', article: 'the', accept: ['sock'] },
+      { en: 'pants', he: 'מכנסיים', pic: '👖', article: 'the' },
+      { en: 'coat', he: 'מעיל', pic: '🧥' },
+      { en: 'glasses', he: 'משקפיים', pic: '👓', article: 'the' },
+      { en: 'scarf', he: 'צעיף', pic: '🧣' },
+      { en: 'gloves', he: 'כפפות', pic: '🧤', article: 'the', accept: ['glove'] },
+    ],
+    question: 'What is this?',
+    stories: ['{p} puts on the {x}!', '{p} wants the {x}!', 'Look at the {x}, {p}!'],
+    listen: ['Where is the {x}?', 'Find the {x}!', 'Show me the {x}!'],
   },
   {
     id: 'home',
@@ -165,7 +316,7 @@ export const WORLDS: World[] = [
     he: 'הבית החמים',
     icon: '🏠',
     color: '#ffd84d',
-    pokemon: [54, 35, 175],
+    pokemon: [35, 175, 43],
     words: [
       { en: 'ball', he: 'כדור', pic: '⚽' },
       { en: 'book', he: 'ספר', pic: '📖' },
@@ -175,9 +326,12 @@ export const WORLDS: World[] = [
       { en: 'sun', he: 'שמש', pic: '☀️', article: 'the' },
       { en: 'tree', he: 'עץ', pic: '🌳' },
       { en: 'flower', he: 'פרח', pic: '🌸' },
-      { en: 'star', he: 'כוכב', pic: '⭐' },
       { en: 'moon', he: 'ירח', pic: '🌙', article: 'the' },
+      { en: 'chair', he: 'כיסא', pic: '🪑' },
+      { en: 'door', he: 'דלת', pic: '🚪' },
+      { en: 'clock', he: 'שעון', pic: '🕰️' },
     ],
+    question: 'What is this?',
     stories: ['{p} is looking for {w}!', '{p} wants to play. {p} needs {w}!', 'Oh no! {p} lost {w}!'],
     listen: ['Where is the {x}?', 'Find the {x}!', 'Can you find the {x}?'],
   },
