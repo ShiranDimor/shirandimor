@@ -610,7 +610,8 @@ export async function syncGenericLead(params: {
 
 const LIVE_REGISTRATION_CAMPAIGN_VALUE = 'הרשמה ללייב';
 const DUPLICATE_STATUS_LABEL = 'ליד כפול';
-// ערך עמודת ה"מקור/קמפיין" לליד שנוצר מהפעלת התראות באתר - לא קשור לעמודת הסטטוס
+// גם ערך עמודת ה"מקור/קמפיין" וגם תווית בעמודת "סטטוס טיפול" (נוספה ידנית בלוח על ידי שירן) -
+// מסמן שאיש הקשר הפעיל התראות פוש באתר, כדי שאפשר יהיה לסנן במאנדיי ולעקוב אחרי קצב המעבר
 const APP_DOWNLOAD_SOURCE_VALUE = 'הוריד את האתר';
 
 // מחפש איש קשר לפי טלפון/מייל בכל הלוח - לא מוגבל לקבוצה ספציפית, בניגוד ל-classifyContactMonday
@@ -664,13 +665,15 @@ async function findItemIdByContactAnywhere(
   return null;
 }
 
-// יוצר תמיד ליד חדש כשמי שאינו מנוי מוריד/מפעיל התראות באתר - בדיוק כמו createLiveRegistrationLead.
-// מחפש בכל הלוח (לא רק בקבוצות ידועות, וגם לפי מייל ולא רק טלפון) האם האיש קשר כבר קיים במקום
-// כלשהו - אם כן, הכרטיס החדש מסומן "ליד כפול" כדי שלא יתפספס ולא יתבלבל עם ליד אמיתי חדש
-export async function markAppDownloadOnMonday(params: { name: string; phone: string; email: string | null }): Promise<{ ok: boolean; matched: boolean }> {
+// מסמן שאיש קשר הפעיל התראות פוש באתר. אם כבר יש לו כרטיס קיים במקום כלשהו בלוח (מנוי, קבוצת
+// עדכונים, ניסיון, או כל קבוצה אחרת) - מעדכן את הסטטוס על הכרטיס הקיים שלו (בלי לפתוח כרטיס
+// נוסף). רק אם אין לו שום כרטיס קיים בכלל - פותח ליד חדש, עם הסטטוס מוגדר מראש. כך יש תמונת
+// מעקב אחת נקייה במאנדיי (עמודת "סטטוס טיפול") של מי כבר עבר להתראות, בלי כרטיסים כפולים
+export async function markAppDownloadOnMonday(params: { name?: string | null; phone?: string | null; email?: string | null }): Promise<{ ok: boolean; matched: boolean }> {
   const token = process.env.MONDAY_API_TOKEN;
   const boardId = process.env.MONDAY_BOARD_ID;
   if (!token || !boardId) return { ok: false, matched: false };
+  if (!params.phone && !params.email) return { ok: false, matched: false };
 
   try {
     const { groupId, phoneColumnId, emailColumnId, campaignColumnId, statusColumnId } = await getBoardSchema(token, boardId);
@@ -679,42 +682,43 @@ export async function markAppDownloadOnMonday(params: { name: string; phone: str
 
     const existingItemId = await findItemIdByContactAnywhere(token, boardId, phoneColumnId, emailColumnId, targetPhone, targetEmail);
 
+    if (existingItemId) {
+      if (statusColumnId) {
+        await mondayRequest(
+          token,
+          `mutation ($boardId: ID!, $itemId: ID!, $columnId: String!, $value: String!) {
+            change_simple_column_value (board_id: $boardId, item_id: $itemId, column_id: $columnId, value: $value) { id }
+          }`,
+          { boardId, itemId: existingItemId, columnId: statusColumnId, value: APP_DOWNLOAD_SOURCE_VALUE }
+        ).catch((e) => console.error('Monday.com: נכשל עדכון סטטוס "הוריד את האתר" על כרטיס קיים', e));
+      }
+      return { ok: true, matched: true };
+    }
+
     const columnValues: Record<string, unknown> = {};
-    if (phoneColumnId) columnValues[phoneColumnId] = { phone: params.phone.startsWith('0') ? `972${params.phone.slice(1)}` : params.phone, countryShortName: 'IL' };
+    if (phoneColumnId && params.phone) columnValues[phoneColumnId] = { phone: params.phone.startsWith('0') ? `972${params.phone.slice(1)}` : params.phone, countryShortName: 'IL' };
     if (emailColumnId && params.email) columnValues[emailColumnId] = { email: params.email, text: params.email };
     if (campaignColumnId) columnValues[campaignColumnId] = APP_DOWNLOAD_SOURCE_VALUE;
+    if (statusColumnId) columnValues[statusColumnId] = { label: APP_DOWNLOAD_SOURCE_VALUE };
 
     const createData: any = await mondayRequest(
       token,
       `mutation ($boardId: ID!, $groupId: String, $itemName: String!, $columnValues: JSON) {
         create_item (board_id: $boardId, group_id: $groupId, item_name: $itemName, column_values: $columnValues) { id }
       }`,
-      { boardId, groupId: groupId || null, itemName: params.name, columnValues: JSON.stringify(columnValues) }
+      { boardId, groupId: groupId || null, itemName: params.name || params.phone || params.email || 'ללא שם', columnValues: JSON.stringify(columnValues) }
     );
 
     const itemId = createData?.data?.create_item?.id;
-    if (!itemId) return { ok: false, matched: !!existingItemId };
-
-    if (existingItemId && statusColumnId) {
-      await mondayRequest(
-        token,
-        `mutation ($boardId: ID!, $itemId: ID!, $columnId: String!, $value: String!) {
-          change_simple_column_value (board_id: $boardId, item_id: $itemId, column_id: $columnId, value: $value) { id }
-        }`,
-        { boardId, itemId, columnId: statusColumnId, value: DUPLICATE_STATUS_LABEL }
-      ).catch((e) => console.error('Monday.com: נכשל סימון "ליד כפול" (הורדת האתר)', e));
-    }
+    if (!itemId) return { ok: false, matched: false };
 
     await mondayRequest(
       token,
       `mutation ($itemId: ID!, $body: String!) { create_update (item_id: $itemId, body: $body) { id } }`,
-      {
-        itemId,
-        body: `נייד: ${params.phone}${params.email ? `\nאימייל: ${params.email}` : ''}\nמקור: הפעלת התראות באתר${existingItemId ? '\n⚠ כבר קיים ליד/מנוי אחר עם אותו נייד/מייל - סומן כ"ליד כפול"' : ''}`,
-      }
+      { itemId, body: `${params.phone ? `נייד: ${params.phone}\n` : ''}${params.email ? `אימייל: ${params.email}\n` : ''}מקור: הפעלת התראות באתר` }
     ).catch((e) => console.error('Monday.com: נכשל הוספת הערה (הורדת האתר)', e));
 
-    return { ok: true, matched: !!existingItemId };
+    return { ok: true, matched: false };
   } catch (e) {
     console.error('שגיאה בסימון הורדת האתר ב-Monday.com', e);
     return { ok: false, matched: false };
