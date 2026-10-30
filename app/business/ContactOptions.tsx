@@ -80,14 +80,22 @@ export default function ContactOptions({ whatsappUrl }: { whatsappUrl: string })
                   </button>
                 ))}
               </div>
-              <p className="biz-sched-step">בחרו שעה (שיחת טלפון של כ-15 דקות)</p>
-              <div className="biz-times">
-                {daySlots.map((s) => (
-                  <button key={s.start} type="button" className="biz-chip biz-chip-time" onClick={() => { setSlot(s); setNotice(''); }}>
-                    {s.time}
-                  </button>
-                ))}
-              </div>
+              {/* כותרת הצעד דינמית לפי היום שנבחר - נותנת תגובה ברורה ללחיצה על יום (אחרת זה
+                  מרגיש כאילו שום דבר לא קרה), ומכוונת בבירור לפעולה הבאה שנדרשת */}
+              <p className="biz-sched-step biz-sched-step-active">
+                {days.find((d) => d.key === day)?.label ? `עכשיו בחרו שעה ב${days.find((d) => d.key === day)?.label} (שיחת טלפון של כ-15 דקות)` : 'בחרו שעה (שיחת טלפון של כ-15 דקות)'}
+              </p>
+              {daySlots.length > 0 ? (
+                <div className="biz-times">
+                  {daySlots.map((s) => (
+                    <button key={s.start} type="button" className="biz-chip biz-chip-time" onClick={() => { setSlot(s); setNotice(''); }}>
+                      {s.time}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <p className="biz-form-error" role="alert">אין שעות פנויות ביום הזה - בחרו יום אחר למעלה</p>
+              )}
               {notice && <p className="biz-form-error" role="alert">{notice}</p>}
             </>
           ) : (
