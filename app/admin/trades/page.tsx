@@ -93,9 +93,15 @@ export default function AdminTradesPage() {
   function openEditPopover(trade: Trade, e: React.MouseEvent<HTMLButtonElement>) {
     const rect = e.currentTarget.getBoundingClientRect();
     const popW = 260;
+    // 420 כאומדן גובה סביר לפופאפ עריכת עסקה פתוחה (כולל כפתור מחיקה בתחתית) - בלי זה, במסך
+    // נייד קצר, top יכול לצאת רחוק מדי למטה ולהשאיר את הכפתור התחתון מתחת לקצה המסך בלי שום
+    // דרך לגלול אליו (position:fixed לא נגלל עם הדף, וה-overflow הפנימי לא עוזר אם הקופסה
+    // עצמה כבר ממוקמת מחוץ לגבולות החלון)
+    const popMaxH = Math.min(420, window.innerHeight - 16);
     const left = Math.min(Math.max(8, rect.left), window.innerWidth - popW - 8);
     const spaceBelow = window.innerHeight - rect.bottom;
-    const top = spaceBelow < 320 ? Math.max(8, rect.top - 8 - 320) : rect.bottom + 8;
+    let top = spaceBelow < popMaxH ? rect.top - 8 - popMaxH : rect.bottom + 8;
+    top = Math.max(8, Math.min(top, window.innerHeight - popMaxH - 8));
     setPopoverPos({ top, left });
     closeAllPopovers();
     startEdit(trade);

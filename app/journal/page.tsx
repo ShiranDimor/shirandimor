@@ -162,9 +162,11 @@ export default function JournalPage() {
   function openEditPopover(entry: JournalEntry, e: React.MouseEvent<HTMLButtonElement>) {
     const rect = e.currentTarget.getBoundingClientRect();
     const popW = 260;
+    const popMaxH = Math.min(420, window.innerHeight - 16);
     const left = Math.min(Math.max(8, rect.left), window.innerWidth - popW - 8);
     const spaceBelow = window.innerHeight - rect.bottom;
-    const top = spaceBelow < 320 ? Math.max(8, rect.top - 8 - 320) : rect.bottom + 8;
+    let top = spaceBelow < popMaxH ? rect.top - 8 - popMaxH : rect.bottom + 8;
+    top = Math.max(8, Math.min(top, window.innerHeight - popMaxH - 8));
     setPopoverPos({ top, left });
     closeAllPopovers();
     startEdit(entry);
