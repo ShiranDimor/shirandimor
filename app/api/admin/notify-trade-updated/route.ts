@@ -32,13 +32,13 @@ export async function POST(request: Request) {
     title: `🔁 סטופ לוס עודכן - ${symbol}`,
     body: `הסטופ החדש: $${newStopLoss}`,
     url: '/portfolio',
-  });
+  }, 'trade');
 
   await sendPushToNonSubscribers({
     title: '🔁 סטופ לוס עודכן בעסקה פתוחה',
     body: 'הסימבול גלוי למנויים - ל-7 ימי ניסיון ללא עלות ←',
     url: '/trial',
-  });
+  }, 'trade');
 
   return NextResponse.json({ ok: true });
 }

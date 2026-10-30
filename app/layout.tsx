@@ -3,6 +3,8 @@ import { Analytics } from '@vercel/analytics/react';
 import MetaPixel from '@/components/MetaPixel';
 import WhatsAppFloatButton from '@/components/WhatsAppFloatButton';
 import DorChatWidget from '@/components/DorChatWidget';
+import NotificationBell from '@/components/NotificationBell';
+import SiteDisclaimer from '@/components/SiteDisclaimer';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -21,8 +23,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="he" dir="rtl">
       <body>
         {children}
+        <SiteDisclaimer />
         <WhatsAppFloatButton />
         <DorChatWidget />
+        <NotificationBell />
         <Analytics />
         <MetaPixel />
       </body>

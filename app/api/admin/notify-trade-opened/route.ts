@@ -38,13 +38,13 @@ export async function POST(request: Request) {
     title: `🆕 עסקה חדשה בתיק - ${symbol}`,
     body: `${dirLabel}${entryPrice ? ` · כניסה: $${entryPrice}` : ''}${stopLoss ? ` · סטופ: $${stopLoss}` : ''}`,
     url: '/portfolio',
-  });
+  }, 'trade');
 
   await sendPushToNonSubscribers({
     title: '🆕 עסקה חדשה נפתחה בתיק',
     body: 'הסימבול והפרטים גלויים למנויים - אפשר להצטרף ל-7 ימי ניסיון ללא עלות',
     url: '/trial',
-  });
+  }, 'trade');
 
   return NextResponse.json({ ok: true });
 }
