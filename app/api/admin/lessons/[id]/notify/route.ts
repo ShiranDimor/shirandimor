@@ -28,10 +28,10 @@ export async function POST(request: Request, { params }: { params: { id: string 
 
   const lessonUrl = '/lessons';
   if (lesson.tier === 'subscriber') {
-    await sendPushToActiveSubscribers({ title: `📚 שיעור חדש - ${lesson.title}`, body: 'נוסף לספריית השיעורים', url: lessonUrl }, 'lesson');
-    await sendPushToNonSubscribers({ title: '📚 שיעור חדש בספרייה', body: 'שיעור חדש למנויים - 7 ימי ניסיון ללא עלות ←', url: '/trial' }, 'lesson');
+    await sendPushToActiveSubscribers({ title: `📚 שיעור חדש - ${lesson.title}`, body: 'נוסף לספריית השיעורים', url: lessonUrl }, 'lesson', params.id);
+    await sendPushToNonSubscribers({ title: '📚 שיעור חדש בספרייה', body: 'שיעור חדש למנויים - 7 ימי ניסיון ללא עלות ←', url: '/trial' }, 'lesson', params.id);
   } else {
-    await sendPushToEveryone({ title: `📚 שיעור חדש - ${lesson.title}`, body: 'נוסף לספריית השיעורים', url: lessonUrl }, 'lesson');
+    await sendPushToEveryone({ title: `📚 שיעור חדש - ${lesson.title}`, body: 'נוסף לספריית השיעורים', url: lessonUrl }, 'lesson', params.id);
   }
 
   const { data: updated } = await supabaseAdmin

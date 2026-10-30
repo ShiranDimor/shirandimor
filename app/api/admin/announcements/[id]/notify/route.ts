@@ -28,7 +28,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
     title: `📌 ${announcement.title}`,
     body: announcement.content.length > 120 ? `${announcement.content.slice(0, 117)}...` : announcement.content,
     url: '/announcements',
-  }, 'announcement');
+  }, 'announcement', params.id);
 
   const { data: updated } = await supabaseAdmin
     .from('announcements')
