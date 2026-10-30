@@ -460,7 +460,7 @@ export default function TradingPlanPage() {
             alignItems: 'center',
             justifyContent: 'space-between',
             gap: '12px',
-            boxShadow: '0 -4px 20px rgba(0,0,0,0.35)',
+            boxShadow: '0 -4px 20px rgba(60,35,20,0.2)',
           }}
         >
           <div style={{ fontSize: '13.5px', color: '#fff', lineHeight: 1.5 }}>

@@ -227,7 +227,7 @@ export default function SupportBotConversationsPage() {
                   borderRadius: '8px',
                   border: '1px solid var(--border-hairline-strong)',
                   background: c.lead_intent === opt.value ? 'var(--teal)' : 'transparent',
-                  color: c.lead_intent === opt.value ? '#08131a' : 'var(--text-secondary)',
+                  color: c.lead_intent === opt.value ? '#FFFFFF' : 'var(--text-secondary)',
                   cursor: 'pointer',
                   fontWeight: c.lead_intent === opt.value ? 700 : 400,
                 }}
@@ -247,7 +247,7 @@ export default function SupportBotConversationsPage() {
                     alignSelf: m.role === 'user' ? 'flex-start' : 'flex-end',
                     maxWidth: '85%',
                     background: m.role === 'user' ? 'var(--bg-surface-raised)' : 'var(--teal)',
-                    color: m.role === 'user' ? 'var(--text-primary)' : '#08131a',
+                    color: m.role === 'user' ? 'var(--text-primary)' : '#FFFFFF',
                     borderRadius: '10px',
                     padding: '8px 12px',
                     fontSize: '13px',
