@@ -272,7 +272,7 @@ export default function LoginPage() {
         <div style={{ background: 'rgba(193, 74, 62,0.1)', border: '1px solid var(--loss)', borderRadius: '10px', padding: '16px', textAlign: 'center' }}>
           <div style={{ fontSize: '14px', fontWeight: 600, marginBottom: '4px' }}>לא זיהינו מנוי פעיל עם הפרטים האלה</div>
           <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '14px' }}>
-            אפשר לבדוק שוב את הפרטים, או להצטרף לקבוצת הסוחרים
+            אפשר לבדוק שוב את הפרטים, או להצטרף ל&quot;מדברים עסקאות&quot;
           </div>
           <div style={{ display: 'flex', gap: '8px' }}>
             <button className="btn-outline" style={{ flex: 1 }} onClick={() => { setStep('email'); setError(''); }}>ניסיון נוסף</button>

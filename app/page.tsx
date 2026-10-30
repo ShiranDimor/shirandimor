@@ -2,10 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { trackFunnelEvent } from '@/lib/trackEvent';
 import { captureSourceFromUrl } from '@/lib/attribution';
 import { supabase } from '@/lib/supabase';
-import ClearableInput from '@/components/ClearableInput';
+import PushNotificationButton from '@/components/PushNotificationButton';
 
 type Trade = {
   id: string;
@@ -19,68 +18,22 @@ type Trade = {
 };
 
 export default function HomePage() {
-  const [showLeadForm, setShowLeadForm] = useState(false);
-  const [leadSubmitted, setLeadSubmitted] = useState(false);
-  const [leadName, setLeadName] = useState('');
-  const [leadPhone, setLeadPhone] = useState('');
-  const [leadEmail, setLeadEmail] = useState('');
-  const [leadSubmitting, setLeadSubmitting] = useState(false);
-  const [leadError, setLeadError] = useState('');
-  const [leadAlreadySubscriber, setLeadAlreadySubscriber] = useState(false);
-  const [whatsappInviteUrl, setWhatsappInviteUrl] = useState<string | null>(null);
   const [openTrades, setOpenTrades] = useState<Trade[]>([]);
   const [lastClosed, setLastClosed] = useState<Trade | null>(null);
   const [openCount, setOpenCount] = useState(0);
   const [showStickyCta, setShowStickyCta] = useState(false);
   const [hasFullAccess, setHasFullAccess] = useState(false);
-  // מבקר/ת שכבר השאיר/ה פרטים להצטרפות לקבוצת העדכונים בעבר (עוגייה מ-/api/lead) - אין טעם
-  // להציע לו/לה שוב את אותה הצטרפות חינמית; עדיף לדחוף ישר לצעד הבא, קבוצת הסוחרים
-  const [alreadyInFreeGroup, setAlreadyInFreeGroup] = useState(false);
-
-  function handlePhoneChange(value: string) {
-    setLeadPhone(value.replace(/\D/g, '').slice(0, 10));
-  }
-
-  async function handleLeadSubmit() {
-    if (!leadName || !leadPhone) {
-      setLeadError('צריך למלא שם ומספר נייד');
-      return;
-    }
-    if (!/^05\d{8}$/.test(leadPhone)) {
-      setLeadError('מספר נייד לא תקין - לדוגמה 0501234567');
-      return;
-    }
-    setLeadSubmitting(true);
-    setLeadError('');
-
-    let alreadySubscriber = false;
-    try {
-      const res = await fetch('/api/lead', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: leadName, phone: leadPhone, email: leadEmail }),
-      });
-      const data = await res.json().catch(() => null);
-      alreadySubscriber = !!data?.alreadySubscriber;
-      if (data?.inviteUrl) setWhatsappInviteUrl(data.inviteUrl);
-    } catch (e) {
-      // ממשיכים לוואטסאפ גם אם השליחה נכשלה, כדי לא לאבד את ההצטרפות - עם קישור גיבוי במקום קישור ההצטרפות הישיר
-    }
-
-    setLeadSubmitting(false);
-    setLeadAlreadySubscriber(alreadySubscriber);
-    setLeadSubmitted(true);
-    if (!alreadySubscriber) trackFunnelEvent('free_group_lead_submitted', { phone: leadPhone, email: leadEmail });
-  }
+  // מגיעים מקישור עם ?join=1 (מעמודים אחרים כמו /lives או /portfolio) - פותח ישר את שער
+  // הרשמה להתראות בלי צורך ללחוץ קודם על הכפתור. נקרא סינכרונית ב-useState (לא ב-useEffect)
+  // כדי שהערך הנכון יגיע לרינדור הראשון של PushNotificationButton - אחרת ה-useEffect הפנימי
+  // שלו כבר קורא ל-checkStatus() עם הערך הישן (false) לפני שה-state כאן מתעדכן
+  const [autoOpenNotifications] = useState(
+    () => typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('join') === '1'
+  );
 
   useEffect(() => {
     captureSourceFromUrl();
     loadTrades();
-    if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('join') === '1') {
-      setShowLeadForm(true);
-    } else if (typeof document !== 'undefined' && /(?:^|;\s*)sd_registered=1(?:;|$)/.test(document.cookie)) {
-      setAlreadyInFreeGroup(true);
-    }
   }, []);
 
   useEffect(() => {
@@ -149,81 +102,15 @@ export default function HomePage() {
         <h1>שוק ההון הרבה יותר <em>פשוט</em><br />ממה שעושים ממנו.</h1>
         <p>לא צריך לדעת הכול. צריך לדעת מה לעשות. כאן לומדים עקרונות בסיסיים, ניהול סיכון ובניית תוכנית עבודה מסודרת - בלי הבטחות תשואה, בלי "שיטת פלא", ובלי שזה יהפוך למשרה שנייה.</p>
 
-        {!showLeadForm && !alreadyInFreeGroup && (
-          <button className="cta-main" style={{ border: 'none', cursor: 'pointer', width: '100%' }} onClick={() => setShowLeadForm(true)}>
-            הצטרפות לקבוצת העדכונים
-            <span className="free-tag">ללא עלות</span>
-          </button>
-        )}
+        <PushNotificationButton variant="hero" autoOpenLeadForm={autoOpenNotifications} />
 
-        {!showLeadForm && alreadyInFreeGroup && !hasFullAccess && (
-          <Link href="/subscribe" className="cta-main" style={{ display: 'block', textAlign: 'center', textDecoration: 'none' }}>
-            כבר בקבוצת העדכונים? להכיר את קבוצת הסוחרים
-          </Link>
-        )}
-
-        {showLeadForm && !leadSubmitted && (
-          <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-hairline-strong)', borderRight: '3px solid var(--profit)', borderRadius: '10px', padding: '16px', marginBottom: '10px' }}>
-            <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '14px', textAlign: 'center' }}>
-              כמה פרטים קצרים, ומיד נפתחת הדרך לקבוצת הוואטסאפ.
-            </p>
-            <div className="field" style={{ marginBottom: '10px' }}>
-              <label>שם</label>
-              <ClearableInput type="text" value={leadName} onChange={(e) => setLeadName(e.target.value)} onClear={() => setLeadName('')} placeholder="השם המלא" />
-            </div>
-            <div className="field" style={{ marginBottom: '10px' }}>
-              <label>נייד</label>
-              <ClearableInput type="tel" inputMode="numeric" value={leadPhone} onChange={(e) => handlePhoneChange(e.target.value)} onClear={() => setLeadPhone('')} placeholder="0501234567" maxLength={10} />
-            </div>
-            <div className="field">
-              <label>אימייל <span style={{ color: 'var(--text-tertiary)', fontWeight: 400 }}>(לא חובה)</span></label>
-              <ClearableInput type="email" value={leadEmail} onChange={(e) => setLeadEmail(e.target.value)} onClear={() => setLeadEmail('')} placeholder="name@example.com" />
-            </div>
-            <button className="btn-primary" onClick={handleLeadSubmit} disabled={leadSubmitting}>
-              {leadSubmitting ? 'שולחים...' : 'המשך לקבוצת הוואטסאפ ←'}
-            </button>
-            {leadError && <p style={{ color: 'var(--loss)', fontSize: '12px', textAlign: 'center', marginTop: '8px' }}>{leadError}</p>}
-          </div>
-        )}
-
-        {showLeadForm && leadSubmitted && leadAlreadySubscriber && (
-          <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-hairline-strong)', borderRight: '3px solid var(--lavender)', borderRadius: '10px', padding: '16px', marginBottom: '10px', textAlign: 'center' }}>
-            <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '14px' }}>
-              הפרטים האלה כבר שייכים למנוי פעיל בקבוצת הסוחרים &quot;מדברים עסקאות&quot; - אין צורך להצטרף גם לקבוצת העדכונים, כי כמנויים מקבלים שם את כל מה שיש בקבוצת העדכונים, ועוד הרבה יותר.
-            </p>
-            <Link href="/journal" className="btn-primary" style={{ display: 'block', textDecoration: 'none' }}>
-              מעבר לאזור האישי ←
-            </Link>
-          </div>
-        )}
-
-        {showLeadForm && leadSubmitted && !leadAlreadySubscriber && (
-          <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-hairline-strong)', borderRight: '3px solid var(--profit)', borderRadius: '10px', padding: '16px', marginBottom: '10px', textAlign: 'center' }}>
-            <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '14px' }}>
-              {whatsappInviteUrl
-                ? 'מעולה! הכפתור פותח את קבוצת הוואטסאפ, וההצטרפות משם היא כבר עניין של רגע.'
-                : 'הפרטים נקלטו! לא הצלחנו לפתוח את הקבוצה אוטומטית - כדאי לשלוח לי הודעה בוואטסאפ ונצרף אותך ידנית.'}
-            </p>
-            <a
-              href={whatsappInviteUrl || 'https://wa.me/972547167419'}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="btn-primary"
-              style={{ display: 'block', textDecoration: 'none' }}
-              onClick={() => trackFunnelEvent('whatsapp_group_open_click', { phone: leadPhone, email: leadEmail })}
-            >
-              {whatsappInviteUrl ? 'פתיחת קבוצת הוואטסאפ ←' : 'שליחת הודעה בוואטסאפ ←'}
-            </a>
-          </div>
-        )}
-
-        <Link className="cta-sub-link" href="/subscribe">להכיר את קבוצת הסוחרים <span>←</span></Link>
+        <Link className="cta-sub-link" href="/subscribe">להכיר את &quot;מדברים עסקאות&quot; <span>←</span></Link>
       </div>
 
       <div className="trust-strip">
         <div className="trust-item"><div className="num">0%</div><div className="lbl">הבטחות תשואה</div></div>
         <div className="trust-item"><div className="num">100%</div><div className="lbl">שקיפות, כולל הפסדים</div></div>
-        <div className="trust-item"><div className="num">3</div><div className="lbl">סגנונות מסחר, קבוצה אחת</div></div>
+        <div className="trust-item"><div className="num">3</div><div className="lbl">סגנונות מסחר, קהילה אחת</div></div>
       </div>
 
       <div className="about-feature">
@@ -247,7 +134,7 @@ export default function HomePage() {
         <span className="live-teaser-arrow">←</span>
       </Link>
 
-      <div className="section-label"><h2>אז למי הקבוצה מתאימה?</h2></div>
+      <div className="section-label"><h2>אז למי זה מתאים?</h2></div>
       <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.65, marginBottom: '12px' }}>
         <strong style={{ color: 'var(--text-primary)' }}>אנשים רגילים, לא סוחרים במשרה מלאה</strong> - שרוצים שהחיסכון שלהם יעשה משהו חוץ מלשבת בעו"ש, בלי לשבת כל היום מול מסכים ובלי לעזוב את מה שהם כבר עושים.
       </p>
@@ -307,11 +194,12 @@ export default function HomePage() {
         <Link className="teaser-cta" href="/portfolio">צפייה בתיק המסחר המלא ←</Link>
       </div>
 
-      <div className="section-label" style={{ marginTop: '30px' }}><h2>קבוצת עדכונים או קבוצת הסוחרים?</h2></div>
-      <p style={{ fontSize: '13px', color: 'var(--text-tertiary)', marginBottom: '16px' }}>רק עוקבים ומתעדכנים, או גם בונים תיק ונכנסים לעסקאות?</p>
+      <div className="section-label" style={{ marginTop: '30px' }}><h2>איך מתחילים?</h2></div>
+      <p style={{ fontSize: '13px', color: 'var(--text-tertiary)', marginBottom: '16px' }}>שני צעדים - מתחילים חינם, ומשדרגים כשנוח לכם.</p>
       <div className="groups-compare">
         <div className="group-card free">
-          <h3>קבוצת עדכונים</h3>
+          <div className="gc-tag" style={{ background: 'var(--profit-bg)', color: 'var(--profit)' }}>צעד 1</div>
+          <h3>עדכונים בזמן אמת</h3>
           <div className="gc-price">ללא עלות</div>
           <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '-10px', marginBottom: '14px' }}>בלי התחייבות, בלי לחץ</div>
           <div className="gc-perks">
@@ -319,25 +207,25 @@ export default function HomePage() {
             <div>הצצה לעולם שוק ההון, בלי לשלם עליה <strong>אלפי שקלים</strong></div>
             <div><strong>מושג אחד</strong> בשבוע - פשוט, ברור, ואפשר להשתמש בו מיד</div>
             <div><strong>ספרייה מלאה</strong> של וובינרים ומצגות, בלי עלות נוספת</div>
-            <div>הצטרפות בלחיצה אחת - <strong>ללא התחייבות</strong> וללא עלות</div>
-            <div>אפשר לשדרג לקבוצת הסוחרים בכל שלב, <strong>בקצב האישי</strong></div>
+            <div>הפעלה בלחיצה אחת - <strong>ללא התחייבות</strong> וללא עלות</div>
+            <div>אפשר לשדרג ל"מדברים עסקאות" בכל שלב, <strong>בקצב האישי</strong></div>
           </div>
-          <a className="gc-cta" href="#" onClick={(e) => { e.preventDefault(); window.scrollTo(0, 0); setShowLeadForm(true); }}>הצטרפות ללא עלות</a>
+          <a className="gc-cta" href="#" onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>הפעלה ללא עלות</a>
         </div>
         <div className="group-card paid">
-          <div className="gc-tag">גישה מלאה</div>
-          <h3>קבוצת הסוחרים <span style={{ fontSize: '12px', color: 'var(--text-tertiary)', fontWeight: 400 }}>· "מדברים עסקאות"</span></h3>
+          <div className="gc-tag">צעד 2 · גישה מלאה</div>
+          <h3>מדברים עסקאות</h3>
           <div className="gc-price">₪400 לחודש <span style={{ color: 'var(--profit)', fontWeight: 600 }}>· חודש ראשון ב-₪200</span></div>
           <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '-10px', marginBottom: '14px' }}>מנוי חודשי · ללא התחייבות</div>
           <div className="gc-perks">
-            <div>כל מה שיש בקבוצת העדכונים - <strong>ועוד</strong>:</div>
+            <div>כל מה שיש בעדכונים החינמיים - <strong>ועוד</strong>:</div>
             <div>בניית <strong>תיק השקעות</strong> - תוך יומי, סווינג, טווח ארוך</div>
             <div><strong>וובינרים לייב</strong> - שאלות, ניתוחים ולמידה בזמן אמת</div>
-            <div><strong>ליווי אישי</strong> - לצד קהילה סגורה לדיון מעמיק</div>
+            <div><strong>ליווי אישי</strong> - לצד קהילת סוחרים סגורה לדיון מעמיק</div>
             <div>יומן <strong>מסחר שקוף</strong> - כולל עסקאות מפסידות</div>
             <div><strong>תיק מסחר</strong> אישי וניתוח העסקאות ע"י שירן</div>
           </div>
-          <Link className="gc-cta" href="/subscribe">לפרטים על קבוצת הסוחרים</Link>
+          <Link className="gc-cta" href="/subscribe">לפרטים על מדברים עסקאות</Link>
         </div>
       </div>
 
@@ -345,11 +233,11 @@ export default function HomePage() {
       <div className="faq-list">
         <details className="faq-item" style={{ borderRightColor: 'var(--teal)' }}>
           <summary>צריך ניסיון קודם בשוק ההון?</summary>
-          <p>לא. הקבוצה מתאימה גם למי שמעולם לא סחר, וגם למי שכבר ניסה ולא הסתדר. מתחילים מהבסיס.</p>
+          <p>לא. זה מתאים גם למי שמעולם לא סחר, וגם למי שכבר ניסה ולא הסתדר. מתחילים מהבסיס.</p>
         </details>
         <details className="faq-item" style={{ borderRightColor: 'var(--orange)' }}>
           <summary>צריך קודם לעשות קורס יקר?</summary>
-          <p>לא. אפשר לשלם אלפי שקלים על קורס ועדיין לא לדעת אם התחום בכלל מתאים לך. הדרך הכי נכונה וזולה להבין את זה לעומק היא פשוט לנסות חודש שלם בקבוצה (₪200) ולראות מבפנים מה זה תיק השקעות, איך שוק ההון עובד בפועל, ומה השיטה - במקום לצבור תיאוריה על הנייר לפני שמעיזים.</p>
+          <p>לא. אפשר לשלם אלפי שקלים על קורס ועדיין לא לדעת אם התחום בכלל מתאים לך. הדרך הכי נכונה וזולה להבין את זה לעומק היא פשוט לנסות חודש שלם (₪200) ולראות מבפנים מה זה תיק השקעות, איך שוק ההון עובד בפועל, ומה השיטה - במקום לצבור תיאוריה על הנייר לפני שמעיזים.</p>
         </details>
         <details className="faq-item" style={{ borderRightColor: 'var(--lavender)' }}>
           <summary>כמה זמן ביום זה דורש?</summary>
@@ -361,7 +249,7 @@ export default function HomePage() {
         </details>
         <details className="faq-item" style={{ borderRightColor: 'var(--teal)' }}>
           <summary>זה בטוח? יש סיכון להפסיד כסף?</summary>
-          <p>כן, יש סיכון - זה שוק ההון, לא הבטחה. המטרה של הקבוצה היא ללמד ניהול סיכון נכון, לא להבטיח רווחים.</p>
+          <p>כן, יש סיכון - זה שוק ההון, לא הבטחה. המטרה שלי היא ללמד ניהול סיכון נכון, לא להבטיח רווחים.</p>
         </details>
         <details className="faq-item" style={{ borderRightColor: 'var(--lavender)' }}>
           <summary>כמה כסף צריך כדי להתחיל?</summary>
@@ -375,17 +263,11 @@ export default function HomePage() {
         <span className="qauthor">שירן דימור</span>
       </div>
 
-      {showStickyCta && !showLeadForm && !alreadyInFreeGroup && (
+      {showStickyCta && !hasFullAccess && (
         <div className="sticky-cta">
-          <button onClick={() => { window.scrollTo(0, 0); setShowLeadForm(true); }}>
-            הצטרפות לקבוצת העדכונים - ללא עלות
+          <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
+            הפעלת עדכונים בזמן אמת - ללא עלות
           </button>
-        </div>
-      )}
-
-      {showStickyCta && !showLeadForm && alreadyInFreeGroup && !hasFullAccess && (
-        <div className="sticky-cta">
-          <Link href="/subscribe">כבר בקבוצת העדכונים? להכיר את קבוצת הסוחרים</Link>
         </div>
       )}
     </div>

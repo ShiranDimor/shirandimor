@@ -295,7 +295,7 @@ export default function PortfolioPage() {
           <div className="lb-icon">🔒</div>
           <div className="lb-text">
             <p className="lb-title">יש כאן עסקאות אמיתיות, אבל הן שמורות למנויים</p>
-            <p className="lb-sub">הסימבולים מוסתרים כדי לשמור על פרטיות חברי הקבוצה - ההצטרפות פותחת גישה לתמונה המלאה: מספרים אמיתיים, כולל הפסדים.</p>
+            <p className="lb-sub">הסימבולים מוסתרים כדי לשמור על פרטיות המנויים - ההצטרפות פותחת גישה לתמונה המלאה: מספרים אמיתיים, כולל הפסדים.</p>
           </div>
           <div className="lb-cta-row">
             <Link href="/subscribe" className="lb-cta">לגישה מלאה ←</Link>
@@ -538,7 +538,7 @@ export default function PortfolioPage() {
 
       {!hasFullAccess && showStickyCta && (
         <div className="sticky-cta">
-          <Link href="/?join=1">הצטרפות לקבוצת העדכונים - ללא עלות</Link>
+          <Link href="/?join=1">הפעלת עדכונים בזמן אמת - ללא עלות</Link>
         </div>
       )}
     </div>

@@ -170,7 +170,7 @@ export default function LessonDetailPage() {
             <div className="tp-question-card">
               <div className="tp-question-title">עוד רגע - איך קוראים לך?</div>
               <div className="tp-step-intro" style={{ marginBottom: '14px' }}>
-                לא זיהינו אתכם אצלנו - השארת שם פותחת גישה חינמית לספרייה, ומצטרפת אתכם לקבוצת העדכונים.
+                לא זיהינו אתכם אצלנו - השארת שם פותחת גישה חינמית לספרייה ולעדכונים שלנו.
               </div>
 
               <input className="tp-text-input" style={{ minHeight: 'auto', marginBottom: '10px' }} placeholder="שם" value={name} onChange={(e) => setName(e.target.value)} autoFocus />
@@ -187,7 +187,7 @@ export default function LessonDetailPage() {
             <div className="tp-question-card">
               <div className="tp-question-title">כבר יש לך גישה מלאה 🎉</div>
               <div className="tp-step-intro" style={{ marginBottom: '14px' }}>
-                את/ה כבר חלק מקבוצת הסוחרים - אין צורך להשאיר שום פרטים, הכל כבר פתוח לך כמנוי/ה.
+                את/ה כבר מנוי/ה ב&quot;מדברים עסקאות&quot; - אין צורך להשאיר שום פרטים, הכל כבר פתוח לך.
               </div>
               <button type="button" className="btn-primary" onClick={continueToLesson}>צפייה בשיעור</button>
             </div>
@@ -195,9 +195,9 @@ export default function LessonDetailPage() {
 
           {lesson.locked && enterResult === 'updates' && (
             <div className="tp-question-card">
-              <div className="tp-question-title">כבר את/ה בקבוצת העדכונים 👋</div>
+              <div className="tp-question-title">כבר מכירים אותך 👋</div>
               <div className="tp-step-intro" style={{ marginBottom: '14px' }}>
-                השיעור פתוח לך. רוצה גישה גם לתוכן הבלעדי ולליווי של קבוצת הסוחרים?
+                השיעור פתוח לך. רוצה גישה גם לתוכן הבלעדי ולליווי של &quot;מדברים עסקאות&quot;?
               </div>
               <a
                 href="https://pay.grow.link/200a7cdcb258ee6ffdea0f423a1ace0e-MzE4MDU5OA"
@@ -206,7 +206,7 @@ export default function LessonDetailPage() {
                 className="btn-outline"
                 style={{ display: 'block', textAlign: 'center', textDecoration: 'none', marginBottom: '10px' }}
               >
-                הצטרפות לקבוצת הסוחרים ←
+                הצטרפות ל&quot;מדברים עסקאות&quot; ←
               </a>
               <button type="button" className="btn-primary" onClick={continueToLesson}>צפייה בשיעור</button>
             </div>
