@@ -287,6 +287,12 @@ export default function AdminDashboard() {
           <div className="at-count">{liveRegistrationsTotal} נרשמים · {livesCount} לייבים קרובים</div>
         </Link>
 
+        <Link href="/admin/announcements" className="admin-tile">
+          <div className="at-icon">📌</div>
+          <div className="at-title">לוח מודעות</div>
+          <div className="at-count">פרסום עדכון לכולם</div>
+        </Link>
+
         <Link href="/admin/analytics" className="admin-tile">
           <div className="at-icon">📈</div>
           <div className="at-title">משפך המרה</div>

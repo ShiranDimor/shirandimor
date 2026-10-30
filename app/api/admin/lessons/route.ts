@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/instantLogin';
 import { extractYoutubeId, extractGammaEmbedSrc, fetchOgImage } from '@/lib/lessonMedia';
+import { sendPushToActiveSubscribers, sendPushToNonSubscribers, sendPushToEveryone } from '@/lib/webPush';
 
 async function requireAdmin(request: Request) {
   const authHeader = request.headers.get('Authorization') || '';
@@ -76,6 +77,19 @@ export async function POST(request: Request) {
   if (error) {
     console.error('שגיאה ביצירת שיעור', error);
     return NextResponse.json({ error: 'שגיאה בשמירה' }, { status: 500 });
+  }
+
+  // התראת פוש על שיעור חדש - רק לשיעור מפורסם (לא טיוטה). שיעור "למנויים" מתריע עם הכותרת
+  // המלאה רק למנויים, ולמי שאינו מנוי מגיעה גרסה כללית + קריאה להצטרפות. שיעור "ציבורי" (tier
+  // public) או "לרשומים" פתוח ממילא, אז כולם מקבלים את אותה התראה מלאה
+  if (data.published) {
+    const lessonUrl = '/lessons';
+    if (data.tier === 'subscriber') {
+      await sendPushToActiveSubscribers({ title: `📚 שיעור חדש - ${data.title}`, body: 'נוסף לספריית השיעורים', url: lessonUrl });
+      await sendPushToNonSubscribers({ title: '📚 שיעור חדש בספרייה', body: 'שיעור חדש למנויים - 7 ימי ניסיון ללא עלות ←', url: '/trial' });
+    } else {
+      await sendPushToEveryone({ title: `📚 שיעור חדש - ${data.title}`, body: 'נוסף לספריית השיעורים', url: lessonUrl });
+    }
   }
 
   return NextResponse.json({ lesson: data });
