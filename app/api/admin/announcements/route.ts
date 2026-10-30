@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/instantLogin';
-import { sendPushToEveryone } from '@/lib/webPush';
 
 async function requireAdmin(request: Request) {
   const authHeader = request.headers.get('Authorization') || '';
@@ -26,8 +25,8 @@ export async function GET(request: Request) {
   return NextResponse.json({ announcements: data });
 }
 
-// POST - פרסום הודעה חדשה בלוח המודעות - נשלחת כהתראת פוש לכולם (מנויים ולא-מנויים כאחד,
-// בלי טשטוש - בניגוד להתראות על עסקאות, כאן שירן ביקשה מפורשות שכולם יקבלו את אותו תוכן)
+// POST - פרסום הודעה חדשה בלוח המודעות - רק שמירה. שליחת ההתראה היא פעולה נפרדת ומכוונת
+// (כפתור "שליחת התראה" ברשימת הניהול), כדי שאפשר יהיה לכתוב/לערוך לפני שמחליטים לשלוח
 export async function POST(request: Request) {
   const admin = await requireAdmin(request);
   if (!admin) return NextResponse.json({ error: 'אין הרשאת ניהול' }, { status: 403 });
@@ -48,14 +47,6 @@ export async function POST(request: Request) {
   if (error) {
     console.error('שגיאה בפרסום הודעה', error);
     return NextResponse.json({ error: 'שגיאה בשמירה' }, { status: 500 });
-  }
-
-  if (data.published) {
-    await sendPushToEveryone({
-      title: `📌 ${data.title}`,
-      body: data.content.length > 120 ? `${data.content.slice(0, 117)}...` : data.content,
-      url: '/announcements',
-    });
   }
 
   return NextResponse.json({ announcement: data });
