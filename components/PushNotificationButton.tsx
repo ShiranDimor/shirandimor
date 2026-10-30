@@ -194,14 +194,21 @@ export default function PushNotificationButton() {
   }
 
   return (
-    <button
-      type="button"
-      className="btn-outline"
-      style={{ width: '100%', marginBottom: '10px' }}
-      onClick={status === 'on' ? handleDisable : handleEnable}
-      disabled={busy}
-    >
-      {busy ? '...' : status === 'on' ? '🔔 התראות פוש פעילות - לכיבוי' : '🔔 הפעלת התראות פוש'}
-    </button>
+    <>
+      <button
+        type="button"
+        className="btn-outline"
+        style={{ width: '100%', marginBottom: '6px' }}
+        onClick={status === 'on' ? handleDisable : handleEnable}
+        disabled={busy}
+      >
+        {busy ? '...' : status === 'on' ? '🔔 התראות פוש פעילות - לכיבוי' : '🔔 הפעלת התראות פוש'}
+      </button>
+      {status === 'off' && (
+        <p style={{ fontSize: '11px', color: 'var(--text-tertiary)', textAlign: 'center', marginBottom: '10px' }}>
+          באנדרואיד זה עובד ישר. באייפון צריך קודם להוסיף את האתר למסך הבית (שיתוף ← הוספה למסך הבית).
+        </p>
+      )}
+    </>
   );
 }

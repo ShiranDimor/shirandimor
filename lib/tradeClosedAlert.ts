@@ -1,5 +1,5 @@
 import { getActiveSubscriberContacts } from '@/lib/subscriberStatus';
-import { sendPushToEveryone } from '@/lib/webPush';
+import { sendPushToActiveSubscribers, sendPushToNonSubscribers } from '@/lib/webPush';
 
 // מייל "עסקה נסגרה" לכל המנויים הפעילים + לשירן - נשלח בכל סגירה מלאה של עסקה בתיק האמיתי
 // (סגירה ידנית בכפתור "⚡ סגירה" או סגירה אוטומטית בסטופ לוס), עם ציון אם נסגרה ברווח או בהפסד.
@@ -116,11 +116,13 @@ export async function notifyTradesClosed(trades: ClosedTradeInfo[]) {
       const dirFactor = t.direction === 'short' ? -1 : 1;
       const pct = ((t.exit_price - t.entry_price) / t.entry_price) * 100 * dirFactor;
       const isProfit = pct >= 0;
-      await sendPushToEveryone({
-        title: `${isProfit ? '✅' : '🔻'} עסקה נסגרה ${isProfit ? 'ברווח' : 'בהפסד'} - ${t.symbol}`,
-        body: `${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%`,
-        url: '/portfolio',
-      });
+      const title = `${isProfit ? '✅' : '🔻'} עסקה נסגרה ${isProfit ? 'ברווח' : 'בהפסד'} - ${t.symbol}`;
+      const pctLabel = `${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%`;
+
+      // המנויים מקבלים את התוצאה בלבד וקישור לתיק. מי שאינו מנוי מקבל את אותה תוצאה (בכוונה -
+      // זו ההוכחה שמביאה הצטרפות) אבל עם משפט שמניע הצטרפות וקישור לניסיון במקום לתיק עצמו
+      await sendPushToActiveSubscribers({ title, body: pctLabel, url: '/portfolio' });
+      await sendPushToNonSubscribers({ title, body: `${pctLabel} · ל-7 ימי ניסיון ללא עלות ←`, url: '/trial' });
     }
   }
 }
