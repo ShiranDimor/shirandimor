@@ -211,7 +211,7 @@ export default function LessonsLibraryPage() {
       <div className="lessons-hero">
         <div className="lessons-hero-icon">🎬</div>
         <h1>ספריית שיעורים</h1>
-        <p>וובינרים, הרצאות ומצגות על מסחר - פתוחות לצפייה לכל מי שחלק מהקהילה שלנו.</p>
+        <p>וובינרים, הרצאות ומצגות על מסחר - פתוחות לצפייה לכל מי שהוא חלק מהקהילה שלנו.</p>
         {!gateNeeded && lessons.length > 0 && (
           <div className="lessons-hero-stats">
             <div className="lessons-hero-stat"><b>{lessons.length}</b><span>שיעורים</span></div>
@@ -268,7 +268,7 @@ export default function LessonsLibraryPage() {
         <div className="tp-question-card">
           <div className="tp-question-title">כבר מכירים אותך 👋</div>
           <div className="tp-step-intro" style={{ marginBottom: '14px' }}>
-            הספרייה פתוחה לך. רוצה גישה גם לתוכן הבלעדי ולליווי של &quot;מדברים עסקאות&quot;?
+            הספרייה פתוחה לך. רוצה גם <strong style={{ color: 'var(--lavender)' }}>לסחור ביחד איתי</strong>? זה &quot;מדברים עסקאות&quot;.
           </div>
           <a
             href="https://pay.grow.link/200a7cdcb258ee6ffdea0f423a1ace0e-MzE4MDU5OA"

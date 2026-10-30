@@ -197,7 +197,7 @@ export default function LessonDetailPage() {
             <div className="tp-question-card">
               <div className="tp-question-title">כבר מכירים אותך 👋</div>
               <div className="tp-step-intro" style={{ marginBottom: '14px' }}>
-                השיעור פתוח לך. רוצה גישה גם לתוכן הבלעדי ולליווי של &quot;מדברים עסקאות&quot;?
+                השיעור פתוח לך. רוצה גם <strong style={{ color: 'var(--lavender)' }}>לסחור ביחד איתי</strong>? זה &quot;מדברים עסקאות&quot;.
               </div>
               <a
                 href="https://pay.grow.link/200a7cdcb258ee6ffdea0f423a1ace0e-MzE4MDU5OA"

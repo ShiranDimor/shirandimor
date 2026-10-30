@@ -20,7 +20,7 @@ export default function SubscribePage() {
       <div className="form-title">הצטרפות ל&quot;מדברים עסקאות&quot;</div>
       <div className="form-sub">מנוי חודשי · ללא התחייבות</div>
       <p style={{ fontSize: '13px', color: 'var(--text-secondary)', textAlign: 'center', lineHeight: 1.6, marginBottom: '20px' }}>
-        <strong style={{ color: 'var(--lavender)' }}>סוחרים ביחד איתי</strong>, בזמן אמת, ובונים <strong style={{ color: 'var(--lavender)' }}>תיק השקעות אמיתי</strong> - גם אם אין לך שום ידע מוקדם, ובקצב שלך.
+        <strong style={{ color: 'var(--lavender)' }}>סוחרים ביחד איתי, בונים תיק השקעות</strong>. בלי ידע מוקדם, בקצב שלך.
       </p>
 
       <div className="price-card">

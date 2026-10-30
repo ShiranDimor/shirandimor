@@ -160,7 +160,7 @@ export default function LivesPage() {
       </header>
 
       <div className="form-title">לייבים</div>
-      <div className="form-sub">סוחרים ביחד בזמן אמת - לא רק לומדים או צופים מהצד</div>
+      <div className="form-sub">סוחרים ביחד איתי בזמן אמת - לא רק לומדים או צופים מהצד</div>
 
       {(loading || checkingAuth) && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)', textAlign: 'center', marginTop: '20px' }}>טוענים...</p>}
       {!loading && lives.length === 0 && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)', textAlign: 'center', marginTop: '20px' }}>אין כרגע לייבים קרובים - שווה לחזור בקרוב</p>}
@@ -192,7 +192,7 @@ export default function LivesPage() {
           )}
           {confirmedLeadIds.has(live.id) && (
             <div style={{ background: 'var(--profit-bg)', border: '1px solid var(--profit)', borderRadius: '8px', padding: '12px 14px', marginBottom: '10px', fontSize: '13px', lineHeight: 1.6 }}>
-              <p style={{ marginBottom: '10px' }}>✓ הפרטים נקלטו! הלייבים האלה פתוחים למנויי &quot;מדברים עסקאות&quot;. אפשר להצטרף ל-7 ימי ניסיון בלי עלות ולקבל גישה מיידית:</p>
+              <p style={{ marginBottom: '10px' }}>✓ הפרטים נקלטו! הלייבים האלה פתוחים למנויי &quot;מדברים עסקאות&quot; - <strong style={{ color: 'var(--lavender)' }}>סוחרים ביחד איתי</strong>, בלי ידע מוקדם. אפשר להצטרף ל-7 ימי ניסיון בלי עלות ולקבל גישה מיידית:</p>
               <Link href="/trial" className="btn-primary" style={{ display: 'block', textAlign: 'center', textDecoration: 'none', marginBottom: '10px', background: accentColor }}>
                 ל-7 ימי ניסיון ללא עלות ←
               </Link>
