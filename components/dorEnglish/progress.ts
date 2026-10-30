@@ -17,6 +17,7 @@ export interface Progress {
   words: Record<string, WordStat>;
   days: string[]; // ימים ששיחקה (YYYY-MM-DD) - לרצף ולמסך ההורים
   hebrew?: boolean; // הוראות בעברית (ברירת מחדל: כן). כשהיא תתקדם אפשר לכבות במסך ההורים
+  tutorialDone?: boolean; // כבר למדה לקפוץ ולהתכופף במסלול (ההדרכה עוצרת את המשחק רק בפעם הראשונה)
 }
 
 export function hebrewOn(p: Progress) {
@@ -90,22 +91,4 @@ export function pickWord(p: Progress, world: World, avoid: string[] = []): { wor
     if (r <= 0) return { word: list[i], world: source };
   }
   return { word: list[list.length - 1], world: source };
-}
-
-export function shuffle<T>(arr: T[]): T[] {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
-
-// אפשרויות שגויות: קודם מאותה קבוצה (למשל "שני חתולים" מול "שלושה חתולים") - ככה היא חייבת
-// באמת להקשיב למספר/לצבע ולא רק לזהות את החיה
-export function distractors(world: World, target: Word, count: number): Word[] {
-  const others = world.words.filter((w) => w.en !== target.en);
-  const same = target.group ? shuffle(others.filter((w) => w.group === target.group)) : [];
-  const rest = shuffle(others.filter((w) => !same.includes(w)));
-  return [...same, ...rest].slice(0, count);
 }
