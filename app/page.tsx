@@ -100,10 +100,13 @@ export default function HomePage() {
       <div className="hero-v2">
         <div className="eyebrow">שירן דימור</div>
         <h1>שוק ההון הרבה יותר <em>פשוט</em><br />ממה שעושים ממנו.</h1>
-        <p>לא צריך לדעת הכול. צריך לדעת מה לעשות. כאן לומדים עקרונות בסיסיים, ניהול סיכון ובניית תוכנית עבודה מסודרת - בלי הבטחות תשואה, בלי "שיטת פלא", ובלי שזה יהפוך למשרה שנייה.</p>
+        <p>אני שירן, ואני כאן כדי להראות לך שלא צריך לדעת הכול כדי להתחיל - <strong>צריך רק לדעת מה לעשות</strong>. עקרונות בסיסיים, ניהול סיכון ותוכנית עבודה מסודרת - בלי הבטחות תשואה, בלי "שיטת פלא", ובלי שזה יהפוך למשרה שנייה.</p>
 
         <PushNotificationButton variant="hero" autoOpenLeadForm={autoOpenNotifications} />
 
+        <p style={{ fontSize: '13px', color: 'var(--text-secondary)', textAlign: 'center', lineHeight: 1.6, maxWidth: 'none', marginTop: '14px', marginBottom: '6px' }}>
+          ומי שרוצה ללכת צעד רחוק יותר - <strong style={{ color: 'var(--lavender)' }}>סוחרים ביחד איתי</strong>, בזמן אמת, ובונים <strong style={{ color: 'var(--lavender)' }}>תיק השקעות אמיתי</strong> - גם בלי שום ידע מוקדם.
+        </p>
         <Link className="cta-sub-link" href="/subscribe">להכיר את &quot;מדברים עסקאות&quot; <span>←</span></Link>
       </div>
 
@@ -117,7 +120,7 @@ export default function HomePage() {
         <img className="af-photo" src="/shiran-photo.jpg" alt="שירן דימור" />
         <div className="af-text">
           <div className="af-label">מי אני</div>
-          <p className="af-main">שירן דימור, סוחרת 14 שנה בשוק. לא הפכתי למיליארדרית, ולא אבטיח לך שזה יקרה. למדתי לנהל סיכונים כמו שצריך - פחות מלהיב מרכב יוקרה באינסטגרם, אבל הרבה יותר מציאותי לאורך זמן.</p>
+          <p className="af-main">שירן דימור, סוחרת 14 שנה בשוק. לא הפכתי למיליארדרית, ולא אבטיח לך שזה יקרה. מה שכן - <strong>למדתי לנהל סיכונים כמו שצריך</strong>, פחות מלהיב מרכב יוקרה באינסטגרם, אבל הרבה יותר מציאותי לאורך זמן. ואת זה אני רוצה ללמד גם אותך.</p>
         </div>
       </div>
 
@@ -130,7 +133,7 @@ export default function HomePage() {
 
       <Link href="/lives" className="live-teaser">
         <span className="live-dot" />
-        <span className="live-teaser-text"><strong>הלייבים הקרובים</strong> - סוחרים ביחד בזמן אמת, לא רק לומדים: לבנות תיק השקעות אחראי ומציאותי הרבה יותר פשוט ממה שנדמה</span>
+        <span className="live-teaser-text"><strong>הלייבים הקרובים</strong> - סוחרים ביחד איתי בזמן אמת, לא רק לומדים: לבנות תיק השקעות אחראי ומציאותי הרבה יותר פשוט ממה שנדמה</span>
         <span className="live-teaser-arrow">←</span>
       </Link>
 
@@ -157,7 +160,7 @@ export default function HomePage() {
       <div className="section-label" style={{ marginTop: '20px' }}><h2 style={{ color: 'var(--profit)' }}>למי זה כן מתאים</h2></div>
       <div className="not-fit">
         <div>– מי שרוצה תיק מסחר אמיתי ושקוף, כולל רווחים והפסדים</div>
-        <div>– מי שרוצה ליווי אישי וקהילה תומכת לאורך הדרך</div>
+        <div>– מי שרוצה ליווי אישי ממני וקהילה תומכת לאורך הדרך</div>
         <div>– מי שרוצה ללמוד גם את החלק הכי משמעותי - הפן המנטאלי</div>
         <div>– מי שרוצה גישה למסחר תוך-יומי, סווינג והשקעות לטווח ארוך</div>
       </div>
@@ -195,7 +198,7 @@ export default function HomePage() {
       </div>
 
       <div className="section-label" style={{ marginTop: '30px' }}><h2>איך מתחילים?</h2></div>
-      <p style={{ fontSize: '13px', color: 'var(--text-tertiary)', marginBottom: '16px' }}>שני צעדים - מתחילים חינם, ומשדרגים כשנוח לכם.</p>
+      <p style={{ fontSize: '13px', color: 'var(--text-tertiary)', marginBottom: '16px' }}>שני צעדים פשוטים - מתחילים בלי להוציא כלום, ומשדרגים כשנוח לכם.</p>
       <div className="groups-compare">
         <div className="group-card free">
           <div className="gc-tag" style={{ background: 'var(--profit-bg)', color: 'var(--profit)' }}>צעד 1</div>
@@ -215,6 +218,9 @@ export default function HomePage() {
         <div className="group-card paid">
           <div className="gc-tag">צעד 2 · גישה מלאה</div>
           <h3>מדברים עסקאות</h3>
+          <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', lineHeight: 1.55, marginBottom: '10px' }}>
+            <strong style={{ color: 'var(--lavender)' }}>סוחרים ביחד איתי</strong>, בזמן אמת, ובונים <strong style={{ color: 'var(--lavender)' }}>תיק השקעות אמיתי</strong> - גם אם אין לך שום ידע מוקדם.
+          </p>
           <div className="gc-price">₪400 לחודש <span style={{ color: 'var(--profit)', fontWeight: 600 }}>· חודש ראשון ב-₪200</span></div>
           <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '-10px', marginBottom: '14px' }}>מנוי חודשי · ללא התחייבות</div>
           <div className="gc-perks">
@@ -233,7 +239,7 @@ export default function HomePage() {
       <div className="faq-list">
         <details className="faq-item" style={{ borderRightColor: 'var(--teal)' }}>
           <summary>צריך ניסיון קודם בשוק ההון?</summary>
-          <p>לא. זה מתאים גם למי שמעולם לא סחר, וגם למי שכבר ניסה ולא הסתדר. מתחילים מהבסיס.</p>
+          <p><strong>ממש לא</strong>. זה מתאים גם למי שמעולם לא סחר, וגם למי שכבר ניסה ולא הסתדר. מתחילים מהבסיס, ביחד.</p>
         </details>
         <details className="faq-item" style={{ borderRightColor: 'var(--orange)' }}>
           <summary>צריך קודם לעשות קורס יקר?</summary>
