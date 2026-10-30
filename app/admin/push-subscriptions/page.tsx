@@ -6,6 +6,8 @@ import { supabase } from '@/lib/supabase';
 
 type Row = {
   id: string;
+  deviceIds: string[];
+  deviceCount: number;
   createdAt: string;
   isSubscriber: boolean;
   name: string | null;
@@ -60,13 +62,13 @@ export default function AdminPushSubscriptionsPage() {
     setLoading(false);
   }
 
-  async function handleDelete(id: string) {
-    if (!window.confirm('להסיר את המכשיר הזה מרשימת ההתראות?')) return;
-    setDeletingId(id);
-    const res = await fetch('/api/admin/push-subscriptions', { method: 'DELETE', headers: await authHeader(), body: JSON.stringify({ id }) });
+  async function handleDelete(row: Row) {
+    if (!window.confirm(row.deviceCount > 1 ? `להסיר את איש הקשר הזה מרשימת ההתראות (${row.deviceCount} מכשירים)?` : 'להסיר את המכשיר הזה מרשימת ההתראות?')) return;
+    setDeletingId(row.id);
+    const res = await fetch('/api/admin/push-subscriptions', { method: 'DELETE', headers: await authHeader(), body: JSON.stringify({ ids: row.deviceIds }) });
     setDeletingId('');
     if (res.ok) {
-      setRows((prev) => prev.filter((r) => r.id !== id));
+      setRows((prev) => prev.filter((r) => r.id !== row.id));
     }
   }
 
@@ -116,9 +118,10 @@ export default function AdminPushSubscriptionsPage() {
           <div style={{ fontSize: '13.5px', fontWeight: 700 }}>{r.name || 'ללא שם'}</div>
           <div style={{ fontSize: '11.5px', color: 'var(--text-tertiary)', marginTop: '2px' }}>
             {[r.phone, r.email].filter(Boolean).join(' · ') || '—'} · הופעל ב-{formatDate(r.createdAt)}
+            {r.deviceCount > 1 && ` · ${r.deviceCount} מכשירים`}
           </div>
         </div>
-        <button onClick={() => handleDelete(r.id)} disabled={deletingId === r.id} className="btn-outline" style={{ padding: '6px 12px', fontSize: '12.5px' }}>
+        <button onClick={() => handleDelete(r)} disabled={deletingId === r.id} className="btn-outline" style={{ padding: '6px 12px', fontSize: '12.5px' }}>
           {deletingId === r.id ? '…' : 'הסרה'}
         </button>
       </div>
