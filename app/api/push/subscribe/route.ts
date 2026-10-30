@@ -4,12 +4,13 @@ import { isPhoneBlocked } from '@/lib/blockedContacts';
 import { normalizePhone, normalizeEmail } from '@/lib/subscriberStatus';
 import { isContactInSubscribersGroupMonday, markAppDownloadOnMonday } from '@/lib/tradingPlan/monday';
 
-// POST - שומר מינוי להתראות פוש. שלושה מסלולים:
-// 1) משתמש מחובר (יש טוקן תקין) - נשמר לפי user_id, בלי צורך בפרטי קשר (כבר יש פרופיל)
+// POST - שומר מינוי להתראות פוש. שלושה מסלולים, ובכל אחד מהם מסמנים גם במאנדיי (עמודת "סטטוס
+// טיפול") שאיש הקשר הפעיל התראות - על הכרטיס הקיים שלו אם יש לו אחד במקום כלשהו בלוח, או בכרטיס
+// חדש אם אין לו שום כרטיס קיים (ר' markAppDownloadOnMonday):
+// 1) משתמש מחובר (יש טוקן תקין) - נשמר לפי user_id, מסמנים לפי הטלפון/מייל שבפרופיל שלו
 // 2) לא מחובר, אבל שם+נייד/מייל תואמים למנוי פעיל קיים (לפי פרופיל באתר או קבוצת "סוחרים"
 //    במאנדיי) - מזוהה כמנוי בלי לפתוח לו ליד, בדיוק כאילו היה מחובר
-// 3) לא מחובר ולא מנוי - שער הרשמה: צריך שם+נייד, נפתח תמיד ליד חדש במאנדיי (מסומן "ליד כפול"
-//    אם האיש קשר כבר קיים במקום כלשהו בלוח), והמינוי נשמר עם user_id=null + פרטי הקשר
+// 3) לא מחובר ולא מנוי - שער הרשמה: צריך שם+נייד, והמינוי נשמר עם user_id=null + פרטי הקשר
 // upsert לפי endpoint - אם אותו מכשיר/דפדפן כבר רשום, רק מרעננים את השורה הקיימת
 export async function POST(request: Request) {
   const authHeader = request.headers.get('Authorization') || '';
@@ -40,6 +41,10 @@ export async function POST(request: Request) {
       .upsert({ user_id: userId, endpoint, p256dh: keys.p256dh, auth: keys.auth, name: null, phone: null, email: null }, { onConflict: 'endpoint' });
 
     if (error) return NextResponse.json({ error: 'שגיאה בשמירת המינוי' }, { status: 500 });
+
+    const { data: profile } = await supabaseAdmin.from('profiles').select('full_name, phone, email').eq('id', userId).maybeSingle();
+    await markAppDownloadOnMonday({ name: profile?.full_name, phone: profile?.phone, email: profile?.email }).catch(() => ({ ok: false, matched: false }));
+
     return NextResponse.json({ ok: true });
   }
 
@@ -77,24 +82,13 @@ export async function POST(request: Request) {
         { onConflict: 'endpoint' }
       );
     if (error) return NextResponse.json({ error: 'שגיאה בשמירת המינוי' }, { status: 500 });
+
+    await markAppDownloadOnMonday({ name, phone, email: email || null }).catch(() => ({ ok: false, matched: false }));
+
     return NextResponse.json({ ok: true });
   }
 
-  // אם איש הקשר הזה כבר נרשם קודם ממכשיר אחר (יש לו כבר שורת מינוי אחרת עם אותו טלפון/מייל) -
-  // כבר נוצר לו ליד במאנדיי בפעם הקודמת, אז רק שומרים את המכשיר החדש בלי לפתוח ליד נוסף
-  const { data: existingByContact } = await supabaseAdmin
-    .from('push_subscriptions')
-    .select('id, phone, email')
-    .neq('endpoint', endpoint)
-    .is('user_id', null);
-
-  const alreadyKnownContact = (existingByContact || []).some(
-    (s) => (targetPhone && normalizePhone(s.phone) === targetPhone) || (targetEmail && s.email && normalizeEmail(s.email) === targetEmail)
-  );
-
-  if (!alreadyKnownContact) {
-    await markAppDownloadOnMonday({ name, phone, email: email || null }).catch(() => ({ ok: false, matched: false }));
-  }
+  await markAppDownloadOnMonday({ name, phone, email: email || null }).catch(() => ({ ok: false, matched: false }));
 
   const { error } = await supabaseAdmin
     .from('push_subscriptions')
