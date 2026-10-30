@@ -7,7 +7,6 @@ export interface Word {
   pic: string; // אימוג'י שמשמש כתמונה - הילדה עוד לא קוראת, אז כל תשובה היא תמונה
   article?: string; // 'a' כברירת מחדל; 'an' / 'some' / '' לפי הצורך במשפט
   accept?: string[]; // הגיות/תעתיקים נוספים שזיהוי הדיבור עשוי להחזיר
-  group?: string; // מילים מאותה קבוצה מוצגות יחד כאפשרויות (למשל "שלושה חתולים" מול "שני חתולים")
 }
 
 export interface World {
@@ -18,10 +17,9 @@ export interface World {
   color: string;
   pokemon: number[]; // מספרי פוקדקס שאפשר לתפוס בעולם הזה
   words: Word[];
-  question: string; // השאלה בתרגיל הדיבור ("What is this?")
-  // משפט "סיפור" שהפוקימון אומר - {p} = שם הפוקימון, {w} = המילה עם ה-article שלה, {x} = המילה בלבד
-  stories: string[];
-  listen: string[];
+  // המשפט שאומרים כדי לפתוח שער במסלול. {w} = המילה עם ה-article שלה, {x} = המילה בלבד,
+  // {p} = שם הפוקימון השותף; בעברית {he} = המילה ו-{phe} = שם השותף
+  sentence: { en: string; he: string };
 }
 
 export const STARTERS = [25, 1, 4, 7, 133];
@@ -126,24 +124,22 @@ function buildCombos(): Word[] {
         he: n === 1 ? `${noun.he} אחד` : `${num.he} ${noun.hePl}`,
         pic: repeat(noun.pic, n),
         article: '',
-        group: `count-${noun.en}`,
       });
     });
   }
   for (const [color, [heS, heP]] of Object.entries(COLORS)) {
-    out.push({ en: `${color} heart`, he: `לב ${heS}`, pic: HEARTS[color], group: 'heart' });
+    out.push({ en: `${color} heart`, he: `לב ${heS}`, pic: HEARTS[color] });
     for (const n of [2, 3]) {
       out.push({
         en: `${NUMS[n - 1].en} ${color} hearts`,
         he: `${NUMS[n - 1].he} לבבות ${heP}`,
         pic: HEARTS[color].repeat(n),
         article: '',
-        group: 'heart',
       });
     }
   }
   for (const [color, pic] of Object.entries(BOOKS)) {
-    out.push({ en: `${color} book`, he: `ספר ${COLORS[color][0]}`, pic, group: 'book' });
+    out.push({ en: `${color} book`, he: `ספר ${COLORS[color][0]}`, pic });
   }
   return out;
 }
@@ -157,9 +153,7 @@ export const WORLDS: World[] = [
     color: '#ff8fb1',
     pokemon: [39, 51, 81],
     words: buildCombos(),
-    question: 'What do you see?',
-    stories: ['{p} has {w}!', '{p} found {w}!', '{p} wants {w}!'],
-    listen: ['Find {w}!', 'Show me {w}!', 'Touch {w}!'],
+    sentence: { en: 'I see {w}.', he: 'אני רואה {he}' },
   },
   {
     id: 'animals',
@@ -184,9 +178,7 @@ export const WORLDS: World[] = [
       { en: 'turtle', he: 'צב', pic: '🐢' },
       { en: 'snake', he: 'נחש', pic: '🐍' },
     ],
-    question: 'What is this?',
-    stories: ['{p} has a new friend. It is {w}!', '{p} is playing with {w}!', 'Look! {p} found {w}!'],
-    listen: ['Where is the {x}?', 'Find the {x}!', 'Can you see the {x}?'],
+    sentence: { en: 'I see {w}.', he: 'אני רואה {he}' },
   },
   {
     id: 'food',
@@ -211,9 +203,7 @@ export const WORLDS: World[] = [
       { en: 'grapes', he: 'ענבים', pic: '🍇', article: 'some' },
       { en: 'strawberry', he: 'תות', pic: '🍓' },
     ],
-    question: 'What is this?',
-    stories: ['{p} is hungry. {p} wants {w}!', 'Yummy! {p} is eating {w}!', '{p} says: I like {w}!'],
-    listen: ['Where is the {x}?', 'Give me the {x}, please!', 'Find the {x}!'],
+    sentence: { en: 'I want {w}.', he: 'אני רוצה {he}' },
   },
   {
     id: 'actions',
@@ -236,9 +226,7 @@ export const WORLDS: World[] = [
       { en: 'climb', he: 'לטפס', pic: '🧗', article: '' },
       { en: 'write', he: 'לכתוב', pic: '✍️', article: '', accept: ['right'] },
     ],
-    question: 'What can you do?',
-    stories: ['{p} likes to {x}!', '{p} wants to {x}!', "Let's {x} with {p}!"],
-    listen: ['Show me: {x}!', 'Who can {x}?', 'Find: {x}!'],
+    sentence: { en: 'I can {x}.', he: 'אני יכולה {he}' },
   },
   {
     id: 'feelings',
@@ -257,12 +245,10 @@ export const WORLDS: World[] = [
       { en: 'silly', he: 'מצחיק', pic: '🤪', article: '' },
       { en: 'surprised', he: 'מופתע', pic: '😮', article: '' },
       { en: 'hungry', he: 'רעב', pic: '😋', article: '' },
-      { en: 'cold', he: 'קר לו', pic: '🥶', article: '' },
-      { en: 'hot', he: 'חם לו', pic: '🥵', article: '' },
+      { en: 'cold', he: 'קר', pic: '🥶', article: '' },
+      { en: 'hot', he: 'חם', pic: '🥵', article: '' },
     ],
-    question: 'How does he feel?',
-    stories: ['{p} is {x}!', 'Oh! {p} feels {x}.', '{p} says: I am {x}!'],
-    listen: ['Who is {x}?', 'Find {x}!', 'Show me {x}!'],
+    sentence: { en: '{p} is {x}.', he: '{phe} {he}' },
   },
   {
     id: 'body',
@@ -283,9 +269,7 @@ export const WORLDS: World[] = [
       { en: 'brain', he: 'מוח', pic: '🧠' },
       { en: 'arm', he: 'זרוע', pic: '💪', article: 'an', accept: ['arms'] },
     ],
-    question: 'What is this?',
-    stories: ['{p} says: touch your {x}!', 'Ouch! {p} hurt his {x}!', '{p} is washing his {x}!'],
-    listen: ['Where is the {x}?', 'Show me the {x}!', 'Find the {x}!'],
+    sentence: { en: 'I have {w}.', he: 'יש לי {he}' },
   },
   {
     id: 'clothes',
@@ -297,18 +281,16 @@ export const WORLDS: World[] = [
     words: [
       { en: 'shirt', he: 'חולצה', pic: '👕' },
       { en: 'hat', he: 'כובע', pic: '🧢' },
-      { en: 'shoes', he: 'נעליים', pic: '👟', article: 'the', accept: ['shoe'] },
+      { en: 'shoes', he: 'נעליים', pic: '👟', article: '', accept: ['shoe'] },
       { en: 'dress', he: 'שמלה', pic: '👗' },
-      { en: 'socks', he: 'גרביים', pic: '🧦', article: 'the', accept: ['sock'] },
-      { en: 'pants', he: 'מכנסיים', pic: '👖', article: 'the' },
+      { en: 'socks', he: 'גרביים', pic: '🧦', article: '', accept: ['sock'] },
+      { en: 'pants', he: 'מכנסיים', pic: '👖', article: '' },
       { en: 'coat', he: 'מעיל', pic: '🧥' },
-      { en: 'glasses', he: 'משקפיים', pic: '👓', article: 'the' },
+      { en: 'glasses', he: 'משקפיים', pic: '👓', article: '' },
       { en: 'scarf', he: 'צעיף', pic: '🧣' },
-      { en: 'gloves', he: 'כפפות', pic: '🧤', article: 'the', accept: ['glove'] },
+      { en: 'gloves', he: 'כפפות', pic: '🧤', article: '', accept: ['glove'] },
     ],
-    question: 'What is this?',
-    stories: ['{p} puts on the {x}!', '{p} wants the {x}!', 'Look at the {x}, {p}!'],
-    listen: ['Where is the {x}?', 'Find the {x}!', 'Show me the {x}!'],
+    sentence: { en: 'I wear {w}.', he: 'אני לובשת {he}' },
   },
   {
     id: 'home',
@@ -331,9 +313,7 @@ export const WORLDS: World[] = [
       { en: 'door', he: 'דלת', pic: '🚪' },
       { en: 'clock', he: 'שעון', pic: '🕰️' },
     ],
-    question: 'What is this?',
-    stories: ['{p} is looking for {w}!', '{p} wants to play. {p} needs {w}!', 'Oh no! {p} lost {w}!'],
-    listen: ['Where is the {x}?', 'Find the {x}!', 'Can you find the {x}?'],
+    sentence: { en: 'I see {w}.', he: 'אני רואה {he}' },
   },
 ];
 
@@ -341,13 +321,20 @@ export const WORLDS: World[] = [
 export const CATCHES_TO_UNLOCK = 2;
 
 export const PRAISE = ['Great job!', 'Awesome!', 'Super!', 'You did it!', 'Wow, amazing!', 'Well done!', 'Yes! Perfect!'];
-export const TRY_AGAIN = ['Oops! Try again!', 'Almost! Try again!', 'Not this one. Try again!'];
 
 export function withArticle(w: Word) {
   const a = w.article === undefined ? 'a' : w.article;
   return a ? `${a} ${w.en}` : w.en;
 }
 
-export function fill(template: string, w: Word, pokemonName: string) {
-  return template.replaceAll('{p}', pokemonName).replaceAll('{w}', withArticle(w)).replaceAll('{x}', w.en);
+// המשפט לשער: מה שמשמיעים לה (en/he) ומה שבודקים בזיהוי הדיבור (match - בלי שם הפוקימון,
+// כי את השם זיהוי הדיבור כמעט אף פעם לא כותב נכון)
+export function sentenceFor(world: World, w: Word, partner: { name: string; he: string }) {
+  const fillEn = (name: string) =>
+    world.sentence.en.replaceAll('{p}', name).replaceAll('{w}', withArticle(w)).replaceAll('{x}', w.en).trim();
+  return {
+    en: fillEn(partner.name),
+    he: world.sentence.he.replaceAll('{phe}', partner.he).replaceAll('{he}', w.he),
+    match: fillEn('').replace(/\.$/, ''),
+  };
 }

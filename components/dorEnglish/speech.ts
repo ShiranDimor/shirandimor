@@ -134,7 +134,8 @@ const NUMBER_ALIASES: Record<string, string[]> = {
   four: ['4', 'for'],
   five: ['5'],
 };
-const FILLER = new Set(['a', 'an', 'the', 'some']);
+// מילים קצרות שזיהוי הדיבור מפספס הרבה - לא חובה לשמוע אותן
+const FILLER = new Set(['a', 'an', 'the', 'some', 'i']);
 
 const singular = (w: string) => (w.length > 3 && w.endsWith('s') ? w.slice(0, -1) : w);
 

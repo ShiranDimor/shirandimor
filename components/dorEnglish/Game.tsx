@@ -1,37 +1,23 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { CATCHES_TO_UNLOCK, POKEMON, STARTERS, WORLDS, spriteUrl, type World } from './data';
 import {
-  CATCHES_TO_UNLOCK, MOVES, POKEMON, PRAISE, STARTERS, TRY_AGAIN, WORLDS, fill, spriteUrl, withArticle,
-  type Word, type World,
-} from './data';
-import {
-  EMPTY, distractors, hebrewOn, isKnown, isUnlocked, loadProgress, pickWord, recordAnswer, saveProgress, shuffle,
+  EMPTY, hebrewOn, isKnown, isUnlocked, loadProgress, recordAnswer, saveProgress,
   type Progress,
 } from './progress';
 import {
-  canListen, en, hasHebrewVoice, he, heardWord, listenOnce, speak, speakLines, stopSpeaking, type Line,
+  canListen, en, hasHebrewVoice, he, speak, speakLines, stopSpeaking, type Line,
 } from './speech';
+import Runner from './Runner';
 import s from './game.module.css';
 
-type Screen = 'title' | 'starter' | 'map' | 'battle' | 'caught' | 'pokedex' | 'parents';
-type Kind = 'listen' | 'story' | 'say';
-type Phase = 'quiz' | 'throw' | 'catching';
+type Screen = 'title' | 'starter' | 'map' | 'run' | 'catch' | 'caught' | 'pokedex' | 'parents';
 
-interface Challenge {
-  kind: Kind;
-  word: Word;
-  options: Word[];
-  lines: Line[]; // מה הפוקימון אומר כשהמשימה מתחילה (הוראה בעברית + השאלה באנגלית)
-  target: Line[]; // החלק באנגלית בלבד - חוזרים עליו אחרי טעות
-}
-
-const HITS_TO_CATCH = 5;
 // משחק הזריקה: העיגול סביב הפוקימון מתכווץ בלולאה; זורקים בזמן שהוא קטן
 const RING_MS = 1700;
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-const rand = <T,>(arr: T[]) => arr[Math.floor(Math.random() * arr.length)];
 const nameOf = (id: number) => POKEMON[id]?.name ?? 'Pokémon';
 const heNameOf = (id: number) => POKEMON[id]?.he ?? 'פוקימון';
 
@@ -52,32 +38,11 @@ function Sprite({ id, size, hidden, className }: { id: number; size: number; hid
   );
 }
 
-function buildChallenge(p: Progress, world: World, kind: Kind, wildId: number, avoid: string[]): Challenge {
-  const { word, world: source } = pickWord(p, world, avoid);
-  const optionCount = WORLDS.indexOf(world) === 0 && Object.keys(p.words).length < 15 ? 3 : 4;
-  const options = shuffle([word, ...distractors(source, word, optionCount - 1)]);
-  const heb = hebrewOn(p);
-  if (kind === 'say') {
-    // מילה חדשה (עוד לא אמרה אותה בהצלחה פעמיים) - קודם אומרים לה אותה; מילה מוכרת - רק שואלים
-    const modeled = (p.words[word.en]?.said ?? 0) < 2;
-    const q = source.question;
-    const target = [en(word.en)];
-    if (!heb) {
-      const prompt = modeled ? `${q} ${withArticle(word)}! Now you say: ${word.en}!` : q;
-      return { kind, word, options, lines: [en(prompt)], target };
-    }
-    const lines = modeled
-      ? [en(q), he(`זה ${word.he}. באנגלית אומרים:`), en(withArticle(word)), he('עכשיו תלחצי על המיקרופון ותגידי:'), en(word.en)]
-      : [en(q), he('איך אומרים את זה באנגלית? תלחצי על המיקרופון ותגידי.')];
-    return { kind, word, options, lines, target: modeled ? target : [en(q)] };
-  }
-  const template = kind === 'story' ? rand(source.stories) : rand(source.listen);
-  const target = [en(fill(template, word, nameOf(wildId)))];
-  if (!heb) return { kind, word, options, lines: target, target };
-  const intro = kind === 'story'
-    ? he(`${heNameOf(wildId)} מספר לך משהו באנגלית. תקשיבי, ותלחצי על התמונה הנכונה:`)
-    : he('תקשיבי, ותלחצי על התמונה הנכונה:');
-  return { kind, word, options, lines: [intro, ...target], target };
+// כל עולם = 3 שלבים, ובסוף כל שלב מחכה אחד משלושת הפוקימונים של העולם.
+// ממשיכים מהשלב הראשון שעוד לא נתפס; אם כולם נתפסו - שלב אקראי לתרגול
+function nextStage(p: Progress, w: World) {
+  const i = w.pokemon.findIndex((id) => !p.caught.includes(id));
+  return i >= 0 ? i : Math.floor(Math.random() * w.pokemon.length);
 }
 
 export default function Game() {
@@ -98,94 +63,48 @@ export default function Game() {
     });
   }, []);
 
-  // ---- קרב / תפיסה ----
   const [world, setWorld] = useState<World>(WORLDS[0]);
+  const [stage, setStage] = useState(0);
+  const [runKey, setRunKey] = useState(0);
   const [wildId, setWildId] = useState<number>(WORLDS[0].pokemon[0]);
-  const [hits, setHits] = useState(0);
-  const [plan, setPlan] = useState<Kind[]>([]);
-  const [ch, setCh] = useState<Challenge | null>(null);
-  const [wrongPicks, setWrongPicks] = useState<string[]>([]);
-  const [busy, setBusy] = useState(false);
-  const [listening, setListening] = useState(false);
-  const [sayFails, setSayFails] = useState(0);
-  const [bubble, setBubble] = useState<Line[]>([]);
-  const [phase, setPhase] = useState<Phase>('quiz');
-  // אנימציה על הפוקימון הפראי: 'hit' = ההתקפה פגעה (תשובה נכונה), 'dodge' = התחמק (טעות). n מתחלף כדי להפעיל מחדש
-  const [fx, setFx] = useState<{ kind: 'hit' | 'dodge'; n: number }>({ kind: 'hit', n: 0 });
+  const [phase, setPhase] = useState<'throw' | 'catching'>('throw');
   const [ball, setBall] = useState<'none' | 'miss' | 'catch'>('none');
   const [misses, setMisses] = useState(0);
+  const [busy, setBusy] = useState(false);
+  const [bubble, setBubble] = useState<Line[]>([]);
   const [result, setResult] = useState({ great: false, isNew: false });
   const ringStart = useRef(0);
-  const recent = useRef<string[]>([]);
   const pRef = useRef(p);
   pRef.current = p;
 
   const heb = hebrewOn(p);
 
-  // הפוקימון "מדבר": מציג את השורות בבועה ואומר אותן ברצף
   const talk = useCallback(async (lines: Line[]) => {
     setBubble(lines);
     await speakLines(lines);
   }, []);
 
-  const nextChallenge = useCallback((w: World, wild: number, kinds: Kind[], hitIndex: number) => {
-    const kind = kinds[hitIndex] ?? 'listen';
-    const c = buildChallenge(pRef.current, w, kind, wild, recent.current);
-    recent.current = [...recent.current.slice(-3), c.word.en];
-    setCh(c);
-    setWrongPicks([]);
-    setSayFails(0);
-    setBusy(false);
-    setTimeout(() => talk(c.lines), 350);
-  }, [talk]);
-
-  const startBattle = useCallback(async (w: World) => {
-    const notCaught = w.pokemon.filter((id) => !pRef.current.caught.includes(id));
-    const wild = rand(notCaught.length ? notCaught : w.pokemon);
-    const kinds = shuffle<Kind>(['listen', 'story', 'say', 'listen', 'say']);
+  const startStage = useCallback((w: World, st?: number) => {
+    const i = st ?? nextStage(pRef.current, w);
     setWorld(w);
-    setWildId(wild);
-    setHits(0);
-    setPlan(kinds);
-    setCh(null);
-    setPhase('quiz');
-    setBall('none');
-    setFx({ kind: 'hit', n: 0 });
-    setScreen('battle');
-    recent.current = [];
-    setBusy(true);
-    await talk(hebrewOn(pRef.current)
-      ? [en(`A wild ${nameOf(wild)} appeared!`), he(`${heNameOf(wild)} פראי הופיע! כל תשובה נכונה - הפוקימון שלך תוקף. כשהוא יהיה חלש, נזרוק עליו כדור פוקימון!`)]
-      : [en(`A wild ${nameOf(wild)} appeared! Let's catch it!`)]);
-    nextChallenge(w, wild, kinds, 0);
-  }, [nextChallenge, talk]);
+    setStage(i);
+    setWildId(w.pokemon[i]);
+    setRunKey((k) => k + 1);
+    setScreen('run');
+  }, []);
 
-  const startThrow = useCallback((wild: number) => {
+  // סוף המסלול: הפוקימון הפראי מחכה - משחק הזריקה
+  const startCatch = useCallback(() => {
     setPhase('throw');
+    setBall('none');
     setMisses(0);
-    ringStart.current = performance.now();
     setBusy(false);
+    ringStart.current = performance.now();
+    setScreen('catch');
     talk(hebrewOn(pRef.current)
-      ? [en(`${nameOf(wild)} is weak!`), he(`${heNameOf(wild)} חלש! עכשיו זורקים עליו כדור פוקימון. תלחצי על הכפתור האדום כשהעיגול הכי קטן!`)]
-      : [en(`${nameOf(wild)} is weak! Throw a Poké Ball when the circle is small!`)]);
-  }, [talk]);
-
-  const onHit = useCallback(async (spoken: boolean) => {
-    if (!ch) return;
-    setBusy(true);
-    update((prev) => ({ ...recordAnswer(prev, ch.word.en, true, spoken), stars: prev.stars + 1 }));
-    const newHits = hits + 1;
-    setHits(newHits);
-    setFx((f) => ({ kind: 'hit', n: f.n + 1 }));
-    const partner = pRef.current.starter;
-    const move = partner ? MOVES[partner] : undefined;
-    await talk([
-      en(`${rand(PRAISE)} ${spoken ? '' : ch.word.en + '!'}`),
-      ...(partner && move ? [en(`${nameOf(partner)}, use ${move.en}!`)] : []),
-    ]);
-    if (newHits >= HITS_TO_CATCH) return startThrow(wildId);
-    nextChallenge(world, wildId, plan, newHits);
-  }, [ch, hits, nextChallenge, plan, startThrow, talk, update, wildId, world]);
+      ? [en(`A wild ${nameOf(wildId)}!`), he(`עכשיו זורקים עליו כדור פוקימון. תלחצי על הכפתור האדום כשהעיגול הכי קטן וירוק!`)]
+      : [en(`A wild ${nameOf(wildId)}! Throw a Poké Ball when the circle is small!`)]);
+  }, [talk, wildId]);
 
   const onThrow = useCallback(async () => {
     if (busy || phase !== 'throw') return;
@@ -225,57 +144,11 @@ export default function Game() {
     setBusy(false);
   }, [busy, heb, misses, phase, talk, update, wildId]);
 
-  const onPick = useCallback(async (opt: Word) => {
-    if (!ch || busy) return;
-    if (opt.en === ch.word.en) return onHit(false);
-    setBusy(true);
-    setWrongPicks((w) => [...w, opt.en]);
-    setFx((f) => ({ kind: 'dodge', n: f.n + 1 }));
-    update((prev) => recordAnswer(prev, ch.word.en, false));
-    // גם טעות מלמדת: אומרים לה מה היא בחרה, ואז חוזרים על השאלה
-    await talk(heb
-      ? [he('אופס! זה'), en(`${withArticle(opt)}.`), he('נסי שוב. תקשיבי:'), ...ch.target]
-      : [en(`${rand(TRY_AGAIN)} That is ${withArticle(opt)}.`), ...ch.target]);
-    setBusy(false);
-  }, [busy, ch, heb, onHit, talk, update]);
-
-  const onMic = useCallback(async () => {
-    if (!ch || busy || listening) return;
-    setListening(true);
-    setBubble([heb ? he('אני מקשיב... 👂') : en('I am listening... 👂')]);
-    const heard = await listenOnce();
-    setListening(false);
-    if (heardWord(heard, ch.word.en, ch.word.accept)) return onHit(true);
-    const fails = sayFails + 1;
-    setSayFails(fails);
-    if (fails >= 3) {
-      // לא נותנים לה להיתקע ולהתבאס - אחרי 3 ניסיונות ממשיכים הלאה (ונרשם כטעות לתרגול חוזר)
-      update((prev) => recordAnswer(prev, ch.word.en, false));
-      setBusy(true);
-      setFx((f) => ({ kind: 'dodge', n: f.n + 1 }));
-      await talk(heb
-        ? [he('ניסיון יפה! באנגלית אומרים:'), en(`${ch.word.en}.`), he('נמשיך הלאה.')]
-        : [en(`Good try! It is ${ch.word.en}. ${ch.word.en}!`)]);
-      nextChallenge(world, wildId, plan, hits);
-      return;
-    }
-    const again = heard.length ? 'כמעט! תלחצי על המיקרופון ותגידי שוב:' : 'לא שמעתי. תלחצי על המיקרופון ותגידי:';
-    await talk(heb
-      ? [he(again), en(ch.word.en)]
-      : [en(heard.length ? `Hmm, say it again: ${ch.word.en}!` : `I didn't hear you. Say: ${ch.word.en}!`)]);
-  }, [busy, ch, heb, hits, listening, nextChallenge, onHit, plan, sayFails, talk, update, wildId, world]);
-
-  const hint = useCallback(async () => {
-    if (!ch) return;
-    await talk([he(`${ch.word.he}. באנגלית:`), en(`${ch.word.en}.`)]);
-  }, [ch, talk]);
-
   useEffect(() => () => stopSpeaking(), []);
 
   if (!loaded) return <div className={s.root} />;
 
   const starter = p.starter;
-  const micSupported = canListen();
 
   // ---------- מסכים ----------
   if (screen === 'title') {
@@ -311,8 +184,8 @@ export default function Game() {
           update((prev) => ({ ...prev, starter: id }));
           setScreen('map');
           speakLines(heb
-            ? [en(`${nameOf(id)}, I choose you!`), he(`${heNameOf(id)} הוא השותף שלך! עכשיו בחרי עולם, ובואי נתפוס פוקימונים!`)]
-            : [en(`${nameOf(id)} is your partner! Now, let's catch Pokémon!`)]);
+            ? [en(`${nameOf(id)}, I choose you!`), he(`${heNameOf(id)} הוא השותף שלך! עכשיו בחרי עולם, ובואי נרוץ!`)]
+            : [en(`${nameOf(id)} is your partner! Let's go!`)]);
         }}
       />
     );
@@ -322,7 +195,29 @@ export default function Game() {
 
   if (screen === 'parents') return <Parents p={p} onBack={() => setScreen('map')} onToggleHebrew={() => update((prev) => ({ ...prev, hebrew: !hebrewOn(prev) }))} onReset={() => { update(() => EMPTY); setScreen('title'); }} />;
 
+  if (screen === 'run' && starter) {
+    return (
+      <Runner
+        key={runKey}
+        world={world}
+        worldIndex={WORLDS.indexOf(world)}
+        stage={stage}
+        partner={starter}
+        wild={wildId}
+        heb={heb}
+        progress={() => pRef.current}
+        showTutorial={!p.tutorialDone}
+        onWord={(word, ok) => update((prev) => recordAnswer(prev, word, ok, ok))}
+        onStar={() => update((prev) => ({ ...prev, stars: prev.stars + 1 }))}
+        onTutorialDone={() => update((prev) => ({ ...prev, tutorialDone: true }))}
+        onFinish={startCatch}
+        onExit={() => setScreen('map')}
+      />
+    );
+  }
+
   if (screen === 'caught') {
+    const nextOpen = WORLDS.indexOf(world) + 1 < WORLDS.length && isUnlocked(p, WORLDS.indexOf(world) + 1);
     return (
       <div className={s.root}>
         <div className={s.caught}>
@@ -338,51 +233,41 @@ export default function Game() {
             </p>
           )}
           <div className={s.row}>
-            <button className={s.bigBtn} onClick={() => startBattle(world)}>⚡ עוד פעם!</button>
+            <button className={s.bigBtn} onClick={() => { stopSpeaking(); startStage(world); }}>▶ לשלב הבא!</button>
             <button className={s.midBtn} onClick={() => { stopSpeaking(); setScreen('map'); }}>🗺️ למפה</button>
             <button className={s.midBtn} onClick={() => setScreen('pokedex')}>📕 האוסף שלי</button>
           </div>
+          {nextOpen && result.isNew && <p className={s.he}>🔓 נפתח עולם חדש במפה!</p>}
         </div>
       </div>
     );
   }
 
-  if (screen === 'battle') {
-    const hpLeft = HITS_TO_CATCH - hits;
-    const move = starter ? MOVES[starter] : undefined;
-    const wildAnim = phase === 'throw' ? s.sway : fx.n ? (fx.kind === 'hit' ? s.hit : s.dodge) : '';
+  if (screen === 'catch') {
     return (
       <div className={s.root} style={{ ['--world' as string]: world.color }}>
         <div className={s.battleTop}>
           <button className={s.iconBtn} onClick={() => { stopSpeaking(); setScreen('map'); }} aria-label="map">🗺️</button>
           <span className={s.stars}>⭐ {p.stars}</span>
         </div>
-
         <div className={s.arena}>
           <div className={s.hpBox}>
             <span className={s.hpName}>{heNameOf(wildId)}</span>
-            <div className={s.hpBar}>
-              <div className={`${s.hpFill} ${hpLeft <= 2 ? s.hpLow : ''}`} style={{ width: `${(hpLeft / HITS_TO_CATCH) * 100}%` }} />
-            </div>
           </div>
           <div className={s.wild}>
-            <div key={`${phase}-${fx.kind}-${fx.n}`} className={`${wildAnim} ${phase === 'catching' ? s.wildCaught : ''}`}>
-              <Sprite id={wildId} size={150} className={phase === 'quiz' ? s.float : ''} />
+            <div className={phase === 'throw' ? s.sway : s.wildCaught}>
+              <Sprite id={wildId} size={150} />
             </div>
             {phase === 'throw' && <span className={s.ring} style={{ animationDuration: `${RING_MS}ms` }} />}
             {ball === 'catch' && <span className={s.ballCatch} />}
             {ball === 'miss' && <span className={s.ballMiss} />}
           </div>
-          {move && fx.kind === 'hit' && fx.n > 0 && phase === 'quiz' && (
-            <span key={`atk-${fx.n}`} className={s.attack}>{move.fx}</span>
-          )}
-          <div className={s.bubble} onClick={() => ch && phase === 'quiz' && talk(ch.lines)}>
+          <div className={s.bubble}>
             {bubble.map((l, i) => (
               <div key={i} dir={l.lang === 'he' ? 'rtl' : 'ltr'} className={l.lang === 'he' ? s.bubbleHe : undefined}>
                 {l.text}
               </div>
             ))}
-            <span className={s.replay}>🔊</span>
           </div>
           {starter && (
             <div className={s.partner}>
@@ -391,49 +276,11 @@ export default function Game() {
             </div>
           )}
         </div>
-
         {phase === 'throw' && (
           <div className={s.challenge}>
             <button className={s.throwBtn} onClick={onThrow} disabled={busy}>
               <span className={s.pokeball} /> זרקי!
             </button>
-          </div>
-        )}
-
-        {ch && phase === 'quiz' && (
-          <div className={s.challenge}>
-            {ch.kind === 'say' ? (
-              <div className={s.sayBox}>
-                <div className={s.bigPic}>{ch.word.pic}</div>
-                {micSupported ? (
-                  <button className={`${s.mic} ${listening ? s.micOn : ''}`} onClick={onMic} disabled={busy}>
-                    🎤
-                  </button>
-                ) : null}
-                {(!micSupported || sayFails >= 1) && (
-                  <button className={s.midBtn} onClick={() => onHit(true)} disabled={busy || listening}>
-                    🗣️ אמרתי!
-                  </button>
-                )}
-              </div>
-            ) : (
-              <div className={`${s.options} ${ch.options.length === 4 ? s.four : ''}`}>
-                {ch.options.map((o) => (
-                  <button
-                    key={o.en}
-                    className={`${s.option} ${wrongPicks.includes(o.en) ? s.optionWrong : ''}`}
-                    onClick={() => onPick(o)}
-                    disabled={wrongPicks.includes(o.en) || busy}
-                  >
-                    <span className={s.optionPic}>{o.pic}</span>
-                  </button>
-                ))}
-              </div>
-            )}
-            <div className={s.helpRow}>
-              <button className={s.smallBtn} onClick={() => talk(ch.lines)}>🔊 שוב</button>
-              <button className={s.smallBtn} onClick={hint}>🇮🇱 עזרה</button>
-            </div>
           </div>
         )}
       </div>
@@ -471,9 +318,9 @@ export default function Game() {
               className={`${s.world} ${open ? '' : s.locked}`}
               style={{ ['--world' as string]: w.color }}
               onClick={() => {
-                if (open) startBattle(w);
-                else if (heb) speakLines([he(`העולם הזה עוד נעול. קודם צריך לתפוס ${CATCHES_TO_UNLOCK} פוקימונים ב${WORLDS[i - 1].he}.`)]);
-                else speak(`Locked! Catch ${CATCHES_TO_UNLOCK} Pokémon in ${WORLDS[i - 1].name} first.`);
+                if (open) startStage(w);
+                else if (heb) speakLines([he(`העולם הזה עוד נעול. קודם צריך לעבור ${CATCHES_TO_UNLOCK} שלבים ב${WORLDS[i - 1].he}.`)]);
+                else speak(`Locked! Finish ${CATCHES_TO_UNLOCK} stages in ${WORLDS[i - 1].name} first.`);
               }}
             >
               <span className={s.worldIcon}>{open ? w.icon : '🔒'}</span>
@@ -483,7 +330,7 @@ export default function Game() {
                   <Sprite key={id} id={id} size={34} hidden={!p.caught.includes(id)} />
                 ))}
               </span>
-              <span className={s.worldCount}>{got}/{w.pokemon.length}</span>
+              <span className={s.worldCount}>שלב {Math.min(got + 1, w.pokemon.length)}/{w.pokemon.length}</span>
             </button>
           );
         })}
