@@ -9,7 +9,7 @@ import {
 import {
   canListen, en, hasHebrewVoice, he, speak, speakLines, stopSpeaking, type Line,
 } from './speech';
-import Runner from './Runner';
+import Brawl from './Brawl';
 import s from './game.module.css';
 
 type Screen = 'title' | 'starter' | 'map' | 'run' | 'catch' | 'caught' | 'pokedex' | 'parents';
@@ -184,7 +184,7 @@ export default function Game() {
           update((prev) => ({ ...prev, starter: id }));
           setScreen('map');
           speakLines(heb
-            ? [en(`${nameOf(id)}, I choose you!`), he(`${heNameOf(id)} הוא השותף שלך! עכשיו בחרי עולם, ובואי נרוץ!`)]
+            ? [en(`${nameOf(id)}, I choose you!`), he(`${heNameOf(id)} הוא השותף שלך! עכשיו בחרי עולם, ובואי נצא לקרב!`)]
             : [en(`${nameOf(id)} is your partner! Let's go!`)]);
         }}
       />
@@ -197,7 +197,7 @@ export default function Game() {
 
   if (screen === 'run' && starter) {
     return (
-      <Runner
+      <Brawl
         key={runKey}
         world={world}
         worldIndex={WORLDS.indexOf(world)}
@@ -206,7 +206,7 @@ export default function Game() {
         wild={wildId}
         heb={heb}
         progress={() => pRef.current}
-        showTutorial={!p.tutorialDone}
+        showHints={!p.tutorialDone}
         onWord={(word, ok) => update((prev) => recordAnswer(prev, word, ok, ok))}
         onStar={() => update((prev) => ({ ...prev, stars: prev.stars + 1 }))}
         onTutorialDone={() => update((prev) => ({ ...prev, tutorialDone: true }))}
