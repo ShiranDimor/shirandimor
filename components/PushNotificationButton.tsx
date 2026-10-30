@@ -187,7 +187,7 @@ export default function PushNotificationButton() {
           <button type="button" className="btn-primary" style={{ flex: 1 }} onClick={handleLeadFormSubmit} disabled={busy}>
             {busy ? 'שולחים...' : '🔔 הפעלת התראות'}
           </button>
-          <button type="button" className="btn-outline" onClick={() => setStatus('off')}>ביטול</button>
+          <button type="button" className="btn-outline" style={{ width: 'auto', flex: 'none', padding: '12px 16px' }} onClick={() => setStatus('off')}>ביטול</button>
         </div>
       </div>
     );
