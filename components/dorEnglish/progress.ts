@@ -17,7 +17,7 @@ export interface Progress {
   words: Record<string, WordStat>;
   days: string[]; // ימים ששיחקה (YYYY-MM-DD) - לרצף ולמסך ההורים
   hebrew?: boolean; // הוראות בעברית (ברירת מחדל: כן). כשהיא תתקדם אפשר לכבות במסך ההורים
-  tutorialDone?: boolean; // כבר למדה לקפוץ ולהתכופף במסלול (ההדרכה עוצרת את המשחק רק בפעם הראשונה)
+  tutorialDone?: boolean; // כבר זזה וירתה בזירה - מכאן לא מציגים יותר את רמזי השליטה
 }
 
 export function hebrewOn(p: Progress) {

@@ -272,31 +272,37 @@
 @keyframes wobble { 0%, 100% { transform: translate(0, 10px) rotate(0); } 25% { transform: translate(0, 10px) rotate(-22deg); } 75% { transform: translate(0, 10px) rotate(22deg); } }
 @keyframes ballMiss { 0% { transform: translate(-30px, 260px) rotate(0); opacity: 1; } 100% { transform: translate(170px, -80px) rotate(540deg); opacity: 0; } }
 
-/* ---------- שלב ריצה ---------- */
-.track { position: relative; flex: 1; height: 14px; margin: 0 28px 0 18px; background: #e3e7ef; border-radius: 99px; }
-.trackFill { position: absolute; left: 0; top: 0; bottom: 0; background: linear-gradient(90deg, #ffcb05, #ff9800); border-radius: 99px; }
-.trackMark { position: absolute; top: 50%; transform: translate(-50%, -50%); font-size: 20px; z-index: 1; }
-.runWrap { position: relative; margin-top: 12px; border-radius: 26px; overflow: hidden; box-shadow: 0 6px 0 rgba(0, 0, 0, 0.08); }
+/* ---------- זירת הקרב ---------- */
+.gemBar { flex: 1; display: flex; align-items: center; gap: 10px; margin: 0 14px; font-family: 'Rubik', sans-serif; font-weight: 700; font-size: 18px; }
+.gemTrack { flex: 1; height: 16px; background: #e3e7ef; border-radius: 99px; overflow: hidden; }
+.gemTrack div { height: 100%; background: linear-gradient(90deg, #4dd0e1, #26c6da); transition: width 0.3s; }
+.bossTrack div { background: linear-gradient(90deg, #ff8a65, #e53935); }
+.arenaWrap { position: relative; margin-top: 12px; border-radius: 22px; overflow: hidden; box-shadow: 0 6px 0 rgba(0, 0, 0, 0.1); touch-action: none; user-select: none; -webkit-user-select: none; }
+.joyZone { position: absolute; left: 0; top: 0; bottom: 0; width: 45%; touch-action: none; }
+.joyBase { position: absolute; width: 120px; height: 120px; margin: -60px 0 0 -60px; border-radius: 50%; background: rgba(255, 255, 255, 0.35); border: 3px solid rgba(255, 255, 255, 0.8); }
+.joyKnob { position: absolute; left: 30px; top: 30px; width: 60px; height: 60px; border-radius: 50%; background: rgba(66, 165, 245, 0.85); box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3); }
+.joyHint { position: absolute; left: 24px; bottom: 24px; background: rgba(42, 47, 69, 0.85); color: #fff; font-family: 'Rubik', sans-serif; font-weight: 700; font-size: 18px; padding: 10px 16px; border-radius: 14px; animation: pulse 1.2s infinite; direction: rtl; }
+.fireBtn {
+  position: absolute; right: 22px; bottom: 22px; width: 96px; height: 96px; border-radius: 50%;
+  font-size: 46px; background: radial-gradient(circle at 40% 35%, #ff7b7f, #e53935) !important;
+  box-shadow: 0 6px 0 #a3171c, 0 8px 18px rgba(0, 0, 0, 0.3);
+}
+.fireBtn:active { transform: translateY(4px); box-shadow: 0 2px 0 #a3171c; }
+.fireHint { position: absolute; top: -34px; left: 50%; transform: translateX(-50%); background: rgba(42, 47, 69, 0.85); color: #fff; font-family: 'Rubik', sans-serif; font-size: 16px; font-weight: 700; padding: 3px 10px; border-radius: 10px; white-space: nowrap; }
+.superBtn {
+  position: absolute; right: 132px; bottom: 30px; width: 74px; height: 74px; border-radius: 50%;
+  background: conic-gradient(#ffca28 var(--charge), rgba(0, 0, 0, 0.25) 0) !important;
+  display: flex; align-items: center; justify-content: center;
+}
+.superBtn span { width: 58px; height: 58px; border-radius: 50%; background: #5c4d9a; display: flex; align-items: center; justify-content: center; font-size: 30px; }
+.superReady { animation: pulse 0.8s infinite; box-shadow: 0 0 22px #ffca28; }
+.superReady span { background: #ffb300; }
+.cardOverlay { position: absolute; inset: 0; background: rgba(20, 24, 40, 0.55); display: flex; align-items: center; justify-content: center; padding: 12px; }
+.speakCard { position: relative; background: #fffdf3; border-radius: 26px; padding: 16px 18px; display: flex; flex-direction: column; align-items: center; gap: 10px; max-width: 520px; width: 100%; max-height: 100%; overflow: auto; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35); }
+.speakCard .bigPic { font-size: 64px; padding: 4px 20px; }
+.speakCard .bubble { margin-top: 0; }
+.cardTitle { font-family: 'Rubik', sans-serif; font-weight: 800; font-size: 22px; }
+.cardClose { position: absolute; top: 10px; left: 12px; background: #eef1f6 !important; width: 36px; height: 36px; border-radius: 50%; font-size: 16px; }
 .runCanvas { display: block; touch-action: none; }
-.tutBox {
-  position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%);
-  background: #2a2f45; color: #fff; font-family: 'Rubik', sans-serif; font-weight: 700; font-size: 22px;
-  padding: 10px 20px; border-radius: 16px; white-space: nowrap; animation: pulse 1s infinite;
-}
 .bubbleLine { min-height: 30px; margin: 10px 0 0; text-align: center; font-size: 18px; font-weight: 600; color: #4a5272; }
-.controls { display: flex; gap: 16px; justify-content: center; margin-top: 12px; }
-.ctlBtn {
-  flex: 1; max-width: 260px;
-  display: flex; flex-direction: column; align-items: center; gap: 2px;
-  font-size: 48px; padding: 14px 10px 10px; border-radius: 28px;
-  user-select: none; -webkit-user-select: none;
-}
-.ctlBtn span { font-family: 'Rubik', sans-serif; font-size: 22px; font-weight: 700; }
-.ctlJump { background: linear-gradient(180deg, #ffe066, #ffc400); box-shadow: 0 7px 0 #c79100; }
-.ctlDuck { background: linear-gradient(180deg, #8fd3ff, #42a5f5); box-shadow: 0 7px 0 #1e6fb8; }
-.ctlBtn:active { transform: translateY(5px); box-shadow: none; }
-.ctlHint { animation: pulse 0.8s infinite; outline: 5px solid #ff5252; }
-.gatePanel { display: flex; flex-direction: column; align-items: center; gap: 12px; margin-top: 12px; }
-.gatePanel .bigPic { font-size: 84px; padding: 6px 24px; }
-.gatePanel .bubble { margin-top: 0; }
 .bubbleLine span { display: inline-block; margin: 0 6px; }
