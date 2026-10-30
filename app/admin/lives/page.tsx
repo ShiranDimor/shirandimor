@@ -14,6 +14,7 @@ type Live = {
   open_to_all: boolean;
   created_at: string;
   registrationsCount: number;
+  notification_sent_at: string | null;
 };
 
 type Registration = {
@@ -61,6 +62,7 @@ export default function AdminLivesPage() {
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState('');
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [notifyingId, setNotifyingId] = useState<string | null>(null);
 
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [registrations, setRegistrations] = useState<Record<string, Registration[]>>({});
@@ -181,6 +183,17 @@ export default function AdminLivesPage() {
     }
   }
 
+  async function handleNotify(id: string, title: string) {
+    if (!window.confirm(`לשלוח התראת פוש על הלייב "${title}"?`)) return;
+    setNotifyingId(id);
+    const res = await fetch(`/api/admin/lives/${id}/notify`, { method: 'POST', headers: await authHeader() });
+    setNotifyingId(null);
+    if (res.ok) {
+      const data = await res.json();
+      setLives((prev) => prev.map((l) => (l.id === id ? data.live : l)));
+    }
+  }
+
   async function toggleRegistrations(id: string) {
     if (expandedId === id) {
       setExpandedId(null);
@@ -282,7 +295,10 @@ export default function AdminLivesPage() {
               {!live.published && <span style={{ marginRight: '8px', fontSize: '10.5px', color: '#E8A33D', border: '1px solid #E8A33D', borderRadius: '5px', padding: '2px 6px' }}>טיוטה</span>}
               {live.open_to_all && <span style={{ marginRight: '8px', fontSize: '10.5px', color: 'var(--profit)', border: '1px solid var(--profit)', borderRadius: '5px', padding: '2px 6px' }}>פתוח לכולם</span>}
             </div>
-            <div className="email">{formatDateTime(live.scheduled_at)}</div>
+            <div className="email">
+              {formatDateTime(live.scheduled_at)}
+              {live.notification_sent_at && <span style={{ color: 'var(--profit)' }}> · ✓ התראה נשלחה</span>}
+            </div>
             {backfillMessage?.id === live.id && (
               <div className="email" style={{ marginTop: '2px', color: backfillMessage.text.startsWith('שגיאה') ? 'var(--loss)' : 'var(--profit)' }}>{backfillMessage.text}</div>
             )}
@@ -312,6 +328,9 @@ export default function AdminLivesPage() {
               {togglingOpenToAllId === live.id ? '...' : live.open_to_all ? '✓ פתוח לכולם' : 'פתוח רק למנויים'}
             </button>
             <button type="button" className="btn-outline" style={{ padding: '8px 12px', fontSize: '12.5px' }} onClick={() => startEdit(live)}>עריכה</button>
+            <button type="button" className="btn-outline" style={{ padding: '8px 12px', fontSize: '12.5px' }} onClick={() => handleNotify(live.id, live.title)} disabled={notifyingId === live.id}>
+              {notifyingId === live.id ? '…' : '📣 התראה'}
+            </button>
             <button
               className="row-delete-btn"
               onClick={() => handleDelete(live.id, live.title)}

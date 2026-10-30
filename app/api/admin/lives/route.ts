@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/instantLogin';
 import { createLiveCalendarEvent } from '@/lib/googleCalendar';
-import { sendPushToActiveSubscribers, sendPushToNonSubscribers, sendPushToEveryone } from '@/lib/webPush';
 
 async function requireAdmin(request: Request) {
   const authHeader = request.headers.get('Authorization') || '';
@@ -96,17 +95,7 @@ export async function POST(request: Request) {
     is_subscriber: true,
   });
 
-  // התראת פוש על לייב חדש - רק אם מפורסם. לייב "פתוח לכולם" מתריע לכולם עם כל הפרטים; לייב
-  // סגור למנויים מתריע למנויים עם הפרטים המלאים, ולמי שאינו מנוי מגיעה גרסה כללית + קריאה להצטרפות
-  if (live.published) {
-    const dateLabel = new Date(live.scheduled_at).toLocaleDateString('he-IL', { weekday: 'long', day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' });
-    if (live.open_to_all) {
-      await sendPushToEveryone({ title: `🎥 לייב חדש - ${live.title}`, body: dateLabel, url: '/lives' });
-    } else {
-      await sendPushToActiveSubscribers({ title: `🎥 לייב חדש - ${live.title}`, body: dateLabel, url: '/lives' });
-      await sendPushToNonSubscribers({ title: '🎥 לייב חדש נקבע', body: 'פתוח למנויים - 7 ימי ניסיון ללא עלות ←', url: '/trial' });
-    }
-  }
-
+  // שליחת ההתראה על הלייב היא פעולה נפרדת ומכוונת (כפתור "שליחת התראה" ברשימת הניהול) - לא
+  // אוטומטית ביצירה, כדי שאפשר יהיה לערוך פרטים בלי לשלוח התראה על כל שינוי
   return NextResponse.json({ live });
 }

@@ -1,12 +1,15 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/instantLogin';
 import { isPhoneBlocked } from '@/lib/blockedContacts';
-import { syncGenericLead } from '@/lib/tradingPlan/monday';
+import { normalizePhone, normalizeEmail } from '@/lib/subscriberStatus';
+import { isContactInSubscribersGroupMonday, markAppDownloadOnMonday } from '@/lib/tradingPlan/monday';
 
-// POST - שומר מינוי להתראות פוש. שני מסלולים:
+// POST - שומר מינוי להתראות פוש. שלושה מסלולים:
 // 1) משתמש מחובר (יש טוקן תקין) - נשמר לפי user_id, בלי צורך בפרטי קשר (כבר יש פרופיל)
-// 2) לא מחובר (ביקור אנונימי) - צריך שם+נייד, נוצר ליד במאנדיי בדיוק כמו טופס ליד רגיל באתר,
-//    והמינוי נשמר עם user_id=null + פרטי הקשר - כדי שאפשר יהיה לשלוח גם למי שאינו מנוי
+// 2) לא מחובר, אבל שם+נייד/מייל תואמים למנוי פעיל קיים (לפי פרופיל באתר או קבוצת "סוחרים"
+//    במאנדיי) - מזוהה כמנוי בלי לפתוח לו ליד, בדיוק כאילו היה מחובר
+// 3) לא מחובר ולא מנוי - שער הרשמה: צריך שם+נייד, נפתח תמיד ליד חדש במאנדיי (מסומן "ליד כפול"
+//    אם האיש קשר כבר קיים במקום כלשהו בלוח), והמינוי נשמר עם user_id=null + פרטי הקשר
 // upsert לפי endpoint - אם אותו מכשיר/דפדפן כבר רשום, רק מרעננים את השורה הקיימת
 export async function POST(request: Request) {
   const authHeader = request.headers.get('Authorization') || '';
@@ -49,7 +52,35 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true });
   }
 
-  await syncGenericLead({ phone, email: email || null, name, source: 'הפעלת התראות באתר (לא מנוי)' }).catch(() => ({ ok: false }));
+  // מנוי פעיל שממלא את הטופס בלי להיות מחובר - מזהים לפי הפרופיל שלו באתר (טלפון/מייל מנורמלים,
+  // כי הפורמט בטבלה לא בהכרח זהה לפורמט שהמשתמש הקליד), ומשייכים את המינוי ל-user_id האמיתי
+  // שלו (בדיוק כמו מנוי מחובר) כדי שיקבל תוכן מלא בלי טשטוש, בלי לפתוח לו ליד
+  const targetPhone = normalizePhone(phone);
+  const targetEmail = normalizeEmail(email);
+  const { data: activeProfiles } = await supabaseAdmin
+    .from('profiles')
+    .select('id, phone, email')
+    .or('role.eq.admin,and(role.eq.subscriber,subscription_status.eq.active)');
+
+  const matchedProfile = (activeProfiles || []).find(
+    (p) => (targetPhone && normalizePhone(p.phone) === targetPhone) || (targetEmail && normalizeEmail(p.email) === targetEmail)
+  );
+
+  const isKnownSubscriber = !!matchedProfile || (await isContactInSubscribersGroupMonday(phone, email || null));
+
+  if (isKnownSubscriber) {
+    const subscriberUserId = matchedProfile?.id || null;
+    const { error } = await supabaseAdmin
+      .from('push_subscriptions')
+      .upsert(
+        { user_id: subscriberUserId, endpoint, p256dh: keys.p256dh, auth: keys.auth, name: subscriberUserId ? null : name, phone: subscriberUserId ? null : phone, email: subscriberUserId ? null : (email || null) },
+        { onConflict: 'endpoint' }
+      );
+    if (error) return NextResponse.json({ error: 'שגיאה בשמירת המינוי' }, { status: 500 });
+    return NextResponse.json({ ok: true });
+  }
+
+  await markAppDownloadOnMonday({ name, phone, email: email || null }).catch(() => ({ ok: false, matched: false }));
 
   const { error } = await supabaseAdmin
     .from('push_subscriptions')

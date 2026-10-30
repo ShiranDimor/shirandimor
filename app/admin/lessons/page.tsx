@@ -17,6 +17,7 @@ type Lesson = {
   published: boolean;
   sort_order: number;
   created_at: string;
+  notification_sent_at: string | null;
 };
 
 const emptyForm = {
@@ -44,6 +45,7 @@ export default function AdminLessonsPage() {
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState('');
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [notifyingId, setNotifyingId] = useState<string | null>(null);
 
   useEffect(() => {
     checkAdmin();
@@ -152,6 +154,17 @@ export default function AdminLessonsPage() {
     window.location.href = '/';
   }
 
+  async function handleNotify(id: string, title: string) {
+    if (!window.confirm(`לשלוח התראת פוש על השיעור "${title}"?`)) return;
+    setNotifyingId(id);
+    const res = await fetch(`/api/admin/lessons/${id}/notify`, { method: 'POST', headers: await authHeader() });
+    setNotifyingId(null);
+    if (res.ok) {
+      const data = await res.json();
+      setLessons((prev) => prev.map((l) => (l.id === id ? data.lesson : l)));
+    }
+  }
+
   // מצגות מקבלות תיקייה נפרדת משלהן, בלי חלוקה לפי נושא - אותה חלוקה שיש בעמוד הציבורי
   const presentationLessons = lessons.filter((l) => l.video_provider === 'gamma');
   const videoLessons = lessons.filter((l) => l.video_provider !== 'gamma');
@@ -180,9 +193,13 @@ export default function AdminLessonsPage() {
           <div style={{ fontSize: '13.5px', fontWeight: 700, marginBottom: '4px' }}>{lesson.title}</div>
           <div style={{ fontSize: '11.5px', color: 'var(--text-tertiary)', marginBottom: '10px' }}>
             {lesson.duration_minutes ? `${lesson.duration_minutes} דק'` : 'ללא משך מוגדר'}
+            {lesson.notification_sent_at && <span style={{ color: 'var(--profit)' }}> · ✓ התראה נשלחה</span>}
           </div>
           <div style={{ display: 'flex', gap: '6px' }}>
             <button type="button" className="btn-outline" style={{ flex: 1, padding: '8px 12px', fontSize: '12.5px' }} onClick={() => startEdit(lesson)}>עריכה</button>
+            <button type="button" className="btn-outline" style={{ flex: 1, padding: '8px 12px', fontSize: '12.5px' }} onClick={() => handleNotify(lesson.id, lesson.title)} disabled={notifyingId === lesson.id}>
+              {notifyingId === lesson.id ? '…' : '📣 התראה'}
+            </button>
             <button
               className="row-delete-btn"
               onClick={() => handleDelete(lesson.id, lesson.title)}

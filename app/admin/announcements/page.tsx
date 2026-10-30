@@ -10,6 +10,7 @@ type Announcement = {
   content: string;
   published: boolean;
   created_at: string;
+  notification_sent_at: string | null;
 };
 
 function formatDateTime(iso: string) {
@@ -29,6 +30,7 @@ export default function AdminAnnouncementsPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [deletingId, setDeletingId] = useState('');
+  const [notifyingId, setNotifyingId] = useState('');
 
   useEffect(() => {
     checkAdmin();
@@ -62,7 +64,6 @@ export default function AdminAnnouncementsPage() {
 
   async function handlePublish() {
     if (!title.trim() || !content.trim()) { setError('חסרים כותרת או תוכן'); return; }
-    if (!window.confirm('לפרסם הודעה חדשה? היא תישלח כהתראת פוש לכל מי שהפעיל התראות - מנויים ולא-מנויים כאחד.')) return;
 
     setSaving(true);
     setError('');
@@ -90,6 +91,17 @@ export default function AdminAnnouncementsPage() {
     const res = await fetch(`/api/admin/announcements/${id}`, { method: 'DELETE', headers: await authHeader() });
     setDeletingId('');
     if (res.ok) setAnnouncements((prev) => prev.filter((a) => a.id !== id));
+  }
+
+  async function handleNotify(id: string) {
+    if (!window.confirm('לשלוח התראת פוש על ההודעה הזו לכל מי שהפעיל עדכונים - מנויים ולא-מנויים כאחד?')) return;
+    setNotifyingId(id);
+    const res = await fetch(`/api/admin/announcements/${id}/notify`, { method: 'POST', headers: await authHeader() });
+    setNotifyingId('');
+    if (res.ok) {
+      const data = await res.json();
+      setAnnouncements((prev) => prev.map((a) => (a.id === id ? data.announcement : a)));
+    }
   }
 
   async function handleLogout() {
@@ -141,7 +153,7 @@ export default function AdminAnnouncementsPage() {
 
       <div className="section-label"><h2>לוח מודעות</h2><span className="count">{announcements.length}</span></div>
       <p style={{ fontSize: '12.5px', color: 'var(--text-tertiary)', marginBottom: '18px', lineHeight: 1.6 }}>
-        פרסום הודעה שולח אותה מיד כהתראת פוש לכולם - מנויים ולא-מנויים כאחד, בלי טשטוש. כל ההודעות נשמרות בעמוד הציבורי /announcements, מהחדשה לישנה.
+        פרסום הודעה רק שומר אותה בעמוד הציבורי /announcements (מהחדשה לישנה) - שליחת ההתראה היא כפתור נפרד, כדי שאפשר יהיה לערוך לפני ששולחים. ההתראה יוצאת לכולם - מנויים ולא-מנויים כאחד, בלי טשטוש.
       </p>
 
       <div className="tp-question-card">
@@ -149,7 +161,7 @@ export default function AdminAnnouncementsPage() {
         <input className="tp-text-input" style={{ minHeight: 'auto', marginBottom: '10px' }} placeholder="כותרת" value={title} onChange={(e) => setTitle(e.target.value)} />
         <textarea className="tp-text-input" style={{ marginBottom: '10px' }} placeholder="תוכן ההודעה" rows={4} value={content} onChange={(e) => setContent(e.target.value)} />
         {error && <p style={{ color: 'var(--loss)', fontSize: '13px', marginBottom: '10px' }}>{error}</p>}
-        <button className="btn-primary" onClick={handlePublish} disabled={saving}>{saving ? 'מפרסם...' : '📌 פרסום ושליחת התראה'}</button>
+        <button className="btn-primary" onClick={handlePublish} disabled={saving}>{saving ? 'שומר...' : '📌 שמירת הודעה'}</button>
       </div>
 
       {loading && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>טוענים...</p>}
@@ -160,11 +172,19 @@ export default function AdminAnnouncementsPage() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px' }}>
             <div>
               <div style={{ fontSize: '13.5px', fontWeight: 700 }}>{a.title}</div>
-              <div style={{ fontSize: '11.5px', color: 'var(--text-tertiary)', marginTop: '2px' }}>{formatDateTime(a.created_at)}</div>
+              <div style={{ fontSize: '11.5px', color: 'var(--text-tertiary)', marginTop: '2px' }}>
+                {formatDateTime(a.created_at)}
+                {a.notification_sent_at && <span style={{ color: 'var(--profit)' }}> · ✓ התראה נשלחה</span>}
+              </div>
             </div>
-            <button onClick={() => handleDelete(a.id)} disabled={deletingId === a.id} className="btn-outline" style={{ padding: '6px 12px', fontSize: '12.5px', flexShrink: 0 }}>
-              {deletingId === a.id ? '…' : 'מחיקה'}
-            </button>
+            <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
+              <button onClick={() => handleNotify(a.id)} disabled={notifyingId === a.id} className="btn-outline" style={{ padding: '6px 12px', fontSize: '12.5px' }}>
+                {notifyingId === a.id ? '…' : a.notification_sent_at ? '📣 שליחה שוב' : '📣 שליחת התראה'}
+              </button>
+              <button onClick={() => handleDelete(a.id)} disabled={deletingId === a.id} className="btn-outline" style={{ padding: '6px 12px', fontSize: '12.5px' }}>
+                {deletingId === a.id ? '…' : 'מחיקה'}
+              </button>
+            </div>
           </div>
           <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6, marginTop: '8px', whiteSpace: 'pre-line' }}>{a.content}</p>
         </div>
