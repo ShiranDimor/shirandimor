@@ -1,4 +1,5 @@
 import { getActiveSubscriberContacts } from '@/lib/subscriberStatus';
+import { sendPushToActiveSubscribers } from '@/lib/webPush';
 
 // מייל "עסקה נסגרה" לכל המנויים הפעילים + לשירן - נשלח בכל סגירה מלאה של עסקה בתיק האמיתי
 // (סגירה ידנית בכפתור "⚡ סגירה" או סגירה אוטומטית בסטופ לוס), עם ציון אם נסגרה ברווח או בהפסד.
@@ -108,6 +109,19 @@ export async function notifyTradesClosed(trades: ClosedTradeInfo[]) {
   for (const t of trades) {
     const { subject, text, html } = buildTradeClosedContent(t);
     await sendEmails(apiKey, recipients, subject, text, html);
+  }
+
+  if (TRADE_CLOSED_BROADCAST_LIVE) {
+    for (const t of trades) {
+      const dirFactor = t.direction === 'short' ? -1 : 1;
+      const pct = ((t.exit_price - t.entry_price) / t.entry_price) * 100 * dirFactor;
+      const isProfit = pct >= 0;
+      await sendPushToActiveSubscribers({
+        title: `${isProfit ? '✅' : '🔻'} עסקה נסגרה ${isProfit ? 'ברווח' : 'בהפסד'} - ${t.symbol}`,
+        body: `${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%`,
+        url: '/portfolio',
+      });
+    }
   }
 }
 
