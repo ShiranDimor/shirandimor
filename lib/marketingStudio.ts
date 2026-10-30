@@ -72,12 +72,12 @@ function extractJson(text: string): string {
 async function callClaudeJson(system: string, userMessage: string): Promise<Record<string, unknown>> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error('ANTHROPIC_API_KEY לא מוגדר');
-  const model = process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-5-20250929';
+  const model = process.env.ANTHROPIC_MODEL || 'claude-sonnet-5-5';
 
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-    body: JSON.stringify({ model, max_tokens: 2048, system, messages: [{ role: 'user', content: userMessage }] }),
+    body: JSON.stringify({ model, max_tokens: 2048, output_config: { effort: 'low' }, system, messages: [{ role: 'user', content: userMessage }] }),
   });
 
   if (!res.ok) {
@@ -198,7 +198,7 @@ export async function generateMarketingVariant(params: {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error('ANTHROPIC_API_KEY לא מוגדר');
 
-  const model = process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-5-20250929';
+  const model = process.env.ANTHROPIC_MODEL || 'claude-sonnet-5-5';
 
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -210,6 +210,7 @@ export async function generateMarketingVariant(params: {
     body: JSON.stringify({
       model,
       max_tokens: 2048,
+      output_config: { effort: 'low' },
       system: BASE_SYSTEM_PROMPT,
       messages: [{ role: 'user', content: buildUserPrompt(params) }],
     }),
