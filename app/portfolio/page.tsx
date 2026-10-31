@@ -201,12 +201,11 @@ export default function PortfolioPage() {
 
   const totalTradesCount = openTrades.length + closedTrades.length;
 
-  // רצועת "חודשים אחרונים" שמופיעה לפני לוח השנה - כדי שהרושם הראשון כשנכנסים לתיק יהיה מגמה
-  // כללית (עד 6 חודשים אחרונים), ולא חודש בודד שעלול להיראות אדום בלוח השנה. מציגים את ממוצע
-  // האחוז שהרווחנו/הפסדנו בפועל באותו חודש (לא אחוז הצלחה של עסקאות) - כי אחוז הצלחה לבד יכול
-  // להטעות (אפשר להרוויח בחודש עם 30% הצלחה אם הזוכות גדולות, ולהפסיד בחודש עם 80% הצלחה אם
-  // ההפסדים הבודדים גדולים) - וכבועה צבעונית שטוחה, לא טבעת, כי האחוז הזה לא "מתוך 100" כמו
-  // אחוז הצלחה, אז טבעת-חלק-ממעגל הייתה נותנת רושם פרופורציה מוטעה
+  // רצועת "חודשים אחרונים" שמופיעה לפני לוח השנה - 3 החודשים האחרונים, כדי שהרושם הראשון
+  // כשנכנסים לתיק יהיה מגמה כללית ולא חודש בודד שעלול להיראות אדום בלוח השנה. המספר המוצג
+  // הוא הרווח/הפסד בפועל על התיק (סכום הרווח/הפסד הדולרי של כל העסקאות שנסגרו באותו חודש,
+  // ביחס לגודל התיק) - לא ממוצע פשוט של אחוזי עסקאות בודדות, כי ממוצע פשוט נותן משקל שווה
+  // לעסקה קטנה ולעסקה גדולה, בעוד שהתשואה האמיתית על התיק תלויה בגודל האמיתי של כל עסקה
   const monthlyTrend = (() => {
     const byMonth = new Map<string, Trade[]>();
     for (const t of closedTrades) {
@@ -215,11 +214,13 @@ export default function PortfolioPage() {
       if (!byMonth.has(key)) byMonth.set(key, []);
       byMonth.get(key)!.push(t);
     }
-    const months = Array.from(byMonth.entries()).sort((a, b) => (a[0] < b[0] ? 1 : -1)).slice(0, 6);
+    const months = Array.from(byMonth.entries()).sort((a, b) => (a[0] < b[0] ? 1 : -1)).slice(0, 3);
     return months.map(([key, trades]) => {
-      const pcts = trades.map((t) => pct(t));
-      const avgPct = pcts.reduce((s, x) => s + x, 0) / pcts.length;
-      return { key, label: monthLabelShort(key), avgPct, count: trades.length };
+      const monthPnlUsd = trades.reduce((s, t) => s + (t.realized_pnl_usd ?? 0), 0);
+      const portfolioPct = initialBalance
+        ? (monthPnlUsd / initialBalance) * 100
+        : trades.reduce((s, t) => s + pct(t), 0) / trades.length;
+      return { key, label: monthLabelShort(key), portfolioPct, count: trades.length };
     });
   })();
 
@@ -360,25 +361,25 @@ export default function PortfolioPage() {
 
       {monthlyTrend.length > 0 && (
         <Reveal delay={60}>
-          <div className="section-label" style={{ marginTop: '26px' }}><h2>מה קרה בחודשים האחרונים</h2></div>
+          <div className="section-label" style={{ marginTop: '26px' }}><h2>רווח על תיק ההשקעות - 3 החודשים האחרונים</h2></div>
           <div className="month-ring-row">
             {monthlyTrend.map((m, i) => (
               <Reveal key={m.key} delay={80 * i} className="month-ring-tile">
                 <div
                   className="month-bubble"
                   style={{
-                    background: m.avgPct >= 0 ? 'var(--profit-bg)' : 'var(--loss-bg)',
-                    color: m.avgPct >= 0 ? 'var(--profit)' : 'var(--loss)',
+                    background: m.portfolioPct >= 0 ? 'var(--profit-bg)' : 'var(--loss-bg)',
+                    color: m.portfolioPct >= 0 ? 'var(--profit)' : 'var(--loss)',
                   }}
                 >
-                  <CountUp value={m.avgPct} prefix={m.avgPct >= 0 ? '+' : ''} suffix="%" decimals={1} />
+                  <CountUp value={m.portfolioPct} prefix={m.portfolioPct >= 0 ? '+' : ''} suffix="%" decimals={1} />
                 </div>
                 <div className="month-ring-label">{m.label}</div>
                 <div className="month-ring-sub"><CountUp value={m.count} /> עסקאות</div>
               </Reveal>
             ))}
           </div>
-          <p style={{ fontSize: '10.5px', color: 'var(--text-tertiary)', marginTop: '8px' }}>אחוז רווח/הפסד ממוצע לעסקה, לפי חודש שבו העסקה נסגרה.</p>
+          <p style={{ fontSize: '10.5px', color: 'var(--text-tertiary)', marginTop: '8px' }}>רווח/הפסד בפועל על התיק באותו חודש, לפי חודש שבו העסקה נסגרה - כולל ההפסדים.</p>
         </Reveal>
       )}
 
