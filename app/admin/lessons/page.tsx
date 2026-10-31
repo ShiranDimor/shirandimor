@@ -186,7 +186,7 @@ export default function AdminLessonsPage() {
             <div className="lesson-card-presentation"><span>📊</span>מצגת</div>
           )}
           {!lesson.published && (
-            <span style={{ position: 'absolute', top: '8px', right: '8px', fontSize: '10.5px', color: '#B4791F', background: 'rgba(8,19,26,0.85)', border: '1px solid #B4791F', borderRadius: '5px', padding: '2px 6px' }}>טיוטה</span>
+            <span style={{ position: 'absolute', top: '8px', right: '8px', fontSize: '10.5px', color: '#E8A33D', background: 'rgba(8,19,26,0.85)', border: '1px solid #E8A33D', borderRadius: '5px', padding: '2px 6px' }}>טיוטה</span>
           )}
         </Link>
         <div style={{ padding: '12px' }}>
