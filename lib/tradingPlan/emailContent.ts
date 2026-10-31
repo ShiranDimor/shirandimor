@@ -132,7 +132,7 @@ export function buildUserPlanEmailHtml(r: PlanRow): string {
         <p style="font-size:13px;color:#9A939B;line-height:1.7;text-align:center;font-style:italic;margin-bottom:20px;">${content.closingMessage}</p>
 
         <div style="background:#1C1A1E;border:1px solid #332E35;border-radius:12px;padding:18px;margin-bottom:20px;">
-          <div style="font-weight:700;font-size:15px;margin-bottom:12px;">לפני כל עסקה עוצרים ובודקים:</div>
+          <div style="font-weight:700;font-size:15px;margin-bottom:12px;color:#F2EFF1;">לפני כל עסקה עוצרים ובודקים:</div>
           ${CHECKLIST.map((c) => `<div style="font-size:13.5px;color:#C9C4C9;padding:6px 0;border-bottom:1px solid #332E35;">☐ ${c}</div>`).join('')}
         </div>
 

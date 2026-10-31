@@ -96,10 +96,10 @@ function tradeRowHtml(t: Trade, kind: 'open' | 'closed', blurSymbol: boolean) {
     const resultColor = (p ?? 0) >= 0 ? '#3DDC84' : '#FF5C5C';
     return `
       <tr>
-        <td style="padding:10px 12px;border-bottom:1px solid #332E35;font-weight:700;">${symbolCell}</td>
+        <td style="padding:10px 12px;border-bottom:1px solid #332E35;font-weight:700;color:#F2EFF1;">${symbolCell}</td>
         <td style="padding:10px 12px;border-bottom:1px solid #332E35;color:${dirColor};font-weight:600;">${dirLabel}</td>
-        <td style="padding:10px 12px;border-bottom:1px solid #332E35;">$${t.entry_price}</td>
-        <td style="padding:10px 12px;border-bottom:1px solid #332E35;">$${t.stop_loss}</td>
+        <td style="padding:10px 12px;border-bottom:1px solid #332E35;color:#F2EFF1;">$${t.entry_price}</td>
+        <td style="padding:10px 12px;border-bottom:1px solid #332E35;color:#F2EFF1;">$${t.stop_loss}</td>
         <td style="padding:10px 12px;border-bottom:1px solid #332E35;color:${resultColor};font-weight:700;">
           ${p !== null ? `${p >= 0 ? '+' : ''}${p.toFixed(2)}%` : '—'}
         </td>
@@ -111,9 +111,9 @@ function tradeRowHtml(t: Trade, kind: 'open' | 'closed', blurSymbol: boolean) {
   const resultColor = (p ?? 0) >= 0 ? '#3DDC84' : '#FF5C5C';
   return `
     <tr>
-      <td style="padding:10px 12px;border-bottom:1px solid #332E35;font-weight:700;">${symbolCell}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid #332E35;font-weight:700;color:#F2EFF1;">${symbolCell}</td>
       <td style="padding:10px 12px;border-bottom:1px solid #332E35;color:${dirColor};font-weight:600;">${dirLabel}</td>
-      <td style="padding:10px 12px;border-bottom:1px solid #332E35;">$${t.entry_price} ← $${t.exit_price}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid #332E35;color:#F2EFF1;">$${t.entry_price} ← $${t.exit_price}</td>
       <td style="padding:10px 12px;border-bottom:1px solid #332E35;color:${resultColor};font-weight:700;">
         ${p !== null ? `${p >= 0 ? '+' : ''}${p.toFixed(2)}%` : '—'}
       </td>
