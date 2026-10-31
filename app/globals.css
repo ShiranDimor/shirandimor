@@ -335,8 +335,8 @@
   .price-card .amount span { font-size: 14px; color: var(--text-tertiary); font-weight: 400; }
   .price-card .period { font-size: 12.5px; color: var(--text-secondary); margin-bottom: 18px; }
   .perk-list { text-align: right; margin-bottom: 20px; }
-  .perk-list div { font-size: 13.5px; color: var(--text-secondary); padding: 7px 0; border-bottom: 1px solid var(--border-hairline); display: flex; gap: 8px; }
-  .perk-list div::before { content: '✓'; color: var(--profit); font-weight: 700; }
+  .perk-list div { font-size: 13.5px; color: var(--text-secondary); line-height: 1.5; padding: 7px 22px 7px 0; border-bottom: 1px solid var(--border-hairline); position: relative; }
+  .perk-list div::before { content: '✓'; position: absolute; top: 7px; right: 0; color: var(--profit); font-weight: 700; }
 
   /* ===== Journal ===== */
   .journal-toolbar { display: flex; gap: 8px; margin-bottom: 16px; }
@@ -423,15 +423,14 @@
   .cta-sub-link { display: block; text-align: center; font-size: 12.5px; color: var(--text-tertiary); text-decoration: none; }
   .cta-sub-link span { color: var(--lavender); font-weight: 600; }
 
-  /* סרגל ניווט מהיר - צף/דביק מתחת ל-header, גולל אופקית, קומפקטי (לא פילס מלא) - גרסה מצומצמת
-     יותר אחרי שבדקנו כמה חלופות. במקום להיות עוד בלוק בתוך זרימת הדף, הוא נשאר נגיש תמיד
-     בגלילה, בלי לתפוס גובה קבוע בעמוד. כפתור ההצטרפות המודגש נשאר בזרימת הדף, לא בסרגל -
-     זה רגע-המרה, לא ניווט שוטף. השמות נשארים מלאים (לא מקוצרים) כדי שיהיו ברורים */
+  /* סרגל ניווט מהיר - צף/דביק מתחת ל-header, קומפקטי (לא פילס מלא). עובר שורה (wrap) ולא גולל
+     אופקית - "לארגונים" היה נחתך/לא נראה מחוץ לתחום הגלילה, ועם wrap כל הפילים תמיד גלויים
+     בלי צורך לגלול. במקום להיות עוד בלוק בתוך זרימת הדף, הוא נשאר נגיש תמיד בגלילה. כפתור
+     ההצטרפות המודגש נשאר בזרימת הדף, לא בסרגל - זה רגע-המרה, לא ניווט שוטף. השמות נשארים
+     מלאים (לא מקוצרים) כדי שיהיו ברורים */
   .quick-link-row {
-    display: flex; gap: 6px; overflow-x: auto; padding: 2px 16px 12px;
-    -webkit-overflow-scrolling: touch; scrollbar-width: none;
+    display: flex; flex-wrap: wrap; gap: 6px; padding: 2px 16px 12px;
   }
-  .quick-link-row::-webkit-scrollbar { display: none; }
   .quick-link-pill {
     flex: 0 0 auto; white-space: nowrap;
     font-size: 11px; font-weight: 600; color: var(--text-secondary); background: var(--bg-surface);
