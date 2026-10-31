@@ -137,7 +137,7 @@ export function buildUserPlanEmailHtml(r: PlanRow): string {
         </div>
 
         <p style="font-size:13px;color:#555;line-height:1.7;text-align:center;margin-bottom:12px;">
-          רוצה ללכת צעד רחוק יותר? <strong style="color:#8C3B5E;">סוחרים ביחד איתי</strong>. בלי ידע מוקדם.
+          רוצה ללכת צעד רחוק יותר? <strong style="color:#8C3B5E;">סוחרים ביחד איתי, בלי ידע מוקדם</strong>.
         </p>
         <a href="${SITE_URL}/subscribe" style="display:block;text-align:center;background:#4fc9c4;color:#08131a;text-decoration:none;font-weight:700;padding:13px;border-radius:10px;">
           להכיר את &quot;מדברים עסקאות&quot; ←
