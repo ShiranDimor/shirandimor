@@ -8,10 +8,21 @@ import ClearableInput from '@/components/ClearableInput';
 type ApprovedSub = {
   id: string;
   email: string;
+  phone: string | null;
   full_name: string | null;
   subscription_status: string | null;
   subscription_started_at: string | null;
 };
+
+type RevenueItem = { name: string | null; email: string | null; phone: string | null; joinDate: string | null; price: number };
+
+function normalizePhoneLocal(raw: string | null | undefined): string {
+  return (raw || '').replace(/\D/g, '').slice(-9);
+}
+
+function normalizeEmailLocal(raw: string | null | undefined): string {
+  return (raw || '').trim().toLowerCase();
+}
 
 export default function AdminSubscribersPage() {
   const [checking, setChecking] = useState(true);
@@ -48,6 +59,7 @@ export default function AdminSubscribersPage() {
   const [revenueCount, setRevenueCount] = useState(0);
   const [revenueTotal, setRevenueTotal] = useState(0);
   const [revenueMonth, setRevenueMonth] = useState('');
+  const [revenueItems, setRevenueItems] = useState<RevenueItem[]>([]);
 
   function formatMonthLabel(month: string) {
     if (!month) return '';
@@ -63,6 +75,7 @@ export default function AdminSubscribersPage() {
       setRevenueCount(data.count || 0);
       setRevenueTotal(data.totalAmount || 0);
       setRevenueMonth(data.month || '');
+      setRevenueItems(data.items || []);
     }
     setRevenueLoading(false);
     setRevenueRecomputing(false);
@@ -253,7 +266,7 @@ export default function AdminSubscribersPage() {
   async function loadApprovedSubs() {
     const { data } = await supabase
       .from('profiles')
-      .select('id, email, full_name, subscription_status, subscription_started_at')
+      .select('id, email, phone, full_name, subscription_status, subscription_started_at')
       .eq('role', 'subscriber')
       .order('subscription_started_at', { ascending: false });
     if (data) setApprovedSubs(data);
@@ -295,6 +308,21 @@ export default function AdminSubscribersPage() {
     }
     return dir * (new Date(a.subscription_started_at || 0).getTime() - new Date(b.subscription_started_at || 0).getTime());
   });
+
+  // התאמת סכום לכל מנוי/ה (ממאנדיי, לפי טלפון קודם ומייל כגיבוי) - כדי להציג שם וסכום
+  // באותה שורה, בלי שתצטרכי לקפוץ בין שתי רשימות נפרדות כדי לדעת מי משלם כמה
+  const priceByPhone = new Map<string, number>();
+  const priceByEmail = new Map<string, number>();
+  for (const item of revenueItems) {
+    if (item.phone) priceByPhone.set(normalizePhoneLocal(item.phone), item.price);
+    if (item.email) priceByEmail.set(normalizeEmailLocal(item.email), item.price);
+  }
+  function priceFor(sub: ApprovedSub): number | null {
+    const byPhone = sub.phone ? priceByPhone.get(normalizePhoneLocal(sub.phone)) : undefined;
+    if (byPhone !== undefined) return byPhone;
+    const byEmail = priceByEmail.get(normalizeEmailLocal(sub.email));
+    return byEmail !== undefined ? byEmail : null;
+  }
 
   if (checking) {
     return <div className="wrap"><p style={{ padding: '40px', textAlign: 'center' }}>בודקים הרשאות...</p></div>;
@@ -448,7 +476,14 @@ export default function AdminSubscribersPage() {
                 תאריך הצטרפות: {sub.subscription_started_at ? new Date(sub.subscription_started_at).toLocaleDateString('he-IL') : '—'}
               </div>
             </div>
-            <span style={{ fontSize: '11px', color: 'var(--profit)', fontWeight: 700 }}>{sub.subscription_status === 'active' ? 'פעיל' : sub.subscription_status}</span>
+            <div style={{ textAlign: 'left', flexShrink: 0 }}>
+              <div style={{ fontSize: '11px', color: 'var(--profit)', fontWeight: 700 }}>{sub.subscription_status === 'active' ? 'פעיל' : sub.subscription_status}</div>
+              {priceFor(sub) !== null && (
+                <div style={{ fontSize: '12.5px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--text-primary)', marginTop: '3px' }}>
+                  ₪{priceFor(sub)!.toLocaleString('he-IL')}
+                </div>
+              )}
+            </div>
           </Link>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flexShrink: 0 }}>
             <button
