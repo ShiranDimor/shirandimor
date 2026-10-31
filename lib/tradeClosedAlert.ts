@@ -122,7 +122,7 @@ export async function notifyTradesClosed(trades: ClosedTradeInfo[]) {
       // המנויים מקבלים את התוצאה בלבד וקישור לתיק. מי שאינו מנוי מקבל את אותה תוצאה (בכוונה -
       // זו ההוכחה שמביאה הצטרפות) אבל עם משפט שמניע הצטרפות וקישור לניסיון במקום לתיק עצמו
       await sendPushToActiveSubscribers({ title, body: pctLabel, url: '/portfolio' }, 'trade');
-      await sendPushToNonSubscribers({ title, body: `${pctLabel} · ל-7 ימי ניסיון ללא עלות ←`, url: '/trial' }, 'trade');
+      await sendPushToNonSubscribers({ title, body: `${pctLabel} · חודש ראשון ב-₪1 ←`, url: '/subscribe' }, 'trade');
     }
   }
 }

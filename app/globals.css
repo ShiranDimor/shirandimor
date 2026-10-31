@@ -944,6 +944,21 @@
 .live-teaser-text { flex: 1; font-size: 13px; color: var(--text-secondary); line-height: 1.4; }
 .live-teaser-text strong { color: var(--text-primary); }
 
+/* הופעה הדרגתית בגלילה (components/Reveal.tsx) - fade + slide-up קטן, נכנס פעם אחת ונשאר */
+.reveal { opacity: 0; transform: translateY(18px); transition: opacity 0.65s cubic-bezier(0.16, 1, 0.3, 1), transform 0.65s cubic-bezier(0.16, 1, 0.3, 1); }
+.reveal.is-visible { opacity: 1; transform: translateY(0); }
+@media (prefers-reduced-motion: reduce) {
+  .reveal { opacity: 1; transform: none; transition: none; }
+}
+
+/* כרטיסיית "החודשים האחרונים" (monthly-highlight-*) - אריחים עם מספרים סופרים-עולים */
+.monthly-highlights { display: flex; gap: 10px; margin-bottom: 8px; }
+.monthly-highlight-tile { flex: 1; background: var(--bg-surface); border: 1px solid var(--border-hairline-strong); border-radius: 14px; padding: 16px 10px; text-align: center; transition: transform 0.2s ease, border-color 0.2s ease; }
+.monthly-highlight-tile:hover { transform: translateY(-2px); border-color: var(--teal); }
+.monthly-highlight-tile .mh-month { font-size: 11px; color: var(--text-tertiary); margin-bottom: 6px; font-family: var(--font-mono); }
+.monthly-highlight-tile .mh-num { font-family: var(--font-mono); font-size: 24px; font-weight: 700; }
+.monthly-highlight-tile .mh-label { font-size: 10.5px; color: var(--text-tertiary); margin-top: 2px; }
+
 /* ===== ספריית שיעורים ===== */
 .lessons-hero {
   position: relative; background: linear-gradient(160deg, var(--bg-surface-raised) 0%, var(--bg-surface) 100%);

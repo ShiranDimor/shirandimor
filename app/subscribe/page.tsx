@@ -25,10 +25,10 @@ export default function SubscribePage() {
 
       <div className="price-card">
         <div style={{ display: 'inline-block', background: 'var(--profit-bg)', color: 'var(--profit)', fontSize: '11.5px', fontWeight: 700, padding: '4px 12px', borderRadius: '20px', marginBottom: '14px' }}>
-          חודש ראשון ב-50% הנחה
+          חודש ראשון מלא
         </div>
-        <div className="amount">₪200<span>/חודש ראשון</span></div>
-        <div style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginBottom: '4px', textDecoration: 'line-through' }}>₪400 לחודש</div>
+        <div className="amount">₪1<span>/חודש ראשון</span></div>
+        <div style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginBottom: '4px' }}>לא הנחה - אימות בלבד</div>
         <div className="period">לאחר מכן ₪400/חודש · ללא התחייבות וללא תקופת מינימום</div>
 
         <div className="perk-list">
@@ -41,11 +41,11 @@ export default function SubscribePage() {
         </div>
 
         <p style={{ fontSize: '11.5px', color: 'var(--text-tertiary)', lineHeight: 1.6, textAlign: 'center', marginBottom: '14px' }}>
-          לא קורס יקר שאין דרך לדעת מראש אם הוא מתאים לך. חודש ניסיון אחד ב-₪200 מראה מבפנים איך זה עובד בפועל.
+          <strong style={{ color: 'var(--text-primary)' }}>למה ₪1 ולא ₪400 ישר?</strong> כי בחינם נרשמים גם בוטים, גם מי שסוגר טאב אחרי חמש שניות, וגם אותו בחור מאיראן שבטוח רוצה ללמוד ניהול סיכונים. ₪1 מוכיח שיש בן אדם אמיתי מהצד השני - ובתמורה מקבלים גישה מלאה לחודש שלם, לא גרסה מצומצמת. בסוף החודש, אם לא בוטל - ממשיכים אוטומטית ב-₪400. ביטול בלחיצה אחת, בכל רגע, לפני החיוב הבא - בלי שיחת מכירות, בלי דרמה.
         </p>
 
-        <a href="https://pay.grow.link/200a7cdcb258ee6ffdea0f423a1ace0e-MzE4MDU5OA" target="_blank" className="btn-primary" style={{ display: 'block', textAlign: 'center', textDecoration: 'none' }} onClick={() => trackFunnelEvent('payment_link_click')}>
-          מעבר לדף התשלום המאובטח ←
+        <a href="https://pay.grow.link/ODUwNDc~e1145301cbce2cc9d1e0395611428e83-NDIxNTkxMw" target="_blank" className="btn-primary" style={{ display: 'block', textAlign: 'center', textDecoration: 'none' }} onClick={() => trackFunnelEvent('payment_link_click')}>
+          התחלה - חודש ראשון ב-₪1 ←
         </a>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', marginTop: '10px' }}>
           <span style={{ fontSize: '10px' }}>🔒</span>
@@ -54,7 +54,7 @@ export default function SubscribePage() {
       </div>
 
       <p style={{ fontSize: '11px', color: 'var(--text-tertiary)', textAlign: 'center' }}>
-        אפשר לבטל בכל רגע נתון, בלי קנס ובלי שאלות - ביטול עד יום לפני מועד החיוב הבא מונע את החיוב הבא. לאחר התשלום, החשבון עובר לאישור ידני והגישה מתקבלת תוך זמן קצר.
+        אפשר לבטל בכל רגע נתון, בלי קנס ובלי שאלות - ביטול לפני מועד החיוב הבא מונע את החיוב. הגישה המלאה נפתחת מיד אחרי אימות הכרטיס.
       </p>
 
     </div>
