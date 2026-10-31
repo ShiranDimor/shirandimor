@@ -42,8 +42,8 @@ export async function POST(request: Request) {
 
   await sendPushToNonSubscribers({
     title: '🆕 עסקה חדשה נפתחה בתיק',
-    body: 'הסימבול והפרטים גלויים למנויים - אפשר להצטרף ל-7 ימי ניסיון ללא עלות',
-    url: '/trial',
+    body: 'הסימבול והפרטים גלויים למנויים - חודש ראשון ב-₪1 ←',
+    url: '/subscribe',
   }, 'trade');
 
   return NextResponse.json({ ok: true });

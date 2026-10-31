@@ -331,7 +331,7 @@ async function renderGainTradeCard(data: TradeCardData, accent: Hue): Promise<st
     <div class="site-url">shirandimor.com</div>
     ${priceStats.length ? `<div class="price-row">${priceStats.map((s) => `<div class="price-item"><div class="v">${escapeHtml(s.value)}</div><div class="l">${escapeHtml(s.label)}</div></div>`).join('')}</div>` : ''}
     <div class="cta-cover"></div>
-    <div class="cta-text"><span>7 ימי ניסיון ללא עלות</span></div>
+    <div class="cta-text"><span>חודש ראשון ב-₪1</span></div>
   </body></html>`;
 
   return renderHtmlToPngBase64(html, 1330);

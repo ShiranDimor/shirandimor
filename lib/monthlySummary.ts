@@ -237,7 +237,7 @@ async function buildSummaryHtml(targetMonth?: { year: number; month: number }, a
       <div style="padding:6px 16px 24px;text-align:center;">
         <div style="background:#f0faf9;border:1px solid #cdeeeb;border-radius:12px;padding:18px 16px;">
           <div style="font-size:14.5px;font-weight:700;color:#111;margin-bottom:6px;">🚀 קבוצת הסוחרים &quot;${GROUP_NAME}&quot;</div>
-          <div style="font-size:13px;color:#666;">להצטרפות ל-7 ימי ניסיון ללא עלות כנסו ללינק</div>
+          <div style="font-size:13px;color:#666;">להצטרפות - חודש ראשון ב-₪1, כנסו ללינק</div>
         </div>
       </div>` : `
       <div style="padding:6px 16px 24px;text-align:center;">
@@ -329,7 +329,7 @@ export async function sendMonthlySummaryEmail(targetMonth?: { year: number; mont
             ${audience === 'updates' ? `
             <p style="font-weight:700;margin-top:16px;">⚠️ שימו לב: בתוך התמונה עצמה הכפתור "הצטרפות עכשיו" אינו לחיץ - זו מגבלה של כל תמונה בוואטסאפ.</p>
             <p>מומלץ לצרף את הטקסט הבא כהודעה נפרדת מתחת לתמונה, כדי שהקישור יהיה לחיץ:</p>
-            <div style="background:#f4f4f5;border:1px solid #ddd;border-radius:8px;padding:14px;margin-top:8px;white-space:pre-line;">🚀 להצטרפות לקבוצת הסוחרים "${GROUP_NAME}" ל-7 ימי ניסיון ללא עלות:
+            <div style="background:#f4f4f5;border:1px solid #ddd;border-radius:8px;padding:14px;margin-top:8px;white-space:pre-line;">🚀 להצטרפות ל"${GROUP_NAME}" - חודש ראשון ב-₪1:
 ${TRIAL_SIGNUP_URL}</div>` : ''}
           </div>`
         : html,
