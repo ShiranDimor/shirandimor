@@ -277,8 +277,8 @@ export default function AdminDashboard() {
 
         <Link href="/admin/lives" className="admin-tile">
           <div className="at-icon">📡</div>
-          <div className="at-title">לייבים</div>
-          <div className="at-count">{liveRegistrationsTotal} נרשמים · {livesCount} לייבים קרובים</div>
+          <div className="at-title">מפגשים</div>
+          <div className="at-count">{liveRegistrationsTotal} נרשמים · {livesCount} מפגשים קרובים</div>
         </Link>
 
         <Link href="/admin/announcements" className="admin-tile">

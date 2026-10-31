@@ -137,7 +137,7 @@ export default function AdminBlockedContactsPage() {
 
       <div className="section-label"><h2>אנשי קשר חסומים</h2><span className="count">{contacts.length}</span></div>
       <p style={{ fontSize: '12.5px', color: 'var(--text-tertiary)', marginBottom: '18px', lineHeight: 1.6 }}>
-        מספר חסום לא יכול להירשם לקבוצת עדכונים, ל-7 ימי ניסיון, ללייבים, ולא יקבל מענה משיחה עם דור. זה לא נוגע במנויים פעילים קיימים.
+        מספר חסום לא יכול להירשם לקבוצת עדכונים, ל-7 ימי ניסיון, למפגשי מסחר, ולא יקבל מענה משיחה עם דור. זה לא נוגע במנויים פעילים קיימים.
       </p>
 
       <div className="tp-question-card">

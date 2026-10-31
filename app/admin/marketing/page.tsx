@@ -539,7 +539,7 @@ export default function AdminMarketingPage() {
 
 
       <div className="journal-form" style={{ borderRightColor: 'var(--lavender)' }}>
-        <label style={{ display: 'block', marginBottom: '8px', fontSize: '13.5px', fontWeight: 600 }}>📸 סטורי מתמונה חופשית (תיק מסחר, לייב, בניית תוכנית מסחר...)</label>
+        <label style={{ display: 'block', marginBottom: '8px', fontSize: '13.5px', fontWeight: 600 }}>📸 סטורי מתמונה חופשית (תיק מסחר, מפגש, בניית תוכנית מסחר...)</label>
         <p style={{ fontSize: '12.5px', color: 'var(--text-tertiary)', marginBottom: '10px' }}>
           מעלים כל תמונה שצילמת - היא תעטף אוטומטית בתבנית הסטורי הממותגת (בלי פסים ריקים) ותישמר כטיוטה מוכנה לפרסום. בלי AI ובלי caption - רק התמונה. הלינק לא יהיה לחיץ בתוך הסטורי, אז אם רוצה - צריך להוסיף אותו ידנית בדרך אחרת.
         </p>
@@ -547,7 +547,7 @@ export default function AdminMarketingPage() {
           type="text"
           value={storyTopic}
           onChange={(e) => setStoryTopic(e.target.value)}
-          placeholder="תיאור קצר לזיהוי (למשל: תיק המסחר שלי / לייב 17.9 / בניית תוכנית מסחר)"
+          placeholder="תיאור קצר לזיהוי (למשל: תיק המסחר שלי / מפגש 17.9 / בניית תוכנית מסחר)"
           style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--bg-surface)', color: 'var(--text-primary)', fontSize: '12.5px', marginBottom: '10px' }}
         />
         <input
