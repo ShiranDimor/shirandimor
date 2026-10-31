@@ -329,6 +329,23 @@ export default function PortfolioPage() {
       <div id="portfolio-story-area">
         <div className="section-label"><h2>לוח שנה</h2></div>
         <div className="equity-card" style={{ marginBottom: '28px' }}>
+          {availableClosedMonths.length > 1 && (
+            <div className="month-select-wrap" style={{ marginBottom: '14px' }}>
+              <select
+                className="month-select"
+                value={`${calYear}-${String(calMonthIdx + 1).padStart(2, '0')}`}
+                onChange={(e) => {
+                  const [y, m] = e.target.value.split('-').map(Number);
+                  setCalYear(y);
+                  setCalMonthIdx(m - 1);
+                }}
+              >
+                {availableClosedMonths.map((m) => (
+                  <option key={m} value={m}>{monthLabel(m)}</option>
+                ))}
+              </select>
+            </div>
+          )}
           <CalendarHeatmap year={calYear} month={calMonthIdx} items={calItems} onPrevMonth={goPrevMonth} onNextMonth={goNextMonth} hideUsd />
         </div>
 

@@ -21,8 +21,9 @@ type Trade = {
 };
 
 const MONTH_LABELS_SHORT = ['ינו', 'פבר', 'מרץ', 'אפר', 'מאי', 'יונ', 'יול', 'אוג', 'ספט', 'אוק', 'נוב', 'דצמ'];
+const MONTH_LABELS_FULL = ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני', 'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר'];
 
-type MonthHighlight = { label: string; trades: number; winRate: number };
+type MonthHighlight = { key: string; label: string; fullLabel: string; trades: number; winRate: number };
 
 function calcPct(trade: Trade) {
   const current = trade.status === 'open' ? trade.current_price : trade.exit_price;
@@ -30,8 +31,9 @@ function calcPct(trade: Trade) {
   return ((current - trade.entry_price) / trade.entry_price) * 100 * (trade.direction === 'short' ? -1 : 1);
 }
 
-// מקבץ עסקאות סגורות לפי חודש, ומחזיר את 3 החודשים האחרונים שבהם היו בכלל עסקאות - כדי
-// שבלוח "מה קרה בחודשים האחרונים" תמיד יהיו נתונים אמיתיים, גם אם חודש מסוים היה שקט לגמרי
+// מקבץ עסקאות סגורות לפי חודש - כל חודש שבו היו בכלל עסקאות, לא רק שלושת האחרונים. הראשון
+// ברשימה (החודש העדכני ביותר) הוא ברירת המחדל שמוצגת ראשונה בתיבת הבחירה בעמוד הבית - כדי
+// שהדבר הראשון שרואים תמיד יהיה סיכום חודשי (אחוז הצלחה), לא עסקה בודדת שעלולה להיות בהפסד
 function buildMonthHighlights(closedTrades: Trade[]): MonthHighlight[] {
   const byMonth = new Map<string, Trade[]>();
   for (const t of closedTrades) {
@@ -41,25 +43,27 @@ function buildMonthHighlights(closedTrades: Trade[]): MonthHighlight[] {
     if (!byMonth.has(key)) byMonth.set(key, []);
     byMonth.get(key)!.push(t);
   }
-  const months = Array.from(byMonth.entries())
-    .sort((a, b) => (a[0] < b[0] ? 1 : -1))
-    .slice(0, 3)
-    .reverse();
+  const months = Array.from(byMonth.entries()).sort((a, b) => (a[0] < b[0] ? 1 : -1));
 
   return months.map(([key, trades]) => {
-    const monthIdx = Number(key.split('-')[1]);
+    const [year, monthIdx] = key.split('-').map(Number);
     const wins = trades.filter((t) => calcPct(t) >= 0).length;
-    return { label: MONTH_LABELS_SHORT[monthIdx], trades: trades.length, winRate: Math.round((wins / trades.length) * 100) };
+    return {
+      key,
+      label: MONTH_LABELS_SHORT[monthIdx],
+      fullLabel: `${MONTH_LABELS_FULL[monthIdx]} ${year}`,
+      trades: trades.length,
+      winRate: Math.round((wins / trades.length) * 100),
+    };
   });
 }
 
 export default function HomePage() {
-  const [openTrades, setOpenTrades] = useState<Trade[]>([]);
-  const [lastClosed, setLastClosed] = useState<Trade | null>(null);
   const [openCount, setOpenCount] = useState(0);
   const [showStickyCta, setShowStickyCta] = useState(false);
   const [hasFullAccess, setHasFullAccess] = useState(false);
   const [monthHighlights, setMonthHighlights] = useState<MonthHighlight[]>([]);
+  const [selectedMonthKey, setSelectedMonthKey] = useState('');
   // מגיעים מקישור עם ?join=1 (מעמודים אחרים כמו /lives או /portfolio) - פותח ישר את שער
   // הרשמה להתראות בלי צורך ללחוץ קודם על הכפתור. נקרא סינכרונית ב-useState (לא ב-useEffect)
   // כדי שהערך הנכון יגיע לרינדור הראשון של PushNotificationButton - אחרת ה-useEffect הפנימי
@@ -103,12 +107,12 @@ export default function HomePage() {
         .limit(80);
 
       if (open) {
-        setOpenTrades(open.slice(0, 2));
         setOpenCount(open.length);
       }
       if (closed && closed.length > 0) {
-        setLastClosed(closed[0]);
-        setMonthHighlights(buildMonthHighlights(closed));
+        const highlights = buildMonthHighlights(closed);
+        setMonthHighlights(highlights);
+        setSelectedMonthKey(highlights[0].key);
       }
     } catch (e) {
       // בלי try/catch כאן, שגיאה הייתה משאירה את התצוגה בשקט על 0 עסקאות בלי שום סימן לבעיה
@@ -116,7 +120,7 @@ export default function HomePage() {
     }
   }
 
-  const pctChange = calcPct;
+  const selectedMonth = monthHighlights.find((m) => m.key === selectedMonthKey) || monthHighlights[0];
 
   return (
     <div className="wrap">
@@ -147,25 +151,9 @@ export default function HomePage() {
 
       <Reveal className="trust-strip">
         <div className="trust-item"><div className="num"><CountUp value={0} suffix="%" /></div><div className="lbl">הבטחות תשואה</div></div>
-        <div className="trust-item"><div className="num"><CountUp value={100} suffix="%" /></div><div className="lbl">שקיפות, כולל הפסדים</div></div>
-        <div className="trust-item"><div className="num"><CountUp value={3} /></div><div className="lbl">סגנונות מסחר, קהילה אחת</div></div>
+        <div className="trust-item"><div className="num" style={{ color: 'var(--profit)' }}><CountUp value={100} suffix="%" /></div><div className="lbl">שקיפות, כולל הפסדים</div></div>
+        <div className="trust-item"><div className="num" style={{ color: 'var(--lavender)' }}><CountUp value={3} /></div><div className="lbl">סגנונות מסחר, קהילה אחת</div></div>
       </Reveal>
-
-      {monthHighlights.length > 0 && (
-        <Reveal delay={80}>
-          <div className="section-label" style={{ marginTop: '4px' }}><h2>מה קרה בחודשים האחרונים</h2></div>
-          <div className="monthly-highlights">
-            {monthHighlights.map((m, i) => (
-              <Reveal key={m.label} delay={120 * i} className="monthly-highlight-tile">
-                <div className="mh-month">{m.label}</div>
-                <div className="mh-num" style={{ color: 'var(--teal)' }}><CountUp value={m.winRate} suffix="%" /></div>
-                <div className="mh-label">אחוז הצלחה · <CountUp value={m.trades} /> עסקאות</div>
-              </Reveal>
-            ))}
-          </div>
-          <p style={{ fontSize: '10.5px', color: 'var(--text-tertiary)', marginBottom: '20px' }}>לפי עסקאות שנסגרו בתיק של שירן - כולל ההפסדים, לא רק ההצלחות.</p>
-        </Reveal>
-      )}
 
       <Reveal className="about-feature">
         <img className="af-photo" src="/shiran-photo.jpg" alt="שירן דימור" />
@@ -231,32 +219,37 @@ export default function HomePage() {
         <div className="portfolio-teaser">
           <div className="pt-head">
             <div className="pt-title">התיק של שירן</div>
-            <div className="pt-badge">{openCount} עסקאות פתוחות</div>
+            {monthHighlights.length > 1 && (
+              <select
+                className="pt-month-select"
+                value={selectedMonth?.key || ''}
+                onChange={(e) => setSelectedMonthKey(e.target.value)}
+              >
+                {monthHighlights.map((m) => (
+                  <option key={m.key} value={m.key}>{m.fullLabel}</option>
+                ))}
+              </select>
+            )}
           </div>
-          {openTrades.length === 0 && !lastClosed && (
-            <div style={{ fontSize: '13px', color: 'var(--text-tertiary)', padding: '10px 0' }}>עדיין אין עסקאות להצגה</div>
+
+          {selectedMonth ? (
+            <div className="pt-month-summary">
+              <div className="pt-month-num"><CountUp value={selectedMonth.winRate} suffix="%" /></div>
+              <div className="pt-month-sub">אחוז הצלחה ב{selectedMonth.fullLabel} · <CountUp value={selectedMonth.trades} /> עסקאות שנסגרו</div>
+            </div>
+          ) : (
+            <div style={{ fontSize: '13px', color: 'var(--text-tertiary)', padding: '10px 0' }}>עדיין אין עסקאות סגורות להצגה</div>
           )}
-          {openTrades.map((trade) => {
-            const pct = pctChange(trade);
-            return (
-              <div className="teaser-row" key={trade.id}>
-                <span className={`sym ${!hasFullAccess ? 'blurred' : ''}`}>{trade.symbol}</span>
-                <span className="pnl" style={{ color: pct >= 0 ? 'var(--profit)' : 'var(--loss)' }}>{pct >= 0 ? '+' : ''}{pct.toFixed(2)}%</span>
-              </div>
-            );
-          })}
-          {lastClosed && (
-            <>
-              {openTrades.length > 0 && (
-                <div style={{ fontSize: '10.5px', color: 'var(--text-tertiary)', paddingTop: '10px', borderTop: '1px solid var(--border-hairline)' }}>תוצאה אחרונה שנסגרה</div>
-              )}
-              <div className="teaser-row">
-                <span className="sym" style={{ color: 'var(--text-secondary)' }}>{lastClosed.symbol} (נסגרה)</span>
-                <span className="pnl" style={{ color: pctChange(lastClosed) >= 0 ? 'var(--profit)' : 'var(--loss)' }}>{pctChange(lastClosed) >= 0 ? '+' : ''}{pctChange(lastClosed).toFixed(2)}%</span>
-              </div>
-            </>
-          )}
-          <Link className="teaser-cta" href="/portfolio">צפייה בתיק המסחר המלא ←</Link>
+
+          <div className="pt-open-row">
+            <span className="pt-badge">{openCount} עסקאות פתוחות כרגע</span>
+          </div>
+
+          <p style={{ fontSize: '10.5px', color: 'var(--text-tertiary)', marginTop: '12px', marginBottom: 0 }}>
+            לפי עסקאות שנסגרו בתיק של שירן - כולל ההפסדים, לא רק ההצלחות.
+          </p>
+
+          <Link className="teaser-cta" href="/portfolio">צפייה בתיק המסחר המלא, לפי חודש ותאריך ←</Link>
         </div>
       </Reveal>
 
