@@ -108,11 +108,11 @@ export default function HomePage() {
           </div>
         </header>
         <div className="quick-link-row">
-          <Link href="/trading-plan" className="quick-link-pill">📝 תוכנית מסחר</Link>
-          <Link href="/lives" className="quick-link-pill">🎥 מסחר בזמן אמת</Link>
-          <Link href="/portfolio" className="quick-link-pill">📊 תיק מסחר</Link>
-          <Link href="/lessons" className="quick-link-pill">📚 ספריית שיעורים</Link>
-          <Link href="/business" className="quick-link-pill">🏢 לארגונים</Link>
+          <Link href="/trading-plan" className="quick-link-pill">תוכנית מסחר</Link>
+          <Link href="/lives" className="quick-link-pill">מסחר בזמן אמת</Link>
+          <Link href="/portfolio" className="quick-link-pill">תיק מסחר</Link>
+          <Link href="/lessons" className="quick-link-pill">ספריית שיעורים</Link>
+          <Link href="/business" className="quick-link-pill">לארגונים</Link>
         </div>
       </div>
 
@@ -127,7 +127,7 @@ export default function HomePage() {
       </div>
 
       <Reveal>
-        <Link href="/subscribe" className="quick-link-accent">💬 מדברים עסקאות - חודש ראשון ב-₪1 ←</Link>
+        <Link href="/subscribe" className="quick-link-accent">מדברים עסקאות - חודש ראשון ב-₪1 ←</Link>
       </Reveal>
 
       <Reveal className="trust-strip">
