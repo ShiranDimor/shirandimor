@@ -48,27 +48,27 @@ function buildTradeClosedContent(t: ClosedTradeInfo) {
   ];
   const text = `חברים, עסקה בתיק נסגרה ${resultLabel}:\n\n${details.join('\n')}${reason ? `\n\n${reason}` : ''}\n\nלתיק המלא: ${SITE_URL}/portfolio`;
 
-  const accent = isProfit ? '#2e9e6a' : '#c0504a';
-  const boxBg = isProfit ? '#eef8f2' : '#fdf2f1';
-  const boxBorder = isProfit ? '#cde9d9' : '#f3d4d1';
+  const accent = isProfit ? '#3DDC84' : '#FF5C5C';
+  const boxBg = isProfit ? '#1B2A20' : '#2A1B1B';
+  const boxBorder = isProfit ? '#2E4A38' : '#4A2E2E';
 
   const html = wrapEmail(`
-  <div dir="rtl" style="font-family: Arial, Helvetica, sans-serif; background:#f4f4f5; padding:24px 12px;">
-    <div style="max-width:600px;margin:0 auto;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #e5e5e5;">
-      <div style="background:#111318;padding:24px;text-align:center;">
-        <img src="${SITE_URL}/shiran-photo.jpg" width="56" height="56" alt="שירן דימור" style="width:56px;height:56px;border-radius:50%;object-fit:cover;border:2px solid #4fc9c4;margin-bottom:12px;" />
-        <div style="color:#fff;font-size:18px;font-weight:700;">מסחר <span style="color:#4fc9c4;">אחראי</span> במניות</div>
-        <div style="color:${isProfit ? '#6fd3a0' : '#e2918c'};font-size:15px;font-weight:700;margin-top:10px;">${isProfit ? '✅' : '🔻'} עסקה נסגרה ${resultLabel}</div>
+  <div dir="rtl" style="font-family: Arial, Helvetica, sans-serif; background:#121013; padding:24px 12px;">
+    <div style="max-width:600px;margin:0 auto;background:#211F23;border-radius:14px;overflow:hidden;border:1px solid #332E35;">
+      <div style="background:#17151A;padding:24px;text-align:center;">
+        <img src="${SITE_URL}/shiran-photo.jpg" width="56" height="56" alt="שירן דימור" style="width:56px;height:56px;border-radius:50%;object-fit:cover;border:2px solid #FF2D78;margin-bottom:12px;" />
+        <div style="color:#fff;font-size:18px;font-weight:700;">מסחר <span style="color:#FF2D78;">אחראי</span> במניות</div>
+        <div style="color:${isProfit ? '#4EE0A0' : '#FF8A8A'};font-size:15px;font-weight:700;margin-top:10px;">${isProfit ? '✅' : '🔻'} עסקה נסגרה ${resultLabel}</div>
       </div>
       <div style="padding:24px;">
-        <p style="font-size:14px;color:#222;line-height:1.7;margin:0 0 16px;">חברים, עסקה בתיק נסגרה ${resultLabel}:</p>
+        <p style="font-size:14px;color:#F2EFF1;line-height:1.7;margin:0 0 16px;">חברים, עסקה בתיק נסגרה ${resultLabel}:</p>
         <div style="background:${boxBg};border:1px solid ${boxBorder};border-radius:10px;padding:14px 16px;margin-bottom:16px;">
-          <div style="font-size:18px;font-weight:700;color:#111;margin-bottom:8px;">${t.symbol} <span style="font-size:13px;color:#666;font-weight:400;">(${dirLabel})</span></div>
-          <div style="font-size:14px;color:#333;line-height:1.9;">מחיר כניסה: ${fmtPrice(t.entry_price)}<br />מחיר יציאה: ${fmtPrice(t.exit_price)}</div>
+          <div style="font-size:18px;font-weight:700;color:#F2EFF1;margin-bottom:8px;">${t.symbol} <span style="font-size:13px;color:#9A939B;font-weight:400;">(${dirLabel})</span></div>
+          <div style="font-size:14px;color:#F2EFF1;line-height:1.9;">מחיר כניסה: ${fmtPrice(t.entry_price)}<br />מחיר יציאה: ${fmtPrice(t.exit_price)}</div>
           <div style="font-size:20px;font-weight:700;color:${accent};margin-top:8px;"><span dir="ltr" style="unicode-bidi:isolate;">${pctLabel}</span> · ${resultLabel}</div>
         </div>
-        ${reason ? `<p style="font-size:13px;color:#555;margin:0 0 16px;">${reason}</p>` : ''}
-        <a href="${SITE_URL}/portfolio" style="display:block;text-align:center;background:#4fc9c4;color:#08131a;text-decoration:none;font-weight:700;padding:13px;border-radius:10px;">לתיק המלא ←</a>
+        ${reason ? `<p style="font-size:13px;color:#C9C4C9;margin:0 0 16px;">${reason}</p>` : ''}
+        <a href="${SITE_URL}/portfolio" style="display:block;text-align:center;background:linear-gradient(90deg,#FF2D78,#FFB648);color:#1A181C;text-decoration:none;font-weight:700;padding:13px;border-radius:10px;">לתיק המלא ←</a>
       </div>
     </div>
   </div>`);

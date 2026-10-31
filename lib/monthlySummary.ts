@@ -83,41 +83,41 @@ function pctOpen(t: Trade) {
 // נרנדר לתמונת PNG קבועה דרך כרום headless ולא תלוי בתמיכת CSS של לקוח מייל
 function symbolCellHtml(symbol: string, blurSymbol: boolean) {
   if (!blurSymbol) return symbol;
-  return `<span style="filter:blur(5px);user-select:none;color:#999;">${symbol}</span>`;
+  return `<span style="filter:blur(5px);user-select:none;color:#847D85;">${symbol}</span>`;
 }
 
 function tradeRowHtml(t: Trade, kind: 'open' | 'closed', blurSymbol: boolean) {
   const dirLabel = t.direction === 'long' ? 'לונג' : 'שורט';
-  const dirColor = t.direction === 'long' ? '#4FB876' : '#C9635E';
+  const dirColor = t.direction === 'long' ? '#3DDC84' : '#FF5C5C';
   const symbolCell = symbolCellHtml(t.symbol, blurSymbol);
 
   if (kind === 'open') {
     const p = pctOpen(t);
-    const resultColor = (p ?? 0) >= 0 ? '#4FB876' : '#C9635E';
+    const resultColor = (p ?? 0) >= 0 ? '#3DDC84' : '#FF5C5C';
     return `
       <tr>
-        <td style="padding:10px 12px;border-bottom:1px solid #eee;font-weight:700;">${symbolCell}</td>
-        <td style="padding:10px 12px;border-bottom:1px solid #eee;color:${dirColor};font-weight:600;">${dirLabel}</td>
-        <td style="padding:10px 12px;border-bottom:1px solid #eee;">$${t.entry_price}</td>
-        <td style="padding:10px 12px;border-bottom:1px solid #eee;">$${t.stop_loss}</td>
-        <td style="padding:10px 12px;border-bottom:1px solid #eee;color:${resultColor};font-weight:700;">
+        <td style="padding:10px 12px;border-bottom:1px solid #332E35;font-weight:700;">${symbolCell}</td>
+        <td style="padding:10px 12px;border-bottom:1px solid #332E35;color:${dirColor};font-weight:600;">${dirLabel}</td>
+        <td style="padding:10px 12px;border-bottom:1px solid #332E35;">$${t.entry_price}</td>
+        <td style="padding:10px 12px;border-bottom:1px solid #332E35;">$${t.stop_loss}</td>
+        <td style="padding:10px 12px;border-bottom:1px solid #332E35;color:${resultColor};font-weight:700;">
           ${p !== null ? `${p >= 0 ? '+' : ''}${p.toFixed(2)}%` : '—'}
         </td>
-        <td style="padding:10px 12px;border-bottom:1px solid #eee;color:#888;font-size:13px;">${formatDate(t.opened_at)}</td>
+        <td style="padding:10px 12px;border-bottom:1px solid #332E35;color:#9A939B;font-size:13px;">${formatDate(t.opened_at)}</td>
       </tr>`;
   }
 
   const p = pct(t);
-  const resultColor = (p ?? 0) >= 0 ? '#4FB876' : '#C9635E';
+  const resultColor = (p ?? 0) >= 0 ? '#3DDC84' : '#FF5C5C';
   return `
     <tr>
-      <td style="padding:10px 12px;border-bottom:1px solid #eee;font-weight:700;">${symbolCell}</td>
-      <td style="padding:10px 12px;border-bottom:1px solid #eee;color:${dirColor};font-weight:600;">${dirLabel}</td>
-      <td style="padding:10px 12px;border-bottom:1px solid #eee;">$${t.entry_price} ← $${t.exit_price}</td>
-      <td style="padding:10px 12px;border-bottom:1px solid #eee;color:${resultColor};font-weight:700;">
+      <td style="padding:10px 12px;border-bottom:1px solid #332E35;font-weight:700;">${symbolCell}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid #332E35;color:${dirColor};font-weight:600;">${dirLabel}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid #332E35;">$${t.entry_price} ← $${t.exit_price}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid #332E35;color:${resultColor};font-weight:700;">
         ${p !== null ? `${p >= 0 ? '+' : ''}${p.toFixed(2)}%` : '—'}
       </td>
-      <td style="padding:10px 12px;border-bottom:1px solid #eee;color:#888;font-size:13px;">${formatDate(t.closed_at as string)}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid #332E35;color:#9A939B;font-size:13px;">${formatDate(t.closed_at as string)}</td>
     </tr>`;
 }
 
@@ -170,43 +170,43 @@ async function buildSummaryHtml(targetMonth?: { year: number; month: number }, a
   const rangeLabel = `${formatDate(monthStart.toISOString())} - ${formatDate(displayEnd.toISOString())}`;
 
   const html = `
-  <div dir="rtl" style="font-family: Arial, Helvetica, sans-serif; background:#f4f4f5; padding:24px 12px;">
-    <div style="max-width:600px;margin:0 auto;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #e5e5e5;">
+  <div dir="rtl" style="font-family: Arial, Helvetica, sans-serif; background:#121013; padding:24px 12px;">
+    <div style="max-width:600px;margin:0 auto;background:#211F23;border-radius:14px;overflow:hidden;border:1px solid #332E35;">
 
-      <div style="background:#111318;padding:24px;text-align:center;">
-        <img src="${SITE_URL}/shiran-photo.jpg" width="56" height="56" alt="שירן דימור" style="width:56px;height:56px;border-radius:50%;object-fit:cover;border:2px solid #4fc9c4;margin-bottom:12px;" />
-        <div style="color:#fff;font-size:18px;font-weight:700;">מסחר <span style="color:#4fc9c4;">אחראי</span> במניות</div>
-        <div style="color:#9C8FD9;font-size:12.5px;letter-spacing:0.02em;margin-top:6px;">שירן דימור · ${audience === 'traders' ? `קבוצת הסוחרים &quot;${GROUP_NAME}&quot;` : 'קבוצת העדכונים'}</div>
+      <div style="background:#17151A;padding:24px;text-align:center;">
+        <img src="${SITE_URL}/shiran-photo.jpg" width="56" height="56" alt="שירן דימור" style="width:56px;height:56px;border-radius:50%;object-fit:cover;border:2px solid #FF2D78;margin-bottom:12px;" />
+        <div style="color:#fff;font-size:18px;font-weight:700;">מסחר <span style="color:#FF2D78;">אחראי</span> במניות</div>
+        <div style="color:#FFD18A;font-size:12.5px;letter-spacing:0.02em;margin-top:6px;">שירן דימור · ${audience === 'traders' ? `קבוצת הסוחרים &quot;${GROUP_NAME}&quot;` : 'קבוצת העדכונים'}</div>
         <div style="color:#fff;font-size:20px;font-weight:700;margin-top:14px;">סיכום החודש</div>
-        <div style="color:#aaa;font-size:13px;margin-top:4px;">${rangeLabel}</div>
+        <div style="color:#847D85;font-size:13px;margin-top:4px;">${rangeLabel}</div>
       </div>
 
-      <div style="display:flex;padding:20px 16px;gap:8px;border-bottom:1px solid #eee;">
+      <div style="display:flex;padding:20px 16px;gap:8px;border-bottom:1px solid #332E35;">
         <table style="width:100%;border-collapse:collapse;"><tr>
           <td style="text-align:center;padding:8px;">
-            <div style="font-size:20px;font-weight:700;color:${(avgPct ?? 0) >= 0 ? '#4FB876' : '#C9635E'};">${avgPct !== null ? `${avgPct >= 0 ? '+' : ''}${avgPct.toFixed(2)}%` : '—'}</div>
-            <div style="font-size:11.5px;color:#888;margin-top:2px;">תשואה ממוצעת החודש</div>
+            <div style="font-size:20px;font-weight:700;color:${(avgPct ?? 0) >= 0 ? '#3DDC84' : '#FF5C5C'};">${avgPct !== null ? `${avgPct >= 0 ? '+' : ''}${avgPct.toFixed(2)}%` : '—'}</div>
+            <div style="font-size:11.5px;color:#9A939B;margin-top:2px;">תשואה ממוצעת החודש</div>
           </td>
           <td style="text-align:center;padding:8px;">
-            <div style="font-size:20px;font-weight:700;color:#111;">${closedThisWeek.length}</div>
-            <div style="font-size:11.5px;color:#888;margin-top:2px;">עסקאות נסגרו</div>
+            <div style="font-size:20px;font-weight:700;color:#F2EFF1;">${closedThisWeek.length}</div>
+            <div style="font-size:11.5px;color:#9A939B;margin-top:2px;">עסקאות נסגרו</div>
           </td>
           <td style="text-align:center;padding:8px;">
-            <div style="font-size:20px;font-weight:700;color:#111;">${winRate !== null ? winRate.toFixed(0) + '%' : '—'}</div>
-            <div style="font-size:11.5px;color:#888;margin-top:2px;">אחוז הצלחה</div>
+            <div style="font-size:20px;font-weight:700;color:#F2EFF1;">${winRate !== null ? winRate.toFixed(0) + '%' : '—'}</div>
+            <div style="font-size:11.5px;color:#9A939B;margin-top:2px;">אחוז הצלחה</div>
           </td>
           <td style="text-align:center;padding:8px;">
-            <div style="font-size:20px;font-weight:700;color:#111;">${totalOpenNow}</div>
-            <div style="font-size:11.5px;color:#888;margin-top:2px;">עסקאות פתוחות כרגע</div>
+            <div style="font-size:20px;font-weight:700;color:#F2EFF1;">${totalOpenNow}</div>
+            <div style="font-size:11.5px;color:#9A939B;margin-top:2px;">עסקאות פתוחות כרגע</div>
           </td>
         </tr></table>
       </div>
 
       <div style="padding:20px 16px 4px;">
-        <div style="font-size:14.5px;font-weight:700;color:#111;margin-bottom:10px;">🟢 עסקאות פתוחות כרגע (${openedThisWeekStillOpen.length})</div>
-        ${openedThisWeekStillOpen.length === 0 ? `<div style="font-size:13px;color:#888;padding-bottom:16px;">אין עסקאות פתוחות כרגע</div>` : `
+        <div style="font-size:14.5px;font-weight:700;color:#F2EFF1;margin-bottom:10px;">🟢 עסקאות פתוחות כרגע (${openedThisWeekStillOpen.length})</div>
+        ${openedThisWeekStillOpen.length === 0 ? `<div style="font-size:13px;color:#9A939B;padding-bottom:16px;">אין עסקאות פתוחות כרגע</div>` : `
         <table style="width:100%;border-collapse:collapse;font-size:13.5px;">
-          <tr style="color:#888;font-size:11.5px;text-align:right;">
+          <tr style="color:#9A939B;font-size:11.5px;text-align:right;">
             <th style="padding:0 12px 6px;text-align:right;">סימבול</th>
             <th style="padding:0 12px 6px;text-align:right;">כיוון</th>
             <th style="padding:0 12px 6px;text-align:right;">כניסה</th>
@@ -219,10 +219,10 @@ async function buildSummaryHtml(targetMonth?: { year: number; month: number }, a
       </div>
 
       <div style="padding:20px 16px 4px;">
-        <div style="font-size:14.5px;font-weight:700;color:#111;margin-bottom:10px;">✔ נסגרו החודש (${closedThisWeek.length})</div>
-        ${closedThisWeek.length === 0 ? `<div style="font-size:13px;color:#888;padding-bottom:16px;">לא נסגרו עסקאות החודש</div>` : `
+        <div style="font-size:14.5px;font-weight:700;color:#F2EFF1;margin-bottom:10px;">✔ נסגרו החודש (${closedThisWeek.length})</div>
+        ${closedThisWeek.length === 0 ? `<div style="font-size:13px;color:#9A939B;padding-bottom:16px;">לא נסגרו עסקאות החודש</div>` : `
         <table style="width:100%;border-collapse:collapse;font-size:13.5px;">
-          <tr style="color:#888;font-size:11.5px;text-align:right;">
+          <tr style="color:#9A939B;font-size:11.5px;text-align:right;">
             <th style="padding:0 12px 6px;text-align:right;">סימבול</th>
             <th style="padding:0 12px 6px;text-align:right;">כיוון</th>
             <th style="padding:0 12px 6px;text-align:right;">כניסה ← יציאה</th>
@@ -235,14 +235,14 @@ async function buildSummaryHtml(targetMonth?: { year: number; month: number }, a
 
       ${audience === 'updates' ? `
       <div style="padding:6px 16px 24px;text-align:center;">
-        <div style="background:#f0faf9;border:1px solid #cdeeeb;border-radius:12px;padding:18px 16px;">
-          <div style="font-size:14.5px;font-weight:700;color:#111;margin-bottom:6px;">🚀 קבוצת הסוחרים &quot;${GROUP_NAME}&quot;</div>
-          <div style="font-size:13px;color:#666;">להצטרפות - חודש ראשון ב-₪1, כנסו ללינק</div>
+        <div style="background:#2A1B22;border:1px solid #4A2630;border-radius:12px;padding:18px 16px;">
+          <div style="font-size:14.5px;font-weight:700;color:#F2EFF1;margin-bottom:6px;">🚀 קבוצת הסוחרים &quot;${GROUP_NAME}&quot;</div>
+          <div style="font-size:13px;color:#9A939B;">להצטרפות - חודש ראשון ב-₪1, כנסו ללינק</div>
         </div>
       </div>` : `
       <div style="padding:6px 16px 24px;text-align:center;">
-        <div style="background:#f4f4f5;border:1px solid #e5e5e5;border-radius:12px;padding:16px;">
-          <div style="font-size:13px;color:#555;">חברים, אם יש פער בין העסקאות שלי לשלכם - זה בסדר, רק תוודאו שאתם יודעים למה. משהו לא ברור? אני כאן בפרטי.</div>
+        <div style="background:#121013;border:1px solid #332E35;border-radius:12px;padding:16px;">
+          <div style="font-size:13px;color:#C9C4C9;">חברים, אם יש פער בין העסקאות שלי לשלכם - זה בסדר, רק תוודאו שאתם יודעים למה. משהו לא ברור? אני כאן בפרטי.</div>
         </div>
       </div>`}
 
@@ -324,12 +324,12 @@ export async function sendMonthlySummaryEmail(targetMonth?: { year: number; mont
       to: 'shiran@shirandimor.com',
       subject: `סיכום החודש ל${audience === 'traders' ? 'קבוצת הסוחרים' : 'קבוצת העדכונים'} · ${rangeLabel}`,
       html: imageBase64
-        ? `<div dir="rtl" style="font-family: Arial, Helvetica, sans-serif; padding: 16px; color:#333;">
+        ? `<div dir="rtl" style="font-family: Arial, Helvetica, sans-serif; padding: 16px; color:#F2EFF1;">
             <p>הסיכום מצורף כתמונה למטה - אפשר לשמור ולשלוח אותה כמו שהיא ל${audience === 'traders' ? 'קבוצת הסוחרים' : 'קבוצת העדכונים'}.</p>
             ${audience === 'updates' ? `
             <p style="font-weight:700;margin-top:16px;">⚠️ שימו לב: בתוך התמונה עצמה הכפתור "הצטרפות עכשיו" אינו לחיץ - זו מגבלה של כל תמונה בוואטסאפ.</p>
             <p>מומלץ לצרף את הטקסט הבא כהודעה נפרדת מתחת לתמונה, כדי שהקישור יהיה לחיץ:</p>
-            <div style="background:#f4f4f5;border:1px solid #ddd;border-radius:8px;padding:14px;margin-top:8px;white-space:pre-line;">🚀 להצטרפות ל"${GROUP_NAME}" - חודש ראשון ב-₪1:
+            <div style="background:#121013;border:1px solid #433D46;border-radius:8px;padding:14px;margin-top:8px;white-space:pre-line;">🚀 להצטרפות ל"${GROUP_NAME}" - חודש ראשון ב-₪1:
 ${TRIAL_SIGNUP_URL}</div>` : ''}
           </div>`
         : html,
