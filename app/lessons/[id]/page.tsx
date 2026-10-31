@@ -200,7 +200,7 @@ export default function LessonDetailPage() {
                 השיעור פתוח לך. רוצה גם <strong style={{ color: 'var(--lavender)' }}>לסחור ביחד איתי</strong>? זה &quot;מדברים עסקאות&quot;.
               </div>
               <a
-                href="https://pay.grow.link/200a7cdcb258ee6ffdea0f423a1ace0e-MzE4MDU5OA"
+                href="https://pay.grow.link/ODUwNDc~e1145301cbce2cc9d1e0395611428e83-NDIxNTkxMw"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="btn-outline"

@@ -396,7 +396,7 @@ function MyPlanProgressPageInner() {
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', marginTop: '14px', paddingTop: '12px', borderTop: '1px solid var(--border-hairline)' }}>
                   <span style={{ fontSize: '11.5px', color: '#B4791F', fontWeight: 700 }}>🔒 נעול - למנויי &quot;מדברים עסקאות&quot; בלבד</span>
-                  <a href="https://pay.grow.link/200a7cdcb258ee6ffdea0f423a1ace0e-MzE4MDU5OA" style={{ fontSize: '11.5px', fontWeight: 700, color: '#FFFFFF', background: '#B4791F', borderRadius: '8px', padding: '6px 12px', textDecoration: 'none', flexShrink: 0 }}>
+                  <a href="https://pay.grow.link/ODUwNDc~e1145301cbce2cc9d1e0395611428e83-NDIxNTkxMw" style={{ fontSize: '11.5px', fontWeight: 700, color: '#FFFFFF', background: '#B4791F', borderRadius: '8px', padding: '6px 12px', textDecoration: 'none', flexShrink: 0 }}>
                     לפתוח גישה
                   </a>
                 </div>
@@ -439,7 +439,7 @@ function MyPlanProgressPageInner() {
                 המעקב האישי הזה חינמי לגמרי. מנויים מקבלים גם לסחור ביחד איתי, ליווי אישי, תשובות בזמן אמת, ואנשים שעוברים בדיוק את השלב הזה עכשיו. לא צריך קורס יקר כדי לדעת אם זה בשבילך, וגם לא ידע מוקדם - חודש ניסיון אחד מראה את זה הרבה יותר טוב.
               </p>
               <a
-                href="https://pay.grow.link/200a7cdcb258ee6ffdea0f423a1ace0e-MzE4MDU5OA"
+                href="https://pay.grow.link/ODUwNDc~e1145301cbce2cc9d1e0395611428e83-NDIxNTkxMw"
                 style={{ display: 'inline-block', fontSize: '13.5px', fontWeight: 700, color: '#FFFFFF', background: '#B4791F', borderRadius: '10px', padding: '12px 22px', textDecoration: 'none' }}
               >
                 הצטרפות ל&quot;מדברים עסקאות&quot; ←

@@ -44,8 +44,7 @@ export default function SubscribePage() {
           <strong style={{ color: 'var(--text-primary)' }}>למה ₪1 ולא ₪400 ישר?</strong> כי בחינם נרשמים גם בוטים, גם מי שסוגר טאב אחרי חמש שניות, וגם אותו בחור מאיראן שבטוח רוצה ללמוד ניהול סיכונים. ₪1 מוכיח שיש בן אדם אמיתי מהצד השני - ובתמורה מקבלים גישה מלאה לחודש שלם, לא גרסה מצומצמת. בסוף החודש, אם לא בוטל - ממשיכים אוטומטית ב-₪400. ביטול בלחיצה אחת, בכל רגע, לפני החיוב הבא - בלי שיחת מכירות, בלי דרמה.
         </p>
 
-        {/* TODO לפני merge ל-main: להחליף לקישור Grow האמיתי של "₪1 עכשיו, 400₪ אוטומטי לאחר מכן" (סליקה בטוקן/חיוב מתחדש) - זה עדיין הקישור הישן של תשלום חד-פעמי */}
-        <a href="https://pay.grow.link/200a7cdcb258ee6ffdea0f423a1ace0e-MzE4MDU5OA" target="_blank" className="btn-primary" style={{ display: 'block', textAlign: 'center', textDecoration: 'none' }} onClick={() => trackFunnelEvent('payment_link_click')}>
+        <a href="https://pay.grow.link/ODUwNDc~e1145301cbce2cc9d1e0395611428e83-NDIxNTkxMw" target="_blank" className="btn-primary" style={{ display: 'block', textAlign: 'center', textDecoration: 'none' }} onClick={() => trackFunnelEvent('payment_link_click')}>
           התחלה - חודש ראשון ב-₪1 ←
         </a>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', marginTop: '10px' }}>

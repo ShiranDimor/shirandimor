@@ -269,7 +269,7 @@ export function buildAbandonedEmailHtml(r: AbandonedRow, reminderNumber: 1 | 2 =
         <p style="font-size:13.5px;color:#444;line-height:1.7;">זה הרבה יותר פשוט ממה שזה נראה: כמה דקות כל כמה ימים, לא יותר. עם קצת עקביות, התיק יכול להיראות אחרי כמה חודשים לגמרי אחרת.</p>
         `}
 
-        <a href="https://pay.grow.link/200a7cdcb258ee6ffdea0f423a1ace0e-MzE4MDU5OA" style="display:block;text-align:center;background:transparent;color:#0f766e;text-decoration:none;font-weight:700;padding:12px;border-radius:10px;border:2px solid #4fc9c4;margin-top:10px;">
+        <a href="https://pay.grow.link/ODUwNDc~e1145301cbce2cc9d1e0395611428e83-NDIxNTkxMw" style="display:block;text-align:center;background:transparent;color:#0f766e;text-decoration:none;font-weight:700;padding:12px;border-radius:10px;border:2px solid #4fc9c4;margin-top:10px;">
           הצטרפות ל&quot;מדברים עסקאות&quot; ←
         </a>
 
