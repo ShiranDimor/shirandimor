@@ -238,12 +238,25 @@ export default function PortfolioPage() {
       };
     });
 
+  // גבולות ניווט בלוח השנה - אין סיבה לאפשר לדפדף לחודשים שלפני העסקה הסגורה הראשונה
+  // או אחרי החודש הנוכחי, גם אם אין שם שום עסקה
+  const closedMonthKeysSorted = Array.from(
+    new Set(closedTrades.filter((t) => t.closed_at).map((t) => monthKey(t.closed_at as string)))
+  ).sort();
+  const earliestMonthKey = closedMonthKeysSorted[0] ?? currentMonthKey();
+  const latestMonthKey = currentMonthKey();
+  const calMonthKey = `${calYear}-${String(calMonthIdx + 1).padStart(2, '0')}`;
+  const canGoPrevMonth = calMonthKey > earliestMonthKey;
+  const canGoNextMonth = calMonthKey < latestMonthKey;
+
   function goPrevMonth() {
+    if (!canGoPrevMonth) return;
     if (calMonthIdx === 0) { setCalYear((y) => y - 1); setCalMonthIdx(11); }
     else setCalMonthIdx((m) => m - 1);
   }
 
   function goNextMonth() {
+    if (!canGoNextMonth) return;
     if (calMonthIdx === 11) { setCalYear((y) => y + 1); setCalMonthIdx(0); }
     else setCalMonthIdx((m) => m + 1);
   }
@@ -333,7 +346,7 @@ export default function PortfolioPage() {
       <Reveal>
         <div className="section-label"><h2>צמיחת התיק של שירן</h2></div>
         <div className="equity-card">
-          <EquityCurve points={equityPoints} prefix="" suffix="%" />
+          <EquityCurve points={equityPoints} prefix="" suffix="%" showDelta={false} />
         </div>
       </Reveal>
 
@@ -353,7 +366,7 @@ export default function PortfolioPage() {
               <StatsRing
                 percent={winRate ?? 0}
                 label={`${closedTradesForInsights.length} עסקאות סגורות`}
-                sublabel="מאז תחילת המעקב"
+                sublabel="ב-3 החודשים האחרונים"
               />
             </div>
             <div className="insight-grid">
@@ -398,7 +411,7 @@ export default function PortfolioPage() {
               </select>
             </div>
           )}
-          <CalendarHeatmap year={calYear} month={calMonthIdx} items={calItems} onPrevMonth={goPrevMonth} onNextMonth={goNextMonth} hideUsd />
+          <CalendarHeatmap year={calYear} month={calMonthIdx} items={calItems} onPrevMonth={goPrevMonth} onNextMonth={goNextMonth} canGoPrev={canGoPrevMonth} canGoNext={canGoNextMonth} hideUsd />
         </div>
       </div>
 

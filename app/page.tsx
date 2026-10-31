@@ -109,7 +109,7 @@ export default function HomePage() {
         </header>
         <div className="quick-link-row">
           <Link href="/trading-plan" className="quick-link-pill">תוכנית מסחר</Link>
-          <Link href="/lives" className="quick-link-pill">מסחר בזמן אמת</Link>
+          <Link href="/lives" className="quick-link-pill">מפגשים קרובים</Link>
           <Link href="/portfolio" className="quick-link-pill">תיק מסחר</Link>
           <Link href="/lessons" className="quick-link-pill">ספריית שיעורים</Link>
           <Link href="/business" className="quick-link-pill">לארגונים</Link>

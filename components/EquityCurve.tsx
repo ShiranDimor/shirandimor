@@ -8,6 +8,7 @@ type Props = {
   points: Point[];
   prefix?: string;
   suffix?: string;
+  showDelta?: boolean;
 };
 
 const W = 640;
@@ -16,7 +17,7 @@ const PAD_TOP = 14;
 const PAD_BOTTOM = 26;
 const PAD_SIDE = 4;
 
-export default function EquityCurve({ points, prefix = '$', suffix = '' }: Props) {
+export default function EquityCurve({ points, prefix = '$', suffix = '', showDelta = true }: Props) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
 
@@ -60,9 +61,11 @@ export default function EquityCurve({ points, prefix = '$', suffix = '' }: Props
         <div style={{ fontFamily: 'var(--font-mono)', fontSize: '26px', fontWeight: 700 }}>
           {prefix}{last.value.toLocaleString('he-IL')}{suffix}
         </div>
-        <div style={{ fontFamily: 'var(--font-mono)', fontSize: '13px', fontWeight: 600, color: deltaColor }}>
-          {delta >= 0 ? '+' : '-'}{prefix}{Math.abs(delta).toLocaleString('he-IL')}{suffix}
-        </div>
+        {showDelta && (
+          <div style={{ fontFamily: 'var(--font-mono)', fontSize: '13px', fontWeight: 600, color: deltaColor }}>
+            {delta >= 0 ? '+' : '-'}{prefix}{Math.abs(delta).toLocaleString('he-IL')}{suffix}
+          </div>
+        )}
       </div>
       <svg ref={svgRef} viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto', overflow: 'visible' }}>
         <defs>

@@ -10,6 +10,8 @@ type Props = {
   items: ClosedItem[];
   onPrevMonth: () => void;
   onNextMonth: () => void;
+  canGoPrev?: boolean;
+  canGoNext?: boolean;
   hideUsd?: boolean;
 };
 
@@ -20,7 +22,7 @@ function pad2(n: number) {
   return String(n).padStart(2, '0');
 }
 
-export default function CalendarHeatmap({ year, month, items, onPrevMonth, onNextMonth, hideUsd = false }: Props) {
+export default function CalendarHeatmap({ year, month, items, onPrevMonth, onNextMonth, canGoPrev = true, canGoNext = true, hideUsd = false }: Props) {
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
 
   const firstDow = new Date(year, month, 1).getDay();
@@ -76,8 +78,9 @@ export default function CalendarHeatmap({ year, month, items, onPrevMonth, onNex
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
         <button
           onClick={onPrevMonth}
+          disabled={!canGoPrev}
           aria-label="חודש קודם"
-          style={{ background: 'none', border: '1px solid var(--border-hairline-strong)', borderRadius: '7px', width: '28px', height: '28px', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '14px' }}
+          style={{ background: 'none', border: '1px solid var(--border-hairline-strong)', borderRadius: '7px', width: '28px', height: '28px', color: 'var(--text-secondary)', cursor: canGoPrev ? 'pointer' : 'default', opacity: canGoPrev ? 1 : 0.35, fontSize: '14px' }}
         >→</button>
         <div style={{ textAlign: 'center' }}>
           <div style={{ fontWeight: 700, fontSize: '13px' }}>{MONTH_LABELS[month]} {year}</div>
@@ -97,8 +100,9 @@ export default function CalendarHeatmap({ year, month, items, onPrevMonth, onNex
         </div>
         <button
           onClick={onNextMonth}
+          disabled={!canGoNext}
           aria-label="חודש הבא"
-          style={{ background: 'none', border: '1px solid var(--border-hairline-strong)', borderRadius: '7px', width: '28px', height: '28px', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '14px' }}
+          style={{ background: 'none', border: '1px solid var(--border-hairline-strong)', borderRadius: '7px', width: '28px', height: '28px', color: 'var(--text-secondary)', cursor: canGoNext ? 'pointer' : 'default', opacity: canGoNext ? 1 : 0.35, fontSize: '14px' }}
         >←</button>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '5px' }}>
