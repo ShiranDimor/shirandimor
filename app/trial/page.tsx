@@ -1,95 +1,17 @@
 'use client';
 
-import { useState } from 'react';
-import Link from 'next/link';
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 
+// עמוד "7 ימי ניסיון" הידני (השארת שם+נייד, שירן חוזרת בעצמה) הוחלף לגמרי במסלול כרטיס
+// אשראי אוטומטי ב-/subscribe (₪1 היום, 10 ימי גישה מלאה, ואז ₪400/חודש) - השער היחיד מעכשיו.
+// נשאר כהפניה כדי שקישורים ישנים (פוסטים, הודעות פוש שכבר נשלחו, בוט) ימשיכו לעבוד
 export default function TrialSignupPage() {
-  const [name, setName] = useState('');
-  const [phone, setPhone] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState('');
-  const [done, setDone] = useState(false);
+  const router = useRouter();
 
-  function isValidPhone(v: string) {
-    return /^05\d{8}$/.test(v.replace(/\D/g, ''));
-  }
+  useEffect(() => {
+    router.replace('/subscribe');
+  }, [router]);
 
-  async function handleSubmit() {
-    if (!name.trim() || !isValidPhone(phone)) {
-      setError('צריך שם ומספר נייד תקין (לדוגמה 0501234567)');
-      return;
-    }
-
-    setSubmitting(true);
-    setError('');
-
-    try {
-      const res = await fetch('/api/trial-signup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name.trim(), phone: phone.trim() }),
-      });
-      const data = await res.json().catch(() => ({}));
-
-      if (!res.ok) {
-        setError(data.error || 'שגיאה בשליחה, נסו שוב');
-      } else {
-        setDone(true);
-      }
-    } catch {
-      setError('שגיאת רשת, נסו שוב');
-    }
-
-    setSubmitting(false);
-  }
-
-  return (
-    <div className="wrap">
-      <header>
-        <Link href="/" className="brand">מסחר <span>אחראי</span> במניות</Link>
-        <Link href="/" className="nav-link">בית</Link>
-      </header>
-
-      <div className="form-title" style={{ fontSize: '22px' }}>7 ימי ניסיון ב&quot;מדברים עסקאות&quot; - ללא עלות</div>
-      <div style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.7, marginBottom: '20px' }}>
-        פתחתי סבב חדש של 7 ימי ניסיון ל&quot;מדברים עסקאות&quot; - בלי עלות ובלי התחייבות, כדי שתראו מבפנים איך זה נראה <strong style={{ color: 'var(--lavender)' }}>לסחור ביחד איתי</strong>. בלי ידע מוקדם. המקום מוגבל, אז כדי לשריין השאירו שם ונייד ואני אחזור אליכם.
-        <br /><br />
-        לפני ההצטרפות תתקיים שיחה קצרה איתי כדי לוודא התאמה.
-      </div>
-
-      {!done && (
-        <div className="tp-question-card">
-          <input
-            className="tp-text-input"
-            style={{ minHeight: 'auto', marginBottom: '10px' }}
-            placeholder="שם"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
-          <input
-            className="tp-text-input"
-            style={{ minHeight: 'auto', marginBottom: '10px' }}
-            type="tel"
-            placeholder="נייד"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
-          />
-
-          {error && <p style={{ color: 'var(--loss)', fontSize: '13px', marginBottom: '10px' }}>{error}</p>}
-
-          <button type="button" className="btn-primary" onClick={handleSubmit} disabled={submitting}>
-            {submitting ? 'שולחים...' : 'שריינו לי מקום'}
-          </button>
-        </div>
-      )}
-
-      {done && (
-        <div className="tp-question-card">
-          <div className="tp-question-title">קיבלנו! 🎉</div>
-          <div className="tp-step-intro">שיריינו לך מקום ל-7 ימי ניסיון. אני אחזור אליך לשיחה קצרה לוודא התאמה, ואז נסגור את הפרטים.</div>
-        </div>
-      )}
-
-    </div>
-  );
+  return null;
 }

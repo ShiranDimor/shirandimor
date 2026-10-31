@@ -23,7 +23,7 @@ type Trade = {
   current_price: number | null;
 };
 
-const TRIAL_SIGNUP_URL = 'https://www.shirandimor.com/trial';
+const TRIAL_SIGNUP_URL = 'https://www.shirandimor.com/subscribe';
 const GROUP_NAME = 'מדברים עסקאות';
 const SITE_URL = 'https://www.shirandimor.com';
 
@@ -277,7 +277,7 @@ function buildWhatsappSummaryText(data: Awaited<ReturnType<typeof buildSummaryHt
     '',
     'בשקט, בלי רעש וצלצולים, ובלי אלפי שקלים לקורס תיאורטי!!!',
     '',
-    'ל - 7 ימי ניסיון ללא עלות:',
+    'ל-10 ימי גישה מלאה תמורת ₪1:',
     TRIAL_SIGNUP_URL,
     'יום שקט לכולנו 🙏🏾',
   ].join('\n');
