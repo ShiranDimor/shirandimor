@@ -18,7 +18,6 @@ export default function ProgressBar({ stepIndex, totalSteps, onBack }: Props) {
         )}
         <div className="tp-progress-label">
           <span>שלב {stepIndex + 1} מתוך {totalSteps}</span>
-          <span>{pct}%</span>
         </div>
       </div>
       <div className="tp-progress-track">

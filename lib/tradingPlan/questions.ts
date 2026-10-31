@@ -35,8 +35,12 @@ export interface StepDef {
   showIf?: (answers: Record<string, unknown>) => boolean; // הצגה מותנית של השלב כולו
 }
 
-// מי שכבר יש לו ניסיון כלשהו במסחר (לא "עוד לא התחלתי בכלל")
-const hasSomeExperience = (answers: Record<string, unknown>) => answers.trading_experience !== 'not_started';
+// מי שכבר יש לו ניסיון כלשהו במסחר (לא "עוד לא התחלתי בכלל"). לפני שנענתה שאלת שלב 1 בכלל
+// (trading_experience עדיין undefined) מניחים "עדיין לא התחלתי" כברירת מחדל - כדי שמספר השלבים
+// הכולל שמוצג בשלב 1 יהיה כבר המספר הנכון והסופי, ולא יתכווץ אחרי התשובה הראשונה (היה מראה "1
+// מתוך 8" ואז קופץ ל"2 מתוך 5" למי שבחר "עדיין לא התחלתי")
+const hasSomeExperience = (answers: Record<string, unknown>) =>
+  typeof answers.trading_experience === 'string' && answers.trading_experience !== 'not_started';
 
 export const STEPS: StepDef[] = [
   {
@@ -82,7 +86,7 @@ export const STEPS: StepDef[] = [
   },
   {
     id: 'step-2',
-    title: 'מה אני רוצה מזה',
+    title: 'מה אני רוצה מזה?',
     intro: 'תודה על הפתיחות עד כאן. עכשיו קצת יותר לעומק - למה זה בכלל חשוב לכם.',
     questions: [
       {

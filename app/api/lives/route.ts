@@ -20,11 +20,16 @@ export async function GET(request: Request) {
     }
   }
 
+  // רק הקרובים - שבועיים קדימה לכל היותר, כדי שהרשימה הציבורית לא תיראה עמוסה/לא רלוונטית
+  // עם לייבים שנקבעו הרבה מראש
+  const twoWeeksFromNow = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
+
   const { data, error } = await supabaseAdmin
     .from('lives')
     .select('id, title, description, scheduled_at, join_info, open_to_all')
     .eq('published', true)
     .gte('scheduled_at', new Date().toISOString())
+    .lte('scheduled_at', twoWeeksFromNow.toISOString())
     .order('scheduled_at', { ascending: true });
 
   if (error) return NextResponse.json({ error: 'שגיאה בשליפה' }, { status: 500 });
