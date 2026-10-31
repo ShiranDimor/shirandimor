@@ -13,9 +13,8 @@ export const metadata: Metadata = {
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
-    // 'default' - סרגל סטטוס עם טקסט/אייקונים כהים, מתאים לרקע בהיר כמו הפלטה הנוכחית
-    // ('black-translucent' מניח רקע כהה מתחת, היה נכון רק לעיצוב הקודם)
-    statusBarStyle: 'default',
+    // 'black-translucent' - סרגל סטטוס עם טקסט/אייקונים בהירים, מתאים לרקע הכהה של הפלטה הנוכחית
+    statusBarStyle: 'black-translucent',
     title: 'שירן דימור',
   },
 };
