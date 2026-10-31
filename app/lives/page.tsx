@@ -192,7 +192,7 @@ export default function LivesPage() {
           )}
           {confirmedLeadIds.has(live.id) && (
             <div style={{ background: 'var(--profit-bg)', border: '1px solid var(--profit)', borderRadius: '8px', padding: '12px 14px', marginBottom: '10px', fontSize: '13px', lineHeight: 1.6 }}>
-              <p style={{ marginBottom: '10px' }}>✓ הפרטים נקלטו! הלייבים האלה פתוחים למנויי &quot;מדברים עסקאות&quot; - <strong style={{ color: 'var(--lavender)' }}>סוחרים ביחד איתי</strong>, בלי ידע מוקדם. אפשר להתחיל בחודש ראשון מלא ב-₪1 ולקבל גישה מיידית:</p>
+              <p style={{ marginBottom: '10px' }}>✓ הפרטים נקלטו! הלייבים האלה פתוחים למנויי &quot;מדברים עסקאות&quot; - <strong style={{ color: 'var(--lavender)' }}>סוחרים ביחד איתי, בלי ידע מוקדם</strong>. אפשר להתחיל בחודש ראשון מלא ב-₪1 ולקבל גישה מיידית:</p>
               <Link href="/subscribe" className="btn-primary" style={{ display: 'block', textAlign: 'center', textDecoration: 'none', marginBottom: '10px', background: accentColor }}>
                 חודש ראשון ב-₪1 ←
               </Link>

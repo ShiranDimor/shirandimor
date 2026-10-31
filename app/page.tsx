@@ -140,7 +140,7 @@ export default function HomePage() {
         <PushNotificationButton variant="hero" autoOpenLeadForm={autoOpenNotifications} />
 
         <p style={{ fontSize: '13px', color: 'var(--text-secondary)', textAlign: 'center', lineHeight: 1.6, maxWidth: 'none', marginTop: '14px', marginBottom: '6px' }}>
-          ומי שרוצה צעד רחוק יותר - <strong style={{ color: 'var(--lavender)' }}>סוחרים ביחד איתי, בונים תיק השקעות</strong>. בלי ידע מוקדם.
+          ומי שרוצה צעד רחוק יותר - <strong style={{ color: 'var(--lavender)' }}>סוחרים ביחד איתי, בונים תיק השקעות, בלי ידע מוקדם</strong>.
         </p>
         <Link className="cta-sub-link" href="/subscribe">להכיר את &quot;מדברים עסקאות&quot; <span>←</span></Link>
       </div>
@@ -284,7 +284,7 @@ export default function HomePage() {
           <div className="gc-tag">צעד 2 · גישה מלאה</div>
           <h3>מדברים עסקאות</h3>
           <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', lineHeight: 1.55, marginBottom: '10px' }}>
-            <strong style={{ color: 'var(--lavender)' }}>סוחרים ביחד איתי</strong>. בלי ידע מוקדם.
+            <strong style={{ color: 'var(--lavender)' }}>סוחרים ביחד איתי, בלי ידע מוקדם</strong>.
           </p>
           <div className="gc-price">₪400 לחודש <span style={{ color: 'var(--profit)', fontWeight: 600 }}>· חודש ראשון ב-₪1</span></div>
           <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '-10px', marginBottom: '14px' }}>מנוי חודשי · ללא התחייבות</div>
