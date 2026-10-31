@@ -71,23 +71,26 @@ export async function ensureActiveSubscriberAccount(email: string, phone: string
   // טלפון קודם, מייל רק כגיבוי: לכל אדם יש נייד אחד ויחיד, אבל אותו אדם יכול להופיע עם כמה
   // מיילים שונים (למשל שילם פעם עם מייל אחר) - התאמה לפי מייל קודם הייתה מפספסת את זה ויוצרת
   // בטעות חשבון מנוי כפול
-  let matched: { id: string; role: string } | null = null;
+  let matched: { id: string; role: string; subscription_status: string | null } | null = null;
   const normalizedNewPhone = normalizePhone(phone);
   if (normalizedNewPhone) {
-    const { data: withPhone } = await supabaseAdmin.from('profiles').select('id, role, phone').not('phone', 'is', null);
+    const { data: withPhone } = await supabaseAdmin.from('profiles').select('id, role, subscription_status, phone').not('phone', 'is', null);
     matched = (withPhone || []).find((p) => normalizePhone(p.phone) === normalizedNewPhone) || null;
   }
   if (!matched) {
-    const { data: existing } = await supabaseAdmin.from('profiles').select('id, role').eq('email', email).maybeSingle();
+    const { data: existing } = await supabaseAdmin.from('profiles').select('id, role, subscription_status').eq('email', email).maybeSingle();
     matched = existing;
   }
 
   if (matched) {
     const updates: Record<string, unknown> = { phone, full_name: fullName };
-    if (matched.role !== 'admin' && matched.role !== 'subscriber') {
+    // "לא מנוי פעיל עדיין" כולל גם מי שהיה מנוי ובוטל (role נשאר subscriber, אבל
+    // subscription_status !== 'active') - צריך להפעיל מחדש בדיוק כמו הצטרפות ראשונה
+    if (matched.role !== 'admin' && (matched.role !== 'subscriber' || matched.subscription_status !== 'active')) {
       updates.role = 'subscriber';
       updates.subscription_status = 'active';
       updates.subscription_started_at = subscriptionStartedAt;
+      updates.subscription_cancelled_at = null;
     }
     if (isFirstMonthPrice) updates.trial_price_used = true;
     await supabaseAdmin.from('profiles').update(updates).eq('id', matched.id);
