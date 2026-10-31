@@ -277,7 +277,7 @@ function buildWhatsappSummaryText(data: Awaited<ReturnType<typeof buildSummaryHt
     '',
     'בשקט, בלי רעש וצלצולים, ובלי אלפי שקלים לקורס תיאורטי!!!',
     '',
-    'ל-10 ימי גישה מלאה תמורת ₪1:',
+    'חודש ראשון מלא ב-₪1:',
     TRIAL_SIGNUP_URL,
     'יום שקט לכולנו 🙏🏾',
   ].join('\n');
