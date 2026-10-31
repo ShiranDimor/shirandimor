@@ -23,18 +23,14 @@ type Trade = {
 const MONTH_LABELS_SHORT = ['ינו', 'פבר', 'מרץ', 'אפר', 'מאי', 'יונ', 'יול', 'אוג', 'ספט', 'אוק', 'נוב', 'דצמ'];
 const MONTH_LABELS_FULL = ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני', 'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר'];
 
-type MonthHighlight = { key: string; label: string; fullLabel: string; trades: number; winRate: number };
-
-function calcPct(trade: Trade) {
-  const current = trade.status === 'open' ? trade.current_price : trade.exit_price;
-  if (!current) return 0;
-  return ((current - trade.entry_price) / trade.entry_price) * 100 * (trade.direction === 'short' ? -1 : 1);
-}
+type MonthHighlight = { key: string; label: string; fullLabel: string; trades: number; portfolioPct: number };
 
 // מקבץ עסקאות סגורות לפי חודש - כל חודש שבו היו בכלל עסקאות, לא רק שלושת האחרונים. הראשון
 // ברשימה (החודש העדכני ביותר) הוא ברירת המחדל שמוצגת ראשונה בתיבת הבחירה בעמוד הבית - כדי
-// שהדבר הראשון שרואים תמיד יהיה סיכום חודשי (אחוז הצלחה), לא עסקה בודדת שעלולה להיות בהפסד
-function buildMonthHighlights(closedTrades: Trade[]): MonthHighlight[] {
+// שהדבר הראשון שרואים תמיד יהיה סיכום חודשי, לא עסקה בודדת שעלולה להיות בהפסד. המספר הוא
+// הרווח/הפסד בפועל על התיק (לא אחוז הצלחה של עסקאות) - בדיוק כמו ב-/portfolio, כדי שלא יהיה
+// מצב שבו עמוד הבית מראה "30% הצלחה" ירוק בזמן שבעמוד התיק אותו חודש ממש מראה הפסד אמיתי
+function buildMonthHighlights(closedTrades: Trade[], initialBalance: number | null): MonthHighlight[] {
   const byMonth = new Map<string, Trade[]>();
   for (const t of closedTrades) {
     if (!t.closed_at) continue;
@@ -47,13 +43,13 @@ function buildMonthHighlights(closedTrades: Trade[]): MonthHighlight[] {
 
   return months.map(([key, trades]) => {
     const [year, monthIdx] = key.split('-').map(Number);
-    const wins = trades.filter((t) => calcPct(t) >= 0).length;
+    const monthPnlUsd = trades.reduce((s, t) => s + (t.realized_pnl_usd ?? 0), 0);
     return {
       key,
       label: MONTH_LABELS_SHORT[monthIdx],
       fullLabel: `${MONTH_LABELS_FULL[monthIdx]} ${year}`,
       trades: trades.length,
-      winRate: Math.round((wins / trades.length) * 100),
+      portfolioPct: initialBalance ? (monthPnlUsd / initialBalance) * 100 : 0,
     };
   });
 }
@@ -106,11 +102,18 @@ export default function HomePage() {
         .order('closed_at', { ascending: false })
         .limit(80);
 
+      const { data: settings } = await supabase
+        .from('portfolio_settings')
+        .select('initial_balance')
+        .eq('id', 1)
+        .single();
+      const initialBalance = settings ? Number(settings.initial_balance) : null;
+
       if (open) {
         setOpenCount(open.length);
       }
       if (closed && closed.length > 0) {
-        const highlights = buildMonthHighlights(closed);
+        const highlights = buildMonthHighlights(closed, initialBalance);
         setMonthHighlights(highlights);
         setSelectedMonthKey(highlights[0].key);
       }
@@ -246,8 +249,10 @@ export default function HomePage() {
 
           {selectedMonth ? (
             <div className="pt-month-summary">
-              <div className="pt-month-num"><CountUp value={selectedMonth.winRate} suffix="%" /></div>
-              <div className="pt-month-sub">אחוז הצלחה ב{selectedMonth.fullLabel} · <CountUp value={selectedMonth.trades} /> עסקאות שנסגרו</div>
+              <div className="pt-month-num" style={{ color: selectedMonth.portfolioPct >= 0 ? 'var(--profit)' : 'var(--loss)' }}>
+                <CountUp value={selectedMonth.portfolioPct} prefix={selectedMonth.portfolioPct >= 0 ? '+' : ''} suffix="%" decimals={1} />
+              </div>
+              <div className="pt-month-sub">רווח על התיק ב{selectedMonth.fullLabel} · <CountUp value={selectedMonth.trades} /> עסקאות שנסגרו</div>
             </div>
           ) : (
             <div style={{ fontSize: '13px', color: 'var(--text-tertiary)', padding: '10px 0' }}>עדיין אין עסקאות סגורות להצגה</div>
