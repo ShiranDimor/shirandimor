@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { captureSourceFromUrl } from '@/lib/attribution';
 import { supabase } from '@/lib/supabase';
 import PushNotificationButton from '@/components/PushNotificationButton';
+import Reveal from '@/components/Reveal';
+import CountUp from '@/components/CountUp';
 
 type Trade = {
   id: string;
@@ -15,7 +17,41 @@ type Trade = {
   exit_price: number | null;
   status: string;
   realized_pnl_usd: number | null;
+  closed_at: string | null;
 };
+
+const MONTH_LABELS_SHORT = ['ינו', 'פבר', 'מרץ', 'אפר', 'מאי', 'יונ', 'יול', 'אוג', 'ספט', 'אוק', 'נוב', 'דצמ'];
+
+type MonthHighlight = { label: string; trades: number; winRate: number };
+
+function calcPct(trade: Trade) {
+  const current = trade.status === 'open' ? trade.current_price : trade.exit_price;
+  if (!current) return 0;
+  return ((current - trade.entry_price) / trade.entry_price) * 100 * (trade.direction === 'short' ? -1 : 1);
+}
+
+// מקבץ עסקאות סגורות לפי חודש, ומחזיר את 3 החודשים האחרונים שבהם היו בכלל עסקאות - כדי
+// שבלוח "מה קרה בחודשים האחרונים" תמיד יהיו נתונים אמיתיים, גם אם חודש מסוים היה שקט לגמרי
+function buildMonthHighlights(closedTrades: Trade[]): MonthHighlight[] {
+  const byMonth = new Map<string, Trade[]>();
+  for (const t of closedTrades) {
+    if (!t.closed_at) continue;
+    const d = new Date(t.closed_at);
+    const key = `${d.getFullYear()}-${d.getMonth()}`;
+    if (!byMonth.has(key)) byMonth.set(key, []);
+    byMonth.get(key)!.push(t);
+  }
+  const months = Array.from(byMonth.entries())
+    .sort((a, b) => (a[0] < b[0] ? 1 : -1))
+    .slice(0, 3)
+    .reverse();
+
+  return months.map(([key, trades]) => {
+    const monthIdx = Number(key.split('-')[1]);
+    const wins = trades.filter((t) => calcPct(t) >= 0).length;
+    return { label: MONTH_LABELS_SHORT[monthIdx], trades: trades.length, winRate: Math.round((wins / trades.length) * 100) };
+  });
+}
 
 export default function HomePage() {
   const [openTrades, setOpenTrades] = useState<Trade[]>([]);
@@ -23,6 +59,7 @@ export default function HomePage() {
   const [openCount, setOpenCount] = useState(0);
   const [showStickyCta, setShowStickyCta] = useState(false);
   const [hasFullAccess, setHasFullAccess] = useState(false);
+  const [monthHighlights, setMonthHighlights] = useState<MonthHighlight[]>([]);
   // מגיעים מקישור עם ?join=1 (מעמודים אחרים כמו /lives או /portfolio) - פותח ישר את שער
   // הרשמה להתראות בלי צורך ללחוץ קודם על הכפתור. נקרא סינכרונית ב-useState (לא ב-useEffect)
   // כדי שהערך הנכון יגיע לרינדור הראשון של PushNotificationButton - אחרת ה-useEffect הפנימי
@@ -63,25 +100,23 @@ export default function HomePage() {
         .select('*')
         .eq('status', 'closed')
         .order('closed_at', { ascending: false })
-        .limit(1);
+        .limit(80);
 
       if (open) {
         setOpenTrades(open.slice(0, 2));
         setOpenCount(open.length);
       }
-      if (closed && closed.length > 0) setLastClosed(closed[0]);
+      if (closed && closed.length > 0) {
+        setLastClosed(closed[0]);
+        setMonthHighlights(buildMonthHighlights(closed));
+      }
     } catch (e) {
       // בלי try/catch כאן, שגיאה הייתה משאירה את התצוגה בשקט על 0 עסקאות בלי שום סימן לבעיה
       console.error('homepage loadTrades failed', e);
     }
   }
 
-  function pctChange(trade: Trade) {
-    const current = trade.status === 'open' ? trade.current_price : trade.exit_price;
-    if (!current) return 0;
-    const pct = ((current - trade.entry_price) / trade.entry_price) * 100 * (trade.direction === 'short' ? -1 : 1);
-    return pct;
-  }
+  const pctChange = calcPct;
 
   return (
     <div className="wrap">
@@ -110,97 +145,127 @@ export default function HomePage() {
         <Link className="cta-sub-link" href="/subscribe">להכיר את &quot;מדברים עסקאות&quot; <span>←</span></Link>
       </div>
 
-      <div className="trust-strip">
-        <div className="trust-item"><div className="num">0%</div><div className="lbl">הבטחות תשואה</div></div>
-        <div className="trust-item"><div className="num">100%</div><div className="lbl">שקיפות, כולל הפסדים</div></div>
-        <div className="trust-item"><div className="num">3</div><div className="lbl">סגנונות מסחר, קהילה אחת</div></div>
-      </div>
+      <Reveal className="trust-strip">
+        <div className="trust-item"><div className="num"><CountUp value={0} suffix="%" /></div><div className="lbl">הבטחות תשואה</div></div>
+        <div className="trust-item"><div className="num"><CountUp value={100} suffix="%" /></div><div className="lbl">שקיפות, כולל הפסדים</div></div>
+        <div className="trust-item"><div className="num"><CountUp value={3} /></div><div className="lbl">סגנונות מסחר, קהילה אחת</div></div>
+      </Reveal>
 
-      <div className="about-feature">
+      {monthHighlights.length > 0 && (
+        <Reveal delay={80}>
+          <div className="section-label" style={{ marginTop: '4px' }}><h2>מה קרה בחודשים האחרונים</h2></div>
+          <div className="monthly-highlights">
+            {monthHighlights.map((m, i) => (
+              <Reveal key={m.label} delay={120 * i} className="monthly-highlight-tile">
+                <div className="mh-month">{m.label}</div>
+                <div className="mh-num" style={{ color: 'var(--teal)' }}><CountUp value={m.winRate} suffix="%" /></div>
+                <div className="mh-label">אחוז הצלחה · <CountUp value={m.trades} /> עסקאות</div>
+              </Reveal>
+            ))}
+          </div>
+          <p style={{ fontSize: '10.5px', color: 'var(--text-tertiary)', marginBottom: '20px' }}>לפי עסקאות שנסגרו בתיק של שירן - כולל ההפסדים, לא רק ההצלחות.</p>
+        </Reveal>
+      )}
+
+      <Reveal className="about-feature">
         <img className="af-photo" src="/shiran-photo.jpg" alt="שירן דימור" />
         <div className="af-text">
           <div className="af-label">מי אני</div>
           <p className="af-main">שירן דימור, סוחרת 14 שנה בשוק. לא הפכתי למיליארדרית, ולא אבטיח לך שזה יקרה. מה שכן - <strong>למדתי לנהל סיכונים כמו שצריך</strong>, פחות מלהיב מרכב יוקרה באינסטגרם, אבל הרבה יותר מציאותי לאורך זמן. ואת זה אני רוצה ללמד גם אותך.</p>
         </div>
-      </div>
+      </Reveal>
 
-      <Link href="/trading-plan" className="tp-home-teaser">
-        <div className="tp-home-teaser-badge">10 דקות · בלי התחייבות</div>
-        <div className="tp-home-teaser-title">8 שלבים לבניית תוכנית מסחר</div>
-        <div className="tp-home-teaser-text">כמה שאלות קצרות, ובסוף יוצאים עם תוכנית עבודה ברורה - לא עוד טופס, ולא עוד הבטחה.</div>
-        <div className="tp-home-teaser-cta">להתחיל <span>←</span></div>
-      </Link>
+      <Reveal>
+        <Link href="/trading-plan" className="tp-home-teaser">
+          <div className="tp-home-teaser-badge">10 דקות · בלי התחייבות</div>
+          <div className="tp-home-teaser-title">8 שלבים לבניית תוכנית מסחר</div>
+          <div className="tp-home-teaser-text">כמה שאלות קצרות, ובסוף יוצאים עם תוכנית עבודה ברורה - לא עוד טופס, ולא עוד הבטחה.</div>
+          <div className="tp-home-teaser-cta">להתחיל <span>←</span></div>
+        </Link>
+      </Reveal>
 
-      <Link href="/lives" className="live-teaser">
-        <span className="live-dot" />
-        <span className="live-teaser-text"><strong>הלייבים הקרובים</strong> - סוחרים ביחד איתי בזמן אמת, לא רק לומדים: לבנות תיק השקעות אחראי ומציאותי הרבה יותר פשוט ממה שנדמה</span>
-        <span className="live-teaser-arrow">←</span>
-      </Link>
+      <Reveal>
+        <Link href="/lives" className="live-teaser">
+          <span className="live-dot" />
+          <span className="live-teaser-text"><strong>הלייבים הקרובים</strong> - סוחרים ביחד איתי בזמן אמת, לא רק לומדים: לבנות תיק השקעות אחראי ומציאותי הרבה יותר פשוט ממה שנדמה</span>
+          <span className="live-teaser-arrow">←</span>
+        </Link>
+      </Reveal>
 
-      <div className="section-label"><h2>אז למי זה מתאים?</h2></div>
-      <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.65, marginBottom: '12px' }}>
-        <strong style={{ color: 'var(--text-primary)' }}>אנשים רגילים, לא סוחרים במשרה מלאה</strong> - שרוצים שהחיסכון שלהם יעשה משהו חוץ מלשבת בעו"ש, בלי לשבת כל היום מול מסכים ובלי לעזוב את מה שהם כבר עושים.
-      </p>
-      <div className="tag-row">
-        <span className="tag-chip">שכירים</span><span className="tag-chip">הורים</span><span className="tag-chip">עצמאיים</span><span className="tag-chip">סטודנטים</span><span className="tag-chip">עם ניסיון לא מוצלח</span><span className="tag-chip">בלי שום ניסיון</span>
-      </div>
-      <div className="stat-callout">
-        <div className="sc-num">90%</div>
-        <p>הסיבה האמיתית לכך שרוב האנשים לא מתחילים להשקיע, או נושרים אחרי כמה חודשים - זה לא חוסר ידע. זה <strong>הפן המנטלי</strong>: הפחד להפסיד, הקושי לקבל הפסד, וחוסר הסבלנות להישאר בתהליך. אבל בעיקר - הבהלה מהתחום עצמו, וההרגשה של "צריך לדעת המון" ו"מה אני בכלל קשור לזה".</p>
-      </div>
-
-      <div className="section-label" style={{ marginTop: '30px' }}><h2 style={{ color: 'var(--loss)' }}>למי זה פחות מתאים</h2></div>
-      <div className="not-fit">
-        <div>– מי שמחפש רווח מובטח או כסף מהיר (אם היה לי את זה, לא הייתי פה כותבת - הייתי על יאכטה)</div>
-        <div>– מי שרוצה שמישהי אחרת תקבל עבורו את כל ההחלטות</div>
-        <div>– מי שמתכוון לסחור בכסף שהוא צריך למחיה, או בהלוואה</div>
-        <div>– מי שלא מבין שהפסדים הם חלק מהמסחר</div>
-      </div>
-
-      <div className="section-label" style={{ marginTop: '20px' }}><h2 style={{ color: 'var(--profit)' }}>למי זה כן מתאים</h2></div>
-      <div className="not-fit">
-        <div>– מי שרוצה תיק מסחר אמיתי ושקוף, כולל רווחים והפסדים</div>
-        <div>– מי שרוצה ליווי אישי ממני וקהילה תומכת לאורך הדרך</div>
-        <div>– מי שרוצה ללמוד גם את החלק הכי משמעותי - הפן המנטאלי</div>
-        <div>– מי שרוצה גישה למסחר תוך-יומי, סווינג והשקעות לטווח ארוך</div>
-      </div>
-
-      <div className="section-label" style={{ marginTop: '30px' }}><h2>אז איך זה נראה, תכלס?</h2></div>
-      <div className="portfolio-teaser">
-        <div className="pt-head">
-          <div className="pt-title">התיק של שירן</div>
-          <div className="pt-badge">{openCount} עסקאות פתוחות</div>
+      <Reveal>
+        <div className="section-label"><h2>אז למי זה מתאים?</h2></div>
+        <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.65, marginBottom: '12px' }}>
+          <strong style={{ color: 'var(--text-primary)' }}>אנשים רגילים, לא סוחרים במשרה מלאה</strong> - שרוצים שהחיסכון שלהם יעשה משהו חוץ מלשבת בעו"ש, בלי לשבת כל היום מול מסכים ובלי לעזוב את מה שהם כבר עושים.
+        </p>
+        <div className="tag-row">
+          <span className="tag-chip">שכירים</span><span className="tag-chip">הורים</span><span className="tag-chip">עצמאיים</span><span className="tag-chip">סטודנטים</span><span className="tag-chip">עם ניסיון לא מוצלח</span><span className="tag-chip">בלי שום ניסיון</span>
         </div>
-        {openTrades.length === 0 && !lastClosed && (
-          <div style={{ fontSize: '13px', color: 'var(--text-tertiary)', padding: '10px 0' }}>עדיין אין עסקאות להצגה</div>
-        )}
-        {openTrades.map((trade) => {
-          const pct = pctChange(trade);
-          return (
-            <div className="teaser-row" key={trade.id}>
-              <span className={`sym ${!hasFullAccess ? 'blurred' : ''}`}>{trade.symbol}</span>
-              <span className="pnl" style={{ color: pct >= 0 ? 'var(--profit)' : 'var(--loss)' }}>{pct >= 0 ? '+' : ''}{pct.toFixed(2)}%</span>
-            </div>
-          );
-        })}
-        {lastClosed && (
-          <>
-            {openTrades.length > 0 && (
-              <div style={{ fontSize: '10.5px', color: 'var(--text-tertiary)', paddingTop: '10px', borderTop: '1px solid var(--border-hairline)' }}>תוצאה אחרונה שנסגרה</div>
-            )}
-            <div className="teaser-row">
-              <span className="sym" style={{ color: 'var(--text-secondary)' }}>{lastClosed.symbol} (נסגרה)</span>
-              <span className="pnl" style={{ color: pctChange(lastClosed) >= 0 ? 'var(--profit)' : 'var(--loss)' }}>{pctChange(lastClosed) >= 0 ? '+' : ''}{pctChange(lastClosed).toFixed(2)}%</span>
-            </div>
-          </>
-        )}
-        <Link className="teaser-cta" href="/portfolio">צפייה בתיק המסחר המלא ←</Link>
-      </div>
+        <div className="stat-callout">
+          <div className="sc-num"><CountUp value={90} suffix="%" /></div>
+          <p>הסיבה האמיתית לכך שרוב האנשים לא מתחילים להשקיע, או נושרים אחרי כמה חודשים - זה לא חוסר ידע. זה <strong>הפן המנטלי</strong>: הפחד להפסיד, הקושי לקבל הפסד, וחוסר הסבלנות להישאר בתהליך. אבל בעיקר - הבהלה מהתחום עצמו, וההרגשה של "צריך לדעת המון" ו"מה אני בכלל קשור לזה".</p>
+        </div>
+      </Reveal>
 
-      <div className="section-label" style={{ marginTop: '30px' }}><h2>איך מתחילים?</h2></div>
-      <p style={{ fontSize: '13px', color: 'var(--text-tertiary)', marginBottom: '16px' }}>שני צעדים פשוטים - מתחילים בלי להוציא כלום, ומשדרגים כשנוח לכם.</p>
+      <Reveal>
+        <div className="section-label" style={{ marginTop: '30px' }}><h2 style={{ color: 'var(--loss)' }}>למי זה פחות מתאים</h2></div>
+        <div className="not-fit">
+          <div>– מי שמחפש רווח מובטח או כסף מהיר (אם היה לי את זה, לא הייתי פה כותבת - הייתי על יאכטה)</div>
+          <div>– מי שרוצה שמישהי אחרת תקבל עבורו את כל ההחלטות</div>
+          <div>– מי שמתכוון לסחור בכסף שהוא צריך למחיה, או בהלוואה</div>
+          <div>– מי שלא מבין שהפסדים הם חלק מהמסחר</div>
+        </div>
+      </Reveal>
+
+      <Reveal>
+        <div className="section-label" style={{ marginTop: '20px' }}><h2 style={{ color: 'var(--profit)' }}>למי זה כן מתאים</h2></div>
+        <div className="not-fit">
+          <div>– מי שרוצה תיק מסחר אמיתי ושקוף, כולל רווחים והפסדים</div>
+          <div>– מי שרוצה ליווי אישי ממני וקהילה תומכת לאורך הדרך</div>
+          <div>– מי שרוצה ללמוד גם את החלק הכי משמעותי - הפן המנטאלי</div>
+          <div>– מי שרוצה גישה למסחר תוך-יומי, סווינג והשקעות לטווח ארוך</div>
+        </div>
+      </Reveal>
+
+      <Reveal>
+        <div className="section-label" style={{ marginTop: '30px' }}><h2>אז איך זה נראה, תכלס?</h2></div>
+        <div className="portfolio-teaser">
+          <div className="pt-head">
+            <div className="pt-title">התיק של שירן</div>
+            <div className="pt-badge">{openCount} עסקאות פתוחות</div>
+          </div>
+          {openTrades.length === 0 && !lastClosed && (
+            <div style={{ fontSize: '13px', color: 'var(--text-tertiary)', padding: '10px 0' }}>עדיין אין עסקאות להצגה</div>
+          )}
+          {openTrades.map((trade) => {
+            const pct = pctChange(trade);
+            return (
+              <div className="teaser-row" key={trade.id}>
+                <span className={`sym ${!hasFullAccess ? 'blurred' : ''}`}>{trade.symbol}</span>
+                <span className="pnl" style={{ color: pct >= 0 ? 'var(--profit)' : 'var(--loss)' }}>{pct >= 0 ? '+' : ''}{pct.toFixed(2)}%</span>
+              </div>
+            );
+          })}
+          {lastClosed && (
+            <>
+              {openTrades.length > 0 && (
+                <div style={{ fontSize: '10.5px', color: 'var(--text-tertiary)', paddingTop: '10px', borderTop: '1px solid var(--border-hairline)' }}>תוצאה אחרונה שנסגרה</div>
+              )}
+              <div className="teaser-row">
+                <span className="sym" style={{ color: 'var(--text-secondary)' }}>{lastClosed.symbol} (נסגרה)</span>
+                <span className="pnl" style={{ color: pctChange(lastClosed) >= 0 ? 'var(--profit)' : 'var(--loss)' }}>{pctChange(lastClosed) >= 0 ? '+' : ''}{pctChange(lastClosed).toFixed(2)}%</span>
+              </div>
+            </>
+          )}
+          <Link className="teaser-cta" href="/portfolio">צפייה בתיק המסחר המלא ←</Link>
+        </div>
+      </Reveal>
+
+      <Reveal>
+        <div className="section-label" style={{ marginTop: '30px' }}><h2>איך מתחילים?</h2></div>
+        <p style={{ fontSize: '13px', color: 'var(--text-tertiary)', marginBottom: '16px' }}>שני צעדים פשוטים - מתחילים בלי להוציא כלום, ומשדרגים כשנוח לכם.</p>
+      </Reveal>
       <div className="groups-compare">
-        <div className="group-card free">
+        <Reveal className="group-card free">
           <div className="gc-tag" style={{ background: 'var(--profit-bg)', color: 'var(--profit)' }}>צעד 1</div>
           <h3>עדכונים בזמן אמת</h3>
           <div className="gc-price">ללא עלות</div>
@@ -214,8 +279,8 @@ export default function HomePage() {
             <div>אפשר לשדרג ל"מדברים עסקאות" בכל שלב, <strong>בקצב האישי</strong></div>
           </div>
           <a className="gc-cta" href="#" onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>הפעלה ללא עלות</a>
-        </div>
-        <div className="group-card paid">
+        </Reveal>
+        <Reveal className="group-card paid" delay={140}>
           <div className="gc-tag">צעד 2 · גישה מלאה</div>
           <h3>מדברים עסקאות</h3>
           <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', lineHeight: 1.55, marginBottom: '10px' }}>
@@ -232,42 +297,58 @@ export default function HomePage() {
             <div><strong>תיק מסחר</strong> אישי וניתוח העסקאות ע"י שירן</div>
           </div>
           <Link className="gc-cta" href="/subscribe">לפרטים על מדברים עסקאות</Link>
-        </div>
+        </Reveal>
       </div>
 
-      <div className="section-label" style={{ marginTop: '30px' }}><h2>שאלות שנשאלות הרבה</h2></div>
+      <Reveal>
+        <div className="section-label" style={{ marginTop: '30px' }}><h2>שאלות שנשאלות הרבה</h2></div>
+      </Reveal>
       <div className="faq-list">
-        <details className="faq-item" style={{ borderRightColor: 'var(--teal)' }}>
-          <summary>צריך ניסיון קודם בשוק ההון?</summary>
-          <p><strong>ממש לא</strong>. זה מתאים גם למי שמעולם לא סחר, וגם למי שכבר ניסה ולא הסתדר. מתחילים מהבסיס, ביחד.</p>
-        </details>
-        <details className="faq-item" style={{ borderRightColor: 'var(--orange)' }}>
-          <summary>צריך קודם לעשות קורס יקר?</summary>
-          <p>לא. אפשר לשלם אלפי שקלים על קורס עם הבטחות ליאכטה, ועדיין לא לדעת אם התחום בכלל מתאים לך. הדרך הכי נכונה וזולה להבין את זה לעומק היא פשוט לנסות חודש שלם (₪1) ולראות מבפנים מה זה תיק השקעות, איך שוק ההון עובד בפועל, ומה השיטה - במקום לצבור תיאוריה על הנייר לפני שמעיזים.</p>
-        </details>
-        <details className="faq-item" style={{ borderRightColor: 'var(--lavender)' }}>
-          <summary>כמה זמן ביום זה דורש?</summary>
-          <p>זה נבנה בדיוק בשביל אנשים עם עבודה וחיים - לא צריך לשבת שעות מול המסך. אפשר להסתפק בהשקעה של כמה דקות כל כמה ימים. מסחר תוך-יומי הוא אופציה, לא חובה.</p>
-        </details>
-        <details className="faq-item" style={{ borderRightColor: 'var(--profit)' }}>
-          <summary>מה קורה אם אני רוצה לבטל?</summary>
-          <p>אפשר לבטל בכל רגע נתון, בלי קנס ובלי שאלות. ביטול עד יום לפני מועד החיוב הבא (כולל אותו יום) מונע את החיוב הבא. אם החיוב כבר בוצע - זה תשלום מראש על חודש נוסף, וההצטרפות ממשיכה עד סופו.</p>
-        </details>
-        <details className="faq-item" style={{ borderRightColor: 'var(--teal)' }}>
-          <summary>זה בטוח? יש סיכון להפסיד כסף?</summary>
-          <p>כן. זה שוק ההון, לא פיקדון בבנק ולא הגרלה עם תוצאה בטוחה - ומי שמבטיח לך אחרת, תברח/י. המטרה שלי היא ללמד ניהול סיכון נכון, לא להבטיח רווחים.</p>
-        </details>
-        <details className="faq-item" style={{ borderRightColor: 'var(--lavender)' }}>
-          <summary>כמה כסף צריך כדי להתחיל?</summary>
-          <p>זה משתנה מאדם לאדם. יש מי שמתחילים עם תיק מסחר גדול, ויש מי שמתחילים עם תיק קטן מאוד. ויש גם כאלה שמתחילים בכלל בלי תיק מסחר משלהם, וסוחרים דרך תיקים ממומנים (Funded Accounts).</p>
-        </details>
+        <Reveal delay={0}>
+          <details className="faq-item" style={{ borderRightColor: 'var(--teal)' }}>
+            <summary>צריך ניסיון קודם בשוק ההון?</summary>
+            <p><strong>ממש לא</strong>. זה מתאים גם למי שמעולם לא סחר, וגם למי שכבר ניסה ולא הסתדר. מתחילים מהבסיס, ביחד.</p>
+          </details>
+        </Reveal>
+        <Reveal delay={60}>
+          <details className="faq-item" style={{ borderRightColor: 'var(--orange)' }}>
+            <summary>צריך קודם לעשות קורס יקר?</summary>
+            <p>לא. אפשר לשלם אלפי שקלים על קורס עם הבטחות ליאכטה, ועדיין לא לדעת אם התחום בכלל מתאים לך. הדרך הכי נכונה וזולה להבין את זה לעומק היא פשוט לנסות חודש שלם (₪1) ולראות מבפנים מה זה תיק השקעות, איך שוק ההון עובד בפועל, ומה השיטה - במקום לצבור תיאוריה על הנייר לפני שמעיזים.</p>
+          </details>
+        </Reveal>
+        <Reveal delay={120}>
+          <details className="faq-item" style={{ borderRightColor: 'var(--lavender)' }}>
+            <summary>כמה זמן ביום זה דורש?</summary>
+            <p>זה נבנה בדיוק בשביל אנשים עם עבודה וחיים - לא צריך לשבת שעות מול המסך. אפשר להסתפק בהשקעה של כמה דקות כל כמה ימים. מסחר תוך-יומי הוא אופציה, לא חובה.</p>
+          </details>
+        </Reveal>
+        <Reveal delay={180}>
+          <details className="faq-item" style={{ borderRightColor: 'var(--profit)' }}>
+            <summary>מה קורה אם אני רוצה לבטל?</summary>
+            <p>אפשר לבטל בכל רגע נתון, בלי קנס ובלי שאלות. ביטול עד יום לפני מועד החיוב הבא (כולל אותו יום) מונע את החיוב הבא. אם החיוב כבר בוצע - זה תשלום מראש על חודש נוסף, וההצטרפות ממשיכה עד סופו.</p>
+          </details>
+        </Reveal>
+        <Reveal delay={240}>
+          <details className="faq-item" style={{ borderRightColor: 'var(--teal)' }}>
+            <summary>זה בטוח? יש סיכון להפסיד כסף?</summary>
+            <p>כן. זה שוק ההון, לא פיקדון בבנק ולא הגרלה עם תוצאה בטוחה - ומי שמבטיח לך אחרת, תברח/י. המטרה שלי היא ללמד ניהול סיכון נכון, לא להבטיח רווחים.</p>
+          </details>
+        </Reveal>
+        <Reveal delay={300}>
+          <details className="faq-item" style={{ borderRightColor: 'var(--lavender)' }}>
+            <summary>כמה כסף צריך כדי להתחיל?</summary>
+            <p>זה משתנה מאדם לאדם. יש מי שמתחילים עם תיק מסחר גדול, ויש מי שמתחילים עם תיק קטן מאוד. ויש גם כאלה שמתחילים בכלל בלי תיק מסחר משלהם, וסוחרים דרך תיקים ממומנים (Funded Accounts).</p>
+          </details>
+        </Reveal>
       </div>
 
-      <div className="quote-block">
-        <span className="qmark" aria-hidden="true">"</span>
-        <p>השוק לא תמיד פשוט.<br />הדרך לסחור בו יכולה להיות.</p>
-        <span className="qauthor">שירן דימור</span>
-      </div>
+      <Reveal>
+        <div className="quote-block">
+          <span className="qmark" aria-hidden="true">"</span>
+          <p>השוק לא תמיד פשוט.<br />הדרך לסחור בו יכולה להיות.</p>
+          <span className="qauthor">שירן דימור</span>
+        </div>
+      </Reveal>
 
       {showStickyCta && !hasFullAccess && (
         <div className="sticky-cta">
