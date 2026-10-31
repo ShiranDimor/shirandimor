@@ -62,7 +62,10 @@ export async function findCompletedTradingPlanIdByContact(phone: string | null |
 // משותף בין אימות מנוי ידני (verify-membership), סנכרון תשלום מ-Grow, וסנכרון מנויים ממאנדיי.
 // startedAt אופציונלי - מאפשר להעביר את תאריך ההצטרפות האמיתי (למשל ממאנדיי) במקום "עכשיו",
 // כי תאריך ההצטרפות קובע את יום החיוב החודשי וחשוב לדיוק בחישובים כמו צפי הכנסה
-export async function ensureActiveSubscriberAccount(email: string, phone: string, fullName: string, startedAt?: string) {
+// isFirstMonthPrice - true כשהתשלום שהפעיל את הקריאה הזו הוא בדיוק מחיר החודש הראשון (1 ש"ח).
+// מסמן trial_price_used=true על הפרופיל לצמיתות (לא מתאפס גם אם המנוי בוטל אח"כ) - כדי
+// שאפשר יהיה בעתיד לזהות מי כבר ניצל את המחיר הסמלי ולא להציע לו אותו שוב ב-/subscribe
+export async function ensureActiveSubscriberAccount(email: string, phone: string, fullName: string, startedAt?: string, isFirstMonthPrice = false) {
   const subscriptionStartedAt = startedAt || new Date().toISOString();
 
   // טלפון קודם, מייל רק כגיבוי: לכל אדם יש נייד אחד ויחיד, אבל אותו אדם יכול להופיע עם כמה
@@ -86,6 +89,7 @@ export async function ensureActiveSubscriberAccount(email: string, phone: string
       updates.subscription_status = 'active';
       updates.subscription_started_at = subscriptionStartedAt;
     }
+    if (isFirstMonthPrice) updates.trial_price_used = true;
     await supabaseAdmin.from('profiles').update(updates).eq('id', matched.id);
     return;
   }
@@ -114,7 +118,10 @@ export async function ensureActiveSubscriberAccount(email: string, phone: string
 
   await supabaseAdmin
     .from('profiles')
-    .upsert({ id: userId, email, full_name: fullName, role: 'subscriber', subscription_status: 'active', subscription_started_at: subscriptionStartedAt, phone });
+    .upsert({
+      id: userId, email, full_name: fullName, role: 'subscriber', subscription_status: 'active',
+      subscription_started_at: subscriptionStartedAt, phone, trial_price_used: isFirstMonthPrice,
+    });
 }
 
 export { normalizePhone, normalizeEmail };

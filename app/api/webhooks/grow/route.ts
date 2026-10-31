@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { parseGrowPayload, syncGrowPaymentToMonday } from '@/lib/grow';
+import { parseGrowPayload, syncGrowPaymentToMonday, FIRST_MONTH_PRICE } from '@/lib/grow';
 import { ensureActiveSubscriberAccount } from '@/lib/subscriberStatus';
 import { sendLoginEmail } from '@/lib/instantLogin';
 
@@ -63,7 +63,10 @@ export async function POST(request: Request) {
   let siteAccount: 'ok' | 'skipped_no_email' | 'error' = 'skipped_no_email';
   if (payment.email) {
     try {
-      await ensureActiveSubscriberAccount(payment.email, payment.phone || '', payment.fullName || payment.email);
+      await ensureActiveSubscriberAccount(
+        payment.email, payment.phone || '', payment.fullName || payment.email,
+        undefined, payment.amount === FIRST_MONTH_PRICE
+      );
       await sendLoginEmail(payment.email);
       siteAccount = 'ok';
     } catch (e) {

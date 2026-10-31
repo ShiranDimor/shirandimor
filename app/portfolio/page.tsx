@@ -8,6 +8,8 @@ import StatsRing from '@/components/StatsRing';
 import EquityCurve from '@/components/EquityCurve';
 import CalendarHeatmap from '@/components/CalendarHeatmap';
 import PushNotificationButton from '@/components/PushNotificationButton';
+import Reveal from '@/components/Reveal';
+import CountUp from '@/components/CountUp';
 
 type Trade = {
   id: string;
@@ -26,6 +28,7 @@ type Trade = {
 };
 
 const MONTH_LABELS = ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני', 'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר'];
+const MONTH_LABELS_SHORT = ['ינו', 'פבר', 'מרץ', 'אפר', 'מאי', 'יונ', 'יול', 'אוג', 'ספט', 'אוק', 'נוב', 'דצמ'];
 
 function monthKey(dateStr: string) {
   const d = new Date(dateStr);
@@ -35,6 +38,11 @@ function monthKey(dateStr: string) {
 function monthLabel(key: string) {
   const [year, month] = key.split('-');
   return `${MONTH_LABELS[parseInt(month, 10) - 1]} ${year}`;
+}
+
+function monthLabelShort(key: string) {
+  const [, month] = key.split('-');
+  return MONTH_LABELS_SHORT[parseInt(month, 10) - 1];
 }
 
 function formatDate(iso: string | null) {
@@ -193,6 +201,23 @@ export default function PortfolioPage() {
 
   const totalTradesCount = openTrades.length + closedTrades.length;
 
+  // רצועת "חודשים אחרונים" שמופיעה לפני לוח השנה - כדי שהרושם הראשון כשנכנסים לתיק יהיה מגמה
+  // כללית (עד 6 חודשים אחרונים, אחוז הצלחה), ולא חודש בודד שעלול להיראות אדום בלוח השנה
+  const monthlyTrend = (() => {
+    const byMonth = new Map<string, Trade[]>();
+    for (const t of closedTrades) {
+      if (!t.closed_at) continue;
+      const key = monthKey(t.closed_at);
+      if (!byMonth.has(key)) byMonth.set(key, []);
+      byMonth.get(key)!.push(t);
+    }
+    const months = Array.from(byMonth.entries()).sort((a, b) => (a[0] < b[0] ? 1 : -1)).slice(0, 6);
+    return months.map(([key, trades]) => {
+      const wins = trades.filter((t) => pct(t) >= 0).length;
+      return { key, label: monthLabelShort(key), winRate: Math.round((wins / trades.length) * 100), count: trades.length };
+    });
+  })();
+
   // כאן, בניגוד לעמוד הניהול, מציגים את הצמיחה רק באחוזים ולא בסכום דולרי - כדי לא לחשוף
   // את גודל התיק האמיתי בכסף לכל מי שנכנס לעמוד הציבורי
   const equityPoints = (() => {
@@ -321,12 +346,67 @@ export default function PortfolioPage() {
         </>
       )}
 
-      <div className="section-label"><h2>צמיחת התיק של שירן</h2></div>
-      <div className="equity-card">
-        <EquityCurve points={equityPoints} prefix="" suffix="%" />
-      </div>
+      <Reveal>
+        <div className="section-label"><h2>צמיחת התיק של שירן</h2></div>
+        <div className="equity-card">
+          <EquityCurve points={equityPoints} prefix="" suffix="%" />
+        </div>
+      </Reveal>
+
+      {monthlyTrend.length > 0 && (
+        <Reveal delay={60}>
+          <div className="section-label" style={{ marginTop: '26px' }}><h2>מה קרה בחודשים האחרונים</h2></div>
+          <div className="month-ring-row">
+            {monthlyTrend.map((m, i) => (
+              <Reveal key={m.key} delay={80 * i} className="month-ring-tile">
+                <div
+                  className="month-ring"
+                  style={{ background: `conic-gradient(${m.winRate >= 50 ? 'var(--profit)' : 'var(--loss)'} ${m.winRate * 3.6}deg, var(--border-hairline) 0deg)` }}
+                >
+                  <div className="month-ring-inner"><CountUp value={m.winRate} suffix="%" /></div>
+                </div>
+                <div className="month-ring-label">{m.label}</div>
+                <div className="month-ring-sub"><CountUp value={m.count} /> עסקאות</div>
+              </Reveal>
+            ))}
+          </div>
+        </Reveal>
+      )}
 
       <div id="portfolio-story-area">
+        <Reveal delay={100}>
+          <div className="section-label" style={{ marginTop: '26px' }}><h2>תובנות התיק של שירן - כל הזמנים</h2></div>
+          <div className="insights-panel" style={{ marginBottom: '28px' }}>
+            <div className="insights-ring-row">
+              <StatsRing
+                percent={winRate ?? 0}
+                label={`${closedTradesForInsights.length} עסקאות סגורות`}
+                sublabel="מאז תחילת המעקב"
+              />
+            </div>
+            <div className="insight-grid">
+              <div className="insight-tile">
+                <div className="iv">{avgDaysToClose !== null ? avgDaysToClose.toFixed(1) : '—'}</div>
+                <div className="il">ימי החזקה בממוצע</div>
+              </div>
+              <div className="insight-tile">
+                <div className="iv" style={{ color: avgPnlPct !== null ? (avgPnlPct >= 0 ? 'var(--profit)' : 'var(--loss)') : undefined }}>
+                  {avgPnlPct !== null ? `${avgPnlPct >= 0 ? '+' : ''}${avgPnlPct.toFixed(2)}%` : '—'}
+                </div>
+                <div className="il">רווח/הפסד ממוצע לעסקה</div>
+              </div>
+              <div className="insight-tile">
+                <div className="iv">{riskReward !== null ? `1:${riskReward.toFixed(1)}` : '—'}</div>
+                <div className="il">יחס סיכון-סיכוי</div>
+              </div>
+              <div className="insight-tile">
+                <div className="iv">{totalTradesCount}</div>
+                <div className="il">סה&quot;כ עסקאות</div>
+              </div>
+            </div>
+          </div>
+        </Reveal>
+
         <div className="section-label"><h2>לוח שנה</h2></div>
         <div className="equity-card" style={{ marginBottom: '28px' }}>
           {availableClosedMonths.length > 1 && (
@@ -347,37 +427,6 @@ export default function PortfolioPage() {
             </div>
           )}
           <CalendarHeatmap year={calYear} month={calMonthIdx} items={calItems} onPrevMonth={goPrevMonth} onNextMonth={goNextMonth} hideUsd />
-        </div>
-
-        <div className="section-label"><h2>תובנות התיק של שירן - כל הזמנים</h2></div>
-        <div className="insights-panel" style={{ marginBottom: '28px' }}>
-          <div className="insights-ring-row">
-            <StatsRing
-              percent={winRate ?? 0}
-              label={`${closedTradesForInsights.length} עסקאות סגורות`}
-              sublabel="מאז תחילת המעקב"
-            />
-          </div>
-          <div className="insight-grid">
-            <div className="insight-tile">
-              <div className="iv">{avgDaysToClose !== null ? avgDaysToClose.toFixed(1) : '—'}</div>
-              <div className="il">ימי החזקה בממוצע</div>
-            </div>
-            <div className="insight-tile">
-              <div className="iv" style={{ color: avgPnlPct !== null ? (avgPnlPct >= 0 ? 'var(--profit)' : 'var(--loss)') : undefined }}>
-                {avgPnlPct !== null ? `${avgPnlPct >= 0 ? '+' : ''}${avgPnlPct.toFixed(2)}%` : '—'}
-              </div>
-              <div className="il">רווח/הפסד ממוצע לעסקה</div>
-            </div>
-            <div className="insight-tile">
-              <div className="iv">{riskReward !== null ? `1:${riskReward.toFixed(1)}` : '—'}</div>
-              <div className="il">יחס סיכון-סיכוי</div>
-            </div>
-            <div className="insight-tile">
-              <div className="iv">{totalTradesCount}</div>
-              <div className="il">סה&quot;כ עסקאות</div>
-            </div>
-          </div>
         </div>
       </div>
 

@@ -156,7 +156,7 @@ export default function HomePage() {
         </div>
 
         <p style={{ fontSize: '13px', color: 'var(--text-secondary)', textAlign: 'center', lineHeight: 1.6, maxWidth: 'none', marginTop: '14px', marginBottom: '6px' }}>
-          ומי שרוצה צעד רחוק יותר - <strong style={{ color: 'var(--lavender)' }}>סוחרים ביחד איתי, בונים תיק השקעות, בלי ידע מוקדם</strong>.
+          ומי שרוצה צעד רחוק יותר - <strong style={{ color: 'var(--lavender)' }}>סוחרים ביחד איתי, בלי ידע מוקדם</strong>.
         </p>
         <Link className="cta-sub-link" href="/subscribe">להכיר את &quot;מדברים עסקאות&quot; <span>←</span></Link>
       </div>
