@@ -237,22 +237,34 @@ export default function PushNotificationButton({ variant = 'default', autoOpenLe
     );
   }
 
+  // סטטוס "on" - אחרי שכבר אישרו פעם אחת, לא דוחפים להם לפרצוף אפשרות כיבוי עם אותו משקל
+  // ויזואלי כמו כפתור קריאה-לפעולה - זה רק מזמין אנשים לכבות. אישור מוצג כטקסט שקט בלבד,
+  // עם קישור קטן ועדין לכיבוי, בדיוק כמו בגרסת ה-hero
+  if (status === 'on') {
+    return (
+      <p style={{ fontSize: '13px', color: 'var(--profit)', fontWeight: 600, textAlign: 'center', marginBottom: '6px' }}>
+        🔔 העדכונים שלך פעילים
+        <button type="button" onClick={handleDisable} disabled={busy} style={{ background: 'none', border: 'none', color: 'var(--text-tertiary)', fontSize: '11px', fontWeight: 400, textDecoration: 'underline', cursor: 'pointer', marginRight: '8px', padding: 0 }}>
+          לכיבוי
+        </button>
+      </p>
+    );
+  }
+
   return (
     <>
       <button
         type="button"
         className="btn-outline"
         style={{ width: '100%', marginBottom: '6px' }}
-        onClick={status === 'on' ? handleDisable : handleEnable}
+        onClick={handleEnable}
         disabled={busy}
       >
-        {busy ? '...' : status === 'on' ? '🔔 העדכונים שלי פעילים - לכיבוי' : '🔔 אישור קבלת עדכונים'}
+        {busy ? '...' : '🔔 אישור קבלת עדכונים'}
       </button>
-      {status === 'off' && (
-        <p style={{ fontSize: '11px', color: 'var(--text-tertiary)', textAlign: 'center', marginBottom: '10px' }}>
-          באנדרואיד זה עובד ישר. באייפון צריך קודם להוסיף את האתר למסך הבית (שיתוף ← הוספה למסך הבית).
-        </p>
-      )}
+      <p style={{ fontSize: '11px', color: 'var(--text-tertiary)', textAlign: 'center', marginBottom: '10px' }}>
+        באנדרואיד זה עובד ישר. באייפון צריך קודם להוסיף את האתר למסך הבית (שיתוף ← הוספה למסך הבית).
+      </p>
     </>
   );
 }
