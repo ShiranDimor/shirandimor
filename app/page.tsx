@@ -130,12 +130,12 @@ export default function HomePage() {
 
       <Reveal className="trust-strip">
         <div className="trust-item"><div className="num"><CountUp value={0} suffix="%" /></div><div className="lbl">הבטחות תשואה</div></div>
-        <div className="trust-item"><div className="num" style={{ color: 'var(--profit)' }}><CountUp value={100} suffix="%" /></div><div className="lbl">שקיפות, כולל הפסדים</div></div>
-        <div className="trust-item"><div className="num" style={{ color: 'var(--lavender)' }}><CountUp value={3} /></div><div className="lbl">סגנונות מסחר, קהילה אחת</div></div>
+        <div className="trust-item"><div className="num"><CountUp value={100} suffix="%" /></div><div className="lbl">שקיפות, כולל הפסדים</div></div>
+        <div className="trust-item"><div className="num"><CountUp value={3} /></div><div className="lbl">סגנונות מסחר, קהילה אחת</div></div>
       </Reveal>
 
       <Reveal className="about-feature">
-        <img className="af-photo" src="/shiran-photo.jpg" alt="שירן דימור" />
+        <div className="af-photo-ring"><img className="af-photo" src="/shiran-photo.jpg" alt="שירן דימור" /></div>
         <div className="af-text">
           <div className="af-label">מי אני</div>
           <p className="af-main">שירן דימור, סוחרת 14 שנה בשוק. לא הפכתי למיליארדרית, ולא אבטיח לך שזה יקרה. מה שכן - <strong>למדתי לנהל סיכונים כמו שצריך</strong>, פחות מלהיב מרכב יוקרה באינסטגרם, אבל הרבה יותר מציאותי לאורך זמן. ואת זה אני רוצה ללמד גם אותך.</p>

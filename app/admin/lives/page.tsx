@@ -292,7 +292,7 @@ export default function AdminLivesPage() {
           <div>
             <div className="name">
               {live.title}
-              {!live.published && <span style={{ marginRight: '8px', fontSize: '10.5px', color: '#B4791F', border: '1px solid #B4791F', borderRadius: '5px', padding: '2px 6px' }}>טיוטה</span>}
+              {!live.published && <span style={{ marginRight: '8px', fontSize: '10.5px', color: '#E8A33D', border: '1px solid #E8A33D', borderRadius: '5px', padding: '2px 6px' }}>טיוטה</span>}
               {live.open_to_all && <span style={{ marginRight: '8px', fontSize: '10.5px', color: 'var(--profit)', border: '1px solid var(--profit)', borderRadius: '5px', padding: '2px 6px' }}>פתוח לכולם</span>}
             </div>
             <div className="email">
