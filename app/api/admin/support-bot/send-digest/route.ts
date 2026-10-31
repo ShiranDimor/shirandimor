@@ -67,19 +67,19 @@ export async function POST(request: Request) {
       const contactLine = c.contact_phone || c.contact_email || 'אין פרטי קשר';
       const link = `https://www.shirandimor.com/admin/support-bot/conversations?open=${c.id}`;
       return `
-        <div style="border:1px solid #e5e5e5;border-radius:12px;padding:16px;margin-bottom:14px;">
-          <p style="font-size:13.5px;color:#555;margin:0 0 4px;"><b>${c.contact_name || 'ללא שם'}</b> · ${contactLine}</p>
-          <p style="font-size:12.5px;color:#888;margin:0 0 12px;">${USER_TYPE_LABELS[c.user_type || 'unknown']}</p>
-          <p style="font-size:14px;color:#222;line-height:1.7;white-space:pre-wrap;margin:0 0 14px;">${c.summary}</p>
-          <a href="${link}" style="display:block;text-align:center;background:#4fc9c4;color:#08131a;text-decoration:none;font-weight:700;padding:10px;border-radius:8px;font-size:13px;">לצפייה בשיחה ←</a>
+        <div style="border:1px solid #332E35;border-radius:12px;padding:16px;margin-bottom:14px;">
+          <p style="font-size:13.5px;color:#C9C4C9;margin:0 0 4px;"><b>${c.contact_name || 'ללא שם'}</b> · ${contactLine}</p>
+          <p style="font-size:12.5px;color:#9A939B;margin:0 0 12px;">${USER_TYPE_LABELS[c.user_type || 'unknown']}</p>
+          <p style="font-size:14px;color:#F2EFF1;line-height:1.7;white-space:pre-wrap;margin:0 0 14px;">${c.summary}</p>
+          <a href="${link}" style="display:block;text-align:center;background:#FF2D78;color:#08131a;text-decoration:none;font-weight:700;padding:10px;border-radius:8px;font-size:13px;">לצפייה בשיחה ←</a>
         </div>`;
     })
     .join('');
 
   const html = `<!doctype html><html dir="rtl" lang="he"><head><meta charset="utf-8" /></head><body style="margin:0;padding:0;">
-    <div dir="rtl" style="font-family: Arial, Helvetica, sans-serif; background:#f4f4f5; padding:24px 12px;">
-      <div style="max-width:560px;margin:0 auto;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #e5e5e5;">
-        <div style="background:#111318;padding:20px 24px;">
+    <div dir="rtl" style="font-family: Arial, Helvetica, sans-serif; background:#121013; padding:24px 12px;">
+      <div style="max-width:560px;margin:0 auto;background:#211F23;border-radius:14px;overflow:hidden;border:1px solid #332E35;">
+        <div style="background:#17151A;padding:20px 24px;">
           <div style="color:#fff;font-size:16px;font-weight:700;">סיכום כל השיחות עם דור (${withSummary.length})</div>
         </div>
         <div style="padding:24px;">${rows}</div>

@@ -11,25 +11,25 @@ function buildReminderEmail(firstName: string) {
   const text = `היי${firstName ? ` ${firstName}` : ''},\n\nעכשיו אפשר לקבל התראות ישירות מהאתר במקום להמתין להודעות בוואטסאפ - עסקה חדשה, סטופ לוס, עסקה שנסגרה.\n\nבאנדרואיד: נכנסים ל-${SITE_URL}/portfolio ולוחצים "הפעלת התראות פוש".\nבאייפון: קודם צריך להוסיף את האתר למסך הבית (כפתור השיתוף בספארי ← הוספה למסך הבית), ואז לפתוח משם וללחוץ על אותו כפתור.\n\nלתיק: ${SITE_URL}/portfolio`;
 
   const html = wrapEmail(`
-  <div dir="rtl" style="font-family: Arial, Helvetica, sans-serif; background:#f4f4f5; padding:24px 12px;">
-    <div style="max-width:600px;margin:0 auto;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #e5e5e5;">
-      <div style="background:#111318;padding:24px;text-align:center;">
-        <img src="${SITE_URL}/shiran-photo.jpg" width="56" height="56" alt="שירן דימור" style="width:56px;height:56px;border-radius:50%;object-fit:cover;border:2px solid #4fc9c4;margin-bottom:12px;" />
-        <div style="color:#fff;font-size:18px;font-weight:700;">מסחר <span style="color:#4fc9c4;">אחראי</span> במניות</div>
-        <div style="color:#9C8FD9;font-size:14px;margin-top:10px;">🔔 התראות במקום וואטסאפ</div>
+  <div dir="rtl" style="font-family: Arial, Helvetica, sans-serif; background:#121013; padding:24px 12px;">
+    <div style="max-width:600px;margin:0 auto;background:#211F23;border-radius:14px;overflow:hidden;border:1px solid #332E35;">
+      <div style="background:#17151A;padding:24px;text-align:center;">
+        <img src="${SITE_URL}/shiran-photo.jpg" width="56" height="56" alt="שירן דימור" style="width:56px;height:56px;border-radius:50%;object-fit:cover;border:2px solid #FF2D78;margin-bottom:12px;" />
+        <div style="color:#fff;font-size:18px;font-weight:700;">מסחר <span style="color:#FF2D78;">אחראי</span> במניות</div>
+        <div style="color:#FFD18A;font-size:14px;margin-top:10px;">🔔 התראות במקום וואטסאפ</div>
       </div>
       <div style="padding:24px;">
-        <p style="font-size:14px;color:#222;line-height:1.7;">היי${firstName ? ` ${firstName}` : ''},</p>
-        <p style="font-size:14px;color:#222;line-height:1.7;">עכשיו אפשר לקבל התראות ישירות מהאתר במקום להמתין להודעות בוואטסאפ - עסקה חדשה, סטופ לוס שהופעל, עסקה שנסגרה. לוקח שתי דקות להפעיל:</p>
-        <div style="background:#f0fbfa;border:1px solid #cdeeeb;border-radius:10px;padding:14px 16px;margin:16px 0;">
-          <div style="font-size:13px;color:#0f172a;font-weight:700;margin-bottom:4px;">באנדרואיד</div>
-          <div style="font-size:13.5px;color:#444;line-height:1.6;">נכנסים לתיק ולוחצים &quot;הפעלת התראות פוש&quot; - זהו.</div>
+        <p style="font-size:14px;color:#F2EFF1;line-height:1.7;">היי${firstName ? ` ${firstName}` : ''},</p>
+        <p style="font-size:14px;color:#F2EFF1;line-height:1.7;">עכשיו אפשר לקבל התראות ישירות מהאתר במקום להמתין להודעות בוואטסאפ - עסקה חדשה, סטופ לוס שהופעל, עסקה שנסגרה. לוקח שתי דקות להפעיל:</p>
+        <div style="background:#2A1B22;border:1px solid #4A2630;border-radius:10px;padding:14px 16px;margin:16px 0;">
+          <div style="font-size:13px;color:#F2EFF1;font-weight:700;margin-bottom:4px;">באנדרואיד</div>
+          <div style="font-size:13.5px;color:#C9C4C9;line-height:1.6;">נכנסים לתיק ולוחצים &quot;הפעלת התראות פוש&quot; - זהו.</div>
         </div>
-        <div style="background:#f6f3fc;border:1px solid #e2dcf5;border-radius:10px;padding:14px 16px;margin-bottom:20px;">
-          <div style="font-size:13px;color:#0f172a;font-weight:700;margin-bottom:4px;">באייפון</div>
-          <div style="font-size:13.5px;color:#444;line-height:1.6;">קודם מוסיפים את האתר למסך הבית (שיתוף ← הוספה למסך הבית בספארי), ואז פותחים משם ולוחצים על הכפתור.</div>
+        <div style="background:#2A2419;border:1px solid #4A3F26;border-radius:10px;padding:14px 16px;margin-bottom:20px;">
+          <div style="font-size:13px;color:#F2EFF1;font-weight:700;margin-bottom:4px;">באייפון</div>
+          <div style="font-size:13.5px;color:#C9C4C9;line-height:1.6;">קודם מוסיפים את האתר למסך הבית (שיתוף ← הוספה למסך הבית בספארי), ואז פותחים משם ולוחצים על הכפתור.</div>
         </div>
-        <a href="${SITE_URL}/portfolio" style="display:block;text-align:center;background:#4fc9c4;color:#08131a;text-decoration:none;font-weight:700;padding:13px;border-radius:10px;">לתיק והפעלת התראות ←</a>
+        <a href="${SITE_URL}/portfolio" style="display:block;text-align:center;background:linear-gradient(90deg,#FF2D78,#FFB648);color:#1A181C;text-decoration:none;font-weight:700;padding:13px;border-radius:10px;">לתיק והפעלת התראות ←</a>
       </div>
     </div>
   </div>`);

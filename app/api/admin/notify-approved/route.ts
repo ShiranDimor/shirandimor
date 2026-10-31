@@ -35,17 +35,17 @@ export async function POST(request: Request) {
   const firstName = subscriber.full_name ? subscriber.full_name.split(' ')[0] : '';
 
   const html = `
-  <div dir="rtl" style="font-family: Arial, Helvetica, sans-serif; background:#f4f4f5; padding:24px 12px;">
-    <div style="max-width:480px;margin:0 auto;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #e5e5e5;">
-      <div style="background:#111318;padding:24px;text-align:center;">
-        <div style="color:#4FB876;font-size:26px;margin-bottom:6px;">✔</div>
+  <div dir="rtl" style="font-family: Arial, Helvetica, sans-serif; background:#121013; padding:24px 12px;">
+    <div style="max-width:480px;margin:0 auto;background:#211F23;border-radius:14px;overflow:hidden;border:1px solid #332E35;">
+      <div style="background:#17151A;padding:24px;text-align:center;">
+        <div style="color:#3DDC84;font-size:26px;margin-bottom:6px;">✔</div>
         <div style="color:#fff;font-size:19px;font-weight:700;">${firstName ? `${firstName}, ` : ''}אושרת!</div>
       </div>
       <div style="padding:24px;text-align:center;">
-        <p style="font-size:14.5px;color:#333;line-height:1.7;margin:0 0 20px;">
+        <p style="font-size:14.5px;color:#F2EFF1;line-height:1.7;margin:0 0 20px;">
           החשבון שלך בקבוצת הסוחרים אושר, ואפשר להיכנס לאתר עכשיו - בלי סיסמה, רק עם המייל הזה.
         </p>
-        <a href="https://www.shirandimor.com/login" style="display:inline-block;background:#9C8FD9;color:#fff;text-decoration:none;font-weight:700;font-size:14.5px;padding:13px 28px;border-radius:10px;">
+        <a href="https://www.shirandimor.com/login" style="display:inline-block;background:linear-gradient(90deg,#FF2D78,#FFB648);color:#1A181C;text-decoration:none;font-weight:700;font-size:14.5px;padding:13px 28px;border-radius:10px;">
           כניסה לאתר
         </a>
       </div>
