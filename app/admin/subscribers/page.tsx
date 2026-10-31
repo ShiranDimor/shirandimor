@@ -11,7 +11,6 @@ type ApprovedSub = {
   full_name: string | null;
   subscription_status: string | null;
   subscription_started_at: string | null;
-  subscription_cancelled_at: string | null;
 };
 
 export default function AdminSubscribersPage() {
@@ -41,6 +40,33 @@ export default function AdminSubscribersPage() {
   const [grantEmail, setGrantEmail] = useState('');
   const [granting, setGranting] = useState(false);
   const [grantMessage, setGrantMessage] = useState('');
+
+  // סיכום ההכנסה (היה פעם עמוד נפרד "/admin/revenue") - עבר לכאן כי זו אותה אוכלוסייה בדיוק
+  // (מי שבקבוצת הסוחרים במאנדיי הוא/היא בהכרח מנוי/ה משלם/ת), אין טעם בשתי רשימות נפרדות
+  const [revenueLoading, setRevenueLoading] = useState(false);
+  const [revenueRecomputing, setRevenueRecomputing] = useState(false);
+  const [revenueCount, setRevenueCount] = useState(0);
+  const [revenueTotal, setRevenueTotal] = useState(0);
+  const [revenueMonth, setRevenueMonth] = useState('');
+
+  function formatMonthLabel(month: string) {
+    if (!month) return '';
+    return new Date(`${month}T12:00:00`).toLocaleDateString('he-IL', { month: 'long', year: 'numeric' });
+  }
+
+  async function loadRevenue(force = false) {
+    force ? setRevenueRecomputing(true) : setRevenueLoading(true);
+    const { data: { session } } = await supabase.auth.getSession();
+    const res = await fetch(`/api/admin/revenue-projection${force ? '?force=1' : ''}`, { headers: { Authorization: `Bearer ${session?.access_token}` } });
+    if (res.ok) {
+      const data = await res.json();
+      setRevenueCount(data.count || 0);
+      setRevenueTotal(data.totalAmount || 0);
+      setRevenueMonth(data.month || '');
+    }
+    setRevenueLoading(false);
+    setRevenueRecomputing(false);
+  }
 
   async function handleSyncSubscribers() {
     setSyncing(true);
@@ -178,7 +204,7 @@ export default function AdminSubscribersPage() {
   }
 
   async function cancelSubscription(id: string, name: string) {
-    if (!window.confirm(`לבטל את המנוי של ${name}? הוא/היא יאבד/תאבד גישה מיידית, אבל החשבון ונתוני היומן יישארו שמורים - ואפשר להפעיל מחדש בכל רגע.`)) return;
+    if (!window.confirm(`לבטל את המנוי של ${name}? הוא יאבד גישה מיידית, אבל החשבון ונתוני היומן שלו יישארו שמורים. הוא יחזור להופיע ברשימת הלידים הרגילה.`)) return;
     setCancelling(id);
 
     const { data: { session } } = await supabase.auth.getSession();
@@ -189,24 +215,9 @@ export default function AdminSubscribersPage() {
     });
 
     setCancelling(null);
-    // לא מסירים את השורה מהתצוגה - מנוי שבוטל נשאר גלוי עם תג "בוטל", כדי שלא ייעלם סתם
-    // ויתערבב ברשימת לידים חדשים בלי שום סימן שהיה פעם מנוי בתשלום
-    if (res.ok) loadApprovedSubs();
-  }
-
-  async function reactivateSubscriber(id: string, name: string) {
-    setCancelling(id);
-
-    const { data: { session } } = await supabase.auth.getSession();
-    const res = await fetch('/api/admin/reactivate-subscriber', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
-      body: JSON.stringify({ userId: id }),
-    });
-
-    setCancelling(null);
-    if (res.ok) loadApprovedSubs();
-    else window.alert(`לא הצלחנו להפעיל מחדש את ${name} - נסי שוב`);
+    if (res.ok) {
+      setApprovedSubs((prev) => prev.filter((s) => s.id !== id));
+    }
   }
 
   async function removeSubscriber(id: string, name: string) {
@@ -242,7 +253,7 @@ export default function AdminSubscribersPage() {
   async function loadApprovedSubs() {
     const { data } = await supabase
       .from('profiles')
-      .select('id, email, full_name, subscription_status, subscription_started_at, subscription_cancelled_at')
+      .select('id, email, full_name, subscription_status, subscription_started_at')
       .eq('role', 'subscriber')
       .order('subscription_started_at', { ascending: false });
     if (data) setApprovedSubs(data);
@@ -268,6 +279,7 @@ export default function AdminSubscribersPage() {
     setChecking(false);
     if (profile?.role === 'admin') {
       loadApprovedSubs();
+      loadRevenue();
     }
   }
 
@@ -325,6 +337,22 @@ export default function AdminSubscribersPage() {
           <button onClick={handleLogout} className="nav-link" style={{ background: 'none', border: 'none', cursor: 'pointer', font: 'inherit', padding: 0 }}>התנתקות</button>
         </div>
       </header>
+
+      <div className="section-label">
+        <h2>הכנסה מקבוצת הסוחרים{revenueMonth ? ` - ${formatMonthLabel(revenueMonth)}` : ''}</h2>
+      </div>
+      {revenueLoading ? (
+        <p style={{ fontSize: '13px', color: 'var(--text-tertiary)', marginBottom: '18px' }}>טוענים...</p>
+      ) : (
+        <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-hairline-strong)', borderRight: '3px solid var(--profit)', borderRadius: '12px', padding: '18px', marginBottom: '20px', textAlign: 'center' }}>
+          <div style={{ fontSize: '28px', fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--profit)' }}>₪{revenueTotal.toLocaleString('he-IL')}</div>
+          <div style={{ fontSize: '12.5px', color: 'var(--text-tertiary)', marginTop: '2px' }}>(אחרי מע&quot;מ 18%: ₪{Math.round(revenueTotal * 0.82).toLocaleString('he-IL')})</div>
+          <div style={{ fontSize: '12.5px', color: 'var(--text-tertiary)', marginTop: '6px' }}>{revenueCount} אנשים בקבוצת הסוחרים</div>
+          <button className="btn-outline" style={{ width: 'auto', marginTop: '12px', fontSize: '12px', padding: '6px 14px' }} onClick={() => loadRevenue(true)} disabled={revenueRecomputing}>
+            {revenueRecomputing ? 'מרעננים...' : 'רענון'}
+          </button>
+        </div>
+      )}
 
       <div className="section-label"><h2>מנויים מאושרים</h2><span className="count">{approvedSubs.length}</span></div>
 
@@ -410,65 +438,43 @@ export default function AdminSubscribersPage() {
       </div>
 
       {approvedSubs.length === 0 && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)', marginBottom: '20px' }}>עדיין אין מנויים מאושרים</p>}
-      {sortedSubs.map((sub) => {
-        const isActive = sub.subscription_status === 'active';
-        return (
-          <div className="admin-row" key={sub.id} style={{ gap: '10px', opacity: isActive ? 1 : 0.7 }}>
-            <Link href={`/admin/subscribers/${sub.id}`} style={{ textDecoration: 'none', color: 'inherit', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flex: 1, minWidth: 0 }}>
-              <div>
-                <div className="name">{sub.full_name || 'ללא שם'}</div>
-                <div className="email">{sub.email}</div>
-                <div className="email" style={{ marginTop: '2px' }}>
-                  תאריך הצטרפות: {sub.subscription_started_at ? new Date(sub.subscription_started_at).toLocaleDateString('he-IL') : '—'}
-                </div>
-                {!isActive && sub.subscription_cancelled_at && (
-                  <div className="email" style={{ marginTop: '2px', color: 'var(--loss)' }}>
-                    בוטל ב-{new Date(sub.subscription_cancelled_at).toLocaleDateString('he-IL')}
-                  </div>
-                )}
+      {sortedSubs.map((sub) => (
+        <div className="admin-row" key={sub.id} style={{ gap: '10px' }}>
+          <Link href={`/admin/subscribers/${sub.id}`} style={{ textDecoration: 'none', color: 'inherit', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flex: 1, minWidth: 0 }}>
+            <div>
+              <div className="name">{sub.full_name || 'ללא שם'}</div>
+              <div className="email">{sub.email}</div>
+              <div className="email" style={{ marginTop: '2px' }}>
+                תאריך הצטרפות: {sub.subscription_started_at ? new Date(sub.subscription_started_at).toLocaleDateString('he-IL') : '—'}
               </div>
-              <span style={{ fontSize: '11px', color: isActive ? 'var(--profit)' : 'var(--loss)', fontWeight: 700, flexShrink: 0 }}>
-                {isActive ? 'פעיל' : 'בוטל'}
-              </span>
-            </Link>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flexShrink: 0 }}>
-              {isActive ? (
-                <button
-                  className="btn-outline"
-                  style={{ padding: '5px 10px', fontSize: '11px', whiteSpace: 'nowrap' }}
-                  onClick={() => cancelSubscription(sub.id, sub.full_name || sub.email)}
-                  disabled={cancelling === sub.id}
-                  title="ביטול מנוי - מאבד גישה, נתונים נשארים"
-                >
-                  {cancelling === sub.id ? '…' : 'ביטול מנוי'}
-                </button>
-              ) : (
-                <button
-                  className="btn-outline"
-                  style={{ padding: '5px 10px', fontSize: '11px', whiteSpace: 'nowrap', color: 'var(--profit)', borderColor: 'var(--profit)' }}
-                  onClick={() => reactivateSubscriber(sub.id, sub.full_name || sub.email)}
-                  disabled={cancelling === sub.id}
-                  title="הפעלה מחדש - מקבל/ת גישה מלאה חזרה"
-                >
-                  {cancelling === sub.id ? '…' : 'הפעלה מחדש'}
-                </button>
-              )}
-              <button
-                className="row-delete-btn"
-                onClick={() => removeSubscriber(sub.id, sub.full_name || sub.email)}
-                disabled={removing === sub.id}
-                title="מחיקת חשבון לצמיתות"
-              >
-                {removing === sub.id ? '…' : (
-                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--loss)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M3 6h18" /><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /><line x1="10" y1="11" x2="10" y2="17" /><line x1="14" y1="11" x2="14" y2="17" />
-                  </svg>
-                )}
-              </button>
             </div>
+            <span style={{ fontSize: '11px', color: 'var(--profit)', fontWeight: 700 }}>{sub.subscription_status === 'active' ? 'פעיל' : sub.subscription_status}</span>
+          </Link>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flexShrink: 0 }}>
+            <button
+              className="btn-outline"
+              style={{ padding: '5px 10px', fontSize: '11px', whiteSpace: 'nowrap' }}
+              onClick={() => cancelSubscription(sub.id, sub.full_name || sub.email)}
+              disabled={cancelling === sub.id}
+              title="ביטול מנוי - מאבד גישה, נתונים נשארים"
+            >
+              {cancelling === sub.id ? '…' : 'ביטול מנוי'}
+            </button>
+            <button
+              className="row-delete-btn"
+              onClick={() => removeSubscriber(sub.id, sub.full_name || sub.email)}
+              disabled={removing === sub.id}
+              title="מחיקת חשבון לצמיתות"
+            >
+              {removing === sub.id ? '…' : (
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--loss)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 6h18" /><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /><line x1="10" y1="11" x2="10" y2="17" /><line x1="14" y1="11" x2="14" y2="17" />
+                </svg>
+              )}
+            </button>
           </div>
-        );
-      })}
+        </div>
+      ))}
     </div>
   );
 }

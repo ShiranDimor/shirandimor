@@ -46,14 +46,6 @@ type TradeSource = {
   pct: number;
 };
 
-type WhatsappLatest = {
-  id: string;
-  group_type: string;
-  message_count: number | null;
-  created_at: string;
-};
-
-const WHATSAPP_GROUP_LABEL: Record<string, string> = { סוחרים: 'קבוצת הסוחרים', עדכונים: 'קבוצת העדכונים' };
 const SOURCE_ICON: Record<Post['source_type'], string> = { trade: '📈', whatsapp: '💬', manual: '✍️' };
 
 const PLATFORM_LABEL: Record<Platform, string> = { instagram: 'אינסטגרם', facebook: 'פייסבוק', both: 'שתיהן' };
@@ -99,10 +91,6 @@ export default function AdminMarketingPage() {
   const [generatingTrade, setGeneratingTrade] = useState(false);
   const [tradeGenError, setTradeGenError] = useState('');
 
-  const [whatsappLatest, setWhatsappLatest] = useState<WhatsappLatest | null>(null);
-  const [generatingWhatsapp, setGeneratingWhatsapp] = useState(false);
-  const [whatsappGenError, setWhatsappGenError] = useState('');
-
   const [storyTopic, setStoryTopic] = useState('');
   const [creatingStoryPost, setCreatingStoryPost] = useState(false);
   const [storyPostError, setStoryPostError] = useState('');
@@ -133,7 +121,6 @@ export default function AdminMarketingPage() {
       loadBrandVoice();
       loadPosts();
       loadTradeSources();
-      loadWhatsappLatest();
     }
   }
 
@@ -143,14 +130,6 @@ export default function AdminMarketingPage() {
       const data = await res.json();
       setTradeSources(data.trades || []);
       setSelectedTradeId(data.trades?.[0]?.id || '');
-    }
-  }
-
-  async function loadWhatsappLatest() {
-    const res = await fetch('/api/admin/marketing/sources/whatsapp-latest', { headers: await authHeaders() });
-    if (res.ok) {
-      const data = await res.json();
-      setWhatsappLatest(data.latest || null);
     }
   }
 
@@ -175,27 +154,6 @@ export default function AdminMarketingPage() {
       setTradeGenError('שגיאה בשליחת הבקשה');
     }
     setGeneratingTrade(false);
-  }
-
-  async function handleGenerateFromWhatsapp() {
-    setGeneratingWhatsapp(true);
-    setWhatsappGenError('');
-    try {
-      const res = await fetch('/api/admin/marketing/generate-whatsapp', {
-        method: 'POST',
-        headers: await authHeaders(),
-      });
-      const data = await res.json().catch(() => null);
-      if (!res.ok || !data) {
-        setWhatsappGenError(data?.error || 'שגיאה ביצירת התוכן');
-      } else {
-        setStatusFilter('draft');
-        await loadPosts();
-      }
-    } catch {
-      setWhatsappGenError('שגיאה בשליחת הבקשה');
-    }
-    setGeneratingWhatsapp(false);
   }
 
   // יצירת פוסט "סטורי בלבד" מתמונה חופשית (תיק מסחר, לייב, בניית תוכנית מסחר וכו') - בלי
@@ -579,24 +537,6 @@ export default function AdminMarketingPage() {
         )}
       </div>
 
-      <div className="journal-form" style={{ borderRightColor: 'var(--teal)' }}>
-        <label style={{ display: 'block', marginBottom: '8px', fontSize: '13.5px', fontWeight: 600 }}>💬 תוכן מקצועי מוואטסאפ</label>
-        {!whatsappLatest ? (
-          <p style={{ fontSize: '12.5px', color: 'var(--text-tertiary)' }}>
-            עדיין אין העלאת וואטסאפ לשלוף ממנה - צריך להעלות ייצוא צ׳אט קודם ב<Link href="/admin/whatsapp-analysis" style={{ color: 'var(--teal)' }}>עמוד ניתוח קבוצות ווטסאפ</Link>.
-          </p>
-        ) : (
-          <>
-            <p style={{ fontSize: '12.5px', color: 'var(--text-tertiary)', marginBottom: '10px' }}>
-              המקור: {WHATSAPP_GROUP_LABEL[whatsappLatest.group_type] || whatsappLatest.group_type} · הועלה {formatDateTime(whatsappLatest.created_at)} - ה-AI יבחר לבד נקודה מעניינת ושונה מפעם קודמת.
-            </p>
-            <button className="btn-primary" onClick={handleGenerateFromWhatsapp} disabled={generatingWhatsapp}>
-              {generatingWhatsapp ? 'יוצרים תוכן... זה יכול לקחת רגע' : 'צור תוכן מקצועי'}
-            </button>
-            {whatsappGenError && <p style={{ marginTop: '10px', fontSize: '13px', color: 'var(--loss)' }}>{whatsappGenError}</p>}
-          </>
-        )}
-      </div>
 
       <div className="journal-form" style={{ borderRightColor: 'var(--lavender)' }}>
         <label style={{ display: 'block', marginBottom: '8px', fontSize: '13.5px', fontWeight: 600 }}>📸 סטורי מתמונה חופשית (תיק מסחר, לייב, בניית תוכנית מסחר...)</label>
