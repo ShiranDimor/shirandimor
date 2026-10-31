@@ -100,12 +100,21 @@ export default function HomePage() {
 
   return (
     <div className="wrap">
-      <header>
-        <Link href="/" className="brand">מסחר <span>אחראי</span> במניות</Link>
-        <div style={{ gap: '8px' }}>
-          <Link href="/login" className="nav-cta-profit">כניסה לסוחרים</Link>
+      <div className="sticky-top-group">
+        <header>
+          <Link href="/" className="brand">מסחר <span>אחראי</span> במניות</Link>
+          <div style={{ gap: '8px' }}>
+            <Link href="/login" className="nav-cta-profit">כניסה לסוחרים</Link>
+          </div>
+        </header>
+        <div className="quick-link-row">
+          <Link href="/trading-plan" className="quick-link-pill">📝 תוכנית מסחר</Link>
+          <Link href="/lives" className="quick-link-pill">🎥 מסחר בזמן אמת</Link>
+          <Link href="/portfolio" className="quick-link-pill">📊 תיק מסחר</Link>
+          <Link href="/lessons" className="quick-link-pill">📚 ספריית שיעורים</Link>
+          <Link href="/business" className="quick-link-pill">🏢 לארגונים</Link>
         </div>
-      </header>
+      </div>
 
       <div className="hero-v2">
         <div className="eyebrow">שירן דימור</div>
@@ -117,14 +126,7 @@ export default function HomePage() {
         </div>
       </div>
 
-      <Reveal className="quick-link-row">
-        <div className="quick-link-grid">
-          <Link href="/trading-plan" className="quick-link-pill">📝 תוכנית מסחר</Link>
-          <Link href="/lives" className="quick-link-pill">🎥 מסחר בזמן אמת</Link>
-          <Link href="/portfolio" className="quick-link-pill">📊 תיק מסחר</Link>
-          <Link href="/lessons" className="quick-link-pill">📚 ספריית שיעורים</Link>
-          <Link href="/business" className="quick-link-pill">🏢 לארגונים</Link>
-        </div>
+      <Reveal>
         <Link href="/subscribe" className="quick-link-accent">💬 מדברים עסקאות - חודש ראשון ב-₪1 ←</Link>
       </Reveal>
 

@@ -70,6 +70,10 @@
     padding: 12px 0 14px; border-bottom: 1px solid var(--border-hairline); margin-bottom: 28px;
     position: sticky; top: 0; z-index: 20; background: var(--bg-void);
   }
+  /* עמוד הבית: header + שורת הכפתורים נעים יחד כיחידת sticky אחת - ה-header "מוותר" על ה-
+     sticky העצמאי שלו בתוך העוטף הזה, כדי שלא יתנגשו שני אלמנטים sticky חופפים */
+  .sticky-top-group { position: sticky; top: 0; z-index: 20; background: var(--bg-void); margin-bottom: 28px; }
+  .sticky-top-group header { position: static; border-bottom: none; margin-bottom: 0; background: none; }
   /* השורה השנייה בכותרת (כפתורי הניווט) - עוטפת ומרוכזת, כדי שלא תיחתך במסכים צרים */
   header > div { display: flex; flex-wrap: wrap; justify-content: center; }
   .brand { font-family: var(--font-display); font-size: 20px; font-weight: 700; text-decoration: none; color: inherit; }
@@ -419,23 +423,24 @@
   .cta-sub-link { display: block; text-align: center; font-size: 12.5px; color: var(--text-tertiary); text-decoration: none; }
   .cta-sub-link span { color: var(--lavender); font-weight: 600; }
 
-  /* שורת כפתורים קומפקטית מתחת להירו - מחליפה כרטיסי טיזר גדולים (תוכנית מסחר, לייבים, תיק,
-     השוואת מסלולים) בשביל עמוד בית נקי יותר, בלי לאבד אף נתיב ניווט - כל מה שהיה זמין נשאר
-     זמין, רק בלי "לזרוק" את כל התוכן על המבקר/ת בגלילה הראשונה.
-     רשת קבועה של 2 עמודות (לא flex-wrap חופשי) כדי שהכפתורים יתיישרו תמיד נקי, בלי שורה אחרונה
-     "יתומה" עם כפתור בודד תלוי באוויר - וכפתור ההצטרפות מופרד ומודגש בנפרד מתחתיהם */
-  .quick-link-row { display: flex; flex-direction: column; gap: 10px; margin: 22px 0 28px; }
-  .quick-link-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-  .quick-link-grid .quick-link-pill:last-child:nth-child(odd) { grid-column: 1 / -1; }
+  /* סרגל ניווט מהיר - צף/דביק מתחת ל-header, גולל אופקית. במקום להיות עוד בלוק בתוך זרימת
+     הדף (שם זה "לא הסתדר" חזותית), הוא נשאר נגיש תמיד בגלילה, בלי לתפוס גובה קבוע בעמוד.
+     כפתור ההצטרפות המודגש נשאר כנגיש בזרימת הדף, לא בסרגל - זה רגע-המרה, לא ניווט שוטף */
+  .quick-link-row {
+    display: flex; gap: 8px; overflow-x: auto; padding: 4px 16px 14px;
+    -webkit-overflow-scrolling: touch; scrollbar-width: none;
+  }
+  .quick-link-row::-webkit-scrollbar { display: none; }
   .quick-link-pill {
+    flex: 0 0 auto; white-space: nowrap;
     font-size: 13px; font-weight: 600; color: var(--text-secondary); background: var(--bg-surface);
-    border: 1px solid var(--border-hairline-strong); border-radius: 999px; padding: 11px 10px; text-decoration: none;
+    border: 1px solid var(--border-hairline-strong); border-radius: 999px; padding: 10px 14px; text-decoration: none;
     text-align: center; transition: border-color 0.15s ease, transform 0.15s ease;
   }
   .quick-link-pill:hover { border-color: var(--teal); transform: translateY(-1px); }
   .quick-link-accent {
     display: block; text-align: center; font-size: 14.5px; font-weight: 700; color: var(--bg-void);
-    background: var(--grad-brand); border-radius: 999px; padding: 14px 16px; text-decoration: none;
+    background: var(--grad-brand); border-radius: 999px; padding: 14px 16px; text-decoration: none; margin: 8px 0 28px;
     box-shadow: 0 4px 14px rgba(255, 45, 120,0.3); transition: transform 0.15s ease, box-shadow 0.15s ease;
   }
   .quick-link-accent:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(255, 45, 120,0.4); }
