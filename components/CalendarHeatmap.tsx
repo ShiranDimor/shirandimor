@@ -50,7 +50,7 @@ export default function CalendarHeatmap({ year, month, items, onPrevMonth, onNex
     let color = 'var(--text-tertiary)';
     if (dayPnl !== undefined) {
       const intensity = 0.18 + (Math.abs(dayPnl) / maxAbs) * 0.5;
-      bg = dayPnl >= 0 ? `rgba(92, 122, 61,${intensity})` : `rgba(193, 74, 62,${intensity})`;
+      bg = dayPnl >= 0 ? `rgba(61, 220, 132,${intensity})` : `rgba(255, 92, 92,${intensity})`;
       color = intensity > 0.55 ? (dayPnl >= 0 ? '#0a1f14' : '#2a0f0d') : dayPnl >= 0 ? 'var(--profit)' : 'var(--loss)';
     }
     cells.push(
