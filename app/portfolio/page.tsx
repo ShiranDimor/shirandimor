@@ -9,7 +9,8 @@ import EquityCurve from '@/components/EquityCurve';
 import CalendarHeatmap from '@/components/CalendarHeatmap';
 import PushNotificationButton from '@/components/PushNotificationButton';
 import Reveal from '@/components/Reveal';
-import CountUp from '@/components/CountUp';
+import MonthlyReturnBubbles from '@/components/MonthlyReturnBubbles';
+import { buildMonthlyPortfolioReturns } from '@/lib/portfolioStats';
 
 type Trade = {
   id: string;
@@ -28,7 +29,6 @@ type Trade = {
 };
 
 const MONTH_LABELS = ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני', 'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר'];
-const MONTH_LABELS_SHORT = ['ינו', 'פבר', 'מרץ', 'אפר', 'מאי', 'יונ', 'יול', 'אוג', 'ספט', 'אוק', 'נוב', 'דצמ'];
 
 function monthKey(dateStr: string) {
   const d = new Date(dateStr);
@@ -38,11 +38,6 @@ function monthKey(dateStr: string) {
 function monthLabel(key: string) {
   const [year, month] = key.split('-');
   return `${MONTH_LABELS[parseInt(month, 10) - 1]} ${year}`;
-}
-
-function monthLabelShort(key: string) {
-  const [, month] = key.split('-');
-  return MONTH_LABELS_SHORT[parseInt(month, 10) - 1];
 }
 
 function formatDate(iso: string | null) {
@@ -202,27 +197,10 @@ export default function PortfolioPage() {
   const totalTradesCount = openTrades.length + closedTrades.length;
 
   // רצועת "חודשים אחרונים" שמופיעה לפני לוח השנה - 3 החודשים האחרונים, כדי שהרושם הראשון
-  // כשנכנסים לתיק יהיה מגמה כללית ולא חודש בודד שעלול להיראות אדום בלוח השנה. המספר המוצג
-  // הוא הרווח/הפסד בפועל על התיק (סכום הרווח/הפסד הדולרי של כל העסקאות שנסגרו באותו חודש,
-  // ביחס לגודל התיק) - לא ממוצע פשוט של אחוזי עסקאות בודדות, כי ממוצע פשוט נותן משקל שווה
-  // לעסקה קטנה ולעסקה גדולה, בעוד שהתשואה האמיתית על התיק תלויה בגודל האמיתי של כל עסקה
-  const monthlyTrend = (() => {
-    const byMonth = new Map<string, Trade[]>();
-    for (const t of closedTrades) {
-      if (!t.closed_at) continue;
-      const key = monthKey(t.closed_at);
-      if (!byMonth.has(key)) byMonth.set(key, []);
-      byMonth.get(key)!.push(t);
-    }
-    const months = Array.from(byMonth.entries()).sort((a, b) => (a[0] < b[0] ? 1 : -1)).slice(0, 3);
-    return months.map(([key, trades]) => {
-      const monthPnlUsd = trades.reduce((s, t) => s + (t.realized_pnl_usd ?? 0), 0);
-      const portfolioPct = initialBalance
-        ? (monthPnlUsd / initialBalance) * 100
-        : trades.reduce((s, t) => s + pct(t), 0) / trades.length;
-      return { key, label: monthLabelShort(key), portfolioPct, count: trades.length };
-    });
-  })();
+  // כשנכנסים לתיק יהיה מגמה כללית ולא חודש בודד שעלול להיראות אדום בלוח השנה. הפונקציה
+  // המשותפת (lib/portfolioStats) היא גם זו שמזינה את עמוד הבית - כדי ששני המקומות תמיד
+  // יראו בדיוק את אותו מספר לאותו חודש
+  const monthlyTrend = buildMonthlyPortfolioReturns(closedTrades, initialBalance, 3);
 
   // כאן, בניגוד לעמוד הניהול, מציגים את הצמיחה רק באחוזים ולא בסכום דולרי - כדי לא לחשוף
   // את גודל התיק האמיתי בכסף לכל מי שנכנס לעמוד הציבורי
@@ -362,23 +340,7 @@ export default function PortfolioPage() {
       {monthlyTrend.length > 0 && (
         <Reveal delay={60}>
           <div className="section-label" style={{ marginTop: '26px' }}><h2>רווח על תיק ההשקעות - 3 החודשים האחרונים</h2></div>
-          <div className="month-ring-row">
-            {monthlyTrend.map((m, i) => (
-              <Reveal key={m.key} delay={80 * i} className="month-ring-tile">
-                <div
-                  className="month-bubble"
-                  style={{
-                    background: m.portfolioPct >= 0 ? 'var(--profit-bg)' : 'var(--loss-bg)',
-                    color: m.portfolioPct >= 0 ? 'var(--profit)' : 'var(--loss)',
-                  }}
-                >
-                  <CountUp value={m.portfolioPct} prefix={m.portfolioPct >= 0 ? '+' : ''} suffix="%" decimals={1} />
-                </div>
-                <div className="month-ring-label">{m.label}</div>
-                <div className="month-ring-sub"><CountUp value={m.count} /> עסקאות</div>
-              </Reveal>
-            ))}
-          </div>
+          <MonthlyReturnBubbles months={monthlyTrend} />
           <p style={{ fontSize: '10.5px', color: 'var(--text-tertiary)', marginTop: '8px' }}>רווח/הפסד בפועל על התיק באותו חודש, לפי חודש שבו העסקה נסגרה - כולל ההפסדים.</p>
         </Reveal>
       )}
