@@ -30,7 +30,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
     await sendPushToEveryone({ title: `🎥 לייב חדש - ${live.title}`, body: dateLabel, url: '/lives' }, 'live', params.id);
   } else {
     await sendPushToActiveSubscribers({ title: `🎥 לייב חדש - ${live.title}`, body: dateLabel, url: '/lives' }, 'live', params.id);
-    await sendPushToNonSubscribers({ title: '🎥 לייב חדש נקבע', body: 'פתוח למנויים - 7 ימי ניסיון ללא עלות ←', url: '/trial' }, 'live', params.id);
+    await sendPushToNonSubscribers({ title: '🎥 לייב חדש נקבע', body: 'פתוח למנויים - חודש ראשון ב-₪1 ←', url: '/subscribe' }, 'live', params.id);
   }
 
   const { data: updated } = await supabaseAdmin

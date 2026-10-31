@@ -36,8 +36,8 @@ export async function POST(request: Request) {
 
   await sendPushToNonSubscribers({
     title: '🔁 סטופ לוס עודכן בעסקה פתוחה',
-    body: 'הסימבול גלוי למנויים - ל-7 ימי ניסיון ללא עלות ←',
-    url: '/trial',
+    body: 'הסימבול גלוי למנויים - חודש ראשון ב-₪1 ←',
+    url: '/subscribe',
   }, 'trade');
 
   return NextResponse.json({ ok: true });
