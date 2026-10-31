@@ -100,7 +100,7 @@ export default function HomePage() {
       <div className="hero-v2">
         <div className="eyebrow">שירן דימור</div>
         <h1>שוק ההון הרבה יותר <em>פשוט</em><br />ממה שעושים ממנו.</h1>
-        <p>אני שירן, ואני כאן כדי להראות לך שלא צריך לדעת הכול כדי להתחיל - <strong>צריך רק לדעת מה לעשות</strong>. עקרונות בסיסיים, ניהול סיכון ותוכנית עבודה מסודרת - בלי הבטחות תשואה, בלי "שיטת פלא", ובלי שזה יהפוך למשרה שנייה.</p>
+        <p>אני שירן, ואני כאן כדי להראות לך שלא צריך לדעת הכול כדי להתחיל - <strong>צריך רק לדעת מה לעשות</strong>. עקרונות בסיסיים, ניהול סיכון ותוכנית עבודה מסודרת - בלי הבטחות תשואה, בלי "שיטת פלא", ובלי שזה יהפוך למשרה שנייה (יש לך כבר אחת, ואני לא רוצה את השנייה).</p>
 
         <PushNotificationButton variant="hero" autoOpenLeadForm={autoOpenNotifications} />
 
@@ -151,7 +151,7 @@ export default function HomePage() {
 
       <div className="section-label" style={{ marginTop: '30px' }}><h2 style={{ color: 'var(--loss)' }}>למי זה פחות מתאים</h2></div>
       <div className="not-fit">
-        <div>– מי שמחפש רווח מובטח או כסף מהיר</div>
+        <div>– מי שמחפש רווח מובטח או כסף מהיר (אם היה לי את זה, לא הייתי פה כותבת - הייתי על יאכטה)</div>
         <div>– מי שרוצה שמישהי אחרת תקבל עבורו את כל ההחלטות</div>
         <div>– מי שמתכוון לסחור בכסף שהוא צריך למחיה, או בהלוואה</div>
         <div>– מי שלא מבין שהפסדים הם חלק מהמסחר</div>
@@ -221,7 +221,7 @@ export default function HomePage() {
           <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', lineHeight: 1.55, marginBottom: '10px' }}>
             <strong style={{ color: 'var(--lavender)' }}>סוחרים ביחד איתי</strong>. בלי ידע מוקדם.
           </p>
-          <div className="gc-price">₪400 לחודש <span style={{ color: 'var(--profit)', fontWeight: 600 }}>· חודש ראשון ב-₪200</span></div>
+          <div className="gc-price">₪400 לחודש <span style={{ color: 'var(--profit)', fontWeight: 600 }}>· חודש ראשון ב-₪1</span></div>
           <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '-10px', marginBottom: '14px' }}>מנוי חודשי · ללא התחייבות</div>
           <div className="gc-perks">
             <div>כל מה שיש בעדכונים החינמיים - <strong>ועוד</strong>:</div>
@@ -243,7 +243,7 @@ export default function HomePage() {
         </details>
         <details className="faq-item" style={{ borderRightColor: 'var(--orange)' }}>
           <summary>צריך קודם לעשות קורס יקר?</summary>
-          <p>לא. אפשר לשלם אלפי שקלים על קורס ועדיין לא לדעת אם התחום בכלל מתאים לך. הדרך הכי נכונה וזולה להבין את זה לעומק היא פשוט לנסות חודש שלם (₪200) ולראות מבפנים מה זה תיק השקעות, איך שוק ההון עובד בפועל, ומה השיטה - במקום לצבור תיאוריה על הנייר לפני שמעיזים.</p>
+          <p>לא. אפשר לשלם אלפי שקלים על קורס עם הבטחות ליאכטה, ועדיין לא לדעת אם התחום בכלל מתאים לך. הדרך הכי נכונה וזולה להבין את זה לעומק היא פשוט לנסות חודש שלם (₪1) ולראות מבפנים מה זה תיק השקעות, איך שוק ההון עובד בפועל, ומה השיטה - במקום לצבור תיאוריה על הנייר לפני שמעיזים.</p>
         </details>
         <details className="faq-item" style={{ borderRightColor: 'var(--lavender)' }}>
           <summary>כמה זמן ביום זה דורש?</summary>
@@ -255,7 +255,7 @@ export default function HomePage() {
         </details>
         <details className="faq-item" style={{ borderRightColor: 'var(--teal)' }}>
           <summary>זה בטוח? יש סיכון להפסיד כסף?</summary>
-          <p>כן, יש סיכון - זה שוק ההון, לא הבטחה. המטרה שלי היא ללמד ניהול סיכון נכון, לא להבטיח רווחים.</p>
+          <p>כן. זה שוק ההון, לא פיקדון בבנק ולא הגרלה עם תוצאה בטוחה - ומי שמבטיח לך אחרת, תברח/י. המטרה שלי היא ללמד ניהול סיכון נכון, לא להבטיח רווחים.</p>
         </details>
         <details className="faq-item" style={{ borderRightColor: 'var(--lavender)' }}>
           <summary>כמה כסף צריך כדי להתחיל?</summary>
