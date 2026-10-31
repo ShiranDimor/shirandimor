@@ -11,6 +11,7 @@ type ApprovedSub = {
   full_name: string | null;
   subscription_status: string | null;
   subscription_started_at: string | null;
+  subscription_cancelled_at: string | null;
 };
 
 export default function AdminSubscribersPage() {
@@ -177,7 +178,7 @@ export default function AdminSubscribersPage() {
   }
 
   async function cancelSubscription(id: string, name: string) {
-    if (!window.confirm(`לבטל את המנוי של ${name}? הוא יאבד גישה מיידית, אבל החשבון ונתוני היומן שלו יישארו שמורים.`)) return;
+    if (!window.confirm(`לבטל את המנוי של ${name}? הוא/היא יאבד/תאבד גישה מיידית, אבל החשבון ונתוני היומן יישארו שמורים - ואפשר להפעיל מחדש בכל רגע.`)) return;
     setCancelling(id);
 
     const { data: { session } } = await supabase.auth.getSession();
@@ -188,9 +189,24 @@ export default function AdminSubscribersPage() {
     });
 
     setCancelling(null);
-    if (res.ok) {
-      setApprovedSubs((prev) => prev.filter((s) => s.id !== id));
-    }
+    // לא מסירים את השורה מהתצוגה - מנוי שבוטל נשאר גלוי עם תג "בוטל", כדי שלא ייעלם סתם
+    // ויתערבב ברשימת לידים חדשים בלי שום סימן שהיה פעם מנוי בתשלום
+    if (res.ok) loadApprovedSubs();
+  }
+
+  async function reactivateSubscriber(id: string, name: string) {
+    setCancelling(id);
+
+    const { data: { session } } = await supabase.auth.getSession();
+    const res = await fetch('/api/admin/reactivate-subscriber', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
+      body: JSON.stringify({ userId: id }),
+    });
+
+    setCancelling(null);
+    if (res.ok) loadApprovedSubs();
+    else window.alert(`לא הצלחנו להפעיל מחדש את ${name} - נסי שוב`);
   }
 
   async function removeSubscriber(id: string, name: string) {
@@ -226,7 +242,7 @@ export default function AdminSubscribersPage() {
   async function loadApprovedSubs() {
     const { data } = await supabase
       .from('profiles')
-      .select('id, email, full_name, subscription_status, subscription_started_at')
+      .select('id, email, full_name, subscription_status, subscription_started_at, subscription_cancelled_at')
       .eq('role', 'subscriber')
       .order('subscription_started_at', { ascending: false });
     if (data) setApprovedSubs(data);
@@ -394,43 +410,65 @@ export default function AdminSubscribersPage() {
       </div>
 
       {approvedSubs.length === 0 && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)', marginBottom: '20px' }}>עדיין אין מנויים מאושרים</p>}
-      {sortedSubs.map((sub) => (
-        <div className="admin-row" key={sub.id} style={{ gap: '10px' }}>
-          <Link href={`/admin/subscribers/${sub.id}`} style={{ textDecoration: 'none', color: 'inherit', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flex: 1, minWidth: 0 }}>
-            <div>
-              <div className="name">{sub.full_name || 'ללא שם'}</div>
-              <div className="email">{sub.email}</div>
-              <div className="email" style={{ marginTop: '2px' }}>
-                תאריך הצטרפות: {sub.subscription_started_at ? new Date(sub.subscription_started_at).toLocaleDateString('he-IL') : '—'}
+      {sortedSubs.map((sub) => {
+        const isActive = sub.subscription_status === 'active';
+        return (
+          <div className="admin-row" key={sub.id} style={{ gap: '10px', opacity: isActive ? 1 : 0.7 }}>
+            <Link href={`/admin/subscribers/${sub.id}`} style={{ textDecoration: 'none', color: 'inherit', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flex: 1, minWidth: 0 }}>
+              <div>
+                <div className="name">{sub.full_name || 'ללא שם'}</div>
+                <div className="email">{sub.email}</div>
+                <div className="email" style={{ marginTop: '2px' }}>
+                  תאריך הצטרפות: {sub.subscription_started_at ? new Date(sub.subscription_started_at).toLocaleDateString('he-IL') : '—'}
+                </div>
+                {!isActive && sub.subscription_cancelled_at && (
+                  <div className="email" style={{ marginTop: '2px', color: 'var(--loss)' }}>
+                    בוטל ב-{new Date(sub.subscription_cancelled_at).toLocaleDateString('he-IL')}
+                  </div>
+                )}
               </div>
-            </div>
-            <span style={{ fontSize: '11px', color: 'var(--profit)', fontWeight: 700 }}>{sub.subscription_status === 'active' ? 'פעיל' : sub.subscription_status}</span>
-          </Link>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flexShrink: 0 }}>
-            <button
-              className="btn-outline"
-              style={{ padding: '5px 10px', fontSize: '11px', whiteSpace: 'nowrap' }}
-              onClick={() => cancelSubscription(sub.id, sub.full_name || sub.email)}
-              disabled={cancelling === sub.id}
-              title="ביטול מנוי - מאבד גישה, נתונים נשארים"
-            >
-              {cancelling === sub.id ? '…' : 'ביטול מנוי'}
-            </button>
-            <button
-              className="row-delete-btn"
-              onClick={() => removeSubscriber(sub.id, sub.full_name || sub.email)}
-              disabled={removing === sub.id}
-              title="מחיקת חשבון לצמיתות"
-            >
-              {removing === sub.id ? '…' : (
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--loss)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M3 6h18" /><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /><line x1="10" y1="11" x2="10" y2="17" /><line x1="14" y1="11" x2="14" y2="17" />
-                </svg>
+              <span style={{ fontSize: '11px', color: isActive ? 'var(--profit)' : 'var(--loss)', fontWeight: 700, flexShrink: 0 }}>
+                {isActive ? 'פעיל' : 'בוטל'}
+              </span>
+            </Link>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flexShrink: 0 }}>
+              {isActive ? (
+                <button
+                  className="btn-outline"
+                  style={{ padding: '5px 10px', fontSize: '11px', whiteSpace: 'nowrap' }}
+                  onClick={() => cancelSubscription(sub.id, sub.full_name || sub.email)}
+                  disabled={cancelling === sub.id}
+                  title="ביטול מנוי - מאבד גישה, נתונים נשארים"
+                >
+                  {cancelling === sub.id ? '…' : 'ביטול מנוי'}
+                </button>
+              ) : (
+                <button
+                  className="btn-outline"
+                  style={{ padding: '5px 10px', fontSize: '11px', whiteSpace: 'nowrap', color: 'var(--profit)', borderColor: 'var(--profit)' }}
+                  onClick={() => reactivateSubscriber(sub.id, sub.full_name || sub.email)}
+                  disabled={cancelling === sub.id}
+                  title="הפעלה מחדש - מקבל/ת גישה מלאה חזרה"
+                >
+                  {cancelling === sub.id ? '…' : 'הפעלה מחדש'}
+                </button>
               )}
-            </button>
+              <button
+                className="row-delete-btn"
+                onClick={() => removeSubscriber(sub.id, sub.full_name || sub.email)}
+                disabled={removing === sub.id}
+                title="מחיקת חשבון לצמיתות"
+              >
+                {removing === sub.id ? '…' : (
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--loss)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M3 6h18" /><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /><line x1="10" y1="11" x2="10" y2="17" /><line x1="14" y1="11" x2="14" y2="17" />
+                  </svg>
+                )}
+              </button>
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

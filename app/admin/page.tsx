@@ -165,7 +165,7 @@ export default function AdminDashboard() {
 
     const [pending, approved, openTrades, abandonedRes, livesRes, lessonsRes, revenueRes, trialSignupsRes, salesLeadsRes] = await Promise.all([
       supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'lead'),
-      supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'subscriber'),
+      supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'subscriber').eq('subscription_status', 'active'),
       supabase.from('trades').select('id', { count: 'exact', head: true }).eq('status', 'open'),
       fetch('/api/admin/trading-plan-abandoned/count', { headers: { Authorization: `Bearer ${session?.access_token}` } }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
       fetch('/api/admin/lives', { headers: { Authorization: `Bearer ${session?.access_token}` } }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
@@ -291,12 +291,6 @@ export default function AdminDashboard() {
           <div className="at-icon">📌</div>
           <div className="at-title">לוח מודעות</div>
           <div className="at-count">פרסום עדכון לכולם</div>
-        </Link>
-
-        <Link href="/admin/analytics" className="admin-tile">
-          <div className="at-icon">📈</div>
-          <div className="at-title">משפך המרה</div>
-          <div className="at-count">אנליטיקס</div>
         </Link>
 
         <Link href="/admin/revenue" className="admin-tile">
