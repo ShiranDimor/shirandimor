@@ -141,6 +141,17 @@ export default function PushNotificationButton({ variant = 'default', autoOpenLe
     }
     setFormError('');
     setBusy(true);
+    // שומרים את הליד מיד (לפני בקשת הרשאת ההתראות) - כדי שמי שדוחה את הבקשה בדפדפן לא יילך
+    // לאיבוד: subscribeDevice שולח פרטים ל-/api/push/subscribe רק אחרי אישור, ובלי זה דחייה
+    // מוחקת את הפרטים שהוקלדו בלי שום עקבה. לא ממתינים לתוצאה - וזה גם קריטי טכנית: בספארי
+    // Notification.requestPermission() חייב להיקרא סינכרונית בתוך מחוות המשתמש, ו-await כאן
+    // היה מנתק אותו מהלחיצה וגורם לדפדפן לדחות את הבקשה בשקט
+    fetch('/api/lead', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: name.trim(), phone, email: email.trim() || undefined, source: 'הרשמה להתראות' }),
+    }).catch(() => {});
     try {
       const ok = await subscribeDevice({ name: name.trim(), phone, email: email.trim() });
       if (ok) setStatus('on');
@@ -171,9 +182,12 @@ export default function PushNotificationButton({ variant = 'default', autoOpenLe
 
   if (status === 'needs-install') {
     return (
-      <p style={{ fontSize: '12px', color: 'var(--text-tertiary)', textAlign: 'center', marginBottom: '10px' }}>
-        כדי לקבל התראות ב-iPhone: קודם מוסיפים את האתר למסך הבית (שיתוף ← הוספה למסך הבית), ואז פותחים אותו משם.
-      </p>
+      <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-hairline-strong)', borderRight: '3px solid var(--lavender)', borderRadius: '10px', padding: '12px 14px', marginBottom: '10px', display: 'flex', gap: '10px', alignItems: 'center' }}>
+        <span style={{ fontSize: '20px', flexShrink: 0 }}>📲</span>
+        <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', lineHeight: 1.6, margin: 0 }}>
+          <strong style={{ color: 'var(--text-primary)' }}>כדי לקבל התראות ב-iPhone:</strong> קודם מוסיפים את האתר למסך הבית - לוחצים על <strong>שיתוף</strong> <span aria-hidden="true">⎙</span> למטה בספארי, ואז על <strong>&quot;הוספה למסך הבית&quot;</strong>. אחר כך פותחים את האתר מהאייקון החדש.
+        </p>
+      </div>
     );
   }
 
