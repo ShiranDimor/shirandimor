@@ -119,7 +119,7 @@ export default function HomePage() {
 
       <Reveal className="quick-link-row">
         <Link href="/trading-plan" className="quick-link-pill">📝 תוכנית מסחר</Link>
-        <Link href="/lives" className="quick-link-pill">🎥 לייבים</Link>
+        <Link href="/lives" className="quick-link-pill">🎥 מסחר בזמן אמת</Link>
         <Link href="/portfolio" className="quick-link-pill">📊 תיק מסחר</Link>
         <Link href="/lessons" className="quick-link-pill">📚 ספריית שיעורים</Link>
         <Link href="/business" className="quick-link-pill">🏢 לארגונים</Link>
@@ -219,7 +219,7 @@ export default function HomePage() {
                 <div className="gc-perks">
                   <div><strong>בלי רעש</strong> - רק מה שבאמת קורה בשוק</div>
                   <div>הצצה לעולם שוק ההון, בלי לשלם עליה <strong>אלפי שקלים</strong></div>
-                  <div><strong>עדכון בזמן אמת</strong> לנייד כשמשהו קורה בשוק, כולל תזכורת לפני כל לייב</div>
+                  <div><strong>עדכון בזמן אמת</strong> לנייד כשמשהו קורה בשוק, כולל תזכורת לפני כל מפגש</div>
                   <div><strong>ספרייה מלאה</strong> של וובינרים ומצגות, בלי עלות נוספת</div>
                   <div>הפעלה בלחיצה אחת - <strong>ללא התחייבות</strong> וללא עלות</div>
                   <div>אפשר לשדרג ל"מדברים עסקאות" בכל שלב, <strong>בקצב האישי</strong></div>
@@ -237,7 +237,7 @@ export default function HomePage() {
                 <div className="gc-perks">
                   <div>כל מה שיש בעדכונים החינמיים - <strong>ועוד</strong>:</div>
                   <div>בניית <strong>תיק השקעות</strong> - תוך יומי, סווינג, טווח ארוך</div>
-                  <div><strong>וובינרים לייב</strong> - שאלות, ניתוחים ולמידה בזמן אמת</div>
+                  <div><strong>מסחר בזמן אמת עם שירן</strong> - שאלות, ניתוחים ולמידה חיה</div>
                   <div><strong>ליווי אישי</strong> - לצד קהילת סוחרים סגורה לדיון מעמיק</div>
                   <div><strong>יומן מסחר שקוף</strong> - כולל עסקאות מפסידות</div>
                   <div><strong>תיק מסחר</strong> אישי וניתוח העסקאות ע"י שירן</div>

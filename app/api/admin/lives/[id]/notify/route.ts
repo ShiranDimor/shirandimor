@@ -27,10 +27,10 @@ export async function POST(request: Request, { params }: { params: { id: string 
 
   const dateLabel = new Date(live.scheduled_at).toLocaleDateString('he-IL', { weekday: 'long', day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' });
   if (live.open_to_all) {
-    await sendPushToEveryone({ title: `🎥 לייב חדש - ${live.title}`, body: dateLabel, url: '/lives' }, 'live', params.id);
+    await sendPushToEveryone({ title: `🎥 מפגש חדש - ${live.title}`, body: dateLabel, url: '/lives' }, 'live', params.id);
   } else {
-    await sendPushToActiveSubscribers({ title: `🎥 לייב חדש - ${live.title}`, body: dateLabel, url: '/lives' }, 'live', params.id);
-    await sendPushToNonSubscribers({ title: '🎥 לייב חדש נקבע', body: 'פתוח למנויים - חודש ראשון ב-₪1 ←', url: '/subscribe' }, 'live', params.id);
+    await sendPushToActiveSubscribers({ title: `🎥 מפגש חדש - ${live.title}`, body: dateLabel, url: '/lives' }, 'live', params.id);
+    await sendPushToNonSubscribers({ title: '🎥 נקבע מפגש חדש', body: 'פתוח למנויים - חודש ראשון ב-₪1 ←', url: '/subscribe' }, 'live', params.id);
   }
 
   const { data: updated } = await supabaseAdmin

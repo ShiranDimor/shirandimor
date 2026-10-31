@@ -101,7 +101,7 @@ export default function LivesPage() {
   }
 
   async function cancelRegistration(liveId: string) {
-    if (!window.confirm('לבטל את ההרשמה ללייב הזה?')) return;
+    if (!window.confirm('לבטל את ההרשמה למפגש הזה?')) return;
     setSubmittingId(liveId);
     setError('');
     const { data: { session } } = await supabase.auth.getSession();
@@ -159,11 +159,11 @@ export default function LivesPage() {
         <Link href="/" className="nav-link">בית</Link>
       </header>
 
-      <div className="form-title">לייבים</div>
+      <div className="form-title">מסחר בזמן אמת</div>
       <div className="form-sub">סוחרים ביחד איתי בזמן אמת - לא רק לומדים או צופים מהצד</div>
 
       {(loading || checkingAuth) && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)', textAlign: 'center', marginTop: '20px' }}>טוענים...</p>}
-      {!loading && lives.length === 0 && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)', textAlign: 'center', marginTop: '20px' }}>אין כרגע לייבים קרובים - שווה לחזור בקרוב</p>}
+      {!loading && lives.length === 0 && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)', textAlign: 'center', marginTop: '20px' }}>אין כרגע מפגשים קרובים - שווה לחזור בקרוב</p>}
 
       {!loading && lives.map((live, i) => {
         const accentColor = LIVE_ACCENT_COLORS[i % LIVE_ACCENT_COLORS.length];
@@ -192,7 +192,7 @@ export default function LivesPage() {
           )}
           {confirmedLeadIds.has(live.id) && (
             <div style={{ background: 'var(--profit-bg)', border: '1px solid var(--profit)', borderRadius: '8px', padding: '12px 14px', marginBottom: '10px', fontSize: '13px', lineHeight: 1.6 }}>
-              <p style={{ marginBottom: '10px' }}>✓ הפרטים נקלטו! הלייבים האלה פתוחים למנויי &quot;מדברים עסקאות&quot; - <strong style={{ color: 'var(--lavender)' }}>סוחרים ביחד איתי, בלי ידע מוקדם</strong>. אפשר להתחיל בחודש ראשון מלא ב-₪1 ולקבל גישה מיידית:</p>
+              <p style={{ marginBottom: '10px' }}>✓ הפרטים נקלטו! המפגשים האלה פתוחים למנויי &quot;מדברים עסקאות&quot; - <strong style={{ color: 'var(--lavender)' }}>סוחרים ביחד איתי, בלי ידע מוקדם</strong>. אפשר להתחיל בחודש ראשון מלא ב-₪1 ולקבל גישה מיידית:</p>
               <Link href="/subscribe" className="btn-primary" style={{ display: 'block', textAlign: 'center', textDecoration: 'none', marginBottom: '10px', background: accentColor }}>
                 חודש ראשון ב-₪1 ←
               </Link>
@@ -226,7 +226,7 @@ export default function LivesPage() {
             <>
               {viewerIsSubscriber ? (
                 <button type="button" className="btn-primary" style={{ background: accentColor }} onClick={() => registerSubscriber(live.id)} disabled={submittingId === live.id}>
-                  {submittingId === live.id ? 'נרשמים...' : 'הרשמה ללייב ←'}
+                  {submittingId === live.id ? 'נרשמים...' : 'הרשמה למפגש ←'}
                 </button>
               ) : openFormId === live.id ? (
                 <div>
@@ -246,7 +246,7 @@ export default function LivesPage() {
                 </div>
               ) : (
                 <button type="button" className="btn-primary" style={{ background: accentColor }} onClick={() => { setOpenFormId(live.id); setError(''); }}>
-                  הרשמה ללייב ←
+                  הרשמה למפגש ←
                 </button>
               )}
             </>
@@ -255,7 +255,7 @@ export default function LivesPage() {
         );
       })}
 
-      <Link className="cta-sub-link" href="/subscribe">מנויים נרשמים ללייבים בלחיצה אחת - חודש ראשון ב-₪1 <span>←</span></Link>
+      <Link className="cta-sub-link" href="/subscribe">מנויים נרשמים למפגשים בלחיצה אחת - חודש ראשון ב-₪1 <span>←</span></Link>
 
     </div>
   );

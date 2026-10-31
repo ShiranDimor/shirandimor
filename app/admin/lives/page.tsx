@@ -173,7 +173,7 @@ export default function AdminLivesPage() {
   }
 
   async function handleDelete(id: string, title: string) {
-    if (!window.confirm(`למחוק לצמיתות את הלייב "${title}"? גם כל ההרשמות אליו יימחקו.`)) return;
+    if (!window.confirm(`למחוק לצמיתות את המפגש "${title}"? גם כל ההרשמות אליו יימחקו.`)) return;
     setDeletingId(id);
     const res = await fetch(`/api/admin/lives/${id}`, { method: 'DELETE', headers: await authHeader() });
     setDeletingId(null);
@@ -184,7 +184,7 @@ export default function AdminLivesPage() {
   }
 
   async function handleNotify(id: string, title: string) {
-    if (!window.confirm(`לשלוח התראת פוש על הלייב "${title}"?`)) return;
+    if (!window.confirm(`לשלוח התראת פוש על המפגש "${title}"?`)) return;
     setNotifyingId(id);
     const res = await fetch(`/api/admin/lives/${id}/notify`, { method: 'POST', headers: await authHeader() });
     setNotifyingId(null);
@@ -313,7 +313,7 @@ export default function AdminLivesPage() {
               style={{ padding: '8px 12px', fontSize: '12.5px' }}
               onClick={() => handleBackfillLive(live.id)}
               disabled={backfillingId === live.id}
-              title="יוצר ליד במאנדיי לכל מי שנרשם ללייב הזה ואינו מנוי ועדיין לא סונכרן"
+              title="יוצר ליד במאנדיי לכל מי שנרשם למפגש הזה ואינו מנוי ועדיין לא סונכרן"
             >
               {backfillingId === live.id ? 'מסנכרן...' : '🔄 סנכרון לידים'}
             </button>
@@ -323,7 +323,7 @@ export default function AdminLivesPage() {
               style={{ padding: '8px 12px', fontSize: '12.5px', color: live.open_to_all ? 'var(--profit)' : undefined }}
               onClick={() => handleToggleOpenToAll(live)}
               disabled={togglingOpenToAllId === live.id}
-              title="פתיחה/סגירה של הלייב למי שאינו מנוי"
+              title="פתיחה/סגירה של המפגש למי שאינו מנוי"
             >
               {togglingOpenToAllId === live.id ? '...' : live.open_to_all ? '✓ פתוח לכולם' : 'פתוח רק למנויים'}
             </button>
@@ -335,7 +335,7 @@ export default function AdminLivesPage() {
               className="row-delete-btn"
               onClick={() => handleDelete(live.id, live.title)}
               disabled={deletingId === live.id}
-              title="מחיקת לייב"
+              title="מחיקת מפגש"
             >
               {deletingId === live.id ? '…' : (
                 <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--loss)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -399,10 +399,10 @@ export default function AdminLivesPage() {
         </div>
       </header>
 
-      <div className="section-label"><h2>ניהול לייבים</h2><span className="count">{lives.length}</span></div>
+      <div className="section-label"><h2>ניהול מפגשים</h2><span className="count">{lives.length}</span></div>
 
       <div className="tp-question-card">
-        <div className="tp-question-title">{editingId ? 'עריכת לייב' : 'הוספת לייב חדש'}</div>
+        <div className="tp-question-title">{editingId ? 'עריכת מפגש' : 'הוספת מפגש חדש'}</div>
 
         <input className="tp-text-input" style={{ minHeight: 'auto', marginBottom: '10px' }} placeholder="כותרת" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
         <textarea className="tp-text-input" style={{ marginBottom: '10px' }} placeholder="תיאור קצר" rows={2} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
@@ -428,23 +428,23 @@ export default function AdminLivesPage() {
 
         <div style={{ display: 'flex', gap: '10px' }}>
           <button type="button" className="btn-primary" style={{ flex: 1 }} onClick={handleSubmit} disabled={saving}>
-            {saving ? 'שומר...' : editingId ? 'שמירת שינויים' : 'הוספת לייב'}
+            {saving ? 'שומר...' : editingId ? 'שמירת שינויים' : 'הוספת מפגש'}
           </button>
           {editingId && <button type="button" className="btn-outline" onClick={cancelEdit}>ביטול</button>}
         </div>
       </div>
 
       {loadingLives && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>טוענים...</p>}
-      {!loadingLives && lives.length === 0 && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>עדיין לא נוספו לייבים</p>}
+      {!loadingLives && lives.length === 0 && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>עדיין לא נוספו מפגשים</p>}
 
       {!loadingLives && lives.length > 0 && (
         <>
-          <div className="section-label" style={{ marginTop: '10px' }}><h2>לייבים קרובים</h2><span className="count">{upcomingLives.length}</span></div>
-          {upcomingLives.length === 0 && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)', marginBottom: '16px' }}>אין לייבים קרובים מתוזמנים</p>}
+          <div className="section-label" style={{ marginTop: '10px' }}><h2>מפגשים קרובים</h2><span className="count">{upcomingLives.length}</span></div>
+          {upcomingLives.length === 0 && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)', marginBottom: '16px' }}>אין מפגשים קרובים מתוזמנים</p>}
           {upcomingLives.map(renderLiveRow)}
 
-          <div className="section-label" style={{ marginTop: '24px' }}><h2>לייבים שעברו</h2><span className="count">{pastLives.length}</span></div>
-          {pastLives.length === 0 && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>עדיין אין לייבים שעברו</p>}
+          <div className="section-label" style={{ marginTop: '24px' }}><h2>מפגשים שעברו</h2><span className="count">{pastLives.length}</span></div>
+          {pastLives.length === 0 && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>עדיין אין מפגשים שעברו</p>}
           {pastLives.map(renderLiveRow)}
         </>
       )}
