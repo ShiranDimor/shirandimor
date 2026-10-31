@@ -17,7 +17,6 @@ export default function AdminDashboard() {
   const [livesCount, setLivesCount] = useState(0);
   const [liveRegistrationsTotal, setLiveRegistrationsTotal] = useState(0);
   const [lessonsCount, setLessonsCount] = useState(0);
-  const [revenueCount, setRevenueCount] = useState(0);
   const [revenueTotal, setRevenueTotal] = useState(0);
   const [salesLeadsInProgress, setSalesLeadsInProgress] = useState(0);
   const [salesLeadsAttention, setSalesLeadsAttention] = useState(0);
@@ -185,7 +184,6 @@ export default function AdminDashboard() {
     setLivesCount(upcomingLives.length);
     setLiveRegistrationsTotal(upcomingLives.reduce((sum, l) => sum + (l.registrationsCount || 0), 0));
     setLessonsCount((lessonsRes?.lessons || []).length);
-    setRevenueCount(revenueRes?.count || 0);
     setRevenueTotal(revenueRes?.totalAmount || 0);
     setSalesLeadsInProgress(salesLeadsRes?.inProgress || 0);
     setSalesLeadsAttention((salesLeadsRes?.followupsOverdue || 0) + (salesLeadsRes?.followupsToday || 0));
@@ -262,7 +260,7 @@ export default function AdminDashboard() {
         <Link href="/admin/subscribers" className="admin-tile">
           <div className="at-icon">✅</div>
           <div className="at-title">מנויים מאושרים</div>
-          <div className="at-count">{approvedCount} פעילים</div>
+          <div className="at-count">{approvedCount} פעילים · ₪{revenueTotal.toLocaleString('he-IL')}</div>
         </Link>
 
         <Link href="/admin/trading-plan" className={`admin-tile ${abandonedUnread > 0 ? 'attention' : ''}`}>
@@ -287,12 +285,6 @@ export default function AdminDashboard() {
           <div className="at-icon">📌</div>
           <div className="at-title">לוח מודעות</div>
           <div className="at-count">פרסום עדכון לכולם</div>
-        </Link>
-
-        <Link href="/admin/subscribers" className="admin-tile">
-          <div className="at-icon">💰</div>
-          <div className="at-title">הכנסה מקבוצת הסוחרים</div>
-          <div className="at-count">₪{revenueTotal.toLocaleString('he-IL')} · {revenueCount} אנשים</div>
         </Link>
 
         <Link href="/admin/support-bot" className="admin-tile">
