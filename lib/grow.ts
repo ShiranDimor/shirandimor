@@ -3,8 +3,10 @@ const SUBSCRIBER_GROUP_NAME = 'קבוצת סוחרים';
 const MONTHLY_COST_COLUMN_TITLE = 'עלות חודשית ששילם';
 const REGISTRATION_DATE_COLUMN_TITLE = 'תאריך הרשמה';
 const BENEFIT_COLUMN_TITLE = 'נרשם בזכות הטבה';
-const BENEFIT_LABEL = 'חודש ראשון 50%';
-const FIRST_MONTH_DISCOUNT_AMOUNT = 200;
+const BENEFIT_LABEL = 'חודש ראשון ב-1 ש"ח';
+// המחיר הסמלי של החודש הראשון (אימות כרטיס) במסלול הנוכחי - לא 200 ש"ח (50% הנחה) כמו
+// במודל הישן. ההבחנה הזו קובעת מה מסומן במאנדיי כ"הטבת חודש ראשון" ומה מסמן trial_price_used
+export const FIRST_MONTH_PRICE = 1;
 
 export type GrowPayment = {
   phone: string | null;
@@ -153,12 +155,12 @@ export async function syncGrowPaymentToMonday(
     const { subscriberGroupId, phoneColumnId, emailColumnId, monthlyCostColumnId, regDateColumnId, benefitColumnId } =
       await getGrowBoardSchema(token, boardId);
 
-    const isFirstMonthDiscount = payment.amount === FIRST_MONTH_DISCOUNT_AMOUNT;
+    const isFirstMonthPrice = payment.amount === FIRST_MONTH_PRICE;
 
     const columnValues: Record<string, unknown> = {};
     if (monthlyCostColumnId && payment.amount != null) columnValues[monthlyCostColumnId] = String(payment.amount);
     if (regDateColumnId) columnValues[regDateColumnId] = { date: todayDateValue() };
-    if (benefitColumnId && isFirstMonthDiscount) columnValues[benefitColumnId] = { label: BENEFIT_LABEL };
+    if (benefitColumnId && isFirstMonthPrice) columnValues[benefitColumnId] = { label: BENEFIT_LABEL };
     if (phoneColumnId && payment.phone) {
       columnValues[phoneColumnId] = { phone: payment.phone.startsWith('0') ? `972${payment.phone.slice(1)}` : payment.phone, countryShortName: 'IL' };
     }
@@ -166,7 +168,7 @@ export async function syncGrowPaymentToMonday(
 
     const noteLines = [
       'התקבל תשלום ב-Grow.',
-      payment.amount != null ? `סכום: ${payment.amount} ש"ח${isFirstMonthDiscount ? ' (הנחת חודש ראשון - 50%)' : ''}` : null,
+      payment.amount != null ? `סכום: ${payment.amount} ש"ח${isFirstMonthPrice ? ' (חודש ראשון ב-1 ש"ח)' : ''}` : null,
       payment.transactionId ? `מזהה עסקה: ${payment.transactionId}` : null,
     ].filter(Boolean);
 
