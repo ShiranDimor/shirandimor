@@ -410,18 +410,24 @@
 
   /* שורת כפתורים קומפקטית מתחת להירו - מחליפה כרטיסי טיזר גדולים (תוכנית מסחר, לייבים, תיק,
      השוואת מסלולים) בשביל עמוד בית נקי יותר, בלי לאבד אף נתיב ניווט - כל מה שהיה זמין נשאר
-     זמין, רק בלי "לזרוק" את כל התוכן על המבקר/ת בגלילה הראשונה */
-  .quick-link-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin: 22px 0 28px; }
+     זמין, רק בלי "לזרוק" את כל התוכן על המבקר/ת בגלילה הראשונה.
+     רשת קבועה של 2 עמודות (לא flex-wrap חופשי) כדי שהכפתורים יתיישרו תמיד נקי, בלי שורה אחרונה
+     "יתומה" עם כפתור בודד תלוי באוויר - וכפתור ההצטרפות מופרד ומודגש בנפרד מתחתיהם */
+  .quick-link-row { display: flex; flex-direction: column; gap: 10px; margin: 22px 0 28px; }
+  .quick-link-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .quick-link-grid .quick-link-pill:last-child:nth-child(odd) { grid-column: 1 / -1; }
   .quick-link-pill {
-    font-size: 12.5px; font-weight: 600; color: var(--text-secondary); background: var(--bg-surface);
-    border: 1px solid var(--border-hairline-strong); border-radius: 20px; padding: 8px 14px; text-decoration: none;
-    white-space: nowrap; transition: border-color 0.15s ease, transform 0.15s ease;
+    font-size: 13px; font-weight: 600; color: var(--text-secondary); background: var(--bg-surface);
+    border: 1px solid var(--border-hairline-strong); border-radius: 12px; padding: 11px 10px; text-decoration: none;
+    text-align: center; transition: border-color 0.15s ease, transform 0.15s ease;
   }
   .quick-link-pill:hover { border-color: var(--teal); transform: translateY(-1px); }
   .quick-link-accent {
-    color: var(--profit); background: var(--profit-bg); border-color: rgba(92, 122, 61,0.35); font-weight: 700;
+    display: block; text-align: center; font-size: 14.5px; font-weight: 700; color: var(--bg-void);
+    background: var(--teal); border-radius: 12px; padding: 14px 16px; text-decoration: none;
+    box-shadow: 0 4px 14px rgba(230, 98, 27,0.3); transition: transform 0.15s ease, box-shadow 0.15s ease;
   }
-  .quick-link-accent:hover { border-color: var(--profit); }
+  .quick-link-accent:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(230, 98, 27,0.4); }
 
   .trust-strip { display: flex; gap: 8px; margin: 24px 0 32px; padding: 16px 0; border-top: 1px solid var(--border-hairline); border-bottom: 1px solid var(--border-hairline); }
 

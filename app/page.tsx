@@ -118,12 +118,14 @@ export default function HomePage() {
       </div>
 
       <Reveal className="quick-link-row">
-        <Link href="/trading-plan" className="quick-link-pill">📝 תוכנית מסחר</Link>
-        <Link href="/lives" className="quick-link-pill">🎥 מסחר בזמן אמת</Link>
-        <Link href="/portfolio" className="quick-link-pill">📊 תיק מסחר</Link>
-        <Link href="/lessons" className="quick-link-pill">📚 ספריית שיעורים</Link>
-        <Link href="/business" className="quick-link-pill">🏢 לארגונים</Link>
-        <Link href="/subscribe" className="quick-link-pill quick-link-accent">💬 מדברים עסקאות - ₪1</Link>
+        <div className="quick-link-grid">
+          <Link href="/trading-plan" className="quick-link-pill">📝 תוכנית מסחר</Link>
+          <Link href="/lives" className="quick-link-pill">🎥 מסחר בזמן אמת</Link>
+          <Link href="/portfolio" className="quick-link-pill">📊 תיק מסחר</Link>
+          <Link href="/lessons" className="quick-link-pill">📚 ספריית שיעורים</Link>
+          <Link href="/business" className="quick-link-pill">🏢 לארגונים</Link>
+        </div>
+        <Link href="/subscribe" className="quick-link-accent">💬 מדברים עסקאות - חודש ראשון ב-₪1 ←</Link>
       </Reveal>
 
       <Reveal className="trust-strip">
@@ -301,7 +303,7 @@ export default function HomePage() {
       <Reveal>
         <div className="quote-block">
           <span className="qmark" aria-hidden="true">"</span>
-          <p>השוק לא תמיד פשוט.<br />הדרך לסחור בו יכולה להיות.</p>
+          <p>השוק לא תמיד פשוט,<br />הדרך לסחור בו יכולה להיות.</p>
           <span className="qauthor">שירן דימור</span>
         </div>
       </Reveal>
