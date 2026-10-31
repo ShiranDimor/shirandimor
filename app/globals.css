@@ -408,6 +408,21 @@
   .cta-sub-link { display: block; text-align: center; font-size: 12.5px; color: var(--text-tertiary); text-decoration: none; }
   .cta-sub-link span { color: var(--lavender); font-weight: 600; }
 
+  /* שורת כפתורים קומפקטית מתחת להירו - מחליפה כרטיסי טיזר גדולים (תוכנית מסחר, לייבים, תיק,
+     השוואת מסלולים) בשביל עמוד בית נקי יותר, בלי לאבד אף נתיב ניווט - כל מה שהיה זמין נשאר
+     זמין, רק בלי "לזרוק" את כל התוכן על המבקר/ת בגלילה הראשונה */
+  .quick-link-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin: 22px 0 28px; }
+  .quick-link-pill {
+    font-size: 12.5px; font-weight: 600; color: var(--text-secondary); background: var(--bg-surface);
+    border: 1px solid var(--border-hairline-strong); border-radius: 20px; padding: 8px 14px; text-decoration: none;
+    white-space: nowrap; transition: border-color 0.15s ease, transform 0.15s ease;
+  }
+  .quick-link-pill:hover { border-color: var(--teal); transform: translateY(-1px); }
+  .quick-link-accent {
+    color: var(--profit); background: var(--profit-bg); border-color: rgba(92, 122, 61,0.35); font-weight: 700;
+  }
+  .quick-link-accent:hover { border-color: var(--profit); }
+
   .trust-strip { display: flex; gap: 8px; margin: 24px 0 32px; padding: 16px 0; border-top: 1px solid var(--border-hairline); border-bottom: 1px solid var(--border-hairline); }
 
   .about-strip { margin: 22px 0 8px; padding: 16px 16px; background: var(--bg-surface); border-radius: 10px; border: 1px solid var(--border-hairline); }
@@ -932,34 +947,6 @@
 
 .tp-closing-message { font-size: 13.5px; color: var(--text-secondary); line-height: 1.75; margin: 20px 0; font-style: italic; text-align: center; }
 
-/* ===== כרטיס טיזר בעמוד הבית לכלי תוכנית המסחר ===== */
-.tp-home-teaser {
-  display: block; text-decoration: none;
-  background: linear-gradient(160deg, rgba(180, 121, 31,0.12) 0%, var(--bg-surface) 100%);
-  border: 1px solid rgba(180, 121, 31,0.35); border-radius: 14px; padding: 20px; margin-bottom: 28px;
-}
-.tp-home-teaser-badge {
-  display: inline-flex; font-size: 11px; font-family: var(--font-mono); color: var(--orange);
-  background: rgba(180, 121, 31,0.14); border: 1px solid rgba(180, 121, 31,0.35);
-  border-radius: 20px; padding: 4px 10px; margin-bottom: 10px;
-}
-.tp-home-teaser-title { font-family: var(--font-display); font-size: 16.5px; font-weight: 600; color: var(--text-primary); margin-bottom: 6px; line-height: 1.4; }
-.tp-home-teaser-text { font-size: 13px; color: var(--text-secondary); line-height: 1.6; margin-bottom: 12px; }
-.tp-home-teaser-cta { font-size: 14px; font-weight: 700; color: var(--orange); display: flex; align-items: center; gap: 4px; }
-
-/* ===== רצועת טיזר קומפקטית ללייבים - שורה אחת, לא עוד "ריבוע" גדול שמתחרה עם הכרטיס העיקרי ===== */
-.live-teaser {
-  display: flex; align-items: center; gap: 10px; text-decoration: none;
-  background: rgba(140, 59, 94,0.08); border: 1px solid rgba(140, 59, 94,0.3);
-  border-radius: 30px; padding: 10px 16px; margin-bottom: 28px;
-}
-.live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--loss); flex-shrink: 0; animation: live-pulse 1.6s ease-in-out infinite; }
-@keyframes live-pulse {
-  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(193, 74, 62,0.45); }
-  50% { opacity: 0.55; box-shadow: 0 0 0 5px rgba(193, 74, 62,0); }
-}
-.live-teaser-text { flex: 1; font-size: 13px; color: var(--text-secondary); line-height: 1.4; }
-.live-teaser-text strong { color: var(--text-primary); }
 
 /* הדגשת כפתור ההתראות בראש הדף (#hero-notify) כשגוללים אליו מכפתור "הפעלה" במקום אחר בדף -
    כדי שיהיה ברור על מה בדיוק צריך ללחוץ אחרי הגלילה, במקום להישאר עם "תהיתי לאן זה הביא אותי" */
@@ -1053,7 +1040,6 @@
 
 .lessons-empty { text-align: center; padding: 50px 20px; color: var(--text-tertiary); }
 .lessons-empty-icon { font-size: 26px; margin-bottom: 10px; }
-.live-teaser-arrow { font-size: 15px; font-weight: 700; color: var(--lavender); flex-shrink: 0; }
 
 /* ===== מערכת מכירות טלפוניות (sales-leads) ===== */
 .sl-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 16px; }

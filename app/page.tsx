@@ -103,12 +103,7 @@ export default function HomePage() {
       <header>
         <Link href="/" className="brand">מסחר <span>אחראי</span> במניות</Link>
         <div style={{ gap: '8px' }}>
-          <Link href="/trading-plan" className="nav-cta-orange">תוכנית מסחר</Link>
-          <Link href="/lives" className="nav-cta-live"><span className="live-dot" />לייבים</Link>
-          <Link href="/lessons" className="nav-cta-sky">ספריית שיעורים</Link>
-          <Link href="/portfolio" className="nav-cta-teal">תיק מסחר של שירן</Link>
           <Link href="/login" className="nav-cta-profit">כניסה לסוחרים</Link>
-          <Link href="/business" className="nav-cta-biz">לארגונים</Link>
         </div>
       </header>
 
@@ -120,12 +115,16 @@ export default function HomePage() {
         <div id="hero-notify">
           <PushNotificationButton variant="hero" autoOpenLeadForm={autoOpenNotifications} />
         </div>
-
-        <p style={{ fontSize: '13px', color: 'var(--text-secondary)', textAlign: 'center', lineHeight: 1.6, maxWidth: 'none', marginTop: '14px', marginBottom: '6px' }}>
-          ומי שרוצה צעד רחוק יותר - <strong style={{ color: 'var(--lavender)' }}>סוחרים ביחד איתי, בלי ידע מוקדם</strong>.
-        </p>
-        <Link className="cta-sub-link" href="/subscribe">להכיר את &quot;מדברים עסקאות&quot; <span>←</span></Link>
       </div>
+
+      <Reveal className="quick-link-row">
+        <Link href="/trading-plan" className="quick-link-pill">📝 תוכנית מסחר</Link>
+        <Link href="/lives" className="quick-link-pill">🎥 לייבים</Link>
+        <Link href="/portfolio" className="quick-link-pill">📊 תיק מסחר</Link>
+        <Link href="/lessons" className="quick-link-pill">📚 ספריית שיעורים</Link>
+        <Link href="/business" className="quick-link-pill">🏢 לארגונים</Link>
+        <Link href="/subscribe" className="quick-link-pill quick-link-accent">💬 מדברים עסקאות - ₪1</Link>
+      </Reveal>
 
       <Reveal className="trust-strip">
         <div className="trust-item"><div className="num"><CountUp value={0} suffix="%" /></div><div className="lbl">הבטחות תשואה</div></div>
@@ -142,54 +141,42 @@ export default function HomePage() {
       </Reveal>
 
       <Reveal>
-        <Link href="/trading-plan" className="tp-home-teaser">
-          <div className="tp-home-teaser-badge">10 דקות · בלי התחייבות</div>
-          <div className="tp-home-teaser-title">8 שלבים לבניית תוכנית מסחר</div>
-          <div className="tp-home-teaser-text">כמה שאלות קצרות, ובסוף יוצאים עם תוכנית עבודה ברורה - לא עוד טופס, ולא עוד הבטחה.</div>
-          <div className="tp-home-teaser-cta">להתחיל <span>←</span></div>
-        </Link>
-      </Reveal>
-
-      <Reveal>
-        <Link href="/lives" className="live-teaser">
-          <span className="live-dot" />
-          <span className="live-teaser-text"><strong>הלייבים הקרובים</strong> - סוחרים ביחד איתי בזמן אמת, לא רק לומדים: לבנות תיק השקעות אחראי ומציאותי הרבה יותר פשוט ממה שנדמה</span>
-          <span className="live-teaser-arrow">←</span>
-        </Link>
-      </Reveal>
-
-      <Reveal>
         <div className="section-label"><h2>אז למי זה מתאים?</h2></div>
-        <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.65, marginBottom: '12px' }}>
-          <strong style={{ color: 'var(--text-primary)' }}>אנשים רגילים, לא סוחרים במשרה מלאה</strong> - שרוצים שהחיסכון שלהם יעשה משהו חוץ מלשבת בעו"ש, בלי לשבת כל היום מול מסכים ובלי לעזוב את מה שהם כבר עושים.
-        </p>
         <div className="tag-row">
           <span className="tag-chip">שכירים</span><span className="tag-chip">הורים</span><span className="tag-chip">עצמאיים</span><span className="tag-chip">סטודנטים</span><span className="tag-chip">עם ניסיון לא מוצלח</span><span className="tag-chip">בלי שום ניסיון</span>
         </div>
-        <div className="stat-callout">
-          <div className="sc-num"><CountUp value={90} suffix="%" /></div>
-          <p>הסיבה האמיתית לכך שרוב האנשים לא מתחילים להשקיע, או נושרים אחרי כמה חודשים, היא לא חוסר ידע - זה <strong>הפן המנטלי</strong>. הפחד להפסיד, הקושי לקבל הפסד, וחוסר הסבלנות להישאר בתהליך. אבל בעיקר הבהלה מהתחום עצמו, וההרגשה של "צריך לדעת המון" ו"מה אני בכלל קשור לזה".</p>
-        </div>
-      </Reveal>
 
-      <Reveal>
-        <div className="section-label" style={{ marginTop: '30px' }}><h2 style={{ color: 'var(--loss)' }}>למי זה פחות מתאים</h2></div>
-        <div className="not-fit">
-          <div>– מי שמחפש רווח מובטח או כסף מהיר (אין כאן קוד סודי שפיצחתי לבד, ואני לא ממציאה מחדש את הגלגל - יש שיטה שעובדת, לא קסם)</div>
-          <div>– מי שרוצה שמישהי אחרת תקבל עבורו את כל ההחלטות</div>
-          <div>– מי שמתכוון לסחור בכסף שהוא צריך למחיה, או בהלוואה</div>
-          <div>– מי שלא מבין שהפסדים הם חלק מהמסחר</div>
-        </div>
-      </Reveal>
+        <details className="section-collapse">
+          <summary>
+            <h2>עוד קצת פרטים - למי זה כן ולא מתאים</h2>
+            <span className="collapse-chevron">▾</span>
+          </summary>
+          <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-hairline-strong)', borderTop: 'none', borderRadius: '0 0 10px 10px', padding: '16px' }}>
+            <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.65, marginBottom: '14px' }}>
+              <strong style={{ color: 'var(--text-primary)' }}>אנשים רגילים, לא סוחרים במשרה מלאה</strong> - שרוצים שהחיסכון שלהם יעשה משהו חוץ מלשבת בעו"ש, בלי לשבת כל היום מול מסכים ובלי לעזוב את מה שהם כבר עושים.
+            </p>
+            <div className="stat-callout" style={{ marginBottom: '20px' }}>
+              <div className="sc-num"><CountUp value={90} suffix="%" /></div>
+              <p>הסיבה האמיתית לכך שרוב האנשים לא מתחילים להשקיע, או נושרים אחרי כמה חודשים, היא לא חוסר ידע - זה <strong>הפן המנטלי</strong>. הפחד להפסיד, הקושי לקבל הפסד, וחוסר הסבלנות להישאר בתהליך. אבל בעיקר הבהלה מהתחום עצמו, וההרגשה של "צריך לדעת המון" ו"מה אני בכלל קשור לזה".</p>
+            </div>
 
-      <Reveal>
-        <div className="section-label" style={{ marginTop: '20px' }}><h2 style={{ color: 'var(--profit)' }}>למי זה כן מתאים</h2></div>
-        <div className="not-fit">
-          <div>– מי שרוצה תיק מסחר אמיתי ושקוף, כולל רווחים והפסדים</div>
-          <div>– מי שרוצה ליווי אישי ממני וקהילה תומכת לאורך הדרך</div>
-          <div>– מי שרוצה ללמוד גם את החלק הכי משמעותי - הפן המנטאלי</div>
-          <div>– מי שרוצה גישה למסחר תוך-יומי, סווינג והשקעות לטווח ארוך</div>
-        </div>
+            <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--loss)', marginBottom: '8px' }}>למי זה פחות מתאים</div>
+            <div className="not-fit" style={{ marginBottom: '20px' }}>
+              <div>– מי שמחפש רווח מובטח או כסף מהיר (אין כאן קוד סודי שפיצחתי לבד, ואני לא ממציאה מחדש את הגלגל - יש שיטה שעובדת, לא קסם)</div>
+              <div>– מי שרוצה שמישהי אחרת תקבל עבורו את כל ההחלטות</div>
+              <div>– מי שמתכוון לסחור בכסף שהוא צריך למחיה, או בהלוואה</div>
+              <div>– מי שלא מבין שהפסדים הם חלק מהמסחר</div>
+            </div>
+
+            <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--profit)', marginBottom: '8px' }}>למי זה כן מתאים</div>
+            <div className="not-fit">
+              <div>– מי שרוצה תיק מסחר אמיתי ושקוף, כולל רווחים והפסדים</div>
+              <div>– מי שרוצה ליווי אישי ממני וקהילה תומכת לאורך הדרך</div>
+              <div>– מי שרוצה ללמוד גם את החלק הכי משמעותי - הפן המנטאלי</div>
+              <div>– מי שרוצה גישה למסחר תוך-יומי, סווינג והשקעות לטווח ארוך</div>
+            </div>
+          </div>
+        </details>
       </Reveal>
 
       <Reveal>
@@ -216,51 +203,58 @@ export default function HomePage() {
       </Reveal>
 
       <Reveal>
-        <div className="section-label" style={{ marginTop: '30px' }}><h2>איך מתחילים?</h2></div>
-        <p style={{ fontSize: '13px', color: 'var(--text-tertiary)', marginBottom: '16px' }}>שני צעדים פשוטים - מתחילים בלי להוציא כלום, ומשדרגים כשנוח לכם.</p>
+        <details className="section-collapse">
+          <summary>
+            <h2>איך מתחילים? השוואה מלאה בין שני המסלולים</h2>
+            <span className="collapse-chevron">▾</span>
+          </summary>
+          <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-hairline-strong)', borderTop: 'none', borderRadius: '0 0 10px 10px', padding: '16px' }}>
+            <p style={{ fontSize: '13px', color: 'var(--text-tertiary)', marginBottom: '16px' }}>שני צעדים פשוטים - מתחילים בלי להוציא כלום, ומשדרגים כשנוח לכם.</p>
+            <div className="groups-compare">
+              <div className="group-card free">
+                <div className="gc-tag" style={{ background: 'var(--profit-bg)', color: 'var(--profit)' }}>צעד 1</div>
+                <h3>עדכונים בזמן אמת</h3>
+                <div className="gc-price">ללא עלות</div>
+                <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '-10px', marginBottom: '14px' }}>בלי התחייבות, בלי לחץ</div>
+                <div className="gc-perks">
+                  <div><strong>בלי רעש</strong> - רק מה שבאמת קורה בשוק</div>
+                  <div>הצצה לעולם שוק ההון, בלי לשלם עליה <strong>אלפי שקלים</strong></div>
+                  <div><strong>עדכון בזמן אמת</strong> לנייד כשמשהו קורה בשוק, כולל תזכורת לפני כל לייב</div>
+                  <div><strong>ספרייה מלאה</strong> של וובינרים ומצגות, בלי עלות נוספת</div>
+                  <div>הפעלה בלחיצה אחת - <strong>ללא התחייבות</strong> וללא עלות</div>
+                  <div>אפשר לשדרג ל"מדברים עסקאות" בכל שלב, <strong>בקצב האישי</strong></div>
+                </div>
+                <a className="gc-cta" href="#hero-notify" onClick={(e) => { e.preventDefault(); scrollToHeroNotify(); }}>הפעלה ללא עלות ↑</a>
+              </div>
+              <div className="group-card paid">
+                <div className="gc-tag">צעד 2 · גישה מלאה</div>
+                <h3>מדברים עסקאות</h3>
+                <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', lineHeight: 1.55, marginBottom: '10px' }}>
+                  <strong style={{ color: 'var(--lavender)' }}>סוחרים ביחד איתי, בלי ידע מוקדם</strong>.
+                </p>
+                <div className="gc-price">₪400 לחודש <span style={{ color: 'var(--profit)', fontWeight: 600 }}>· חודש ראשון ב-₪1</span></div>
+                <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '-10px', marginBottom: '14px' }}>מנוי חודשי · ללא התחייבות</div>
+                <div className="gc-perks">
+                  <div>כל מה שיש בעדכונים החינמיים - <strong>ועוד</strong>:</div>
+                  <div>בניית <strong>תיק השקעות</strong> - תוך יומי, סווינג, טווח ארוך</div>
+                  <div><strong>וובינרים לייב</strong> - שאלות, ניתוחים ולמידה בזמן אמת</div>
+                  <div><strong>ליווי אישי</strong> - לצד קהילת סוחרים סגורה לדיון מעמיק</div>
+                  <div>יומן <strong>מסחר שקוף</strong> - כולל עסקאות מפסידות</div>
+                  <div><strong>תיק מסחר</strong> אישי וניתוח העסקאות ע"י שירן</div>
+                </div>
+                <Link className="gc-cta" href="/subscribe">לפרטים על מדברים עסקאות</Link>
+              </div>
+            </div>
+          </div>
+        </details>
       </Reveal>
-      <div className="groups-compare">
-        <Reveal className="group-card free">
-          <div className="gc-tag" style={{ background: 'var(--profit-bg)', color: 'var(--profit)' }}>צעד 1</div>
-          <h3>עדכונים בזמן אמת</h3>
-          <div className="gc-price">ללא עלות</div>
-          <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '-10px', marginBottom: '14px' }}>בלי התחייבות, בלי לחץ</div>
-          <div className="gc-perks">
-            <div><strong>בלי רעש</strong> - רק מה שבאמת קורה בשוק</div>
-            <div>הצצה לעולם שוק ההון, בלי לשלם עליה <strong>אלפי שקלים</strong></div>
-            <div><strong>עדכון בזמן אמת</strong> לנייד כשמשהו קורה בשוק, כולל תזכורת לפני כל לייב</div>
-            <div><strong>ספרייה מלאה</strong> של וובינרים ומצגות, בלי עלות נוספת</div>
-            <div>הפעלה בלחיצה אחת - <strong>ללא התחייבות</strong> וללא עלות</div>
-            <div>אפשר לשדרג ל"מדברים עסקאות" בכל שלב, <strong>בקצב האישי</strong></div>
-          </div>
-          <a className="gc-cta" href="#hero-notify" onClick={(e) => { e.preventDefault(); scrollToHeroNotify(); }}>הפעלה ללא עלות ↑</a>
-        </Reveal>
-        <Reveal className="group-card paid" delay={140}>
-          <div className="gc-tag">צעד 2 · גישה מלאה</div>
-          <h3>מדברים עסקאות</h3>
-          <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', lineHeight: 1.55, marginBottom: '10px' }}>
-            <strong style={{ color: 'var(--lavender)' }}>סוחרים ביחד איתי, בלי ידע מוקדם</strong>.
-          </p>
-          <div className="gc-price">₪400 לחודש <span style={{ color: 'var(--profit)', fontWeight: 600 }}>· חודש ראשון ב-₪1</span></div>
-          <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '-10px', marginBottom: '14px' }}>מנוי חודשי · ללא התחייבות</div>
-          <div className="gc-perks">
-            <div>כל מה שיש בעדכונים החינמיים - <strong>ועוד</strong>:</div>
-            <div>בניית <strong>תיק השקעות</strong> - תוך יומי, סווינג, טווח ארוך</div>
-            <div><strong>וובינרים לייב</strong> - שאלות, ניתוחים ולמידה בזמן אמת</div>
-            <div><strong>ליווי אישי</strong> - לצד קהילת סוחרים סגורה לדיון מעמיק</div>
-            <div>יומן <strong>מסחר שקוף</strong> - כולל עסקאות מפסידות</div>
-            <div><strong>תיק מסחר</strong> אישי וניתוח העסקאות ע"י שירן</div>
-          </div>
-          <Link className="gc-cta" href="/subscribe">לפרטים על מדברים עסקאות</Link>
-        </Reveal>
-      </div>
 
       <Reveal>
         <div className="section-label" style={{ marginTop: '30px' }}><h2>שאלות שנשאלות הרבה</h2></div>
       </Reveal>
       <div className="faq-list">
         <Reveal delay={0}>
-          <details className="faq-item" style={{ borderRightColor: 'var(--profit)' }} open>
+          <details className="faq-item" style={{ borderRightColor: 'var(--profit)' }}>
             <summary>מי את בעצם, ומה עושים כאן?</summary>
             <p>אני שירן, סוחרת פעילה 14 שנה. בניתי כאן מקום שמלמד לנהל תיק השקעות אחראי - בלי הבטחות עושר ובלי שיטות פלא, רק עבודה שיטתית וליווי אמיתי. בונים תיק מסחר ביחד, רואים גם את ההפסדים ולא רק את ההצלחות, ומדברים תכלס על השוק בלי רעש מיותר. הכי פשוט להתחיל עם עדכונים בזמן אמת בחינם, ולהחליט משם אם רוצים להתקדם.</p>
             <a href="#hero-notify" className="faq-cta" onClick={(e) => { e.preventDefault(); scrollToHeroNotify(); }}>🔔 הפעלת עדכונים בזמן אמת - ללא עלות ←</a>
