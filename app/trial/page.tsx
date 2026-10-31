@@ -52,7 +52,7 @@ export default function TrialSignupPage() {
 
       <div className="form-title" style={{ fontSize: '22px' }}>7 ימי ניסיון ב&quot;מדברים עסקאות&quot; - ללא עלות</div>
       <div style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.7, marginBottom: '20px' }}>
-        פתחתי סבב חדש של 7 ימי ניסיון ל&quot;מדברים עסקאות&quot; - בלי עלות ובלי התחייבות, כדי שתראו מבפנים איך זה נראה <strong style={{ color: 'var(--lavender)' }}>לסחור ביחד איתי</strong>. בלי ידע מוקדם. המקום מוגבל, אז כדי לשריין השאירו שם ונייד ואני אחזור אליכם.
+        פתחתי סבב חדש של 7 ימי ניסיון ל&quot;מדברים עסקאות&quot; - בלי עלות ובלי התחייבות, כדי שתראו מבפנים איך זה נראה <strong style={{ color: 'var(--lavender)' }}>לסחור ביחד איתי, בלי ידע מוקדם</strong>. המקום מוגבל, אז כדי לשריין השאירו שם ונייד ואני אחזור אליכם.
         <br /><br />
         לפני ההצטרפות תתקיים שיחה קצרה איתי כדי לוודא התאמה.
       </div>
