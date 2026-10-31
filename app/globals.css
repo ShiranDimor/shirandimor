@@ -423,18 +423,19 @@
   .cta-sub-link { display: block; text-align: center; font-size: 12.5px; color: var(--text-tertiary); text-decoration: none; }
   .cta-sub-link span { color: var(--lavender); font-weight: 600; }
 
-  /* סרגל ניווט מהיר - צף/דביק מתחת ל-header, גולל אופקית. במקום להיות עוד בלוק בתוך זרימת
-     הדף (שם זה "לא הסתדר" חזותית), הוא נשאר נגיש תמיד בגלילה, בלי לתפוס גובה קבוע בעמוד.
-     כפתור ההצטרפות המודגש נשאר כנגיש בזרימת הדף, לא בסרגל - זה רגע-המרה, לא ניווט שוטף */
+  /* סרגל ניווט מהיר - צף/דביק מתחת ל-header, גולל אופקית, קומפקטי (לא פילס מלא) - גרסה מצומצמת
+     יותר אחרי שבדקנו כמה חלופות. במקום להיות עוד בלוק בתוך זרימת הדף, הוא נשאר נגיש תמיד
+     בגלילה, בלי לתפוס גובה קבוע בעמוד. כפתור ההצטרפות המודגש נשאר בזרימת הדף, לא בסרגל -
+     זה רגע-המרה, לא ניווט שוטף. השמות נשארים מלאים (לא מקוצרים) כדי שיהיו ברורים */
   .quick-link-row {
-    display: flex; gap: 8px; overflow-x: auto; padding: 4px 16px 14px;
+    display: flex; gap: 6px; overflow-x: auto; padding: 2px 16px 12px;
     -webkit-overflow-scrolling: touch; scrollbar-width: none;
   }
   .quick-link-row::-webkit-scrollbar { display: none; }
   .quick-link-pill {
     flex: 0 0 auto; white-space: nowrap;
-    font-size: 13px; font-weight: 600; color: var(--text-secondary); background: var(--bg-surface);
-    border: 1px solid var(--border-hairline-strong); border-radius: 999px; padding: 10px 14px; text-decoration: none;
+    font-size: 12px; font-weight: 600; color: var(--text-secondary); background: var(--bg-surface);
+    border: 1px solid var(--border-hairline-strong); border-radius: 9px; padding: 7px 11px; text-decoration: none;
     text-align: center; transition: border-color 0.15s ease, transform 0.15s ease;
   }
   .quick-link-pill:hover { border-color: var(--teal); transform: translateY(-1px); }
