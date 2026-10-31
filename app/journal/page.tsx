@@ -7,6 +7,7 @@ import ClearableInput from '@/components/ClearableInput';
 import StatsRing from '@/components/StatsRing';
 import EquityCurve from '@/components/EquityCurve';
 import CalendarHeatmap from '@/components/CalendarHeatmap';
+import PushNotificationButton from '@/components/PushNotificationButton';
 
 type JournalEntry = {
   id: string;
@@ -422,6 +423,8 @@ export default function JournalPage() {
       <p style={{ fontSize: '12.5px', color: 'var(--text-tertiary)', lineHeight: 1.5, marginBottom: '14px' }}>
         זה יומן אישי שלך למעקב ותרגול, ולא קשור לתיק שבו שירן בפועל סוחרת - את התיק האמיתי שלה אפשר לראות <Link href="/portfolio" style={{ color: 'var(--teal)' }}>כאן</Link>.
       </p>
+
+      <PushNotificationButton />
 
       <button className="add-btn" onClick={() => setShowForm(!showForm)}>+ עסקה חדשה</button>
 
