@@ -19,7 +19,6 @@ export default function AdminDashboard() {
   const [lessonsCount, setLessonsCount] = useState(0);
   const [revenueCount, setRevenueCount] = useState(0);
   const [revenueTotal, setRevenueTotal] = useState(0);
-  const [trialSignupsCount, setTrialSignupsCount] = useState(0);
   const [salesLeadsInProgress, setSalesLeadsInProgress] = useState(0);
   const [salesLeadsAttention, setSalesLeadsAttention] = useState(0);
 
@@ -163,7 +162,7 @@ export default function AdminDashboard() {
   async function loadCounts() {
     const { data: { session } } = await supabase.auth.getSession();
 
-    const [pending, approved, openTrades, abandonedRes, livesRes, lessonsRes, revenueRes, trialSignupsRes, salesLeadsRes] = await Promise.all([
+    const [pending, approved, openTrades, abandonedRes, livesRes, lessonsRes, revenueRes, salesLeadsRes] = await Promise.all([
       supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'lead'),
       supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'subscriber').eq('subscription_status', 'active'),
       supabase.from('trades').select('id', { count: 'exact', head: true }).eq('status', 'open'),
@@ -171,7 +170,6 @@ export default function AdminDashboard() {
       fetch('/api/admin/lives', { headers: { Authorization: `Bearer ${session?.access_token}` } }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
       fetch('/api/admin/lessons', { headers: { Authorization: `Bearer ${session?.access_token}` } }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
       fetch('/api/admin/revenue-projection', { headers: { Authorization: `Bearer ${session?.access_token}` } }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
-      fetch('/api/admin/trial-signups', { headers: { Authorization: `Bearer ${session?.access_token}` } }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
       fetch('/api/admin/sales-leads/stats', { headers: { Authorization: `Bearer ${session?.access_token}` } }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
     ]);
 
@@ -189,8 +187,6 @@ export default function AdminDashboard() {
     setLessonsCount((lessonsRes?.lessons || []).length);
     setRevenueCount(revenueRes?.count || 0);
     setRevenueTotal(revenueRes?.totalAmount || 0);
-    const trialSignups: { handled: boolean }[] = trialSignupsRes?.signups || [];
-    setTrialSignupsCount(trialSignups.filter((s) => !s.handled).length);
     setSalesLeadsInProgress(salesLeadsRes?.inProgress || 0);
     setSalesLeadsAttention((salesLeadsRes?.followupsOverdue || 0) + (salesLeadsRes?.followupsToday || 0));
   }
@@ -293,7 +289,7 @@ export default function AdminDashboard() {
           <div className="at-count">פרסום עדכון לכולם</div>
         </Link>
 
-        <Link href="/admin/revenue" className="admin-tile">
+        <Link href="/admin/subscribers" className="admin-tile">
           <div className="at-icon">💰</div>
           <div className="at-title">הכנסה מקבוצת הסוחרים</div>
           <div className="at-count">₪{revenueTotal.toLocaleString('he-IL')} · {revenueCount} אנשים</div>
@@ -305,22 +301,10 @@ export default function AdminDashboard() {
           <div className="at-count">כלי פנימי</div>
         </Link>
 
-        <Link href="/admin/whatsapp-analysis" className="admin-tile">
-          <div className="at-icon">💬</div>
-          <div className="at-title">ניתוח קבוצות ווטסאפ</div>
-          <div className="at-count">כלי פנימי</div>
-        </Link>
-
         <Link href="/admin/blocked-contacts" className="admin-tile">
           <div className="at-icon">🚫</div>
           <div className="at-title">אנשי קשר חסומים</div>
           <div className="at-count">כלי פנימי</div>
-        </Link>
-
-        <Link href="/admin/trial-signups" className={`admin-tile ${trialSignupsCount > 0 ? 'attention' : ''}`}>
-          <div className="at-icon">🎁</div>
-          <div className="at-title">נרשמים לימי ניסיון</div>
-          <div className="at-count">{trialSignupsCount} ממתינים לטיפול</div>
         </Link>
 
         <Link href="/admin/marketing" className="admin-tile">

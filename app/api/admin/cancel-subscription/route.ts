@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/instantLogin';
 
-// POST - ביטול מנוי ידני: מסמן subscription_status="cancelled" ומאבד גישה מיידית (role נשאר
-// "subscriber" בכוונה - כדי שהוא יישאר גלוי ומזוהה כמנוי-לשעבר בפאנל הניהול, לא יתערבב סתם
-// ברשימת לידים חדשים שאין לה שום קשר אליו. לא מוחק חשבון/נתונים - למחיקה מלאה יש כפתור נפרד)
+// POST - ביטול מנוי ידני: מוריד role ל-"lead" (חוזר להיות ליד רגיל, לא מופיע ברשימת מנויים -
+// שירן ביקשה מפורשות שברשימת מנויים יופיעו רק מי שבאמת משלם) ומסמן subscription_status="cancelled"
+// + תאריך ביטול, לתיעוד. לא מוחק חשבון/נתונים - למחיקה מלאה יש כפתור נפרד
 // body: { userId: string }
 export async function POST(request: Request) {
   const authHeader = request.headers.get('Authorization') || '';
@@ -20,7 +20,7 @@ export async function POST(request: Request) {
 
   const { error } = await supabaseAdmin
     .from('profiles')
-    .update({ subscription_status: 'cancelled', subscription_cancelled_at: new Date().toISOString() })
+    .update({ role: 'lead', subscription_status: 'cancelled', subscription_cancelled_at: new Date().toISOString() })
     .eq('id', userId);
 
   if (error) return NextResponse.json({ error: 'שגיאה בביטול המנוי' }, { status: 500 });

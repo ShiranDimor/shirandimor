@@ -67,10 +67,10 @@ const PLACEHOLDER_EMAIL_DOMAIN = 'no-email.shirandimor.internal';
 
 // סנכרון דו-כיווני מלא מול "קבוצת סוחרים" במאנדיי - המקור היחיד שמשותף בין ההרצה היומית
 // האוטומטית (cron) לבין כפתור "סנכרון מלא" הידני בפאנל הניהול, כדי ששני המקומות יתנהגו זהה:
-// (1) מי שכבר לא בקבוצה במאנדיי מאבד/ת גישה פעילה באתר (subscription_status=cancelled -
-//     role נשאר subscriber בכוונה, כדי שיישאר/תישאר גלוי/ה כמנוי/ה-לשעבר, לא יתערבב/תתערבב
-//     סתם ברשימת לידים). (2) מי שבקבוצה במאנדיי אבל עוד אין לו/ה חשבון מנוי/ה פעיל/ה באתר -
-//     מקבל/ת אחד עכשיו, כולל הפעלה מחדש אוטומטית למי שבוטל/ה בעבר וחזר/ה לקבוצה
+// (1) מי שכבר לא בקבוצה במאנדיי מאבד/ת גישה פעילה וחוזר/ת להיות ליד רגיל (role="lead",
+//     subscription_status=cancelled לתיעוד) - לא נשאר/ת ברשימת מנויים, כי שירן ביקשה מפורשות
+//     שברשימת מנויים יופיעו רק מי שבאמת משלם. (2) מי שבקבוצה במאנדיי אבל עוד אין לו/ה חשבון
+//     מנוי/ה פעיל/ה באתר - מקבל/ת אחד עכשיו, כולל הפעלה מחדש אוטומטית למי שבוטל/ה בעבר וחזר/ה
 export async function syncSubscribersBidirectional(): Promise<BidirectionalSyncResult> {
   const { data: subscribers, error } = await supabaseAdmin
     .from('profiles')
@@ -80,10 +80,8 @@ export async function syncSubscribersBidirectional(): Promise<BidirectionalSyncR
   if (error) return { error: error.message };
 
   const nonExempted = (subscribers || []).filter((s) => !MANUAL_EXEMPT_EMAILS.has(normalizeEmail(s.email)));
-  // מי שכבר מסומן כמבוטל לא "מוסר" שוב - רק מי שעדיין פעיל/ה בפועל נבדק/ת מול מאנדיי
-  const activeOnly = nonExempted.filter((s) => s.subscription_status === 'active');
-  const withContact = activeOnly.filter((s) => s.phone || s.email);
-  const skippedNoPhone = activeOnly.length - withContact.length;
+  const withContact = nonExempted.filter((s) => s.phone || s.email);
+  const skippedNoPhone = nonExempted.length - withContact.length;
 
   const { phones: activePhones, emails: activeEmails } = await getMondaySubscriberContacts();
 
@@ -112,7 +110,7 @@ export async function syncSubscribersBidirectional(): Promise<BidirectionalSyncR
   if (toRemove.length > 0) {
     await supabaseAdmin
       .from('profiles')
-      .update({ subscription_status: 'cancelled', subscription_cancelled_at: new Date().toISOString() })
+      .update({ role: 'lead', subscription_status: 'cancelled', subscription_cancelled_at: new Date().toISOString() })
       .in('id', toRemove.map((s) => s.id));
   }
 
