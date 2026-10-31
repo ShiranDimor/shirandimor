@@ -7,6 +7,8 @@ import { supabase } from '@/lib/supabase';
 import PushNotificationButton from '@/components/PushNotificationButton';
 import Reveal from '@/components/Reveal';
 import CountUp from '@/components/CountUp';
+import MonthlyReturnBubbles from '@/components/MonthlyReturnBubbles';
+import { buildMonthlyPortfolioReturns, type MonthlyReturn } from '@/lib/portfolioStats';
 
 type Trade = {
   id: string;
@@ -20,46 +22,11 @@ type Trade = {
   closed_at: string | null;
 };
 
-const MONTH_LABELS_SHORT = ['ינו', 'פבר', 'מרץ', 'אפר', 'מאי', 'יונ', 'יול', 'אוג', 'ספט', 'אוק', 'נוב', 'דצמ'];
-const MONTH_LABELS_FULL = ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני', 'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר'];
-
-type MonthHighlight = { key: string; label: string; fullLabel: string; trades: number; portfolioPct: number };
-
-// מקבץ עסקאות סגורות לפי חודש - כל חודש שבו היו בכלל עסקאות, לא רק שלושת האחרונים. הראשון
-// ברשימה (החודש העדכני ביותר) הוא ברירת המחדל שמוצגת ראשונה בתיבת הבחירה בעמוד הבית - כדי
-// שהדבר הראשון שרואים תמיד יהיה סיכום חודשי, לא עסקה בודדת שעלולה להיות בהפסד. המספר הוא
-// הרווח/הפסד בפועל על התיק (לא אחוז הצלחה של עסקאות) - בדיוק כמו ב-/portfolio, כדי שלא יהיה
-// מצב שבו עמוד הבית מראה "30% הצלחה" ירוק בזמן שבעמוד התיק אותו חודש ממש מראה הפסד אמיתי
-function buildMonthHighlights(closedTrades: Trade[], initialBalance: number | null): MonthHighlight[] {
-  const byMonth = new Map<string, Trade[]>();
-  for (const t of closedTrades) {
-    if (!t.closed_at) continue;
-    const d = new Date(t.closed_at);
-    const key = `${d.getFullYear()}-${d.getMonth()}`;
-    if (!byMonth.has(key)) byMonth.set(key, []);
-    byMonth.get(key)!.push(t);
-  }
-  const months = Array.from(byMonth.entries()).sort((a, b) => (a[0] < b[0] ? 1 : -1));
-
-  return months.map(([key, trades]) => {
-    const [year, monthIdx] = key.split('-').map(Number);
-    const monthPnlUsd = trades.reduce((s, t) => s + (t.realized_pnl_usd ?? 0), 0);
-    return {
-      key,
-      label: MONTH_LABELS_SHORT[monthIdx],
-      fullLabel: `${MONTH_LABELS_FULL[monthIdx]} ${year}`,
-      trades: trades.length,
-      portfolioPct: initialBalance ? (monthPnlUsd / initialBalance) * 100 : 0,
-    };
-  });
-}
-
 export default function HomePage() {
   const [openCount, setOpenCount] = useState(0);
   const [showStickyCta, setShowStickyCta] = useState(false);
   const [hasFullAccess, setHasFullAccess] = useState(false);
-  const [monthHighlights, setMonthHighlights] = useState<MonthHighlight[]>([]);
-  const [selectedMonthKey, setSelectedMonthKey] = useState('');
+  const [monthlyReturns, setMonthlyReturns] = useState<MonthlyReturn[]>([]);
   // מגיעים מקישור עם ?join=1 (מעמודים אחרים כמו /lives או /portfolio) - פותח ישר את שער
   // הרשמה להתראות בלי צורך ללחוץ קודם על הכפתור. נקרא סינכרונית ב-useState (לא ב-useEffect)
   // כדי שהערך הנכון יגיע לרינדור הראשון של PushNotificationButton - אחרת ה-useEffect הפנימי
@@ -113,17 +80,13 @@ export default function HomePage() {
         setOpenCount(open.length);
       }
       if (closed && closed.length > 0) {
-        const highlights = buildMonthHighlights(closed, initialBalance);
-        setMonthHighlights(highlights);
-        setSelectedMonthKey(highlights[0].key);
+        setMonthlyReturns(buildMonthlyPortfolioReturns(closed, initialBalance, 3));
       }
     } catch (e) {
       // בלי try/catch כאן, שגיאה הייתה משאירה את התצוגה בשקט על 0 עסקאות בלי שום סימן לבעיה
       console.error('homepage loadTrades failed', e);
     }
   }
-
-  const selectedMonth = monthHighlights.find((m) => m.key === selectedMonthKey) || monthHighlights[0];
 
   // גוללת לכפתור ההתראות בראש הדף ומדגישה אותו לרגע (פעימת מסגרת) - כדי שכפתורי "הפעלה ללא
   // עלות" במקומות אחרים בדף לא ישאירו את המשתמש תוהה לאן בדיוק להסתכל אחרי הגלילה
@@ -234,37 +197,19 @@ export default function HomePage() {
         <div className="portfolio-teaser">
           <div className="pt-head">
             <div className="pt-title">התיק של שירן</div>
-            {monthHighlights.length > 1 && (
-              <select
-                className="pt-month-select"
-                value={selectedMonth?.key || ''}
-                onChange={(e) => setSelectedMonthKey(e.target.value)}
-              >
-                {monthHighlights.map((m) => (
-                  <option key={m.key} value={m.key}>{m.fullLabel}</option>
-                ))}
-              </select>
-            )}
-          </div>
-
-          {selectedMonth ? (
-            <div className="pt-month-summary">
-              <div className="pt-month-num" style={{ color: selectedMonth.portfolioPct >= 0 ? 'var(--profit)' : 'var(--loss)' }}>
-                <CountUp value={selectedMonth.portfolioPct} prefix={selectedMonth.portfolioPct >= 0 ? '+' : ''} suffix="%" decimals={1} />
-              </div>
-              <div className="pt-month-sub">רווח על התיק ב{selectedMonth.fullLabel} · <CountUp value={selectedMonth.trades} /> עסקאות שנסגרו</div>
-            </div>
-          ) : (
-            <div style={{ fontSize: '13px', color: 'var(--text-tertiary)', padding: '10px 0' }}>עדיין אין עסקאות סגורות להצגה</div>
-          )}
-
-          <div className="pt-open-row">
             <span className="pt-badge">{openCount} עסקאות פתוחות כרגע</span>
           </div>
 
-          <p style={{ fontSize: '10.5px', color: 'var(--text-tertiary)', marginTop: '12px', marginBottom: 0 }}>
-            לפי עסקאות שנסגרו בתיק של שירן - כולל ההפסדים, לא רק ההצלחות.
-          </p>
+          {monthlyReturns.length > 0 ? (
+            <>
+              <MonthlyReturnBubbles months={monthlyReturns} />
+              <p style={{ fontSize: '10.5px', color: 'var(--text-tertiary)', marginTop: '8px', marginBottom: 0 }}>
+                רווח/הפסד בפועל על התיק, ל-3 החודשים האחרונים - כולל ההפסדים, לא רק ההצלחות.
+              </p>
+            </>
+          ) : (
+            <div style={{ fontSize: '13px', color: 'var(--text-tertiary)', padding: '10px 0' }}>עדיין אין עסקאות סגורות להצגה</div>
+          )}
 
           <Link className="teaser-cta" href="/portfolio">צפייה בתיק המסחר המלא, לפי חודש ותאריך ←</Link>
         </div>
