@@ -375,6 +375,7 @@
   .faq-item summary::after { content: '+'; color: var(--teal); font-size: 18px; font-weight: 400; flex-shrink: 0; margin-right: 10px; }
   .faq-item[open] summary::after { content: '−'; }
   .faq-item p { font-size: 13px; color: var(--text-secondary); line-height: 1.6; margin-top: 10px; }
+  .faq-cta { display: inline-flex; align-items: center; gap: 5px; margin-top: 10px; font-size: 12.5px; font-weight: 700; color: var(--profit); text-decoration: none; }
 
   .legal-doc h1 { font-family: var(--font-display); font-size: 22px; margin-bottom: 6px; }
   .legal-doc .legal-updated { font-size: 11px; color: var(--text-tertiary); margin-bottom: 20px; }
@@ -938,6 +939,14 @@
 }
 .live-teaser-text { flex: 1; font-size: 13px; color: var(--text-secondary); line-height: 1.4; }
 .live-teaser-text strong { color: var(--text-primary); }
+
+/* הדגשת כפתור ההתראות בראש הדף (#hero-notify) כשגוללים אליו מכפתור "הפעלה" במקום אחר בדף -
+   כדי שיהיה ברור על מה בדיוק צריך ללחוץ אחרי הגלילה, במקום להישאר עם "תהיתי לאן זה הביא אותי" */
+@keyframes hero-notify-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(92, 122, 61,0); }
+  50% { box-shadow: 0 0 0 10px rgba(92, 122, 61,0.18); }
+}
+#hero-notify.attention-pulse { border-radius: 14px; animation: hero-notify-pulse 0.85s ease-in-out 2; }
 
 /* הופעה הדרגתית בגלילה (components/Reveal.tsx) - fade + slide-up קטן, נכנס פעם אחת ונשאר */
 .reveal { opacity: 0; transform: translateY(18px); transition: opacity 0.65s cubic-bezier(0.16, 1, 0.3, 1), transform 0.65s cubic-bezier(0.16, 1, 0.3, 1); }

@@ -122,6 +122,16 @@ export default function HomePage() {
 
   const selectedMonth = monthHighlights.find((m) => m.key === selectedMonthKey) || monthHighlights[0];
 
+  // גוללת לכפתור ההתראות בראש הדף ומדגישה אותו לרגע (פעימת מסגרת) - כדי שכפתורי "הפעלה ללא
+  // עלות" במקומות אחרים בדף לא ישאירו את המשתמש תוהה לאן בדיוק להסתכל אחרי הגלילה
+  function scrollToHeroNotify() {
+    const el = document.getElementById('hero-notify');
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    el.classList.add('attention-pulse');
+    window.setTimeout(() => el.classList.remove('attention-pulse'), 1700);
+  }
+
   return (
     <div className="wrap">
       <header>
@@ -141,7 +151,9 @@ export default function HomePage() {
         <h1>שוק ההון הרבה יותר <em>פשוט</em><br />ממה שעושים ממנו.</h1>
         <p>אני שירן, ואני כאן כדי להראות לך שלא צריך לדעת הכול כדי להתחיל - <strong>צריך רק לדעת מה לעשות</strong>. עקרונות בסיסיים, ניהול סיכון ותוכנית עבודה מסודרת - בלי הבטחות תשואה, בלי "שיטת פלא", ובלי שזה יהפוך למשרה שנייה (יש לך כבר אחת, ואני לא רוצה את השנייה).</p>
 
-        <PushNotificationButton variant="hero" autoOpenLeadForm={autoOpenNotifications} />
+        <div id="hero-notify">
+          <PushNotificationButton variant="hero" autoOpenLeadForm={autoOpenNotifications} />
+        </div>
 
         <p style={{ fontSize: '13px', color: 'var(--text-secondary)', textAlign: 'center', lineHeight: 1.6, maxWidth: 'none', marginTop: '14px', marginBottom: '6px' }}>
           ומי שרוצה צעד רחוק יותר - <strong style={{ color: 'var(--lavender)' }}>סוחרים ביחד איתי, בונים תיק השקעות, בלי ידע מוקדם</strong>.
@@ -190,14 +202,14 @@ export default function HomePage() {
         </div>
         <div className="stat-callout">
           <div className="sc-num"><CountUp value={90} suffix="%" /></div>
-          <p>הסיבה האמיתית לכך שרוב האנשים לא מתחילים להשקיע, או נושרים אחרי כמה חודשים - זה לא חוסר ידע. זה <strong>הפן המנטלי</strong>: הפחד להפסיד, הקושי לקבל הפסד, וחוסר הסבלנות להישאר בתהליך. אבל בעיקר - הבהלה מהתחום עצמו, וההרגשה של "צריך לדעת המון" ו"מה אני בכלל קשור לזה".</p>
+          <p>הסיבה האמיתית לכך שרוב האנשים לא מתחילים להשקיע, או נושרים אחרי כמה חודשים, היא לא חוסר ידע - זה <strong>הפן המנטלי</strong>. הפחד להפסיד, הקושי לקבל הפסד, וחוסר הסבלנות להישאר בתהליך. אבל בעיקר הבהלה מהתחום עצמו, וההרגשה של "צריך לדעת המון" ו"מה אני בכלל קשור לזה".</p>
         </div>
       </Reveal>
 
       <Reveal>
         <div className="section-label" style={{ marginTop: '30px' }}><h2 style={{ color: 'var(--loss)' }}>למי זה פחות מתאים</h2></div>
         <div className="not-fit">
-          <div>– מי שמחפש רווח מובטח או כסף מהיר (אם היה לי את זה, לא הייתי פה כותבת - הייתי על יאכטה)</div>
+          <div>– מי שמחפש רווח מובטח או כסף מהיר (אין כאן קוד סודי שפיצחתי לבד, ואני לא ממציאה מחדש את הגלגל - יש שיטה שעובדת, לא קסם)</div>
           <div>– מי שרוצה שמישהי אחרת תקבל עבורו את כל ההחלטות</div>
           <div>– מי שמתכוון לסחור בכסף שהוא צריך למחיה, או בהלוואה</div>
           <div>– מי שלא מבין שהפסדים הם חלק מהמסחר</div>
@@ -266,12 +278,12 @@ export default function HomePage() {
           <div className="gc-perks">
             <div><strong>בלי רעש</strong> - רק מה שבאמת קורה בשוק</div>
             <div>הצצה לעולם שוק ההון, בלי לשלם עליה <strong>אלפי שקלים</strong></div>
-            <div><strong>מושג אחד</strong> בשבוע - פשוט, ברור, ואפשר להשתמש בו מיד</div>
+            <div><strong>עדכון בזמן אמת</strong> לנייד כשמשהו קורה בשוק, כולל תזכורת לפני כל לייב</div>
             <div><strong>ספרייה מלאה</strong> של וובינרים ומצגות, בלי עלות נוספת</div>
             <div>הפעלה בלחיצה אחת - <strong>ללא התחייבות</strong> וללא עלות</div>
             <div>אפשר לשדרג ל"מדברים עסקאות" בכל שלב, <strong>בקצב האישי</strong></div>
           </div>
-          <a className="gc-cta" href="#" onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>הפעלה ללא עלות</a>
+          <a className="gc-cta" href="#hero-notify" onClick={(e) => { e.preventDefault(); scrollToHeroNotify(); }}>הפעלה ללא עלות ↑</a>
         </Reveal>
         <Reveal className="group-card paid" delay={140}>
           <div className="gc-tag">צעד 2 · גישה מלאה</div>
@@ -298,6 +310,13 @@ export default function HomePage() {
       </Reveal>
       <div className="faq-list">
         <Reveal delay={0}>
+          <details className="faq-item" style={{ borderRightColor: 'var(--profit)' }} open>
+            <summary>מי את בעצם, ומה עושים כאן?</summary>
+            <p>אני שירן, סוחרת פעילה 14 שנה. בניתי כאן מקום שמלמד לנהל תיק השקעות אחראי - בלי הבטחות עושר ובלי שיטות פלא, רק עבודה שיטתית וליווי אמיתי. בונים תיק מסחר ביחד, רואים גם את ההפסדים ולא רק את ההצלחות, ומדברים תכלס על השוק בלי רעש מיותר. הכי פשוט להתחיל עם עדכונים בזמן אמת בחינם, ולהחליט משם אם רוצים להתקדם.</p>
+            <a href="#hero-notify" className="faq-cta" onClick={(e) => { e.preventDefault(); scrollToHeroNotify(); }}>🔔 הפעלת עדכונים בזמן אמת - ללא עלות ←</a>
+          </details>
+        </Reveal>
+        <Reveal delay={30}>
           <details className="faq-item" style={{ borderRightColor: 'var(--teal)' }}>
             <summary>צריך ניסיון קודם בשוק ההון?</summary>
             <p><strong>ממש לא</strong>. זה מתאים גם למי שמעולם לא סחר, וגם למי שכבר ניסה ולא הסתדר. מתחילים מהבסיס, ביחד.</p>
@@ -345,7 +364,7 @@ export default function HomePage() {
 
       {showStickyCta && !hasFullAccess && (
         <div className="sticky-cta">
-          <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
+          <button onClick={scrollToHeroNotify}>
             הפעלת עדכונים בזמן אמת - ללא עלות
           </button>
         </div>

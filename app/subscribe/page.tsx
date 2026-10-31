@@ -41,7 +41,7 @@ export default function SubscribePage() {
         </div>
 
         <p style={{ fontSize: '11.5px', color: 'var(--text-tertiary)', lineHeight: 1.6, textAlign: 'center', marginBottom: '14px' }}>
-          <strong style={{ color: 'var(--text-primary)' }}>למה ₪1 ולא ₪400 ישר?</strong> כי בחינם נרשמים גם בוטים, גם מי שסוגר טאב אחרי חמש שניות, וגם אותו בחור מאיראן שבטוח רוצה ללמוד ניהול סיכונים. ₪1 מוכיח שיש בן אדם אמיתי מהצד השני - ובתמורה מקבלים גישה מלאה לחודש שלם, לא גרסה מצומצמת. בסוף החודש, אם לא בוטל - ממשיכים אוטומטית ב-₪400. ביטול בלחיצה אחת, בכל רגע, לפני החיוב הבא - בלי שיחת מכירות, בלי דרמה.
+          <strong style={{ color: 'var(--text-primary)' }}>למה ₪1 ולא ₪400 ישר?</strong> כי בחינם נרשמים גם בוטים, גם מי שסוגר טאב אחרי חמש שניות, וגם אותו בחור מאיראן שבטוח רוצה ללמוד ניהול סיכונים. ₪1 מוכיח שיש בן אדם אמיתי מהצד השני - ובתמורה מקבלים גישה מלאה וזהה לכל מנוי אחר, לחודש שלם, לא גרסה מצומצמת. בסוף החודש, אם לא בוטל - ממשיכים אוטומטית ב-₪400, בדיוק כמו כל מנוי חודשי רגיל. ביטול בלחיצה אחת, בכל רגע לפני החיוב הבא - בלי שיחת מכירות, בלי שאלות, בלי דרמה.
         </p>
 
         <a href="https://pay.grow.link/ODUwNDc~e1145301cbce2cc9d1e0395611428e83-NDIxNTkxMw" target="_blank" className="btn-primary" style={{ display: 'block', textAlign: 'center', textDecoration: 'none' }} onClick={() => trackFunnelEvent('payment_link_click')}>
