@@ -474,12 +474,13 @@
   .insight-tile .iv { font-family: var(--font-mono); font-size: 17px; font-weight: 700; color: var(--teal); }
   .insight-tile .il { font-size: 10.5px; color: var(--text-tertiary); margin-top: 4px; }
 
-  /* רצועת "חודשים אחרונים" בעמוד התיק - טבעות מעגליות קטנות (לא עוד תיבות מרובעות) עם אחוז
-     הצלחה, אחת לכל חודש; גוללת אופקית בנייד אם יש יותר מכמה חודשים */
+  /* רצועת "חודשים אחרונים" בעמוד התיק - בועות צבעוניות קטנות (לא עוד תיבות מרובעות), אחת לכל
+     חודש; גוללת אופקית בנייד אם יש יותר מכמה חודשים */
   .month-ring-row { display: flex; gap: 14px; overflow-x: auto; padding: 4px 2px 10px; margin-bottom: 8px; -webkit-overflow-scrolling: touch; }
   .month-ring-tile { display: flex; flex-direction: column; align-items: center; gap: 6px; flex-shrink: 0; }
-  .month-ring { width: 62px; height: 62px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: background 0.4s ease; }
-  .month-ring-inner { width: 48px; height: 48px; border-radius: 50%; background: var(--bg-void); display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-weight: 700; font-size: 12px; color: var(--text-primary); }
+  /* בועה צבעונית מלאה (לא טבעת-חלק-ממעגל) - כי האחוז המוצג כאן הוא תשואה ממוצעת לעסקה, לא
+     אחוז "מתוך 100" כמו אחוז הצלחה, וטבעת חלקית הייתה רומזת על פרופורציה שלא קיימת במספר הזה */
+  .month-bubble { width: 62px; height: 62px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-weight: 700; font-size: 12.5px; }
   .month-ring-label { font-size: 11px; font-weight: 600; color: var(--text-secondary); }
   .month-ring-sub { font-size: 9.5px; color: var(--text-tertiary); }
 

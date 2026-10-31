@@ -202,7 +202,11 @@ export default function PortfolioPage() {
   const totalTradesCount = openTrades.length + closedTrades.length;
 
   // רצועת "חודשים אחרונים" שמופיעה לפני לוח השנה - כדי שהרושם הראשון כשנכנסים לתיק יהיה מגמה
-  // כללית (עד 6 חודשים אחרונים, אחוז הצלחה), ולא חודש בודד שעלול להיראות אדום בלוח השנה
+  // כללית (עד 6 חודשים אחרונים), ולא חודש בודד שעלול להיראות אדום בלוח השנה. מציגים את ממוצע
+  // האחוז שהרווחנו/הפסדנו בפועל באותו חודש (לא אחוז הצלחה של עסקאות) - כי אחוז הצלחה לבד יכול
+  // להטעות (אפשר להרוויח בחודש עם 30% הצלחה אם הזוכות גדולות, ולהפסיד בחודש עם 80% הצלחה אם
+  // ההפסדים הבודדים גדולים) - וכבועה צבעונית שטוחה, לא טבעת, כי האחוז הזה לא "מתוך 100" כמו
+  // אחוז הצלחה, אז טבעת-חלק-ממעגל הייתה נותנת רושם פרופורציה מוטעה
   const monthlyTrend = (() => {
     const byMonth = new Map<string, Trade[]>();
     for (const t of closedTrades) {
@@ -213,8 +217,9 @@ export default function PortfolioPage() {
     }
     const months = Array.from(byMonth.entries()).sort((a, b) => (a[0] < b[0] ? 1 : -1)).slice(0, 6);
     return months.map(([key, trades]) => {
-      const wins = trades.filter((t) => pct(t) >= 0).length;
-      return { key, label: monthLabelShort(key), winRate: Math.round((wins / trades.length) * 100), count: trades.length };
+      const pcts = trades.map((t) => pct(t));
+      const avgPct = pcts.reduce((s, x) => s + x, 0) / pcts.length;
+      return { key, label: monthLabelShort(key), avgPct, count: trades.length };
     });
   })();
 
@@ -360,16 +365,20 @@ export default function PortfolioPage() {
             {monthlyTrend.map((m, i) => (
               <Reveal key={m.key} delay={80 * i} className="month-ring-tile">
                 <div
-                  className="month-ring"
-                  style={{ background: `conic-gradient(${m.winRate >= 50 ? 'var(--profit)' : 'var(--loss)'} ${m.winRate * 3.6}deg, var(--border-hairline) 0deg)` }}
+                  className="month-bubble"
+                  style={{
+                    background: m.avgPct >= 0 ? 'var(--profit-bg)' : 'var(--loss-bg)',
+                    color: m.avgPct >= 0 ? 'var(--profit)' : 'var(--loss)',
+                  }}
                 >
-                  <div className="month-ring-inner"><CountUp value={m.winRate} suffix="%" /></div>
+                  <CountUp value={m.avgPct} prefix={m.avgPct >= 0 ? '+' : ''} suffix="%" decimals={1} />
                 </div>
                 <div className="month-ring-label">{m.label}</div>
                 <div className="month-ring-sub"><CountUp value={m.count} /> עסקאות</div>
               </Reveal>
             ))}
           </div>
+          <p style={{ fontSize: '10.5px', color: 'var(--text-tertiary)', marginTop: '8px' }}>אחוז רווח/הפסד ממוצע לעסקה, לפי חודש שבו העסקה נסגרה.</p>
         </Reveal>
       )}
 
