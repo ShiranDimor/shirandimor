@@ -320,14 +320,14 @@
     display: flex; align-items: center; justify-content: center; color: var(--text-tertiary);
   }
   .pw-toggle:hover { color: var(--text-secondary); }
-  .btn-primary { width: 100%; background: var(--teal); color: var(--bg-void); border: none; border-radius: 8px; padding: 12px; font-size: 15px; font-weight: 600; cursor: pointer; font-family: var(--font-body); }
-  .btn-outline { width: 100%; background: transparent; color: var(--text-primary); border: 1px solid var(--border-hairline-strong); border-radius: 8px; padding: 12px; font-size: 15px; font-weight: 600; cursor: pointer; font-family: var(--font-body); }
+  .btn-primary { width: 100%; background: var(--grad-brand); color: var(--bg-void); border: none; border-radius: 999px; padding: 13px; font-size: 15px; font-weight: 700; cursor: pointer; font-family: var(--font-body); }
+  .btn-outline { width: 100%; background: transparent; color: var(--text-primary); border: 1px solid var(--border-hairline-strong); border-radius: 999px; padding: 13px; font-size: 15px; font-weight: 600; cursor: pointer; font-family: var(--font-body); }
   .form-title { font-family: var(--font-display); font-size: 22px; text-align: center; margin: 20px 0 6px; }
   .form-sub { font-size: 13px; color: var(--text-secondary); text-align: center; margin-bottom: 28px; }
 
   /* ===== Pricing ===== */
   .price-card { background: var(--bg-surface-raised); border: 1px solid var(--border-hairline-strong); border-right: 3px solid var(--lavender); border-radius: 14px; padding: 24px 20px; text-align: center; margin-bottom: 24px; }
-  .price-card .amount { font-family: var(--font-mono); font-size: 36px; font-weight: 600; color: var(--teal); }
+  .price-card .amount { font-family: var(--font-mono); font-size: 36px; font-weight: 700; background: var(--grad-brand); -webkit-background-clip: text; background-clip: text; color: transparent; }
   .price-card .amount span { font-size: 14px; color: var(--text-tertiary); font-weight: 400; }
   .price-card .period { font-size: 12.5px; color: var(--text-secondary); margin-bottom: 18px; }
   .perk-list { text-align: right; margin-bottom: 20px; }
@@ -409,7 +409,7 @@
   .hero-v2 h1 { font-family: var(--font-display); font-size: 32px; line-height: 1.25; margin-bottom: 16px; font-weight: 500; letter-spacing: -0.3px; }
   .hero-v2 h1 em { font-style: normal; background: var(--grad-brand); -webkit-background-clip: text; background-clip: text; color: transparent; }
   .hero-v2 p { color: var(--text-secondary); font-size: 15px; margin-bottom: 24px; line-height: 1.65; max-width: 40ch; }
-  .cta-main { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 8px; text-align: center; background: var(--grad-brand); color: var(--bg-void); border-radius: 10px; padding: 15px; font-size: 15.5px; font-weight: 700; text-decoration: none; margin-bottom: 10px; transition: transform 0.15s ease, box-shadow 0.15s ease; box-shadow: 0 0 0 0 rgba(255, 45, 120,0); }
+  .cta-main { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 8px; text-align: center; background: var(--grad-brand); color: var(--bg-void); border-radius: 999px; padding: 15px; font-size: 15.5px; font-weight: 700; text-decoration: none; margin-bottom: 10px; transition: transform 0.15s ease, box-shadow 0.15s ease; box-shadow: 0 0 0 0 rgba(255, 45, 120,0); }
   .cta-main:hover { transform: translateY(-1px); box-shadow: 0 8px 24px -8px rgba(255, 45, 120,0.45); }
   .cta-main:active { transform: translateY(0); }
   .cta-main .free-tag {
@@ -546,7 +546,7 @@
   .group-card .gc-price { font-family: var(--font-mono); font-size: 13px; color: var(--text-secondary); margin-bottom: 10px; }
   .group-card .gc-perks div { font-size: 12.5px; color: var(--text-secondary); padding: 4px 0; display: flex; gap: 7px; line-height: 1.4; }
   .group-card .gc-perks div::before { content: '✓'; color: var(--profit); font-weight: 700; }
-  .group-card .gc-cta { display: block; text-align: center; border-radius: 8px; padding: 11px; font-size: 13.5px; font-weight: 700; text-decoration: none; margin-top: 12px; }
+  .group-card .gc-cta { display: block; text-align: center; border-radius: 999px; padding: 11px; font-size: 13.5px; font-weight: 700; text-decoration: none; margin-top: 12px; }
   .group-card.free .gc-cta { background: transparent; border: 1px solid var(--border-hairline-strong); color: var(--text-primary); }
   .group-card.paid .gc-cta { background: var(--profit); color: var(--bg-void); }
   .wa-float {
