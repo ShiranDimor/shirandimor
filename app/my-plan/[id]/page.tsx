@@ -89,7 +89,7 @@ function ProgressRing({ dayNumber, totalDays, unitLabel }: { dayNumber: number; 
   const offset = circumference * (1 - pct);
 
   return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ filter: 'drop-shadow(0 0 14px rgba(230, 98, 27,0.35))' }}>
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ filter: 'drop-shadow(0 0 14px rgba(255, 45, 120,0.35))' }}>
       <defs>
         <linearGradient id="ringGradient" x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" stopColor="#FF2D78" />
@@ -190,7 +190,7 @@ function MyPlanProgressPageInner() {
             style={{
               position: 'relative',
               overflow: 'hidden',
-              background: 'radial-gradient(circle at 15% 0%, rgba(230, 98, 27,0.22), transparent 55%), radial-gradient(circle at 100% 100%, rgba(232, 163, 61,0.18), transparent 55%), linear-gradient(160deg, var(--bg-surface-raised) 0%, #0b0f18 100%)',
+              background: 'radial-gradient(circle at 15% 0%, rgba(255, 45, 120,0.22), transparent 55%), radial-gradient(circle at 100% 100%, rgba(232, 163, 61,0.18), transparent 55%), linear-gradient(160deg, var(--bg-surface-raised) 0%, #110F12 100%)',
               border: '1px solid var(--border-hairline-strong)',
               borderRadius: '18px',
               padding: '24px 20px',
@@ -412,7 +412,7 @@ function MyPlanProgressPageInner() {
           {data.isSubscriber ? (
             <div
               style={{
-                background: 'linear-gradient(160deg, rgba(230, 98, 27,0.1) 0%, var(--bg-surface-raised) 100%)',
+                background: 'linear-gradient(160deg, rgba(255, 45, 120,0.1) 0%, var(--bg-surface-raised) 100%)',
                 border: '1px solid var(--border-hairline-strong)',
                 borderRadius: '14px',
                 padding: '18px',
@@ -427,7 +427,7 @@ function MyPlanProgressPageInner() {
           ) : (
             <div
               style={{
-                background: 'linear-gradient(160deg, rgba(230, 98, 27,0.1) 0%, var(--bg-surface-raised) 100%)',
+                background: 'linear-gradient(160deg, rgba(255, 45, 120,0.1) 0%, var(--bg-surface-raised) 100%)',
                 border: '1px solid var(--border-hairline-strong)',
                 borderRadius: '14px',
                 padding: '18px',
