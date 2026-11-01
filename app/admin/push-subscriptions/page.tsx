@@ -29,6 +29,8 @@ export default function AdminPushSubscriptionsPage() {
   const [leadCount, setLeadCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const [deletingId, setDeletingId] = useState('');
+  const [resyncing, setResyncing] = useState(false);
+  const [resyncMessage, setResyncMessage] = useState('');
 
   useEffect(() => {
     checkAdmin();
@@ -60,6 +62,20 @@ export default function AdminPushSubscriptionsPage() {
       setLeadCount(data.leadCount || 0);
     }
     setLoading(false);
+  }
+
+  async function handleResyncMonday() {
+    setResyncing(true);
+    setResyncMessage('');
+    const res = await fetch('/api/admin/push-subscriptions/resync-monday', { method: 'POST', headers: await authHeader() });
+    setResyncing(false);
+    if (res.ok) {
+      const data = await res.json();
+      setResyncMessage(`סונכרנו ${data.total} מינויים - ${data.fixed} הצליחו, ${data.failed} נכשלו.`);
+      loadRows();
+    } else {
+      setResyncMessage('שגיאה בסנכרון');
+    }
   }
 
   async function handleDelete(row: Row) {
@@ -143,6 +159,11 @@ export default function AdminPushSubscriptionsPage() {
       <p style={{ fontSize: '12.5px', color: 'var(--text-tertiary)', marginBottom: '18px', lineHeight: 1.6 }}>
         כל מי שהפעיל התראות באתר - מנויים (מקבלים פרטים מלאים) ולידים שהגיעו דרך שער ההרשמה (מקבלים גרסה מטושטשת, גם נוצר להם ליד במאנדיי). מחיקה כאן מפסיקה לשלוח להם התראות, אבל לא מוחקת אותם ממאנדיי.
       </p>
+
+      <button onClick={handleResyncMonday} disabled={resyncing} className="btn-outline" style={{ marginBottom: '8px' }}>
+        {resyncing ? 'מסנכרן...' : '🔄 סנכרון מחדש למאנדיי (תיקון חד-פעמי למי שהתעדכן קודם)'}
+      </button>
+      {resyncMessage && <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', marginBottom: '18px' }}>{resyncMessage}</p>}
 
       {loading && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>טוענים...</p>}
 

@@ -673,11 +673,11 @@ async function findItemIdByContactAnywhere(
 // עדכונים, ניסיון, או כל קבוצה אחרת) - מעדכן על הכרטיס הקיים שלו רק את עמודת "הוריד את האתר"
 // הייעודית (לא נוגע בעמודת "סטטוס טיפול" הרגילה, כדי לא לדרוס סטטוסים חשובים אחרים). רק אם
 // אין לו שום כרטיס קיים בכלל - פותח ליד חדש, עם העמודה הזו מוגדרת מראש
-export async function markAppDownloadOnMonday(params: { name?: string | null; phone?: string | null; email?: string | null }): Promise<{ ok: boolean; matched: boolean }> {
+export async function markAppDownloadOnMonday(params: { name?: string | null; phone?: string | null; email?: string | null }): Promise<{ ok: boolean; matched: boolean; error?: string }> {
   const token = process.env.MONDAY_API_TOKEN;
   const boardId = process.env.MONDAY_BOARD_ID;
-  if (!token || !boardId) return { ok: false, matched: false };
-  if (!params.phone && !params.email) return { ok: false, matched: false };
+  if (!token || !boardId) return { ok: false, matched: false, error: 'missing_monday_config' };
+  if (!params.phone && !params.email) return { ok: false, matched: false, error: 'missing_contact' };
 
   try {
     const { groupId, phoneColumnId, emailColumnId, campaignColumnId, pushActivatedColumnId } = await getBoardSchema(token, boardId);
@@ -688,13 +688,23 @@ export async function markAppDownloadOnMonday(params: { name?: string | null; ph
 
     if (existingItemId) {
       if (pushActivatedColumnId) {
-        await mondayRequest(
-          token,
-          `mutation ($boardId: ID!, $itemId: ID!, $columnId: String!, $value: String!) {
-            change_simple_column_value (board_id: $boardId, item_id: $itemId, column_id: $columnId, value: $value) { id }
-          }`,
-          { boardId, itemId: existingItemId, columnId: pushActivatedColumnId, value: APP_DOWNLOAD_SOURCE_VALUE }
-        ).catch((e) => console.error('Monday.com: נכשל עדכון עמודת "הוריד את האתר" על כרטיס קיים', e));
+        // change_simple_column_value (ערך מחרוזת רגילה) לא עובד באופן אמין על עמודת status -
+        // זה עבד על create_item (פורמט {label:...} ב-column_values) אבל לא כאן, וזו הסיבה
+        // שהעמודה התעדכנה רק אצל ליד חדש שנוצר, לא אצל מנוי קיים עם כרטיס כבר קיים בלוח.
+        // change_column_value עם JSON {label:...} הוא הפורמט הנכון לעמודת status, תואם למה
+        // שכבר עובד ב-create_item למטה
+        try {
+          await mondayRequest(
+            token,
+            `mutation ($boardId: ID!, $itemId: ID!, $columnId: String!, $value: JSON!) {
+              change_column_value (board_id: $boardId, item_id: $itemId, column_id: $columnId, value: $value) { id }
+            }`,
+            { boardId, itemId: existingItemId, columnId: pushActivatedColumnId, value: JSON.stringify({ label: APP_DOWNLOAD_SOURCE_VALUE }) }
+          );
+        } catch (e) {
+          console.error('Monday.com: נכשל עדכון עמודת "הוריד את האתר" על כרטיס קיים', e);
+          return { ok: false, matched: true, error: e instanceof Error ? e.message : 'update_failed' };
+        }
       }
       return { ok: true, matched: true };
     }
@@ -725,7 +735,7 @@ export async function markAppDownloadOnMonday(params: { name?: string | null; ph
     return { ok: true, matched: false };
   } catch (e) {
     console.error('שגיאה בסימון הורדת האתר ב-Monday.com', e);
-    return { ok: false, matched: false };
+    return { ok: false, matched: false, error: e instanceof Error ? e.message : 'unknown_error' };
   }
 }
 
