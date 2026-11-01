@@ -229,7 +229,7 @@ export default function FitCallFlow({ whatsappUrl }: { whatsappUrl: string }) {
           {sendError}
 
           <button type="submit" className="btn-primary mt-submit" disabled={sending}>
-            {sending ? 'רגע...' : 'המשך לבחירת זמן ביומן ←'}
+            {sending ? 'רגע...' : 'בואו נקבע שיחה ←'}
           </button>
           <p className="mt-form-note">השיחה אינה התחייבות להצטרף. הפרטים נשארים אצלי בלבד.</p>
         </form>
@@ -275,7 +275,7 @@ export default function FitCallFlow({ whatsappUrl }: { whatsappUrl: string }) {
               </div>
               {sendError}
               <button type="button" className="btn-primary mt-submit" onClick={book} disabled={sending}>
-                {sending ? 'קובעים...' : 'קביעת השיחה'}
+                {sending ? 'קובעים...' : 'מעולה, קובעים ←'}
               </button>
             </>
           )}
