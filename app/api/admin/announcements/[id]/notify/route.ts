@@ -27,7 +27,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
   await sendPushToEveryone({
     title: `📌 ${announcement.title}`,
     body: announcement.content.length > 120 ? `${announcement.content.slice(0, 117)}...` : announcement.content,
-    url: '/announcements',
+    url: `/announcements#ann-${params.id}`,
   }, 'announcement', params.id);
 
   const { data: updated } = await supabaseAdmin
