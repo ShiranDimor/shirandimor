@@ -1,7 +1,7 @@
 // לוגיקה משותפת לשאלון שיחת ההתאמה בעמוד הליווי האישי (shirandimor.com/mentoring) ולקביעת השיחה ביומן.
 // משתמש באותו חיבור למאנדיי ולמייל של העמוד לארגונים (lib/businessLead), רק עם קבוצה, מקור וטקסטים משלו.
 import { clean } from './businessLead';
-import { EXPERIENCE_OPTIONS, TRACK_OPTIONS } from './mentoringOptions';
+import { EXPERIENCE_OPTIONS, GOAL_OPTIONS, TRACK_OPTIONS } from './mentoringOptions';
 
 export const MENTORING_PAGE_URL = 'https://www.shirandimor.com/mentoring';
 export const MENTORING_SOURCE_LABEL = 'הגיע מהאתר - ליווי אישי';
@@ -30,7 +30,10 @@ export function readMentoringLead(body: Record<string, unknown>): MentoringLead 
     email: clean(body.email, 120),
     // רק ערכים מתוך הרשימות הקבועות - לא טקסט חופשי
     experience: (EXPERIENCE_OPTIONS as readonly string[]).includes(experience) ? experience : '',
-    goal: clean(body.goal, 600),
+    // בחירה מרובה מתוך רשימה קבועה (מגיע כמערך) - נשמר כטקסט אחד מופרד בפסיקים
+    goal: (Array.isArray(body.goal) ? body.goal : [])
+      .filter((g): g is string => typeof g === 'string' && (GOAL_OPTIONS as readonly string[]).includes(g))
+      .join(', '),
     track: (TRACK_OPTIONS as readonly string[]).includes(track) ? track : '',
     readDetails: body.readDetails === true || body.readDetails === 'true' || body.readDetails === 'on',
   };

@@ -243,3 +243,4 @@ body.mt-bar-on .dor-callout { bottom: calc(152px + env(safe-area-inset-bottom));
 .mt-cancel-btn:hover, .mt-cancel-btn.is-danger { border-color: var(--loss); color: var(--loss); }
 .mt-confirm { margin-top: 16px; padding: 16px; border-radius: 12px; background: var(--loss-bg); border: 1px solid rgba(255, 92, 92, 0.3); }
 .mt-confirm p { font-size: 14.5px; }
+.mt-q-hint { margin: -4px 0 10px; font-size: 12.5px; color: var(--text-tertiary); }

@@ -26,7 +26,7 @@ export async function POST(request: Request) {
 
   const lead = readMentoringLead(body);
   if (!isMentoringLeadValid(lead)) {
-    return NextResponse.json({ error: 'חסרים שם, נייד תקין או מייל' }, { status: 400 });
+    return NextResponse.json({ error: 'חסרים פרטים או תשובות בשאלון' }, { status: 400 });
   }
 
   const details = mentoringLeadDetails(lead, ['מילא/ה שאלון לשיחת התאמה (עדיין לא נקבע זמן ביומן)']);

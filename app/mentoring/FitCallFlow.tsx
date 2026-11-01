@@ -4,12 +4,12 @@ import { useEffect, useRef, useState } from 'react';
 import AddToCalendar from './AddToCalendar';
 import SlotPicker, { type Slot } from './SlotPicker';
 import { trackFunnelEvent } from '@/lib/trackEvent';
-import { EXPERIENCE_OPTIONS, TRACK_OPTIONS } from '@/lib/mentoringOptions';
+import { EXPERIENCE_OPTIONS, GOAL_OPTIONS, TRACK_OPTIONS } from '@/lib/mentoringOptions';
 
 type Step = 'form' | 'schedule' | 'booked' | 'no-calendar';
-type Lead = { name: string; phone: string; email: string; experience: string; goal: string; track: string; readDetails: boolean };
+type Lead = { name: string; phone: string; email: string; experience: string; goal: string[]; track: string; readDetails: boolean };
 
-const EMPTY: Lead = { name: '', phone: '', email: '', experience: '', goal: '', track: '', readDetails: false };
+const EMPTY: Lead = { name: '', phone: '', email: '', experience: '', goal: [], track: '', readDetails: false };
 
 // שאלון קצר לפני שיחת ההתאמה, ומיד אחריו בחירת זמן ביומן של שירן (אותו יומן כמו בעמוד לארגונים).
 // השאלון נשמר כליד כבר בשלב הראשון, כך שגם מי שלא בחר/ה זמן לא הולך/ת לאיבוד. אם היומן לא מחובר - מוצגת הודעה
@@ -83,7 +83,7 @@ export default function FitCallFlow({ whatsappUrl }: { whatsappUrl: string }) {
     if (lead.phone.replace(/\D/g, '').length < 9) return setError('נראה שמספר הנייד חסר או לא מלא');
     if (!lead.email.includes('@')) return setError('צריך מייל - אליו יישלח הזימון ליומן');
     if (!lead.experience) return setError('נשאר לבחור רמת ניסיון');
-    if (!lead.goal.trim()) return setError('נשאר לכתוב מה היית רוצה לדעת לעשות טוב יותר (משפט אחד מספיק)');
+    if (lead.goal.length === 0) return setError('נשאר לבחור לפחות דבר אחד שהיית רוצה לדעת לעשות טוב יותר');
     if (!lead.track) return setError('נשאר לבחור מסלול (אפשר גם "עדיין לא בטוח/ה")');
     if (!lead.readDetails) return setError('נשאר לסמן שעברת על פרטי הליווי והמחירים');
 
@@ -192,20 +192,21 @@ export default function FitCallFlow({ whatsappUrl }: { whatsappUrl: string }) {
             </div>
           </fieldset>
 
-          <div className="mt-q">
-            <label htmlFor="mt-goal" className="tp-question-title" style={{ display: 'block' }}>מה היית רוצה לדעת לעשות טוב יותר בעוד כמה חודשים?</label>
-            <textarea
-              id="mt-goal"
-              className="tp-text-input"
-              style={{ marginTop: 10, minHeight: 72 }}
-              rows={2}
-              maxLength={600}
-              placeholder="משפט או שניים זה מספיק"
-              required
-              value={lead.goal}
-              onChange={(e) => update('goal', e.target.value)}
-            />
-          </div>
+          <fieldset className="mt-q">
+            <legend className="tp-question-title">מה היית רוצה לדעת לעשות טוב יותר בעוד כמה חודשים?</legend>
+            <p className="mt-q-hint">אפשר לבחור כמה</p>
+            <div className="tp-options mt-options-2">
+              {GOAL_OPTIONS.map((o) => {
+                const on = lead.goal.includes(o);
+                return (
+                  <button key={o} type="button" role="checkbox" aria-checked={on} className={`tp-option-btn${on ? ' selected' : ''}`} onClick={() => update('goal', on ? lead.goal.filter((g) => g !== o) : [...lead.goal, o])}>
+                    {o}
+                    <span className="tp-option-check" aria-hidden="true">{on ? '✓' : ''}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </fieldset>
 
           <fieldset className="mt-q">
             <legend className="tp-question-title">איזה מסלול כרגע מרגיש לך מתאים יותר?</legend>
