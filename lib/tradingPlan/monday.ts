@@ -739,6 +739,93 @@ export async function markAppDownloadOnMonday(params: { name?: string | null; ph
   }
 }
 
+// גרסה לסנכרון מרובה אנשי קשר בבת אחת (ר' /api/admin/push-subscriptions/resync-monday) -
+// markAppDownloadOnMonday הרגילה סורקת את כל הלוח (items_page, pagination) בכל קריאה
+// בודדת; להריץ אותה בלולאה על עשרות אנשי קשר לקח כל כך הרבה זמן שזה תקע את הדפדפן ולא
+// הגיע לסיום. כאן סורקים את הלוח פעם אחת בלבד ומתאימים מקומית בזיכרון לכל איש קשר
+export async function markAppDownloadOnMondayBulk(
+  contacts: { name?: string | null; phone?: string | null; email?: string | null }[]
+): Promise<{ ok: boolean; matched: boolean; error?: string }[]> {
+  const token = process.env.MONDAY_API_TOKEN;
+  const boardId = process.env.MONDAY_BOARD_ID;
+  if (!token || !boardId) return contacts.map(() => ({ ok: false, matched: false, error: 'missing_monday_config' }));
+
+  const { groupId, phoneColumnId, emailColumnId, campaignColumnId, pushActivatedColumnId } = await getBoardSchema(token, boardId);
+
+  const columnIds = [phoneColumnId, emailColumnId].filter(Boolean) as string[];
+  const allItems: { id: string; phone: string | null; email: string | null }[] = [];
+  if (columnIds.length > 0) {
+    let cursor: string | null = null;
+    do {
+      const itemsData: any = await mondayRequest(
+        token,
+        `query ($boardId: ID!, $cursor: String, $columnIds: [String!]) {
+          boards (ids: [$boardId]) {
+            items_page (limit: 100, cursor: $cursor) {
+              cursor
+              items { id column_values (ids: $columnIds) { id text } }
+            }
+          }
+        }`,
+        { boardId, cursor, columnIds }
+      );
+      const page = itemsData?.data?.boards?.[0]?.items_page;
+      const items: { id: string; column_values: { id: string; text: string | null }[] }[] = page?.items || [];
+      for (const item of items) {
+        const phoneText = phoneColumnId ? item.column_values?.find((cv) => cv.id === phoneColumnId)?.text ?? null : null;
+        const emailText = emailColumnId ? item.column_values?.find((cv) => cv.id === emailColumnId)?.text ?? null : null;
+        allItems.push({ id: item.id, phone: phoneText ? normalizePhone(phoneText) : null, email: emailText ? emailText.trim().toLowerCase() : null });
+      }
+      cursor = page?.cursor || null;
+    } while (cursor);
+  }
+
+  const results: { ok: boolean; matched: boolean; error?: string }[] = [];
+  for (const params of contacts) {
+    if (!params.phone && !params.email) { results.push({ ok: false, matched: false, error: 'missing_contact' }); continue; }
+    const targetPhone = params.phone ? normalizePhone(params.phone) : null;
+    const targetEmail = params.email ? params.email.trim().toLowerCase() : null;
+    const found = allItems.find((it) => (targetPhone && it.phone === targetPhone) || (targetEmail && it.email === targetEmail));
+
+    try {
+      if (found) {
+        if (pushActivatedColumnId) {
+          await mondayRequest(
+            token,
+            `mutation ($boardId: ID!, $itemId: ID!, $columnId: String!, $value: JSON!) {
+              change_column_value (board_id: $boardId, item_id: $itemId, column_id: $columnId, value: $value) { id }
+            }`,
+            { boardId, itemId: found.id, columnId: pushActivatedColumnId, value: JSON.stringify({ label: APP_DOWNLOAD_SOURCE_VALUE }) }
+          );
+        }
+        results.push({ ok: true, matched: true });
+        continue;
+      }
+
+      const columnValues: Record<string, unknown> = {};
+      if (phoneColumnId && params.phone) columnValues[phoneColumnId] = { phone: params.phone.startsWith('0') ? `972${params.phone.slice(1)}` : params.phone, countryShortName: 'IL' };
+      if (emailColumnId && params.email) columnValues[emailColumnId] = { email: params.email, text: params.email };
+      if (campaignColumnId) columnValues[campaignColumnId] = APP_DOWNLOAD_SOURCE_VALUE;
+      if (pushActivatedColumnId) columnValues[pushActivatedColumnId] = { label: APP_DOWNLOAD_SOURCE_VALUE };
+
+      const createData: any = await mondayRequest(
+        token,
+        `mutation ($boardId: ID!, $groupId: String, $itemName: String!, $columnValues: JSON) {
+          create_item (board_id: $boardId, group_id: $groupId, item_name: $itemName, column_values: $columnValues) { id }
+        }`,
+        { boardId, groupId: groupId || null, itemName: params.name || params.phone || params.email || 'ללא שם', columnValues: JSON.stringify(columnValues) }
+      );
+      const itemId = createData?.data?.create_item?.id;
+      results.push(itemId ? { ok: true, matched: false } : { ok: false, matched: false, error: 'create_failed' });
+    } catch (e) {
+      console.error('markAppDownloadOnMondayBulk: שגיאה באיש קשר', e);
+      results.push({ ok: false, matched: false, error: e instanceof Error ? e.message : 'unknown_error' });
+    }
+  }
+
+  return results;
+}
+
 // יוצר תמיד כרטיס ליד חדש עבור מי שנרשם ללייב ואינו מנוי - בלי קשר לשאלה אם הלייב פתוח לכולם
 // או לא. אם הטלפון כבר מוכר במקום אחר בלוח, הכרטיס עדיין נוצר אבל מסומן כ"ליד כפול" - כדי
 // ששירן תדע לטפל בו אבל שום הרשמה לא תיעלם בשקט

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/instantLogin';
-import { markAppDownloadOnMonday } from '@/lib/tradingPlan/monday';
+import { markAppDownloadOnMondayBulk } from '@/lib/tradingPlan/monday';
 
 async function requireAdmin(request: Request) {
   const authHeader = request.headers.get('Authorization') || '';
@@ -35,20 +35,30 @@ export async function POST(request: Request) {
     : { data: [] as { id: string; full_name: string | null; phone: string | null; email: string | null }[] };
   const profileById = new Map((profiles || []).map((p) => [p.id, p]));
 
+  const resolved = subs.map((sub) => {
+    const profile = sub.user_id ? profileById.get(sub.user_id) : null;
+    return {
+      sub,
+      name: profile?.full_name || sub.name,
+      phone: profile?.phone || sub.phone,
+      email: profile?.email || sub.email,
+    };
+  });
+  const toSync = resolved.filter((r) => r.phone || r.email);
+
+  // markAppDownloadOnMondayBulk סורקת את כל הלוח פעם אחת בלבד (לא פעם לכל מינוי) - מריצים
+  // אותה כאן על כולם ביחד במקום בלולאה, אחרת זה לוקח כל כך הרבה זמן שהבקשה נתקעת בדפדפן
+  const results = await markAppDownloadOnMondayBulk(toSync.map((r) => ({ name: r.name, phone: r.phone, email: r.email })))
+    .catch((e) => toSync.map(() => ({ ok: false, matched: false, error: e instanceof Error ? e.message : 'threw' })));
+
   let fixed = 0;
   let failed = 0;
 
-  for (const sub of subs) {
-    const profile = sub.user_id ? profileById.get(sub.user_id) : null;
-    const name = profile?.full_name || sub.name;
-    const phone = profile?.phone || sub.phone;
-    const email = profile?.email || sub.email;
-    if (!phone && !email) continue;
-
-    const result = await markAppDownloadOnMonday({ name, phone, email }).catch((e) => ({ ok: false, matched: false, error: e instanceof Error ? e.message : 'threw' }));
-    await supabaseAdmin.from('push_subscriptions').update({ monday_sync_error: result.ok ? null : (result.error || 'unknown_error') }).eq('id', sub.id);
+  await Promise.all(toSync.map(async (r, i) => {
+    const result = results[i];
+    await supabaseAdmin.from('push_subscriptions').update({ monday_sync_error: result.ok ? null : (result.error || 'unknown_error') }).eq('id', r.sub.id);
     if (result.ok) fixed++; else failed++;
-  }
+  }));
 
   return NextResponse.json({ ok: true, total: subs.length, fixed, failed });
 }
