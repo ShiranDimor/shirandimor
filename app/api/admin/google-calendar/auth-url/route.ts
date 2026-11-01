@@ -25,7 +25,9 @@ export async function GET(request: Request) {
     response_type: 'code',
     scope: GOOGLE_CALENDAR_SCOPE,
     access_type: 'offline',
-    prompt: 'consent',
+    // תמיד לבחור חשבון (לא להתחבר אוטומטית לחשבון אחר שפתוח בדפדפן), עם הצעה מראש לחשבון של היומן
+    prompt: 'consent select_account',
+    login_hint: process.env.GOOGLE_CALENDAR_ACCOUNT_EMAIL || 'shiran@shirandimor.com',
     state: makeState(),
   });
   return NextResponse.json({ status, url: `https://accounts.google.com/o/oauth2/v2/auth?${params}`, redirectUri: redirectUri(request.url) });
