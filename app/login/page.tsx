@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase, setRememberPreference } from '@/lib/supabase';
@@ -30,25 +30,6 @@ export default function LoginPage() {
   const [resending, setResending] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [debugInfo, setDebugInfo] = useState('');
-
-  // דיבאג זמני - עוזר לאבחן למה מישהו מגיע לעמוד הכניסה הזה שוב אחרי שכבר היה מחובר.
-  // מוריד אחרי שהבעיה נמצאת
-  useEffect(() => {
-    (async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        const lsKeys = Object.keys(window.localStorage).filter((k) => k.startsWith('sb-'));
-        const ssKeys = Object.keys(window.sessionStorage).filter((k) => k.startsWith('sb-'));
-        const remember = window.localStorage.getItem('sd_remember_me');
-        setDebugInfo(
-          `session: ${session ? `YES (${session.user.email})` : 'NO'} | remember: ${remember} | localStorage sb- keys: ${lsKeys.length ? lsKeys.join(',') : 'none'} | sessionStorage sb- keys: ${ssKeys.length ? ssKeys.join(',') : 'none'}`
-        );
-      } catch (e) {
-        setDebugInfo(`debug error: ${e instanceof Error ? e.message : String(e)}`);
-      }
-    })();
-  }, []);
 
   async function routeAfterLogin(userId: string) {
     const returnTo = getReturnTo();
@@ -225,12 +206,6 @@ export default function LoginPage() {
         <Link href="/" className="brand">מסחר <span>אחראי</span> במניות</Link>
         <Link href="/" className="nav-link">בית</Link>
       </header>
-
-      {debugInfo && (
-        <div style={{ fontSize: '10px', color: '#FFB648', background: '#1A181C', border: '1px solid #332E35', borderRadius: '6px', padding: '8px', marginBottom: '10px', direction: 'ltr', textAlign: 'left', wordBreak: 'break-all' }}>
-          DEBUG: {debugInfo}
-        </div>
-      )}
 
       <div className="form-title" style={{ color: 'var(--lavender)' }}>כניסה לסוחרים</div>
       <div className="form-sub">מקלידים אימייל ומקבלים קוד כניסה - בלי סיסמה</div>

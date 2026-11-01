@@ -36,29 +36,9 @@ export default function HomePage() {
   const [autoOpenNotifications] = useState(
     () => typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('join') === '1'
   );
-  const [debugInfo, setDebugInfo] = useState('');
-
   useEffect(() => {
     captureSourceFromUrl();
     loadTrades();
-  }, []);
-
-  // דיבאג זמני - אותו אבחון כמו ב-login/page.tsx, כדי לראות אם ה-session עדיין קיים
-  // ברגע שמגיעים לעמוד הבית (למשל אחרי לחיצה על "בית" בעמוד הכניסה). מוריד אחרי שנמצא הבאג
-  useEffect(() => {
-    (async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        const lsKeys = Object.keys(window.localStorage).filter((k) => k.startsWith('sb-'));
-        const ssKeys = Object.keys(window.sessionStorage).filter((k) => k.startsWith('sb-'));
-        const remember = window.localStorage.getItem('sd_remember_me');
-        setDebugInfo(
-          `session: ${session ? `YES (${session.user.email})` : 'NO'} | remember: ${remember} | localStorage sb- keys: ${lsKeys.length ? lsKeys.join(',') : 'none'} | sessionStorage sb- keys: ${ssKeys.length ? ssKeys.join(',') : 'none'}`
-        );
-      } catch (e) {
-        setDebugInfo(`debug error: ${e instanceof Error ? e.message : String(e)}`);
-      }
-    })();
   }, []);
 
   useEffect(() => {
@@ -128,11 +108,6 @@ export default function HomePage() {
 
   return (
     <div className="wrap">
-      {debugInfo && (
-        <div style={{ fontSize: '10px', color: '#FFB648', background: '#1A181C', border: '1px solid #332E35', borderRadius: '6px', padding: '8px', margin: '8px 16px', direction: 'ltr', textAlign: 'left', wordBreak: 'break-all' }}>
-          DEBUG: {debugInfo}
-        </div>
-      )}
       <SiteHeader />
 
       <div className="hero-v2">
