@@ -24,7 +24,11 @@ async function mondayRequest(token: string, query: string, variables: Record<str
   return json;
 }
 
-export async function sendToMonday(lead: Record<string, string>, details: string) {
+// opts מאפשר לעמודים אחרים (למשל הליווי האישי) להשתמש באותו חיבור למאנדיי עם קבוצה, מקור ושם פריט משלהם.
+// מחזיר את מזהה הפריט שנוצר (מחרוזת), או false אם לא נוצר
+export type MondayLeadOptions = { groupNames?: string[]; sourceLabel?: string; itemName?: string };
+
+export async function sendToMonday(lead: Record<string, string>, details: string, opts: MondayLeadOptions = {}): Promise<string | false> {
   const token = process.env.MONDAY_API_TOKEN;
   const boardId = process.env.MONDAY_BOARD_ID;
   if (!token || !boardId) {
@@ -41,8 +45,8 @@ export async function sendToMonday(lead: Record<string, string>, details: string
   const columns: { id: string; title: string; type: string }[] = board?.columns || [];
   const groups: { id: string; title: string }[] = board?.groups || [];
 
-  const groupId =
-    groups.find((g) => g.title === BUSINESS_GROUP_NAME)?.id || groups.find((g) => g.title === FALLBACK_GROUP_NAME)?.id || null;
+  const groupNames = [...(opts.groupNames || [BUSINESS_GROUP_NAME]), FALLBACK_GROUP_NAME];
+  const groupId = groupNames.map((name) => groups.find((g) => g.title === name)?.id).find(Boolean) || null;
   const phoneColumnId = columns.find((c) => c.type === 'phone')?.id;
   const emailColumnId = columns.find((c) => c.type === 'email')?.id;
   const campaignColumnId = columns.find((c) => c.title === CAMPAIGN_COLUMN_TITLE)?.id;
@@ -53,14 +57,14 @@ export async function sendToMonday(lead: Record<string, string>, details: string
     columnValues[phoneColumnId] = { phone: digits.startsWith('0') ? `972${digits.slice(1)}` : digits, countryShortName: 'IL' };
   }
   if (emailColumnId && lead.email) columnValues[emailColumnId] = { email: lead.email, text: lead.email };
-  if (campaignColumnId) columnValues[campaignColumnId] = SOURCE_LABEL;
+  if (campaignColumnId) columnValues[campaignColumnId] = opts.sourceLabel || SOURCE_LABEL;
 
   const created = await mondayRequest(
     token,
     `mutation ($boardId: ID!, $groupId: String, $itemName: String!, $columnValues: JSON) {
       create_item (board_id: $boardId, group_id: $groupId, item_name: $itemName, column_values: $columnValues) { id }
     }`,
-    { boardId, groupId, itemName: `${lead.name} - ${lead.org}`, columnValues: JSON.stringify(columnValues) }
+    { boardId, groupId, itemName: opts.itemName || `${lead.name} - ${lead.org}`, columnValues: JSON.stringify(columnValues) }
   );
   const itemId = created?.data?.create_item?.id;
   if (!itemId) {
@@ -68,16 +72,28 @@ export async function sendToMonday(lead: Record<string, string>, details: string
     return false;
   }
 
-  await mondayRequest(
-    token,
-    `mutation ($itemId: ID!, $body: String!) { create_update (item_id: $itemId, body: $body) { id } }`,
-    { itemId, body: details }
-  ).catch((e) => console.error('Monday.com: נכשלה הוספת פרטי הפנייה כעדכון', e));
+  await addMondayUpdate(itemId, details);
 
-  return true;
+  return String(itemId);
 }
 
-export async function notifyShiran(lead: Record<string, string>, details: string, subjectOverride?: string) {
+// מוסיף עדכון (הערה) לפריט קיים במאנדיי - למשל כשליד שכבר מילא שאלון קובע אחר כך שיחה ביומן
+export async function addMondayUpdate(itemId: string, body: string) {
+  const token = process.env.MONDAY_API_TOKEN;
+  if (!token) return false;
+  return mondayRequest(
+    token,
+    `mutation ($itemId: ID!, $body: String!) { create_update (item_id: $itemId, body: $body) { id } }`,
+    { itemId, body }
+  )
+    .then(() => true)
+    .catch((e) => {
+      console.error('Monday.com: נכשלה הוספת עדכון לפריט', e);
+      return false;
+    });
+}
+
+export async function notifyShiran(lead: Record<string, string>, details: string, subjectOverride?: string, intro?: string) {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
     console.error('RESEND_API_KEY לא מוגדר - לא נשלח מייל התראה על פנייה מארגון');
@@ -91,7 +107,7 @@ export async function notifyShiran(lead: Record<string, string>, details: string
       to: 'shiran@shirandimor.com',
       ...(lead.email ? { reply_to: lead.email } : {}),
       subject: subjectOverride || `פנייה חדשה מארגון: ${lead.org}`,
-      text: `התקבלה פנייה חדשה מהעמוד לארגונים.\n\n${details}`,
+      text: `${intro || 'התקבלה פנייה חדשה מהעמוד לארגונים.'}\n\n${details}`,
     }),
   });
   if (!res.ok) {

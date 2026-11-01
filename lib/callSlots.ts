@@ -1,4 +1,4 @@
-// חישוב זמנים פנויים לשיחות התאמה (עמוד לארגונים). כל ההגדרות כאן - לשינוי שעות/ימים משנים רק את הקבועים.
+// חישוב זמנים פנויים לשיחות התאמה (עמוד לארגונים ועמוד הליווי האישי). כל ההגדרות כאן - לשינוי שעות/ימים משנים רק את הקבועים.
 import type { BusyInterval } from './googleCalendar';
 
 const TZ = 'Asia/Jerusalem';
@@ -51,8 +51,10 @@ export function slotRange(now = new Date()) {
   return { timeMin: now, timeMax: new Date(now.getTime() + (CALL_CONFIG.lookaheadDays + 1) * 24 * 3600 * 1000) };
 }
 
-export function computeSlots(busy: BusyInterval[], now = new Date()): Slot[] {
-  const { minutes, stepMinutes, bufferMinutes, days, dayStart, dayEnd, lookaheadDays, minNoticeHours } = CALL_CONFIG;
+// minutes - אורך השיחה (ברירת מחדל: שיחת ארגונים). שיחות ההתאמה לליווי האישי ארוכות יותר ומעבירות כאן ערך משלהן,
+// אבל משתמשות באותו יומן ובאותם ימים/שעות - כך ששני סוגי השיחות לעולם לא נקבעים על אותו זמן
+export function computeSlots(busy: BusyInterval[], now = new Date(), minutes: number = CALL_CONFIG.minutes): Slot[] {
+  const { stepMinutes, bufferMinutes, days, dayStart, dayEnd, lookaheadDays, minNoticeHours } = CALL_CONFIG;
   const [sh, sm] = dayStart.split(':').map(Number);
   const [eh, em] = dayEnd.split(':').map(Number);
   const earliest = now.getTime() + minNoticeHours * 3600 * 1000;
