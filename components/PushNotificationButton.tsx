@@ -240,7 +240,7 @@ export default function PushNotificationButton({ variant = 'default', autoOpenLe
     }
     return (
       <>
-        <button type="button" className="cta-main" style={{ border: 'none', cursor: 'pointer', width: '100%' }} onClick={handleEnable} disabled={busy}>
+        <button type="button" className="cta-main" style={{ cursor: 'pointer', width: '100%' }} onClick={handleEnable} disabled={busy}>
           {busy ? '...' : 'הצטרפות לעדכונים בזמן אמת'}
           <span className="free-tag">ללא עלות</span>
         </button>
