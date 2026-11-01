@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { captureSourceFromUrl } from '@/lib/attribution';
 import { supabase, getResilientUser } from '@/lib/supabase';
+import { hasActiveEntitlement } from '@/lib/entitlement';
 import PushNotificationButton from '@/components/PushNotificationButton';
 import Reveal from '@/components/Reveal';
 import CountUp from '@/components/CountUp';
@@ -69,8 +70,8 @@ export default function HomePage() {
         // כישלון כאן לא אמור לחסום את טעינת העסקאות הציבוריות שממשיכה מתחת
         const user = await getResilientUser();
         if (user) {
-          const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
-          setHasFullAccess(profile?.role === 'admin' || profile?.role === 'subscriber');
+          const { data: profile } = await supabase.from('profiles').select('role, subscription_status, subscription_paid_until').eq('id', user.id).single();
+          setHasFullAccess(hasActiveEntitlement(profile));
         }
       } catch (authErr) {
         console.error('homepage auth check failed', authErr);

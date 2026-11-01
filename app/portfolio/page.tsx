@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { supabase, getResilientUser } from '@/lib/supabase';
+import { hasActiveEntitlement } from '@/lib/entitlement';
 import ClearableInput from '@/components/ClearableInput';
 import StatsRing from '@/components/StatsRing';
 import EquityCurve from '@/components/EquityCurve';
@@ -99,10 +100,10 @@ export default function PortfolioPage() {
           setLoggedIn(true);
           const { data: profile } = await supabase
             .from('profiles')
-            .select('role, full_name, phone, email')
+            .select('role, subscription_status, subscription_paid_until, full_name, phone, email')
             .eq('id', user.id)
             .single();
-          setHasFullAccess(profile?.role === 'admin' || profile?.role === 'subscriber');
+          setHasFullAccess(hasActiveEntitlement(profile));
           setIsAdmin(profile?.role === 'admin');
 
           const prefillParams = new URLSearchParams();

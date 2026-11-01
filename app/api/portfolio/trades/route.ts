@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/instantLogin';
+import { hasActiveEntitlement } from '@/lib/entitlement';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,8 +12,8 @@ async function checkFullAccess(request: Request): Promise<boolean> {
   const { data: { user } } = await supabaseAdmin.auth.getUser(token);
   if (!user) return false;
 
-  const { data: profile } = await supabaseAdmin.from('profiles').select('role, subscription_status').eq('id', user.id).maybeSingle();
-  return profile?.role === 'admin' || (profile?.role === 'subscriber' && profile?.subscription_status === 'active');
+  const { data: profile } = await supabaseAdmin.from('profiles').select('role, subscription_status, subscription_paid_until').eq('id', user.id).maybeSingle();
+  return hasActiveEntitlement(profile);
 }
 
 // GET - נתוני התיק הציבורי (/portfolio, עמוד הבית) - מחליף קריאה ישירה מהדפדפן לטבלת trades

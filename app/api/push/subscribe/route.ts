@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/instantLogin';
 import { isPhoneBlocked } from '@/lib/blockedContacts';
 import { normalizePhone, normalizeEmail } from '@/lib/subscriberStatus';
+import { entitlementOrFilter } from '@/lib/entitlement';
 import { isContactInSubscribersGroupMonday, markAppDownloadOnMonday } from '@/lib/tradingPlan/monday';
 
 // POST - שומר מינוי להתראות פוש. שלושה מסלולים, ובכל אחד מהם מסמנים גם במאנדיי (עמודת "סטטוס
@@ -65,7 +66,7 @@ export async function POST(request: Request) {
   const { data: activeProfiles } = await supabaseAdmin
     .from('profiles')
     .select('id, phone, email')
-    .or('role.eq.admin,and(role.eq.subscriber,subscription_status.eq.active)');
+    .or(entitlementOrFilter());
 
   const matchedProfile = (activeProfiles || []).find(
     (p) => (targetPhone && normalizePhone(p.phone) === targetPhone) || (targetEmail && normalizeEmail(p.email) === targetEmail)

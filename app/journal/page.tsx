@@ -410,7 +410,7 @@ export default function JournalPage() {
           <Link href="/" className="brand">מסחר <span>אחראי</span> במניות</Link>
           <Link href="/" className="nav-link">בית</Link>
         </header>
-        <p style={{ padding: '40px 0', textAlign: 'center' }}>צריך להתחבר קודם. <Link href="/login" style={{ color: 'var(--teal)' }}>כניסה</Link></p>
+        <p style={{ padding: '40px 0', textAlign: 'center' }}>צריך להתחבר קודם. <Link href="/login?returnTo=/journal" style={{ color: 'var(--teal)' }}>כניסה</Link></p>
       </div>
     );
   }

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/instantLogin';
+import { hasActiveEntitlement } from '@/lib/entitlement';
 
 // GET - רשימת הלייבים הקרובים המפורסמים, לתצוגה ציבורית. לא כולל join_info - זה נחשף רק
 // אחרי הרשמה בפועל (במסך ההרשמה, או במייל/הודעה שנשלחת לליד).
@@ -15,8 +16,8 @@ export async function GET(request: Request) {
     const { data: { user } } = await supabaseAdmin.auth.getUser(token);
     if (user) {
       userId = user.id;
-      const { data: profile } = await supabaseAdmin.from('profiles').select('role, subscription_status').eq('id', user.id).maybeSingle();
-      viewerIsSubscriber = profile?.role === 'admin' || (profile?.role === 'subscriber' && profile?.subscription_status === 'active');
+      const { data: profile } = await supabaseAdmin.from('profiles').select('role, subscription_status, subscription_paid_until').eq('id', user.id).maybeSingle();
+      viewerIsSubscriber = hasActiveEntitlement(profile);
     }
   }
 

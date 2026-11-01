@@ -13,6 +13,10 @@ export const supabaseAdmin = createClient(
 // הקישור נשאר גם כגיבוי - אם משום מה Supabase לא מחזיר קוד תקין (email_otp), עדיין אפשר
 // להיכנס דרך הקישור בדיוק כמו קודם, בלי שום נסיגה. מחזיר האם קוד נכלל בפועל במייל, כדי
 // שהעמוד יידע אם להציג שדה הקלדת קוד או רק "שלחנו לך קישור"
+// ה-redirectTo נשאר קבוע בכוונה ולא מצרף returnTo דינמי - זה חייב להיות בדיוק אחד
+// מה-URL-ים המורשים בהגדרות ה-Auth של Supabase, ובלי לבדוק שם את הקונפיגורציה בפועל
+// (לא זמין מהסשן הזה כרגע) עדיף לא לקחת סיכון שישבור את קישור הגיבוי כולו. הנתיב הספציפי
+// לחזרה אליו מטופל בנתיב הראשי (קוד מוקלד באתר עצמו) דרך login/page.tsx, לא דרך המייל
 export async function sendLoginEmail(email: string): Promise<{ otpIncluded: boolean }> {
   const { data, error } = await supabaseAdmin.auth.admin.generateLink({
     type: 'magiclink',

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { trackFunnelEvent } from '@/lib/trackEvent';
 import { captureSourceFromUrl } from '@/lib/attribution';
 import { supabase } from '@/lib/supabase';
+import { hasActiveEntitlement } from '@/lib/entitlement';
 
 const GROW_LINK = 'https://pay.grow.link/ODUwNDc~e1145301cbce2cc9d1e0395611428e83-NDIxNTkxMw';
 
@@ -30,11 +31,11 @@ export default function SubscribePage() {
 
       const { data: profile } = await supabase
         .from('profiles')
-        .select('role, subscription_status, trial_price_used')
+        .select('role, subscription_status, subscription_paid_until, trial_price_used')
         .eq('id', user.id)
         .maybeSingle();
 
-      if (profile?.role === 'admin' || (profile?.role === 'subscriber' && profile?.subscription_status === 'active')) {
+      if (hasActiveEntitlement(profile)) {
         setStatus('already-active');
       } else if (profile?.trial_price_used) {
         setStatus('used-trial');
