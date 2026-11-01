@@ -320,7 +320,7 @@ export default function PortfolioPage() {
             <p className="lb-sub">הסימבולים מוסתרים כדי לשמור על פרטיות המנויים - ההצטרפות פותחת גישה לתמונה המלאה: מספרים אמיתיים, כולל הפסדים, ותיק השקעות שבונים <strong style={{ color: 'var(--lavender)' }}>ביחד איתי</strong>.</p>
           </div>
           <div className="lb-cta-row">
-            <Link href="/subscribe" className="lb-cta">לגישה מלאה ←</Link>
+            <Link href="/#step2-full-access" className="lb-cta">לגישה מלאה ←</Link>
             <Link href="/?join=1" className="lb-cta-secondary">הצטרפות חינם לעדכונים ←</Link>
           </div>
         </div>

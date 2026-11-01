@@ -48,6 +48,20 @@ export default function HomePage() {
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
+  // ניווט מ-/portfolio (ומכל מקום אחר) ל-"#step2-full-access" - Next.js מנווט בצד הלקוח
+  // בלי לרענן את הדף, ולכן לא מקבלים את ההתנהגות הטבעית של הדפדפן שפותחת <details> סגור
+  // וגוללת אליו לבד. צריך לעשות את זה ביד
+  useEffect(() => {
+    if (window.location.hash !== '#step2-full-access') return;
+    const el = document.getElementById('step2-full-access');
+    if (!el) return;
+    const details = el.closest('details');
+    if (details) details.open = true;
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    el.classList.add('attention-pulse');
+    setTimeout(() => el.classList.remove('attention-pulse'), 2000);
+  }, []);
+
   async function loadTrades() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -230,7 +244,7 @@ export default function HomePage() {
                 </div>
                 <a className="gc-cta" href="#hero-notify" onClick={(e) => { e.preventDefault(); scrollToHeroNotify(); }}>הפעלה ללא עלות ↑</a>
               </div>
-              <div className="group-card paid">
+              <div className="group-card paid" id="step2-full-access" style={{ scrollMarginTop: '90px' }}>
                 <div className="gc-tag">צעד 2 · גישה מלאה</div>
                 <h3>מדברים עסקאות</h3>
                 <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', lineHeight: 1.55, marginBottom: '10px' }}>
