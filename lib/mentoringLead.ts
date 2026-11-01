@@ -37,7 +37,16 @@ export function readMentoringLead(body: Record<string, unknown>): MentoringLead 
 }
 
 export function isMentoringLeadValid(lead: MentoringLead) {
-  return Boolean(lead.name && lead.email.includes('@') && lead.phone.replace(/\D/g, '').length >= 9);
+  // הכול חובה: פרטי קשר, כל שאלות השאלון, ואישור שעברו על הפרטים והמחירים
+  return Boolean(
+    lead.name &&
+      lead.email.includes('@') &&
+      lead.phone.replace(/\D/g, '').length >= 9 &&
+      lead.experience &&
+      lead.goal &&
+      lead.track &&
+      lead.readDetails
+  );
 }
 
 export function mentoringLeadDetails(lead: MentoringLead, extraLines: string[] = []) {
@@ -57,7 +66,7 @@ export function mentoringLeadDetails(lead: MentoringLead, extraLines: string[] =
 }
 
 // הטקסט שהפונה רואה בזימון ליומן
-export function mentoringInviteDescription(name: string, phone: string) {
+export function mentoringInviteDescription(name: string, phone: string, manageLink?: string) {
   return [
     `היי ${name}, תודה שקבעת!`,
     '',
@@ -69,7 +78,8 @@ export function mentoringInviteDescription(name: string, phone: string) {
     'רוצה לעבור שוב על הפרטים, הסילבוס והמחירים לפני השיחה?',
     MENTORING_PAGE_URL,
     '',
-    'צריך להזיז את השיחה? אפשר לכתוב לשירן בוואטסאפ: 054-716-7419',
+    ...(manageLink ? ['צריך להזיז את השיחה או לבטל? אפשר כאן, בלחיצה:', manageLink, ''] : []),
+    'או לכתוב לשירן בוואטסאפ: 054-716-7419',
     '',
     'שירן דימור | מסחר אחראי במניות',
   ].join('\n');

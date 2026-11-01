@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { addMondayUpdate, clean, notifyShiran, sendToMonday } from '@/lib/businessLead';
 import { createFitCallEvent, listBookedCallIntervals } from '@/lib/googleCalendar';
 import { computeSlots, formatSlotForHumans, slotRange } from '@/lib/callSlots';
+import { callManageUrl, newCallEventId } from '@/lib/callManage';
 import {
   MENTORING_CALL_MINUTES,
   MENTORING_GROUP_NAME,
@@ -50,20 +51,25 @@ export async function POST(request: Request) {
   }
 
   const when = formatSlotForHumans(start);
+  const leadId = clean(body.leadId, 30);
+  // המזהה נקבע מראש כדי שהקישור לשינוי/ביטול ייכנס כבר לתוך הזימון שנשלח למייל
+  const plannedId = newCallEventId();
+  const manageUrl = callManageUrl(plannedId);
   const eventId = await createFitCallEvent({
+    id: plannedId,
     start,
     minutes: MENTORING_CALL_MINUTES,
     summary: `שיחת התאמה לליווי אישי עם שירן דימור | ${lead.name}`,
-    description: mentoringInviteDescription(lead.name, lead.phone),
+    description: mentoringInviteDescription(lead.name, lead.phone, manageUrl),
     phone: lead.phone,
     attendeeEmail: lead.email || undefined,
+    privateProps: { kind: 'mentoring', name: lead.name, phone: lead.phone, email: lead.email, leadId: /^\d+$/.test(leadId) ? leadId : '' },
   });
   if (!eventId) {
     return NextResponse.json({ error: 'לא הצלחנו לקבוע את השיחה ביומן' }, { status: 502 });
   }
 
   const bookedLine = `נקבעה שיחת התאמה לליווי אישי: ${when}`;
-  const leadId = clean(body.leadId, 30);
   const details = mentoringLeadDetails(lead, [bookedLine]);
   const mondayPromise = /^\d+$/.test(leadId)
     ? addMondayUpdate(leadId, bookedLine)
@@ -80,5 +86,5 @@ export async function POST(request: Request) {
     ),
   ]);
 
-  return NextResponse.json({ ok: true, when });
+  return NextResponse.json({ ok: true, when, start: start.toISOString(), manageUrl });
 }

@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import AddToCalendar from './AddToCalendar';
+import SlotPicker, { type Slot } from './SlotPicker';
 import { trackFunnelEvent } from '@/lib/trackEvent';
 import { EXPERIENCE_OPTIONS, TRACK_OPTIONS } from '@/lib/mentoringOptions';
 
-type Slot = { start: string; day: string; dayLabel: string; time: string };
 type Step = 'form' | 'schedule' | 'booked' | 'no-calendar';
 type Lead = { name: string; phone: string; email: string; experience: string; goal: string; track: string; readDetails: boolean };
 
@@ -24,6 +25,7 @@ export default function FitCallFlow({ whatsappUrl }: { whatsappUrl: string }) {
   const [day, setDay] = useState('');
   const [slot, setSlot] = useState<Slot | null>(null);
   const [when, setWhen] = useState('');
+  const [booked, setBooked] = useState<{ start: string; manageUrl: string } | null>(null);
   const started = useRef(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -64,8 +66,7 @@ export default function FitCallFlow({ whatsappUrl }: { whatsappUrl: string }) {
         return;
       }
       setSlots(list);
-      const days = Array.from(new Set(list.map((s) => s.day)));
-      setDay(keepDay && days.includes(keepDay) ? keepDay : days[0] || '');
+      if (keepDay) setDay(keepDay);
       setStep('schedule');
       trackFunnelEvent('mentoring_calendar_opened');
     } catch {
@@ -82,7 +83,9 @@ export default function FitCallFlow({ whatsappUrl }: { whatsappUrl: string }) {
     if (lead.phone.replace(/\D/g, '').length < 9) return setError('נראה שמספר הנייד חסר או לא מלא');
     if (!lead.email.includes('@')) return setError('צריך מייל - אליו יישלח הזימון ליומן');
     if (!lead.experience) return setError('נשאר לבחור רמת ניסיון');
+    if (!lead.goal.trim()) return setError('נשאר לכתוב מה היית רוצה לדעת לעשות טוב יותר (משפט אחד מספיק)');
     if (!lead.track) return setError('נשאר לבחור מסלול (אפשר גם "עדיין לא בטוח/ה")');
+    if (!lead.readDetails) return setError('נשאר לסמן שעברת על פרטי הליווי והמחירים');
 
     setError('');
     setSending(true);
@@ -124,6 +127,7 @@ export default function FitCallFlow({ whatsappUrl }: { whatsappUrl: string }) {
       }
       if (!res.ok) throw new Error(String(res.status));
       setWhen(String(json.when || `${slot.dayLabel} בשעה ${slot.time}`));
+      setBooked({ start: String(json.start || slot.start), manageUrl: String(json.manageUrl || '') });
       setStep('booked');
       trackFunnelEvent('mentoring_call_booked', { phone: lead.phone, email: lead.email });
       scrollIntoFlow();
@@ -134,13 +138,6 @@ export default function FitCallFlow({ whatsappUrl }: { whatsappUrl: string }) {
     }
   }
 
-  const days = useMemo(() => {
-    const seen = new Map<string, string>();
-    for (const s of slots) if (!seen.has(s.day)) seen.set(s.day, s.dayLabel);
-    return Array.from(seen.entries()).map(([key, label]) => ({ key, label }));
-  }, [slots]);
-  const daySlots = slots.filter((s) => s.day === day);
-  const dayLabel = days.find((d) => d.key === day)?.label;
   const firstName = lead.name.trim().split(/\s+/)[0] || '';
 
   const sendError =
@@ -165,15 +162,15 @@ export default function FitCallFlow({ whatsappUrl }: { whatsappUrl: string }) {
         <form className="mt-form" onSubmit={onSubmit} noValidate onFocus={markStarted}>
           <div className="mt-form-grid">
             <div className="field">
-              <label htmlFor="mt-name">שם מלא</label>
+              <label htmlFor="mt-name">שם מלא *</label>
               <input id="mt-name" value={lead.name} onChange={(e) => update('name', e.target.value)} maxLength={80} autoComplete="name" required />
             </div>
             <div className="field">
-              <label htmlFor="mt-phone">טלפון</label>
+              <label htmlFor="mt-phone">נייד *</label>
               <input id="mt-phone" type="tel" inputMode="tel" dir="ltr" value={lead.phone} onChange={(e) => update('phone', e.target.value)} maxLength={20} autoComplete="tel" required />
             </div>
             <div className="field mt-field-wide">
-              <label htmlFor="mt-email">אימייל (לזימון ליומן)</label>
+              <label htmlFor="mt-email">אימייל * (לזימון ליומן)</label>
               <input id="mt-email" type="email" dir="ltr" value={lead.email} onChange={(e) => update('email', e.target.value)} maxLength={120} autoComplete="email" required />
             </div>
             {/* שדה מלכודת לבוטים - מוסתר מבני אדם ומקוראי מסך */}
@@ -204,6 +201,7 @@ export default function FitCallFlow({ whatsappUrl }: { whatsappUrl: string }) {
               rows={2}
               maxLength={600}
               placeholder="משפט או שניים זה מספיק"
+              required
               value={lead.goal}
               onChange={(e) => update('goal', e.target.value)}
             />
@@ -222,7 +220,7 @@ export default function FitCallFlow({ whatsappUrl }: { whatsappUrl: string }) {
           </fieldset>
 
           <label className="mt-check">
-            <input type="checkbox" checked={lead.readDetails} onChange={(e) => update('readDetails', e.target.checked)} />
+            <input type="checkbox" required checked={lead.readDetails} onChange={(e) => update('readDetails', e.target.checked)} />
             <span>עברתי על פרטי הליווי והמחירים שמופיעים בעמוד</span>
           </label>
 
@@ -240,28 +238,7 @@ export default function FitCallFlow({ whatsappUrl }: { whatsappUrl: string }) {
           <p className="mt-sched-hello">{firstName ? `תודה ${firstName}, ` : 'תודה, '}קיבלתי את התשובות. עכשיו נשאר לבחור זמן.</p>
           {!slot ? (
             <>
-              <p className="mt-sched-step">בוחרים יום</p>
-              <div className="mt-chips">
-                {days.map((d) => (
-                  <button key={d.key} type="button" className="mt-chip" aria-pressed={d.key === day} onClick={() => setDay(d.key)}>
-                    {d.label}
-                  </button>
-                ))}
-              </div>
-              <p className="mt-sched-step is-active">{dayLabel ? `ועכשיו שעה ב${dayLabel}` : 'ועכשיו שעה'} (שיחת טלפון של כ-20 דקות)</p>
-              {loadingSlots ? (
-                <p className="mt-form-note">טוען זמנים פנויים...</p>
-              ) : daySlots.length > 0 ? (
-                <div className="mt-chips">
-                  {daySlots.map((s) => (
-                    <button key={s.start} type="button" className="mt-chip mt-chip-time" onClick={() => { setSlot(s); setError(''); }}>
-                      {s.time}
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                <p className="mt-form-error" role="alert">אין שעות פנויות ביום הזה - אפשר לבחור יום אחר למעלה</p>
-              )}
+              <SlotPicker slots={slots} loading={loadingSlots} initialDay={day} onPick={(s) => { setSlot(s); setDay(s.day); setError(''); }} />
               {sendError}
               <p className="mt-form-note" style={{ marginTop: 16 }}>
                 אף זמן לא מתאים? <a href={whatsappUrl} target="_blank" rel="noopener noreferrer">כתבו לי בוואטסאפ</a> ונמצא זמן אחר.
@@ -285,7 +262,13 @@ export default function FitCallFlow({ whatsappUrl }: { whatsappUrl: string }) {
       {step === 'booked' && (
         <div className="mt-done" role="status">
           <p className="mt-done-title">השיחה נקבעה</p>
-          <p>אתקשר אלייך ב{when}. זימון ליומן כבר בדרך למייל.</p>
+          <p>אתקשר אלייך ב{when}. זימון ליומן כבר בדרך למייל, ואפשר גם להוסיף אותו מכאן:</p>
+          {booked && <AddToCalendar start={booked.start} manageUrl={booked.manageUrl} />}
+          {booked?.manageUrl && (
+            <p>
+              משהו השתנה? <a className="mt-inline-link" href={booked.manageUrl}>לשנות מועד או לבטל את השיחה</a> (הקישור נמצא גם בזימון במייל).
+            </p>
+          )}
           <p>עד אז, אפשר לחשוב על שאלה אחת: מה הדבר שהכי מפריע לך היום כשאת/ה פותח/ת גרף?</p>
         </div>
       )}

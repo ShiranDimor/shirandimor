@@ -225,3 +225,21 @@ body.mt-bar-on .dor-callout { bottom: calc(152px + env(safe-area-inset-bottom));
   .mt-options-3 { display: grid; grid-template-columns: repeat(3, 1fr); }
   .mt-fitcall { padding: 32px 30px; }
 }
+
+/* ===== הוספה ליומן + ניהול שיחה (שינוי מועד / ביטול) ===== */
+.mt-cal-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.mt-cal-btn {
+  display: inline-flex; align-items: center; min-height: 44px; padding: 10px 14px; border-radius: 10px;
+  border: 1px solid var(--border-hairline-strong); background: var(--bg-surface-raised); color: var(--text-primary);
+  font-size: 13.5px; font-weight: 600; text-decoration: none; transition: border-color 0.15s ease;
+}
+.mt-cal-btn:hover { border-color: var(--teal); }
+.mt-inline-link { color: var(--lavender); font-weight: 600; }
+.mt-manage-actions { display: flex; flex-direction: column; gap: 10px; margin-top: 16px; align-items: stretch; }
+.mt-cancel-btn {
+  min-height: 48px; border-radius: 999px; background: transparent; border: 1px solid var(--border-hairline-strong);
+  color: var(--text-secondary); font-family: var(--font-body); font-size: 15px; font-weight: 600; cursor: pointer;
+}
+.mt-cancel-btn:hover, .mt-cancel-btn.is-danger { border-color: var(--loss); color: var(--loss); }
+.mt-confirm { margin-top: 16px; padding: 16px; border-radius: 12px; background: var(--loss-bg); border: 1px solid rgba(255, 92, 92, 0.3); }
+.mt-confirm p { font-size: 14.5px; }

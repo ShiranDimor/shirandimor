@@ -6,9 +6,9 @@ function toIcsDate(iso: string): string {
   return new Date(iso).toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
 }
 
-export function buildGoogleCalendarUrl(title: string, description: string, scheduledAtIso: string): string {
+export function buildGoogleCalendarUrl(title: string, description: string, scheduledAtIso: string, durationMinutes = DEFAULT_DURATION_MINUTES): string {
   const start = new Date(scheduledAtIso);
-  const end = new Date(start.getTime() + DEFAULT_DURATION_MINUTES * 60 * 1000);
+  const end = new Date(start.getTime() + durationMinutes * 60 * 1000);
   const dates = `${toIcsDate(start.toISOString())}/${toIcsDate(end.toISOString())}`;
   const params = new URLSearchParams({
     action: 'TEMPLATE',
@@ -19,9 +19,9 @@ export function buildGoogleCalendarUrl(title: string, description: string, sched
   return `https://calendar.google.com/calendar/render?${params.toString()}`;
 }
 
-export function buildIcsDataUri(title: string, description: string, scheduledAtIso: string): string {
+export function buildIcsDataUri(title: string, description: string, scheduledAtIso: string, durationMinutes = DEFAULT_DURATION_MINUTES): string {
   const start = new Date(scheduledAtIso);
-  const end = new Date(start.getTime() + DEFAULT_DURATION_MINUTES * 60 * 1000);
+  const end = new Date(start.getTime() + durationMinutes * 60 * 1000);
 
   const escape = (s: string) => s.replace(/[\\;,]/g, (c) => `\\${c}`).replace(/\n/g, '\\n');
 

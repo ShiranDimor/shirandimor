@@ -145,6 +145,10 @@ export async function createFitCallEvent(opts: {
   description: string;
   phone: string;
   attendeeEmail?: string;
+  // מזהה אירוע שנקבע מראש (אותיות a-v וספרות) - כדי שאפשר יהיה לשים בזימון קישור לשינוי/ביטול עוד לפני היצירה
+  id?: string;
+  // פרטים נוספים שנשמרים באירוע (לא גלויים לפונה) - למשל שם, טלפון ומזהה הליד במאנדיי, לשימוש בביטול/שינוי
+  privateProps?: Record<string, string>;
 }): Promise<string | null> {
   const accessToken = await getAccessToken();
   if (!accessToken) return null;
@@ -161,7 +165,8 @@ export async function createFitCallEvent(opts: {
         end: { dateTime: end.toISOString(), timeZone: 'Asia/Jerusalem' },
         attendees: opts.attendeeEmail ? [{ email: opts.attendeeEmail }] : undefined,
         reminders: { useDefault: false, overrides: [{ method: 'popup', minutes: 10 }] },
-        extendedProperties: { private: { [FIT_CALL_TAG]: '1' } },
+        ...(opts.id ? { id: opts.id } : {}),
+        extendedProperties: { private: { ...(opts.privateProps || {}), [FIT_CALL_TAG]: '1' } },
       }),
     });
     if (!res.ok) {
@@ -173,5 +178,78 @@ export async function createFitCallEvent(opts: {
   } catch (e) {
     console.error('שגיאה ביצירת אירוע שיחת התאמה ביומן', e);
     return null;
+  }
+}
+
+// ===== ניהול שיחה שכבר נקבעה (שינוי מועד / ביטול ע"י הפונה) =====
+
+export type FitCallEvent = {
+  id: string;
+  start: string;
+  end: string;
+  cancelled: boolean;
+  props: Record<string, string>;
+};
+
+// קורא אירוע שיחת התאמה לפי המזהה. מחזיר null אם החיבור לא מוגדר, האירוע לא קיים, או שהוא לא שיחת התאמה מהאתר
+export async function getFitCallEvent(id: string): Promise<FitCallEvent | null> {
+  const accessToken = await getAccessToken();
+  if (!accessToken) return null;
+  try {
+    const res = await fetch(`${EVENTS_URL}/${encodeURIComponent(id)}`, { headers: { Authorization: `Bearer ${accessToken}` }, cache: 'no-store' });
+    if (res.status === 404 || res.status === 410) return null;
+    if (!res.ok) {
+      console.error('שגיאה בקריאת אירוע שיחת התאמה', await res.text().catch(() => ''));
+      return null;
+    }
+    const ev = await res.json();
+    const props = ev.extendedProperties?.private || {};
+    if (props[FIT_CALL_TAG] !== '1' || !ev.start?.dateTime) return null;
+    return { id: ev.id, start: ev.start.dateTime, end: ev.end?.dateTime || ev.start.dateTime, cancelled: ev.status === 'cancelled', props };
+  } catch (e) {
+    console.error('שגיאה בקריאת אירוע שיחת התאמה', e);
+    return null;
+  }
+}
+
+// מבטל שיחה: מוחק את האירוע מהיומן ושולח עדכון ביטול למוזמנ/ת
+export async function cancelFitCallEvent(id: string): Promise<boolean> {
+  const accessToken = await getAccessToken();
+  if (!accessToken) return false;
+  try {
+    const res = await fetch(`${EVENTS_URL}/${encodeURIComponent(id)}?sendUpdates=all`, { method: 'DELETE', headers: { Authorization: `Bearer ${accessToken}` } });
+    if (!res.ok && res.status !== 410) {
+      console.error('שגיאה בביטול אירוע שיחת התאמה', await res.text().catch(() => ''));
+      return false;
+    }
+    return true;
+  } catch (e) {
+    console.error('שגיאה בביטול אירוע שיחת התאמה', e);
+    return false;
+  }
+}
+
+// מזיז שיחה למועד חדש ושולח עדכון למוזמנ/ת
+export async function moveFitCallEvent(id: string, start: Date, minutes: number): Promise<boolean> {
+  const accessToken = await getAccessToken();
+  if (!accessToken) return false;
+  const end = new Date(start.getTime() + minutes * 60 * 1000);
+  try {
+    const res = await fetch(`${EVENTS_URL}/${encodeURIComponent(id)}?sendUpdates=all`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify({
+        start: { dateTime: start.toISOString(), timeZone: 'Asia/Jerusalem' },
+        end: { dateTime: end.toISOString(), timeZone: 'Asia/Jerusalem' },
+      }),
+    });
+    if (!res.ok) {
+      console.error('שגיאה בשינוי מועד שיחת התאמה', await res.text().catch(() => ''));
+      return false;
+    }
+    return true;
+  } catch (e) {
+    console.error('שגיאה בשינוי מועד שיחת התאמה', e);
+    return false;
   }
 }
