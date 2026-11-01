@@ -1,4 +1,5 @@
 import { supabaseAdmin } from '@/lib/instantLogin';
+import { entitlementOrFilter } from '@/lib/entitlement';
 
 const SITE_URL = 'https://www.shirandimor.com';
 
@@ -47,7 +48,7 @@ export async function sendPushEnableReminders(): Promise<{ sent: number; skipped
   const { data: subscribers } = await supabaseAdmin
     .from('profiles')
     .select('id, email, full_name')
-    .or('role.eq.admin,and(role.eq.subscriber,subscription_status.eq.active)');
+    .or(entitlementOrFilter());
 
   if (!subscribers || subscribers.length === 0) return { sent: 0, skipped: 0 };
 

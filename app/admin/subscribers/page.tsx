@@ -12,6 +12,7 @@ type ApprovedSub = {
   full_name: string | null;
   subscription_status: string | null;
   subscription_started_at: string | null;
+  subscription_paid_until: string | null;
 };
 
 type RevenueItem = { name: string | null; email: string | null; phone: string | null; joinDate: string | null; price: number };
@@ -217,7 +218,7 @@ export default function AdminSubscribersPage() {
   }
 
   async function cancelSubscription(id: string, name: string) {
-    if (!window.confirm(`לבטל את המנוי של ${name}? הוא יאבד גישה מיידית, אבל החשבון ונתוני היומן שלו יישארו שמורים. הוא יחזור להופיע ברשימת הלידים הרגילה.`)) return;
+    if (!window.confirm(`לבטל את חידוש המנוי של ${name}? הגישה שלו תישאר מלאה עד תום התקופה ששילם עליה כבר (לא נחתכת מיידית) - רק אז הוא יחזור להופיע ברשימת הלידים הרגילה.`)) return;
     setCancelling(id);
 
     const { data: { session } } = await supabase.auth.getSession();
@@ -229,7 +230,8 @@ export default function AdminSubscribersPage() {
 
     setCancelling(null);
     if (res.ok) {
-      setApprovedSubs((prev) => prev.filter((s) => s.id !== id));
+      const { paidUntil } = await res.json().catch(() => ({ paidUntil: null }));
+      setApprovedSubs((prev) => prev.map((s) => (s.id === id ? { ...s, subscription_status: 'cancelling', subscription_paid_until: paidUntil } : s)));
     }
   }
 
@@ -266,7 +268,7 @@ export default function AdminSubscribersPage() {
   async function loadApprovedSubs() {
     const { data } = await supabase
       .from('profiles')
-      .select('id, email, phone, full_name, subscription_status, subscription_started_at')
+      .select('id, email, phone, full_name, subscription_status, subscription_started_at, subscription_paid_until')
       .eq('role', 'subscriber')
       .order('subscription_started_at', { ascending: false });
     if (data) setApprovedSubs(data);
@@ -477,7 +479,13 @@ export default function AdminSubscribersPage() {
               </div>
             </div>
             <div style={{ textAlign: 'left', flexShrink: 0 }}>
-              <div style={{ fontSize: '11px', color: 'var(--profit)', fontWeight: 700 }}>{sub.subscription_status === 'active' ? 'פעיל' : sub.subscription_status}</div>
+              {sub.subscription_status === 'cancelling' ? (
+                <div style={{ fontSize: '11px', color: 'var(--loss)', fontWeight: 700 }}>
+                  מבטל/ת - גישה עד {sub.subscription_paid_until ? new Date(sub.subscription_paid_until).toLocaleDateString('he-IL') : '—'}
+                </div>
+              ) : (
+                <div style={{ fontSize: '11px', color: 'var(--profit)', fontWeight: 700 }}>{sub.subscription_status === 'active' ? 'פעיל' : sub.subscription_status}</div>
+              )}
               {priceFor(sub) !== null && (
                 <div style={{ fontSize: '12.5px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--text-primary)', marginTop: '3px' }}>
                   ₪{priceFor(sub)!.toLocaleString('he-IL')}

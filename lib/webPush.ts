@@ -1,5 +1,6 @@
 import webpush from 'web-push';
 import { supabaseAdmin } from '@/lib/instantLogin';
+import { entitlementOrFilter } from '@/lib/entitlement';
 
 // שליחת התראות פוש אמיתיות לטלפון/דפדפן, במקביל למייל - מצריך שהמשתמש אישר התראות
 // ו"התקין" את האתר למסך הבית (בעיקר באייפון). מפתחות VAPID מזהים את השרת שלנו מול
@@ -70,7 +71,7 @@ export async function sendPushToUsers(userIds: string[], payload: PushPayload) {
 }
 
 async function getActiveSubscriberUserIds(): Promise<string[]> {
-  const { data: rows } = await supabaseAdmin.from('profiles').select('id').or('role.eq.admin,and(role.eq.subscriber,subscription_status.eq.active)');
+  const { data: rows } = await supabaseAdmin.from('profiles').select('id').or(entitlementOrFilter());
   return (rows || []).map((r) => r.id);
 }
 

@@ -15,6 +15,11 @@ export default function AuthCallbackPage() {
   }, []);
 
   async function routeByRole(userId: string) {
+    // תמיכה עתידית ב-returnTo גם בנתיב הזה (קישור הגיבוי במייל) - כרגע שום דבר לא שולח
+    // את זה בפועל (ר' הערה ב-lib/instantLogin.ts), אז זה לא משנה התנהגות קיימת
+    const returnTo = new URL(window.location.href).searchParams.get('returnTo');
+    if (returnTo && returnTo.startsWith('/')) { router.push(returnTo); return; }
+
     const { data: profile } = await supabase
       .from('profiles')
       .select('role')

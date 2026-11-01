@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/instantLogin';
+import { hasActiveEntitlement } from '@/lib/entitlement';
 
 // GET - ההיסטוריה שמוצגת בפעמון ההתראות הגלובלי באתר - אותו תוכן שבאמת נשלח כהתראת פוש
 // (lib/webPush.ts רושם כל שידור ל-notification_log), מסונן לפי קהל: מנוי מחובר רואה את
@@ -13,8 +14,8 @@ export async function GET(request: Request) {
   if (token) {
     const { data: { user } } = await supabaseAdmin.auth.getUser(token);
     if (user) {
-      const { data: profile } = await supabaseAdmin.from('profiles').select('role, subscription_status').eq('id', user.id).maybeSingle();
-      isSubscriber = profile?.role === 'admin' || (profile?.role === 'subscriber' && profile?.subscription_status === 'active');
+      const { data: profile } = await supabaseAdmin.from('profiles').select('role, subscription_status, subscription_paid_until').eq('id', user.id).maybeSingle();
+      isSubscriber = hasActiveEntitlement(profile);
     }
   }
 

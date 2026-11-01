@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/instantLogin';
 import { normalizePhone, normalizeEmail } from '@/lib/subscriberStatus';
+import { hasActiveEntitlement } from '@/lib/entitlement';
 
 async function requireAdmin(request: Request) {
   const authHeader = request.headers.get('Authorization') || '';
@@ -28,14 +29,14 @@ export async function GET(request: Request) {
 
   const userIds = Array.from(new Set((subs || []).map((s) => s.user_id).filter(Boolean))) as string[];
   const { data: profiles } = userIds.length
-    ? await supabaseAdmin.from('profiles').select('id, full_name, email, role, subscription_status').in('id', userIds)
-    : { data: [] as { id: string; full_name: string | null; email: string | null; role: string; subscription_status: string }[] };
+    ? await supabaseAdmin.from('profiles').select('id, full_name, email, role, subscription_status, subscription_paid_until').in('id', userIds)
+    : { data: [] as { id: string; full_name: string | null; email: string | null; role: string; subscription_status: string; subscription_paid_until: string | null }[] };
 
   const profileById = new Map((profiles || []).map((p) => [p.id, p]));
 
   const deviceRows = (subs || []).map((s) => {
     const profile = s.user_id ? profileById.get(s.user_id) : null;
-    const isSubscriber = !!profile && (profile.role === 'admin' || (profile.role === 'subscriber' && profile.subscription_status === 'active'));
+    const isSubscriber = hasActiveEntitlement(profile);
     return {
       id: s.id,
       createdAt: s.created_at,

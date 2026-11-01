@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/instantLogin';
 import { isActiveSubscriber } from '@/lib/subscriberStatus';
+import { hasActiveEntitlement } from '@/lib/entitlement';
 import { isContactInSubscribersGroupMonday, createLiveRegistrationLead } from '@/lib/tradingPlan/monday';
 import { isPhoneBlocked } from '@/lib/blockedContacts';
 
@@ -27,8 +28,8 @@ export async function POST(request: Request) {
   if (token) {
     const { data: { user } } = await supabaseAdmin.auth.getUser(token);
     if (user) {
-      const { data: profile } = await supabaseAdmin.from('profiles').select('role, subscription_status, full_name, phone, email').eq('id', user.id).maybeSingle();
-      const isSubscriber = profile?.role === 'admin' || (profile?.role === 'subscriber' && profile?.subscription_status === 'active');
+      const { data: profile } = await supabaseAdmin.from('profiles').select('role, subscription_status, subscription_paid_until, full_name, phone, email').eq('id', user.id).maybeSingle();
+      const isSubscriber = hasActiveEntitlement(profile);
       if (isSubscriber) {
         userId = user.id;
         const { data: existing } = await supabaseAdmin.from('live_registrations').select('id').eq('live_id', liveId).eq('user_id', userId).maybeSingle();
