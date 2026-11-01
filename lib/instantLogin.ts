@@ -48,14 +48,25 @@ export async function sendLoginEmail(email: string): Promise<{ otpIncluded: bool
 
   if (tokenHash) {
     code = generateSixDigitCode();
-    const { error: insertError } = await supabaseAdmin.from('login_codes').insert({
+    const row = {
       email: email.trim().toLowerCase(),
       code,
       token_hash: tokenHash,
       expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
-    });
+    };
+
+    // ה-insert הזה נכשל מדי פעם (לא קשור לדפדפן/מכשיר של המשתמש) עם "new row violates
+    // row-level security policy" - כנראה כשל חולף בחיבור ל-PostgREST תחת עומס (ראינו גם
+    // "Thread killed by timeout manager" באותם רגעים בדיוק בלוגים). כשזה קורה המשתמש מקבל
+    // רק קישור במקום קוד, למרות שהכל עבד עד כאן - לכן מנסים שוב פעם אחת לפני שמוותרים
+    let insertError = (await supabaseAdmin.from('login_codes').insert(row)).error;
+    if (insertError) {
+      console.error('שגיאה בשמירת קוד כניסה, מנסים שוב', insertError);
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      insertError = (await supabaseAdmin.from('login_codes').insert(row)).error;
+      if (insertError) console.error('שגיאה בשמירת קוד כניסה גם בניסיון השני', insertError);
+    }
     otpIncluded = !insertError;
-    if (insertError) console.error('שגיאה בשמירת קוד כניסה', insertError);
   }
 
   const apiKey = process.env.RESEND_API_KEY;
