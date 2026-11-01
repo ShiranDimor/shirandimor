@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase';
+import { supabase, getResilientUser } from '@/lib/supabase';
 import ClearableInput from '@/components/ClearableInput';
 import StatsRing from '@/components/StatsRing';
 import EquityCurve from '@/components/EquityCurve';
@@ -102,39 +102,47 @@ export default function JournalPage() {
   async function load() {
     fetch('/api/refresh-prices').catch(() => {});
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { setLoading(false); return; }
-    setUserId(user.id);
+    try {
+      // getResilientUser נופל חזרה ל-session המקומי אם קריאת האימות מול השרת נכשלת (רשת
+      // חלשה וכו') - כדי שלא "ננתק" מנוי שבאמת עדיין מחובר רק כי בקשת רשת אחת נכשלה
+      const user = await getResilientUser();
+      if (!user) { setLoading(false); return; }
+      setUserId(user.id);
 
-    const { data } = await supabase
-      .from('journal_entries')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('opened_at', { ascending: false });
+      const { data } = await supabase
+        .from('journal_entries')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('opened_at', { ascending: false });
 
-    if (data) setEntries(data);
-    setLoading(false);
+      if (data) setEntries(data);
 
-    const { data: settings } = await supabase
-      .from('journal_settings')
-      .select('initial_balance')
-      .eq('user_id', user.id)
-      .maybeSingle();
-    if (settings) setInitialBalance(Number(settings.initial_balance));
+      const { data: settings } = await supabase
+        .from('journal_settings')
+        .select('initial_balance')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      if (settings) setInitialBalance(Number(settings.initial_balance));
 
-    const { data: profile } = await supabase.from('profiles').select('full_name, phone, email').eq('id', user.id).single();
-    const prefillParams = new URLSearchParams();
-    if (profile?.full_name) prefillParams.set('prefillName', profile.full_name);
-    if (profile?.phone) prefillParams.set('prefillPhone', profile.phone);
-    if (profile?.email) prefillParams.set('prefillEmail', profile.email);
-    setTradingPlanHref(`/trading-plan?${prefillParams.toString()}`);
+      const { data: profile } = await supabase.from('profiles').select('full_name, phone, email').eq('id', user.id).single();
+      const prefillParams = new URLSearchParams();
+      if (profile?.full_name) prefillParams.set('prefillName', profile.full_name);
+      if (profile?.phone) prefillParams.set('prefillPhone', profile.phone);
+      if (profile?.email) prefillParams.set('prefillEmail', profile.email);
+      setTradingPlanHref(`/trading-plan?${prefillParams.toString()}`);
 
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session?.access_token) {
-      fetch('/api/trading-plan/my-link', { headers: { Authorization: `Bearer ${session.access_token}` } })
-        .then((res) => (res.ok ? res.json() : null))
-        .then((linkData) => { if (linkData?.id) setTradingPlanHref(`/my-plan/${linkData.id}`); })
-        .catch(() => {});
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.access_token) {
+        fetch('/api/trading-plan/my-link', { headers: { Authorization: `Bearer ${session.access_token}` } })
+          .then((res) => (res.ok ? res.json() : null))
+          .then((linkData) => { if (linkData?.id) setTradingPlanHref(`/my-plan/${linkData.id}`); })
+          .catch(() => {});
+      }
+    } catch (e) {
+      // כל כישלון כאן לא אמור להשאיר את הדף תקוע על "טוענים..." לנצח - ר' portfolio/page.tsx
+      console.error('journal load failed', e);
+    } finally {
+      setLoading(false);
     }
   }
 

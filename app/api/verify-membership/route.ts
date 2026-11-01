@@ -48,9 +48,9 @@ export async function POST(request: Request) {
     }
 
     await ensureActiveSubscriberAccount(email, phone, fullName);
-    await sendLoginEmail(email);
+    const { otpIncluded } = await sendLoginEmail(email);
 
-    return NextResponse.json({ verified: true, configured: true });
+    return NextResponse.json({ verified: true, configured: true, otp: otpIncluded });
   } catch (e) {
     console.error('שגיאה באימות מול Monday.com', e);
     return NextResponse.json({ verified: false, configured: false });

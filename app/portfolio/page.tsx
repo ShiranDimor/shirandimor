@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase';
+import { supabase, getResilientUser } from '@/lib/supabase';
 import ClearableInput from '@/components/ClearableInput';
 import StatsRing from '@/components/StatsRing';
 import EquityCurve from '@/components/EquityCurve';
@@ -87,54 +87,56 @@ export default function PortfolioPage() {
     try {
       fetch('/api/refresh-prices').catch(() => {});
 
-      const { data: { user } } = await supabase.auth.getUser();
+      let accessToken: string | undefined;
 
-      if (user) {
-        setLoggedIn(true);
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('role, full_name, phone, email')
-          .eq('id', user.id)
-          .single();
-        setHasFullAccess(profile?.role === 'admin' || profile?.role === 'subscriber');
-        setIsAdmin(profile?.role === 'admin');
+      try {
+        // getResilientUser נופל חזרה ל-session המקומי אם האימות מול השרת נכשל (רשת חלשה,
+        // למשל מיד אחרי לחיצה על התראת פוש) - וגם אם משהו עדיין נכשל כאן, זה לא אמור
+        // לחסום את שאר העמוד (כולל התיק הציבורי) מלהיטען, ר' catch בפנים
+        const user = await getResilientUser();
 
-        const prefillParams = new URLSearchParams();
-        if (profile?.full_name) prefillParams.set('prefillName', profile.full_name);
-        if (profile?.phone) prefillParams.set('prefillPhone', profile.phone);
-        if (profile?.email) prefillParams.set('prefillEmail', profile.email);
-        setTradingPlanHref(`/trading-plan?${prefillParams.toString()}`);
+        if (user) {
+          setLoggedIn(true);
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('role, full_name, phone, email')
+            .eq('id', user.id)
+            .single();
+          setHasFullAccess(profile?.role === 'admin' || profile?.role === 'subscriber');
+          setIsAdmin(profile?.role === 'admin');
 
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.access_token) {
-          fetch('/api/trading-plan/my-link', { headers: { Authorization: `Bearer ${session.access_token}` } })
-            .then((res) => (res.ok ? res.json() : null))
-            .then((data) => { if (data?.id) setTradingPlanHref(`/my-plan/${data.id}`); })
-            .catch(() => {});
+          const prefillParams = new URLSearchParams();
+          if (profile?.full_name) prefillParams.set('prefillName', profile.full_name);
+          if (profile?.phone) prefillParams.set('prefillPhone', profile.phone);
+          if (profile?.email) prefillParams.set('prefillEmail', profile.email);
+          setTradingPlanHref(`/trading-plan?${prefillParams.toString()}`);
+
+          const { data: { session } } = await supabase.auth.getSession();
+          accessToken = session?.access_token;
+          if (accessToken) {
+            fetch('/api/trading-plan/my-link', { headers: { Authorization: `Bearer ${accessToken}` } })
+              .then((res) => (res.ok ? res.json() : null))
+              .then((data) => { if (data?.id) setTradingPlanHref(`/my-plan/${data.id}`); })
+              .catch(() => {});
+          }
         }
+      } catch (authErr) {
+        console.error('portfolio auth check failed', authErr);
       }
 
-      const { data: open } = await supabase
-        .from('trades')
-        .select('*')
-        .eq('status', 'open')
-        .order('opened_at', { ascending: false });
-
-      const { data: closed } = await supabase
-        .from('trades')
-        .select('*')
-        .eq('status', 'closed')
-        .order('closed_at', { ascending: false });
-
-      const { data: settings } = await supabase
-        .from('portfolio_settings')
-        .select('initial_balance')
-        .eq('id', 1)
-        .single();
+      // נתוני התיק (כולל סימבולים של עסקאות פתוחות) עוברים דרך /api/portfolio/trades ולא
+      // דרך קריאה ישירה מהדפדפן לטבלת trades - כדי שהזכאות (מנוי פעיל?) תיבדק בצד השרת
+      // ושהטשטוש של סימבולים למי שאינו זכאי יהיה אכיפה אמיתית, לא רק עיצוב ב-UI
+      const res = await fetch('/api/portfolio/trades', {
+        headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+      });
+      if (!res.ok) throw new Error('שגיאה בטעינת נתוני התיק');
+      const { open, closed, initialBalance: fetchedInitialBalance, hasFullAccess: serverFullAccess } = await res.json();
 
       if (open) setOpenTrades(open);
       if (closed) setClosedTrades(closed);
-      if (settings) setInitialBalance(Number(settings.initial_balance));
+      if (fetchedInitialBalance !== null && fetchedInitialBalance !== undefined) setInitialBalance(Number(fetchedInitialBalance));
+      if (typeof serverFullAccess === 'boolean') setHasFullAccess(serverFullAccess);
     } catch (e) {
       // בלי try/catch כאן, כל שגיאה (רשת, מפתח שגוי וכו') הייתה משאירה את הדף תקוע על "טוענים..." לנצח בלי שום הודעה
       console.error('portfolio load failed', e);

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { captureSourceFromUrl } from '@/lib/attribution';
-import { supabase } from '@/lib/supabase';
+import { supabase, getResilientUser } from '@/lib/supabase';
 import PushNotificationButton from '@/components/PushNotificationButton';
 import Reveal from '@/components/Reveal';
 import CountUp from '@/components/CountUp';
@@ -64,31 +64,24 @@ export default function HomePage() {
 
   async function loadTrades() {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
-        setHasFullAccess(profile?.role === 'admin' || profile?.role === 'subscriber');
+      try {
+        // getResilientUser נופל חזרה ל-session המקומי אם האימות מול השרת נכשל (רשת חלשה) -
+        // כישלון כאן לא אמור לחסום את טעינת העסקאות הציבוריות שממשיכה מתחת
+        const user = await getResilientUser();
+        if (user) {
+          const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+          setHasFullAccess(profile?.role === 'admin' || profile?.role === 'subscriber');
+        }
+      } catch (authErr) {
+        console.error('homepage auth check failed', authErr);
       }
 
-      const { data: open } = await supabase
-        .from('trades')
-        .select('*')
-        .eq('status', 'open')
-        .order('opened_at', { ascending: false });
-
-      const { data: closed } = await supabase
-        .from('trades')
-        .select('*')
-        .eq('status', 'closed')
-        .order('closed_at', { ascending: false })
-        .limit(80);
-
-      const { data: settings } = await supabase
-        .from('portfolio_settings')
-        .select('initial_balance')
-        .eq('id', 1)
-        .single();
-      const initialBalance = settings ? Number(settings.initial_balance) : null;
+      // דרך /api/portfolio/trades ולא קריאה ישירה לטבלת trades מהדפדפן - ר' הערה מקבילה
+      // ב-app/portfolio/page.tsx. עמוד הבית לא צריך סימבולים בכלל (רק ספירה וסכומים), אבל
+      // עדיין עובר דרך אותו endpoint כדי לא להשאיר נתיב גישה ישיר נוסף לטבלה מהדפדפן
+      const res = await fetch('/api/portfolio/trades?closedLimit=80');
+      if (!res.ok) throw new Error('שגיאה בטעינת נתוני התיק');
+      const { open, closed, initialBalance } = await res.json();
 
       if (open) {
         setOpenCount(open.length);
