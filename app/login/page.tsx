@@ -118,20 +118,52 @@ export default function LoginPage() {
     }
     setLoading(true);
     setError('');
+    // נקבע *לפני* setSession - כדי שברגע שה-session נכתב לאחסון, ההעדפה הנוכחית כבר
+    // תקבע אם זה הולך ל-localStorage או ל-sessionStorage
     setRememberPreference(remember);
 
-    const { data, error: otpError } = await supabase.auth.verifyOtp({ email, token: code, type: 'email' });
+    // הקוד מאומת בשרת (לא ישירות מול supabase.auth.verifyOtp בדפדפן) - ר' הערה ב-
+    // app/api/verify-login-code/route.ts על הסיבה. מקבלים בחזרה session אמיתי ושומרים
+    // אותו בעצמנו עם setSession, כדי שהוא ייכתב דרך ה-storage המותאם שלנו (lib/supabase.ts)
+    let userId: string | undefined;
+    try {
+      const res = await fetch('/api/verify-login-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, code }),
+      });
+      const data = await res.json();
 
-    setLoading(false);
+      if (!res.ok) {
+        setLoading(false);
+        setError(data.error || 'הקוד שגוי');
+        return;
+      }
 
-    if (otpError || !data.user) {
-      setError(otpError?.message === 'Token has expired or is invalid'
-        ? 'הקוד שגוי או פג תוקף - אפשר לבקש קוד חדש'
-        : (otpError?.message ? `שגיאה: ${otpError.message}` : 'הקוד שגוי'));
+      const { error: setSessionError } = await supabase.auth.setSession({
+        access_token: data.access_token,
+        refresh_token: data.refresh_token,
+      });
+      if (setSessionError) {
+        setLoading(false);
+        setError(`שגיאה: ${setSessionError.message}`);
+        return;
+      }
+      userId = data.user_id;
+    } catch (e) {
+      setLoading(false);
+      setError('משהו השתבש - כדאי לנסות שוב בעוד רגע');
       return;
     }
 
-    routeAfterLogin(data.user.id);
+    setLoading(false);
+
+    if (!userId) {
+      setError('הקוד שגוי');
+      return;
+    }
+
+    routeAfterLogin(userId);
   }
 
   function handlePhoneChange(value: string) {

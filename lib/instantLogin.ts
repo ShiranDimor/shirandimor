@@ -5,18 +5,22 @@ export const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// שולח מייל כניסה אמיתי (קוד חד-פעמי + קישור גיבוי) לכתובת שכבר אושרה כמנוי/אדמין -
-// הכניסה בפועל מותנית בהקלדת הקוד (או לחיצה על הקישור), לא רק בידיעת הכתובת.
-// הקוד/קישור נוצרים דרך Supabase (generateLink), אבל המייל עצמו נשלח דרך Resend (כמו כל
-// שאר המיילים באתר) ולא דרך שרת המייל המובנה של Supabase - זה האחרון נוטה להיתקע בהגבלות
-// קצב נמוכות מאוד או להיתפס כספאם, מה שגרם למנויים לא לקבל את מייל הכניסה בפועל.
-// הקישור נשאר גם כגיבוי - אם משום מה Supabase לא מחזיר קוד תקין (email_otp), עדיין אפשר
-// להיכנס דרך הקישור בדיוק כמו קודם, בלי שום נסיגה. מחזיר האם קוד נכלל בפועל במייל, כדי
-// שהעמוד יידע אם להציג שדה הקלדת קוד או רק "שלחנו לך קישור"
-// ה-redirectTo נשאר קבוע בכוונה ולא מצרף returnTo דינמי - זה חייב להיות בדיוק אחד
-// מה-URL-ים המורשים בהגדרות ה-Auth של Supabase, ובלי לבדוק שם את הקונפיגורציה בפועל
-// (לא זמין מהסשן הזה כרגע) עדיף לא לקחת סיכון שישבור את קישור הגיבוי כולו. הנתיב הספציפי
-// לחזרה אליו מטופל בנתיב הראשי (קוד מוקלד באתר עצמו) דרך login/page.tsx, לא דרך המייל
+function generateSixDigitCode(): string {
+  return String(Math.floor(100000 + Math.random() * 900000));
+}
+
+// שולח מייל כניסה אמיתי (קוד חד-פעמי שאנחנו מנפיקים בעצמנו + קישור גיבוי) לכתובת שכבר
+// אושרה כמנוי/אדמין - הכניסה בפועל מותנית בהקלדת הקוד (או לחיצה על הקישור), לא רק בידיעת
+// הכתובת. המייל עצמו נשלח דרך Resend (כמו כל שאר המיילים באתר) ולא דרך שרת המייל המובנה
+// של Supabase - זה האחרון נוטה להיתקע בהגבלות קצב נמוכות מאוד או להיתפס כספאם, מה שגרם
+// למנויים לא לקבל את מייל הכניסה בפועל.
+//
+// הקוד לא מגיע מ-Supabase (data.properties.email_otp היה אמור להכיל אותו, אבל בפועל לא
+// תמיד מאוכלס - בדיקה אמיתית מול משתמש אמיתי הראתה שהמייל חוזר בלי קוד בכלל) - אנחנו
+// מנפיקים קוד 6-ספרות בעצמנו, שומרים אותו בטבלת login_codes יחד עם ה-token_hash שחולץ
+// מתוך ה-action_link שכן עובד באופן מאומת (הוא הקישור שכבר נשלח ועבד), ומאמתים אותו
+// בשרת (ר' app/api/verify-login-code) מול אותו token_hash - לא תלויים באף התנהגות לא-
+// מתועדת של Supabase. הקישור נשאר גם כגיבוי מלא, בדיוק כמו שהיה
 export async function sendLoginEmail(email: string): Promise<{ otpIncluded: boolean }> {
   const { data, error } = await supabaseAdmin.auth.admin.generateLink({
     type: 'magiclink',
@@ -29,10 +33,30 @@ export async function sendLoginEmail(email: string): Promise<{ otpIncluded: bool
     throw new Error(error?.message || 'לא ניתן היה ליצור קישור כניסה');
   }
 
-  // שדה לא-רשמי בטיפוסים הישנים של supabase-js, אבל קיים בפועל בתשובת ה-API - גישה דרך
-  // Record כדי לא להישבר אם הטיפוס הרשמי לא כולל אותו
-  const otpCode = (data.properties as unknown as Record<string, unknown>)?.email_otp;
-  const otpIncluded = typeof otpCode === 'string' && /^\d{6}$/.test(otpCode);
+  // פרמטר ה-token מתוך ה-action_link הוא בדיוק ה-token_hash שצריך בשביל
+  // supabase.auth.verifyOtp({ token_hash, type: 'email' }) - מתועד כך בדוגמת ה-email
+  // templates הרשמית של Supabase (הקישור הוא .../verify?token={{.TokenHash}}&type=...)
+  let tokenHash: string | null = null;
+  try {
+    tokenHash = new URL(actionLink).searchParams.get('token');
+  } catch (e) {
+    tokenHash = null;
+  }
+
+  let otpIncluded = false;
+  let code: string | null = null;
+
+  if (tokenHash) {
+    code = generateSixDigitCode();
+    const { error: insertError } = await supabaseAdmin.from('login_codes').insert({
+      email: email.trim().toLowerCase(),
+      code,
+      token_hash: tokenHash,
+      expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+    });
+    otpIncluded = !insertError;
+    if (insertError) console.error('שגיאה בשמירת קוד כניסה', insertError);
+  }
 
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
@@ -44,7 +68,7 @@ export async function sendLoginEmail(email: string): Promise<{ otpIncluded: bool
   const codeBlock = otpIncluded
     ? `<div style="text-align:center;background:#17151A;border:1px solid #332E35;border-radius:12px;padding:18px;margin-bottom:16px;">
          <div style="font-size:11.5px;color:#9A939B;margin-bottom:8px;">קוד הכניסה שלך</div>
-         <div style="font-family:monospace;font-size:32px;font-weight:700;color:#FFB648;letter-spacing:6px;">${otpCode}</div>
+         <div style="font-family:monospace;font-size:32px;font-weight:700;color:#FFB648;letter-spacing:6px;">${code}</div>
        </div>
        <p style="font-size:12.5px;color:#9A939B;line-height:1.6;margin:0 0 16px;">מקלידים את הקוד באתר עצמו, בלי לצאת מהאפליקציה. בתוקף לשעה. אפשר גם ללחוץ על הקישור למטה:</p>`
     : `<p style="font-size:14px;color:#F2EFF1;line-height:1.7;margin:0 0 16px;">היי, זה קישור כניסה לחשבון שלך באתר - בלי סיסמה, בתוקף לשעה:</p>`;
@@ -60,7 +84,7 @@ export async function sendLoginEmail(email: string): Promise<{ otpIncluded: bool
         <div style="padding:28px 24px;">
           ${codeBlock}
           <a href="${actionLink}" style="display:block;text-align:center;background:linear-gradient(90deg,#FF2D78,#FFB648);color:#1A181C;text-decoration:none;font-weight:700;padding:13px;border-radius:10px;margin-bottom:20px;">כניסה לאתר ←</a>
-          <p style="font-size:12.5px;color:#9A939B;line-height:1.6;margin:0;">לא ביקשת קוד כניסה? כדאי לספר לי - פשוט משיבים למייל הזה.</p>
+          <p style="font-size:12.5px;color:#9A939B;line-height:1.6;margin:0;">${otpIncluded ? 'לא ביקשת קוד כניסה?' : 'לא ביקשת קישור כניסה?'} כדאי לספר לי - פשוט משיבים למייל הזה.</p>
         </div>
       </div>
     </div>
@@ -73,9 +97,9 @@ export async function sendLoginEmail(email: string): Promise<{ otpIncluded: bool
       from: 'שירן דימור - מסחר אחראי במניות <noreply@shirandimor.com>',
       to: email,
       reply_to: 'shiran@shirandimor.com',
-      subject: otpIncluded ? `${otpCode} הוא קוד הכניסה שלך` : 'קישור כניסה לאתר שלך',
+      subject: otpIncluded ? `${code} הוא קוד הכניסה שלך` : 'קישור כניסה לאתר שלך',
       text: otpIncluded
-        ? `היי, קוד הכניסה שלך: ${otpCode} (בתוקף לשעה).\nאפשר גם ללחוץ על הקישור: ${actionLink}\n\nלא ביקשת קוד כניסה? כדאי לספר לי - פשוט משיבים למייל הזה.`
+        ? `היי, קוד הכניסה שלך: ${code} (בתוקף לשעה).\nאפשר גם ללחוץ על הקישור: ${actionLink}\n\nלא ביקשת קוד כניסה? כדאי לספר לי - פשוט משיבים למייל הזה.`
         : `היי, זה קישור כניסה לחשבון שלך באתר - בלי סיסמה, בתוקף לשעה:\n${actionLink}\n\nלא ביקשת קישור כניסה? כדאי לספר לי - פשוט משיבים למייל הזה.`,
       html,
     }),
