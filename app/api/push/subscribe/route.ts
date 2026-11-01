@@ -5,6 +5,18 @@ import { normalizePhone, normalizeEmail } from '@/lib/subscriberStatus';
 import { entitlementOrFilter } from '@/lib/entitlement';
 import { isContactInSubscribersGroupMonday, markAppDownloadOnMonday } from '@/lib/tradingPlan/monday';
 
+// שומר את תוצאת סנכרון מאנדיי (שגיאה, אם הייתה) על שורת המינוי - בלי זה כישלון סנכרון היה
+// שקוף לגמרי: הפעלת ההתראות עצמה עדיין מצליחה (ok:true ללקוח) אבל אין שום עקבה שהעדכון
+// במאנדיי נכשל, עד שמישהו שם לב ידנית שהעמודה לא התעדכנה
+async function recordMondaySyncResult(endpoint: string, result: { ok: boolean; error?: string }) {
+  if (result.ok) return;
+  try {
+    await supabaseAdmin.from('push_subscriptions').update({ monday_sync_error: result.error || 'unknown_error' }).eq('endpoint', endpoint);
+  } catch (e) {
+    // best-effort בלבד - לא חוסם את תגובת ה-API למשתמש
+  }
+}
+
 // POST - שומר מינוי להתראות פוש. שלושה מסלולים, ובכל אחד מהם מסמנים גם במאנדיי (עמודת "סטטוס
 // טיפול") שאיש הקשר הפעיל התראות - על הכרטיס הקיים שלו אם יש לו אחד במקום כלשהו בלוח, או בכרטיס
 // חדש אם אין לו שום כרטיס קיים (ר' markAppDownloadOnMonday):
@@ -44,7 +56,8 @@ export async function POST(request: Request) {
     if (error) return NextResponse.json({ error: 'שגיאה בשמירת המינוי' }, { status: 500 });
 
     const { data: profile } = await supabaseAdmin.from('profiles').select('full_name, phone, email').eq('id', userId).maybeSingle();
-    await markAppDownloadOnMonday({ name: profile?.full_name, phone: profile?.phone, email: profile?.email }).catch(() => ({ ok: false, matched: false }));
+    const mondayResult = await markAppDownloadOnMonday({ name: profile?.full_name, phone: profile?.phone, email: profile?.email }).catch((e) => ({ ok: false, matched: false, error: e instanceof Error ? e.message : 'threw' }));
+    await recordMondaySyncResult(endpoint, mondayResult);
 
     return NextResponse.json({ ok: true });
   }
@@ -84,16 +97,17 @@ export async function POST(request: Request) {
       );
     if (error) return NextResponse.json({ error: 'שגיאה בשמירת המינוי' }, { status: 500 });
 
-    await markAppDownloadOnMonday({ name, phone, email: email || null }).catch(() => ({ ok: false, matched: false }));
+    const mondayResult = await markAppDownloadOnMonday({ name, phone, email: email || null }).catch((e) => ({ ok: false, matched: false, error: e instanceof Error ? e.message : 'threw' }));
+    await recordMondaySyncResult(endpoint, mondayResult);
 
     return NextResponse.json({ ok: true });
   }
 
-  await markAppDownloadOnMonday({ name, phone, email: email || null }).catch(() => ({ ok: false, matched: false }));
+  const mondayResultLead = await markAppDownloadOnMonday({ name, phone, email: email || null }).catch((e) => ({ ok: false, matched: false, error: e instanceof Error ? e.message : 'threw' }));
 
   const { error } = await supabaseAdmin
     .from('push_subscriptions')
-    .upsert({ user_id: null, endpoint, p256dh: keys.p256dh, auth: keys.auth, name, phone, email: email || null }, { onConflict: 'endpoint' });
+    .upsert({ user_id: null, endpoint, p256dh: keys.p256dh, auth: keys.auth, name, phone, email: email || null, monday_sync_error: mondayResultLead.ok ? null : (mondayResultLead.error || 'unknown_error') }, { onConflict: 'endpoint' });
 
   if (error) return NextResponse.json({ error: 'שגיאה בשמירת המינוי' }, { status: 500 });
   return NextResponse.json({ ok: true });
