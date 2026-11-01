@@ -253,3 +253,53 @@ export async function moveFitCallEvent(id: string, start: Date, minutes: number)
     return false;
   }
 }
+
+// ===== אבחון וחיבור מחדש של היומן =====
+
+export const GOOGLE_CALENDAR_SCOPE = 'https://www.googleapis.com/auth/calendar.events';
+
+// בודק את החיבור צעד-צעד ומחזיר איפה בדיוק הוא נכשל - קודי שגיאה של גוגל בלבד, בלי ערכים סודיים.
+// token = חידוש ההרשאה נכשל (למשל invalid_grant = ההרשאה פגה או בוטלה, צריך לחבר מחדש);
+// list = ההרשאה תקינה אבל אין גישה לקריאת היומן
+export async function diagnoseCalendarConnection(refreshTokenOverride?: string): Promise<{ ok: true } | { ok: false; step: 'config' | 'token' | 'list'; detail: string }> {
+  const clientId = process.env.GOOGLE_CALENDAR_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_CALENDAR_CLIENT_SECRET;
+  const refreshToken = refreshTokenOverride || process.env.GOOGLE_CALENDAR_REFRESH_TOKEN;
+  if (!clientId || !clientSecret || !refreshToken) return { ok: false, step: 'config', detail: 'missing_env' };
+  try {
+    const res = await fetch(TOKEN_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ client_id: clientId, client_secret: clientSecret, refresh_token: refreshToken, grant_type: 'refresh_token' }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.access_token) return { ok: false, step: 'token', detail: String(data.error || res.status) };
+    const list = await fetch(`${EVENTS_URL}?maxResults=1&timeMin=${encodeURIComponent(new Date().toISOString())}`, {
+      headers: { Authorization: `Bearer ${data.access_token}` },
+      cache: 'no-store',
+    });
+    if (!list.ok) {
+      const err = await list.json().catch(() => ({}));
+      return { ok: false, step: 'list', detail: String(err?.error?.status || list.status) };
+    }
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, step: 'token', detail: 'network_error' };
+  }
+}
+
+// מחליף קוד הרשאה (אחרי אישור במסך של גוגל) בטוקן קבוע (refresh token)
+export async function exchangeGoogleAuthCode(code: string, redirectUri: string): Promise<{ refreshToken?: string; error?: string }> {
+  const clientId = process.env.GOOGLE_CALENDAR_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_CALENDAR_CLIENT_SECRET;
+  if (!clientId || !clientSecret) return { error: 'missing_env' };
+  const res = await fetch(TOKEN_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ code, client_id: clientId, client_secret: clientSecret, redirect_uri: redirectUri, grant_type: 'authorization_code' }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) return { error: String(data.error_description || data.error || res.status) };
+  if (!data.refresh_token) return { error: 'no_refresh_token' };
+  return { refreshToken: data.refresh_token };
+}

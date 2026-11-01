@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { listBookedCallIntervals } from '@/lib/googleCalendar';
+import { diagnoseCalendarConnection, listBookedCallIntervals } from '@/lib/googleCalendar';
 import { computeSlots, slotRange } from '@/lib/callSlots';
 import { MENTORING_CALL_MINUTES } from '@/lib/mentoringLead';
 
@@ -11,10 +11,11 @@ export async function GET() {
   const { timeMin, timeMax } = slotRange();
   const busy = await listBookedCallIntervals(timeMin, timeMax);
   if (!busy) {
-    // סיבה כללית בלבד (בלי ערכים) - כדי לאבחן מהדפדפן אם חסרים משתני סביבה או שהחיבור לגוגל נכשל
-    const configured = ['GOOGLE_CALENDAR_CLIENT_ID', 'GOOGLE_CALENDAR_CLIENT_SECRET', 'GOOGLE_CALENDAR_REFRESH_TOKEN'].every((k) => process.env[k]);
+    // אבחון (קודי שגיאה של גוגל בלבד, בלי ערכים סודיים) - כדי לדעת מהדפדפן מה בדיוק לתקן
+    const diag = await diagnoseCalendarConnection();
+    const reason = diag.ok ? 'google_connection_failed' : diag.step === 'config' ? 'calendar_not_configured' : 'google_connection_failed';
     return NextResponse.json(
-      { available: false, slots: [], reason: configured ? 'google_connection_failed' : 'calendar_not_configured' },
+      { available: false, slots: [], reason, ...(diag.ok ? {} : { step: diag.step, detail: diag.detail }) },
       { headers: { 'Cache-Control': 'no-store' } }
     );
   }
