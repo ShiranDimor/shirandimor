@@ -1,0 +1,227 @@
+/* עמוד הליווי האישי (/mentoring). בנוי על אותה מערכת עיצוב של דף הבית (globals.css): אותם משתני צבע, אותם
+   כרטיסים (group-card, faq-item, about-feature, link-card), אותם כפתורים (cta-main, btn-primary) ואותו
+   header. כאן רק תוספות קטנות שאין להן מקבילה קיימת, כולן תחת .mt- כדי לא לגעת בשאר האתר */
+
+@media (prefers-reduced-motion: no-preference) { html:has(.mt-page) { scroll-behavior: smooth; } }
+/* הכותרת העליונה דביקה - כדי שגלילה לעוגן לא תסתיר את הכותרת של האזור */
+.mt-page [id] { scroll-margin-top: 110px; }
+
+/* ===== Hero ===== */
+.mt-hero { padding-bottom: 10px; }
+.mt-hero h1 { font-size: 30px; }
+.mt-hero-stats { margin: 4px 0 22px; }
+.mt-hero-stats .trust-item .num { font-size: 22px; }
+.mt-hero-stats .trust-item .lbl { font-size: 11.5px; line-height: 1.4; }
+.mt-cta { margin-bottom: 12px; }
+
+/* ===== Sections ===== */
+.mt-section { margin: 52px 0 0; }
+.mt-h2 { font-family: var(--font-display); font-size: 24px; line-height: 1.3; font-weight: 500; letter-spacing: -0.2px; margin-bottom: 12px; text-wrap: balance; }
+.mt-h2 em { font-style: normal; background: var(--grad-brand); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.mt-h3 { font-family: var(--font-display); font-size: 17px; font-weight: 500; margin: 30px 0 10px; }
+.mt-lead { font-size: 15px; line-height: 1.7; color: var(--text-secondary); margin-bottom: 16px; max-width: 62ch; text-wrap: pretty; }
+.mt-lead strong { color: var(--text-primary); font-weight: 600; }
+.mt-small { font-size: 12.5px; color: var(--text-tertiary); line-height: 1.6; }
+.mt-center { text-align: center; margin-top: 14px; }
+.mt-text-cta { display: inline-flex; align-items: center; gap: 6px; margin-top: 16px; font-size: 14px; font-weight: 700; color: var(--lavender); text-decoration: none; }
+.mt-text-cta:hover { text-decoration: underline; }
+
+/* ===== לא כולם צריכים ===== */
+.mt-alt-links { display: grid; gap: 0; margin-bottom: 22px; }
+.mt-alt-links .link-card { text-decoration: none; color: inherit; background: var(--bg-surface); transition: border-color 0.15s ease; }
+.mt-alt-links .link-card:hover { border-color: var(--teal); }
+.mt-story { background: var(--bg-surface); border: 1px solid var(--border-hairline); border-right: 3px solid var(--teal); border-radius: 12px; padding: 18px 18px; }
+.mt-story p { font-size: 14.5px; color: var(--text-secondary); line-height: 1.7; }
+.mt-story-list { list-style: none; margin: 10px 0 14px; display: flex; flex-direction: column; gap: 4px; }
+.mt-story-list li { font-family: var(--font-display); font-size: 17px; color: var(--text-primary); }
+.mt-story-punch { margin-top: 12px; padding-top: 12px; border-top: 1px dotted var(--border-hairline-strong); }
+.mt-story-punch strong { color: var(--text-primary); }
+
+/* ===== מתאים / פחות מתאים - אותו פטרן של דף הבית (not-fit), בשני כרטיסים ===== */
+.mt-fit { display: grid; gap: 12px; }
+.mt-fit-card { background: var(--bg-surface); border: 1px solid var(--border-hairline); border-radius: 12px; padding: 16px 18px; }
+.mt-fit-card.yes { border-right: 3px solid var(--profit); }
+.mt-fit-card.no { border-right: 3px solid var(--loss); }
+.mt-fit-title { font-size: 14px; font-weight: 700; margin-bottom: 6px; }
+.mt-fit-card.yes .mt-fit-title { color: var(--profit); }
+.mt-fit-card.no .mt-fit-title { color: var(--loss); }
+.mt-fit-card ul { list-style: none; }
+.mt-fit-card li { font-size: 14px; color: var(--text-secondary); padding: 8px 0; border-bottom: 1px dotted var(--border-hairline); display: flex; gap: 8px; line-height: 1.5; }
+.mt-fit-card li:last-child { border-bottom: none; }
+.mt-fit-card.yes li::before { content: '✓'; color: var(--profit); font-weight: 700; flex-shrink: 0; }
+.mt-fit-card.no li::before { content: '–'; color: var(--loss); font-weight: 700; flex-shrink: 0; }
+
+.mt-callout p { font-size: 14px; }
+
+/* ===== סילבוס (אקורדיון) ===== */
+.mt-syllabus { display: flex; flex-direction: column; gap: 8px; }
+.mt-session { background: var(--bg-surface); border: 1px solid var(--border-hairline-strong); border-radius: 12px; transition: border-color 0.15s ease; }
+.mt-session[open] { border-color: rgba(255, 45, 120, 0.45); }
+.mt-session summary { display: flex; align-items: center; gap: 12px; padding: 14px 16px; cursor: pointer; list-style: none; min-height: 56px; }
+.mt-session summary::-webkit-details-marker { display: none; }
+.mt-session-num {
+  flex-shrink: 0; width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-mono); font-size: 13px; font-weight: 700; color: var(--teal); background: rgba(255, 45, 120, 0.1);
+}
+.mt-session.extended .mt-session-num { color: var(--lavender); background: var(--lavender-bg); }
+.mt-session-title { flex: 1; font-family: var(--font-display); font-size: 16px; }
+.mt-session[open] .collapse-chevron { transform: rotate(180deg); }
+.mt-session-items { list-style: none; padding: 0 16px 6px 16px; margin-right: 50px; display: flex; flex-direction: column; }
+.mt-session-items li { font-size: 14px; color: var(--text-secondary); padding: 6px 0; border-bottom: 1px dotted var(--border-hairline); display: flex; gap: 8px; }
+.mt-session-items li:last-child { border-bottom: none; }
+.mt-session-items li::before { content: '•'; color: var(--teal); flex-shrink: 0; }
+.mt-session.extended .mt-session-items li::before { color: var(--lavender); }
+.mt-session-note { margin: 4px 16px 14px; padding: 10px 12px; border-radius: 8px; background: var(--profit-bg); color: var(--profit); font-size: 13px; font-weight: 600; line-height: 1.55; }
+.mt-extended-head { margin: 26px 0 12px; }
+.mt-extended-head p { font-size: 14px; color: var(--text-secondary); line-height: 1.65; margin-top: 10px; }
+.mt-badge-soft { display: inline-block; font-size: 11.5px; font-weight: 700; color: var(--lavender); background: var(--lavender-bg); border: 1px solid rgba(255, 182, 72, 0.3); border-radius: 20px; padding: 4px 12px; }
+
+/* ===== למה חודשים ===== */
+.mt-lines { list-style: none; margin: 4px 0 18px; }
+.mt-lines li { font-family: var(--font-display); font-size: 17px; padding: 9px 0; border-bottom: 1px dotted var(--border-hairline); }
+.mt-lines li:last-child { color: var(--lavender); border-bottom: none; }
+.mt-pace { background: var(--bg-surface); border: 1px solid var(--border-hairline); border-radius: 12px; padding: 26px 18px 14px; }
+.mt-pace-track { position: relative; height: 4px; border-radius: 2px; background: var(--border-hairline-strong); margin: 0 12px; }
+.mt-pace-dot {
+  position: absolute; top: 50%; transform: translate(50%, -50%); width: 26px; height: 26px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 11.5px; font-weight: 700;
+  background: var(--grad-brand); color: var(--bg-void);
+}
+.mt-pace-labels { display: grid; grid-template-columns: repeat(4, 1fr); margin-top: 18px; font-size: 11.5px; color: var(--text-tertiary); text-align: center; }
+.mt-pace-caption { margin-top: 12px; font-size: 12.5px; color: var(--text-secondary); line-height: 1.6; }
+
+/* ===== בין המפגשים ===== */
+.mt-tags .tag-chip { font-size: 13px; padding: 6px 14px; }
+.mt-review { background: var(--bg-surface-raised); border: 1px solid var(--border-hairline-strong); border-right: 3px solid var(--lavender); border-radius: 12px; padding: 18px; }
+.mt-review-lead { font-size: 14.5px; color: var(--text-secondary); margin-bottom: 10px; line-height: 1.6; }
+.mt-review-lead s { color: var(--text-tertiary); }
+.mt-review ul { list-style: none; display: grid; gap: 6px; }
+.mt-review li { font-family: var(--font-display); font-size: 16px; color: var(--text-primary); }
+.mt-included { margin-bottom: 8px; }
+
+/* ===== קבוצת הסוחרים ===== */
+.mt-group { background: linear-gradient(160deg, rgba(61, 220, 132, 0.08), var(--bg-surface)); border: 1px solid var(--border-hairline-strong); border-right: 3px solid var(--profit); border-radius: 16px; padding: 18px; }
+.mt-group-values { display: grid; gap: 10px; margin-bottom: 16px; }
+.mt-group-values > div { display: flex; flex-direction: column; background: var(--bg-void); border: 1px solid var(--border-hairline); border-radius: 10px; padding: 12px 14px; }
+.mt-group-k { font-size: 12px; color: var(--text-tertiary); }
+.mt-group-v { font-size: 15px; font-weight: 600; margin-top: 2px; }
+.mt-group-s { font-size: 13px; color: var(--profit); font-weight: 600; margin-top: 2px; }
+.mt-group-links { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 14px; }
+.mt-group-links a { font-size: 13px; font-weight: 700; color: var(--profit); text-decoration: none; }
+.mt-group-links a:hover { text-decoration: underline; }
+
+/* ===== מי אני ===== */
+.mt-about { margin-top: 52px; }
+.mt-about-ring { width: 92px; height: 92px; }
+.mt-about .af-main p { margin-bottom: 10px; }
+.mt-about .af-main p:last-child { margin-bottom: 0; }
+.mt-about .af-main strong { color: var(--text-primary); font-weight: 600; }
+
+/* ===== מה יוצאים איתו ===== */
+.mt-outcomes { list-style: none; display: grid; grid-template-columns: 1fr; gap: 0 20px; }
+.mt-outcomes li { font-size: 14.5px; padding: 9px 0; border-bottom: 1px dotted var(--border-hairline); display: flex; gap: 10px; }
+.mt-outcomes li::before { content: '✓'; color: var(--profit); font-weight: 700; flex-shrink: 0; }
+.mt-quote { margin-top: 24px; }
+
+/* ===== עדויות ===== */
+.mt-testimonials { display: grid; gap: 12px; }
+.mt-testimonial { margin: 0; background: var(--bg-surface); border: 1px solid var(--border-hairline); border-right: 3px solid var(--lavender); border-radius: 12px; padding: 16px 18px; }
+.mt-testimonial blockquote { font-size: 14.5px; line-height: 1.65; color: var(--text-primary); }
+.mt-testimonial figcaption { margin-top: 10px; font-size: 12.5px; color: var(--text-tertiary); }
+.mt-testimonial figcaption strong { color: var(--text-secondary); }
+
+/* ===== מסלולים ומחירים - על בסיס group-card של דף הבית ===== */
+.mt-tracks { gap: 22px; margin-top: 18px; }
+.mt-track { position: relative; padding: 24px 20px 20px; }
+.mt-track:hover { transform: none; }
+.group-card.paid.mt-track { box-shadow: 0 12px 34px -16px rgba(61, 220, 132, 0.35); }
+.mt-track h3 { font-size: 20px; }
+.mt-track-meta { font-size: 13.5px; font-weight: 600; color: var(--text-secondary); margin-bottom: 8px; }
+.mt-track-for { font-size: 13px; line-height: 1.55; color: var(--text-secondary); margin-bottom: 12px; }
+.mt-track .gc-perks div { font-size: 13.5px; padding: 5px 0; }
+.mt-price { display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px; margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border-hairline-strong); }
+.mt-price-amount { font-family: var(--font-mono); font-size: 32px; font-weight: 700; line-height: 1.1; }
+.group-card.paid .mt-price-amount { background: var(--grad-brand); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.mt-price-note { font-size: 12.5px; color: var(--text-tertiary); }
+.mt-price-sub { font-size: 13px; color: var(--text-secondary); margin-top: 4px; }
+.mt-track-cta { padding: 14px; font-size: 15px; margin-top: 16px; }
+.group-card.paid .mt-track-cta { background: var(--grad-brand); }
+
+/* ===== שיחת התאמה ===== */
+.mt-fitcall { background: linear-gradient(135deg, rgba(255, 45, 120, 0.07), rgba(255, 182, 72, 0.05)); border: 1px solid var(--border-hairline-strong); border-radius: 20px; padding: 24px 18px; }
+.mt-flow-steps { list-style: none; counter-reset: step; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 6px 0 22px; }
+.mt-flow-steps li { counter-increment: step; display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-tertiary); padding-top: 8px; border-top: 3px solid var(--border-hairline-strong); }
+.mt-flow-steps li::before { content: counter(step); font-family: var(--font-mono); font-weight: 700; }
+.mt-flow-steps li.is-current { color: var(--text-primary); border-top-color: var(--teal); font-weight: 600; }
+.mt-flow-steps li.is-done { color: var(--profit); border-top-color: var(--profit); }
+.mt-form-grid { display: grid; gap: 0 12px; }
+.mt-page .field input { font-size: 16px; min-height: 46px; background: var(--bg-surface-raised); }
+/* מוסתר בלי הזזה שמאלה - בעמוד RTL הזזה כזו יוצרת גלילה אופקית */
+.mt-hp { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.mt-q { border: 0; margin: 18px 0 0; padding: 0; min-width: 0; }
+.mt-q legend { margin-bottom: 10px; padding: 0; }
+.mt-page .tp-text-input { font-size: 16px; }
+.mt-check { display: flex; align-items: flex-start; gap: 10px; margin-top: 18px; font-size: 14px; color: var(--text-secondary); cursor: pointer; line-height: 1.5; }
+.mt-check input { width: 20px; height: 20px; margin-top: 1px; accent-color: var(--teal); flex-shrink: 0; }
+.mt-submit { margin-top: 18px; min-height: 50px; font-size: 16px; }
+.mt-submit:disabled { opacity: 0.6; cursor: default; }
+.mt-form-note { margin-top: 10px; font-size: 12.5px; color: var(--text-tertiary); text-align: center; line-height: 1.6; }
+.mt-form-note a, .mt-form-error a { color: var(--lavender); }
+.mt-form-error { margin-top: 14px; font-size: 13.5px; color: var(--loss); }
+.mt-sched-hello { font-size: 15px; color: var(--text-primary); margin-bottom: 4px; }
+.mt-sched-step { margin: 16px 0 10px; font-size: 14px; font-weight: 700; color: var(--text-secondary); }
+.mt-sched-step.is-active { color: var(--profit); }
+.mt-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.mt-chip {
+  min-height: 44px; padding: 8px 14px; border-radius: 10px; border: 1px solid var(--border-hairline-strong); background: var(--bg-surface-raised);
+  color: var(--text-primary); font-family: var(--font-body); font-size: 14px; cursor: pointer; transition: border-color 0.15s ease;
+}
+.mt-chip:hover { border-color: var(--teal); }
+.mt-chip[aria-pressed="true"] { background: var(--teal); border-color: var(--teal); color: var(--bg-void); font-weight: 700; }
+.mt-chip-time { min-width: 76px; font-family: var(--font-mono); }
+.mt-chosen { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; padding: 14px 16px; border-radius: 12px; background: var(--profit-bg); border: 1px solid rgba(61, 220, 132, 0.35); font-weight: 600; }
+.mt-link-btn { background: none; border: 0; padding: 6px 2px; color: var(--lavender); font-family: inherit; font-size: 14px; font-weight: 600; text-decoration: underline; cursor: pointer; }
+.mt-done { padding: 18px; border-radius: 12px; background: var(--profit-bg); border: 1px solid rgba(61, 220, 132, 0.35); }
+.mt-done p { font-size: 14.5px; color: var(--text-secondary); line-height: 1.65; margin-top: 6px; }
+.mt-done .mt-done-title { margin: 0; font-size: 18px; font-weight: 700; color: var(--profit); font-family: var(--font-display); }
+.mt-wa-link { display: inline-block; margin-top: 12px; font-weight: 700; color: var(--profit); text-decoration: none; }
+
+/* ===== CTA אחרון + הערה משפטית ===== */
+.mt-final { margin-top: 52px; padding-bottom: 10px; }
+.mt-final-text { font-size: 14px; color: var(--text-secondary); line-height: 1.7; max-width: 52ch; margin: 0 auto 20px; }
+.mt-disclaimer { margin: 36px auto 0; max-width: 70ch; font-size: 11.5px; line-height: 1.7; color: var(--text-tertiary); text-align: center; }
+
+/* ===== כפתור צף בטלפון - על בסיס sticky-cta של דף הבית ===== */
+.mt-sticky { transform: translateY(110%); opacity: 0; pointer-events: none; transition: transform 0.25s ease, opacity 0.25s ease; }
+.mt-sticky.is-on { transform: translateY(0); opacity: 1; pointer-events: auto; }
+body.mt-bar-on .dor-float-btn, body.mt-bar-on .wa-float-btn { bottom: calc(84px + env(safe-area-inset-bottom)); }
+body.mt-bar-on .dor-callout { bottom: calc(152px + env(safe-area-inset-bottom)); }
+@media (prefers-reduced-motion: reduce) { .mt-sticky { transition: none; } }
+
+/* ===== טאבלט ומחשב ===== */
+@media (min-width: 768px) {
+  .mt-sticky { display: none; }
+  body.mt-bar-on .dor-float-btn, body.mt-bar-on .wa-float-btn { bottom: 20px; }
+  .mt-hero h1 { font-size: 36px; }
+  .mt-hero .mt-cta, .mt-hero .cta-sub-link { max-width: 420px; }
+  .mt-final .mt-cta { max-width: 420px; margin-inline: auto; }
+  .mt-h2 { font-size: 28px; }
+  .mt-section { margin-top: 68px; }
+  .mt-alt-links { grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .mt-alt-links .link-card { margin-bottom: 0; }
+  .mt-fit { grid-template-columns: 1fr 1fr; align-items: start; }
+  .mt-syllabus { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-items: start; }
+  .mt-review ul { grid-template-columns: 1fr 1fr; }
+  .mt-included { display: grid; grid-template-columns: 1fr 1fr; column-gap: 24px; }
+  .mt-group-values { grid-template-columns: 1fr 1fr; }
+  .mt-outcomes { grid-template-columns: 1fr 1fr; }
+  .mt-testimonials { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+  .mt-tracks { align-items: stretch; }
+  .mt-track .mt-price { margin-top: auto; }
+  .mt-track .gc-perks { margin-bottom: 18px; }
+  .mt-form-grid { grid-template-columns: 1fr 1fr; }
+  .mt-field-wide { grid-column: 1 / -1; }
+  .mt-options-2 { display: grid; grid-template-columns: 1fr 1fr; }
+  .mt-options-3 { display: grid; grid-template-columns: repeat(3, 1fr); }
+  .mt-fitcall { padding: 32px 30px; }
+}
