@@ -1,6 +1,12 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/instantLogin';
 
+// ה-route הזה היה הפוך-GET-בלי-request היחיד באתר (ראה business-call/slots) בלי dynamic
+// מפורש - Next App Router מזהה route כזה (בלי headers/cookies/searchParams) כסטטי לגמרי
+// ומקפיא אותו ב-build/deploy. זה בדיוק מה שגרם לכך שהודעה חדשה הופיעה בפעמון (push, לא
+// עובר דרך ה-route הזה) אבל לא בלוח /announcements עד הדיפלוי הבא
+export const dynamic = 'force-dynamic';
+
 // GET - כל ההודעות המפורסמות בלוח המודעות, מהחדש לישן - ציבורי לגמרי (גם בלי להתחבר),
 // כדי שגם מי שהגיע מהתראת פוש בלי חשבון יוכל לראות את התוכן
 export async function GET() {
