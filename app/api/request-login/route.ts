@@ -19,8 +19,8 @@ export async function POST(request: Request) {
   }
 
   try {
-    await sendLoginEmail(email);
-    return NextResponse.json({ granted: true });
+    const { otpIncluded } = await sendLoginEmail(email);
+    return NextResponse.json({ granted: true, otp: otpIncluded });
   } catch (e) {
     return NextResponse.json({ granted: false, error: 'שגיאה בשליחת מייל כניסה' });
   }

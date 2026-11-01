@@ -3,10 +3,18 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase';
+import { supabase, setRememberPreference } from '@/lib/supabase';
 import ClearableInput from '@/components/ClearableInput';
 
-type Step = 'email' | 'sent' | 'phone' | 'rejected' | 'password';
+type Step = 'email' | 'sent' | 'code' | 'phone' | 'rejected' | 'password';
+
+// לאן מגיעים אחרי התחברות מוצלחת (קוד/סיסמה) - אם הגענו הנה כי ניסו לגשת לתוכן מסוים
+// ונזרקנו לכניסה קודם, חוזרים בדיוק לשם במקום לדף גנרי לפי תפקיד
+function getReturnTo(): string | null {
+  if (typeof window === 'undefined') return null;
+  const to = new URLSearchParams(window.location.search).get('returnTo');
+  return to && to.startsWith('/') ? to : null;
+}
 
 export default function LoginPage() {
   const router = useRouter();
@@ -17,13 +25,36 @@ export default function LoginPage() {
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [code, setCode] = useState('');
+  const [remember, setRemember] = useState(true);
+  const [resending, setResending] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  async function routeAfterLogin(userId: string) {
+    const returnTo = getReturnTo();
+    if (returnTo) { router.push(returnTo); return; }
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', userId)
+      .single();
+
+    if (profile?.role === 'admin') {
+      router.push('/admin');
+    } else if (profile?.role === 'subscriber') {
+      router.push('/journal');
+    } else {
+      router.push('/subscribe');
+    }
+  }
 
   async function handlePasswordLogin() {
     if (!email || !password) return;
     setLoading(true);
     setError('');
+    setRememberPreference(remember);
 
     const { data, error: authError } = await supabase.auth.signInWithPassword({ email, password });
 
@@ -36,19 +67,7 @@ export default function LoginPage() {
       return;
     }
 
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', data.user.id)
-      .single();
-
-    if (profile?.role === 'admin') {
-      router.push('/admin');
-    } else if (profile?.role === 'subscriber') {
-      router.push('/journal');
-    } else {
-      router.push('/subscribe');
-    }
+    routeAfterLogin(data.user.id);
   }
 
   async function handleEmailSubmit() {
@@ -65,7 +84,8 @@ export default function LoginPage() {
       const data = await res.json();
 
       if (data.granted) {
-        setStep('sent');
+        setCode('');
+        setStep(data.otp ? 'code' : 'sent');
       } else {
         setStep('phone');
       }
@@ -74,6 +94,44 @@ export default function LoginPage() {
     }
 
     setLoading(false);
+  }
+
+  async function handleResendCode() {
+    setResending(true);
+    setError('');
+    try {
+      await fetch('/api/request-login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+    } catch (e) {
+      // שגיאת רשת בשליחה חוזרת - לא חוסמים, אפשר לנסות שוב
+    }
+    setResending(false);
+  }
+
+  async function handleVerifyCode() {
+    if (!/^\d{6}$/.test(code)) {
+      setError('הקוד צריך להיות 6 ספרות');
+      return;
+    }
+    setLoading(true);
+    setError('');
+    setRememberPreference(remember);
+
+    const { data, error: otpError } = await supabase.auth.verifyOtp({ email, token: code, type: 'email' });
+
+    setLoading(false);
+
+    if (otpError || !data.user) {
+      setError(otpError?.message === 'Token has expired or is invalid'
+        ? 'הקוד שגוי או פג תוקף - אפשר לבקש קוד חדש'
+        : (otpError?.message ? `שגיאה: ${otpError.message}` : 'הקוד שגוי'));
+      return;
+    }
+
+    routeAfterLogin(data.user.id);
   }
 
   function handlePhoneChange(value: string) {
@@ -98,7 +156,8 @@ export default function LoginPage() {
       const data = await res.json();
 
       if (data.verified) {
-        setStep('sent');
+        setCode('');
+        setStep(data.otp ? 'code' : 'sent');
       } else {
         setStep('rejected');
       }
@@ -117,7 +176,7 @@ export default function LoginPage() {
       </header>
 
       <div className="form-title" style={{ color: 'var(--lavender)' }}>כניסה לסוחרים</div>
-      <div className="form-sub">מקלידים אימייל ומקבלים קישור כניסה - בלי סיסמה</div>
+      <div className="form-sub">מקלידים אימייל ומקבלים קוד כניסה - בלי סיסמה</div>
 
       {step === 'email' && (
         <>
@@ -133,8 +192,13 @@ export default function LoginPage() {
             />
           </div>
 
+          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12.5px', color: 'var(--text-secondary)', margin: '10px 0 14px', cursor: 'pointer' }}>
+            <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} style={{ width: '16px', height: '16px', cursor: 'pointer' }} />
+            השאר אותי מחובר/ת במכשיר הזה
+          </label>
+
           <button className="btn-primary" style={{ background: 'var(--lavender)' }} onClick={handleEmailSubmit} disabled={loading || !email}>
-            {loading ? 'בודקים...' : 'שליחת קישור כניסה'}
+            {loading ? 'בודקים...' : 'המשך'}
           </button>
           <p style={{ marginTop: '10px', fontSize: '11px', color: 'var(--text-tertiary)', textAlign: 'center' }}>
             מי שעדיין לא מזוהה כמנוי מאושר - נבקש אימות נייד
@@ -159,6 +223,52 @@ export default function LoginPage() {
             ← חזרה
           </a>
         </div>
+      )}
+
+      {step === 'code' && (
+        <>
+          <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '16px', textAlign: 'center' }}>
+            שלחנו קוד בן 6 ספרות לכתובת {email} - מקלידים אותו כאן, בלי לצאת מהאתר. בתוקף לשעה.
+          </p>
+          <div className="field">
+            <label>קוד כניסה</label>
+            <ClearableInput
+              type="tel"
+              inputMode="numeric"
+              value={code}
+              onChange={(e) => { setCode(e.target.value.replace(/\D/g, '').slice(0, 6)); setError(''); }}
+              onClear={() => setCode('')}
+              placeholder="123456"
+              maxLength={6}
+              style={{ borderColor: 'var(--lavender-dim)', textAlign: 'center', fontFamily: 'var(--font-mono)', fontSize: '20px', letterSpacing: '4px' }}
+            />
+          </div>
+
+          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12.5px', color: 'var(--text-secondary)', margin: '0 0 14px', cursor: 'pointer' }}>
+            <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} style={{ width: '16px', height: '16px', cursor: 'pointer' }} />
+            השאר אותי מחובר/ת במכשיר הזה
+          </label>
+
+          <button className="btn-primary" style={{ background: 'var(--lavender)' }} onClick={handleVerifyCode} disabled={loading || code.length !== 6}>
+            {loading ? 'בודקים...' : 'כניסה'}
+          </button>
+
+          <p style={{ marginTop: '12px', fontSize: '12px', color: 'var(--text-tertiary)', textAlign: 'center' }}>
+            אפשר גם ללחוץ על הקישור שבאותו מייל, אם נוח יותר.
+          </p>
+          <p style={{ marginTop: '6px', fontSize: '12px', textAlign: 'center' }}>
+            <a href="#" onClick={(e) => { e.preventDefault(); if (!resending) handleResendCode(); }} style={{ color: 'var(--lavender)' }}>
+              {resending ? 'שולחים קוד חדש...' : 'לא קיבלתי קוד - שליחה חוזרת'}
+            </a>
+          </p>
+          <p style={{ marginTop: '12px', fontSize: '12px', color: 'var(--text-tertiary)', textAlign: 'center' }}>
+            <a href="#" onClick={(e) => { e.preventDefault(); setStep('email'); setCode(''); setError(''); }} style={{ color: 'var(--lavender)' }}>
+              ← כתובת מייל אחרת
+            </a>
+          </p>
+
+          {error && <p style={{ color: 'var(--loss)', fontSize: '12px', textAlign: 'center', marginTop: '10px' }}>{error}</p>}
+        </>
       )}
 
       {step === 'password' && (
@@ -198,6 +308,11 @@ export default function LoginPage() {
               </button>
             </div>
           </div>
+
+          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12.5px', color: 'var(--text-secondary)', margin: '0 0 14px', cursor: 'pointer' }}>
+            <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} style={{ width: '16px', height: '16px', cursor: 'pointer' }} />
+            השאר אותי מחובר/ת במכשיר הזה
+          </label>
 
           <button className="btn-primary" style={{ background: 'var(--lavender)' }} onClick={handlePasswordLogin} disabled={loading || !email || !password}>
             {loading ? 'מתבצעת כניסה...' : 'כניסה'}
