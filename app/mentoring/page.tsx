@@ -306,7 +306,7 @@ export default function MentoringPage() {
                 <span className="mt-price-amount">₪{core.price}</span>
                 <span className="mt-price-note">כולל מע&quot;מ</span>
               </div>
-              <div className="mt-price-sub">או {core.installments}</div>
+              <div className="mt-price-sub">{core.installments}</div>
               <a href="#fit-call" className="gc-cta mt-track-cta" data-cta="price-core" data-cta-kind="book" data-pick-track={core.formValue}>לקביעת שיחת התאמה</a>
             </div>
 
@@ -319,7 +319,7 @@ export default function MentoringPage() {
                 <span className="mt-price-amount">₪{ext.price}</span>
                 <span className="mt-price-note">כולל מע&quot;מ</span>
               </div>
-              <div className="mt-price-sub">{ext.installments ? `או ${ext.installments}` : 'אפשרויות פריסה - בשיחת ההתאמה'}</div>
+              <div className="mt-price-sub">{ext.installments}</div>
               <a href="#fit-call" className="gc-cta mt-track-cta" data-cta="price-extended" data-cta-kind="book" data-pick-track={ext.formValue}>לקביעת שיחת התאמה</a>
             </div>
           </div>
