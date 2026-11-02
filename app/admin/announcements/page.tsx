@@ -182,8 +182,8 @@ export default function AdminAnnouncementsPage() {
       {!loading && announcements.length === 0 && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>אין עדיין הודעות</p>}
 
       {announcements.map((a) => (
-        <div key={a.id} style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-hairline)', borderRadius: '10px', padding: '12px 14px', marginBottom: '8px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px' }}>
+        <details key={a.id} className="section-collapse">
+          <summary>
             <div>
               <div style={{ fontSize: '13.5px', fontWeight: 700 }}>{a.title}</div>
               <div style={{ fontSize: '11.5px', color: 'var(--text-tertiary)', marginTop: '2px' }}>
@@ -191,20 +191,26 @@ export default function AdminAnnouncementsPage() {
                 {a.notification_sent_at && <span style={{ color: 'var(--profit)' }}> · ✓ התראה נשלחה</span>}
               </div>
             </div>
-            <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
-              <button onClick={() => handleTestNotify(a.id)} disabled={testNotifyingId === a.id} className="btn-outline" style={{ padding: '6px 12px', fontSize: '12.5px' }} title="שליחת בדיקה רק אלי, לפני שליחה לכולם">
-                {testNotifyingId === a.id ? '…' : '🔔 בדיקה לעצמי'}
-              </button>
-              <button onClick={() => handleNotify(a.id)} disabled={notifyingId === a.id} className="btn-outline" style={{ padding: '6px 12px', fontSize: '12.5px' }}>
-                {notifyingId === a.id ? '…' : a.notification_sent_at ? '📣 שליחה שוב' : '📣 שליחת התראה'}
-              </button>
-              <button onClick={() => handleDelete(a.id)} disabled={deletingId === a.id} className="btn-outline" style={{ padding: '6px 12px', fontSize: '12.5px' }}>
-                {deletingId === a.id ? '…' : 'מחיקה'}
-              </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+              {/* עצירת ה-click שלא יגלוש ל-summary ויפתח/יסגור בטעות כשלוחצים על כפתור פעולה */}
+              <span style={{ display: 'flex', gap: '6px' }} onClick={(e) => e.stopPropagation()}>
+                <button onClick={() => handleTestNotify(a.id)} disabled={testNotifyingId === a.id} className="btn-outline" style={{ padding: '6px 12px', fontSize: '12.5px' }} title="שליחת בדיקה רק אלי, לפני שליחה לכולם">
+                  {testNotifyingId === a.id ? '…' : '🔔 בדיקה לעצמי'}
+                </button>
+                <button onClick={() => handleNotify(a.id)} disabled={notifyingId === a.id} className="btn-outline" style={{ padding: '6px 12px', fontSize: '12.5px' }}>
+                  {notifyingId === a.id ? '…' : a.notification_sent_at ? '📣 שליחה שוב' : '📣 שליחת התראה'}
+                </button>
+                <button onClick={() => handleDelete(a.id)} disabled={deletingId === a.id} className="btn-outline" style={{ padding: '6px 12px', fontSize: '12.5px' }}>
+                  {deletingId === a.id ? '…' : 'מחיקה'}
+                </button>
+              </span>
+              <span className="collapse-chevron">▾</span>
             </div>
+          </summary>
+          <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-hairline-strong)', borderTop: 'none', borderRadius: '0 0 10px 10px', padding: '14px' }}>
+            <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6, whiteSpace: 'pre-line' }}><FormattedText text={a.content} /></p>
           </div>
-          <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6, marginTop: '8px', whiteSpace: 'pre-line' }}><FormattedText text={a.content} /></p>
-        </div>
+        </details>
       ))}
     </div>
   );
