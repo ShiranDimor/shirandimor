@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
+import { FormattedText } from '@/lib/formatText';
 
 type Announcement = {
   id: string;
@@ -169,7 +170,10 @@ export default function AdminAnnouncementsPage() {
       <div className="tp-question-card">
         <div className="tp-question-title">הודעה חדשה</div>
         <input className="tp-text-input" style={{ minHeight: 'auto', marginBottom: '10px' }} placeholder="כותרת" value={title} onChange={(e) => setTitle(e.target.value)} />
-        <textarea className="tp-text-input" style={{ marginBottom: '10px' }} placeholder="תוכן ההודעה" rows={12} value={content} onChange={(e) => setContent(e.target.value)} />
+        <textarea className="tp-text-input" style={{ marginBottom: '6px' }} placeholder="תוכן ההודעה" rows={12} value={content} onChange={(e) => setContent(e.target.value)} />
+        <p style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginBottom: '10px' }}>
+          טיפ: *מילה או משפט בין כוכביות* יוצג <strong>מודגש</strong> (כמו בוואטסאפ) · קישור (https://...) הופך ללחיץ אוטומטית · אימוג׳ים - מהמקלדת של הטלפון/המחשב כרגיל
+        </p>
         {error && <p style={{ color: 'var(--loss)', fontSize: '13px', marginBottom: '10px' }}>{error}</p>}
         <button className="btn-primary" onClick={handlePublish} disabled={saving}>{saving ? 'שומר...' : '📌 שמירת הודעה'}</button>
       </div>
@@ -199,7 +203,7 @@ export default function AdminAnnouncementsPage() {
               </button>
             </div>
           </div>
-          <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6, marginTop: '8px', whiteSpace: 'pre-line' }}>{a.content}</p>
+          <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6, marginTop: '8px', whiteSpace: 'pre-line' }}><FormattedText text={a.content} /></p>
         </div>
       ))}
     </div>

@@ -60,6 +60,14 @@ export default function LivesPage() {
     } catch (e) {
       // localStorage לא זמין (למשל גלישה פרטית) - לא קריטי, פשוט לא ישוחזר המצב
     }
+
+    // רענון כשחוזרים לטאב - אחרת מי שכבר היה לו הדף הזה פתוח ולוחץ על התראת פוש שרק
+    // מחזירה פוקוס לטאב הקיים, ימשיך לראות רשימת מפגשים ישנה
+    function onVisible() {
+      if (document.visibilityState === 'visible') loadLives();
+    }
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
   }, []);
 
   async function loadLives() {

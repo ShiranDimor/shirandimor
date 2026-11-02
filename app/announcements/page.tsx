@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { FormattedText } from '@/lib/formatText';
 
 type Announcement = {
   id: string;
@@ -18,11 +19,24 @@ export default function AnnouncementsPage() {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  function loadAnnouncements() {
     fetch('/api/announcements')
       .then((res) => res.json())
       .then((data) => setAnnouncements(data.announcements || []))
       .finally(() => setLoading(false));
+  }
+
+  useEffect(() => {
+    loadAnnouncements();
+
+    // רענון כשחוזרים לטאב - אחרת מי שכבר היה לו הדף הזה פתוח (למשל ברקע, או שהגיע אליו
+    // קודם ועבר לאפליקציה אחרת) ולוחץ על התראת פוש שרק מחזירה פוקוס לטאב הקיים, ימשיך
+    // לראות את הרשימה הישנה שנטענה לפני שההודעה החדשה פורסמה
+    function onVisible() {
+      if (document.visibilityState === 'visible') loadAnnouncements();
+    }
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
   }, []);
 
   // התראת פוש/פעמון על הודעה ספציפית מגיעה עם #ann-<id> - גוללים אליה ומדגישים אותה לרגע,
@@ -57,7 +71,7 @@ export default function AnnouncementsPage() {
         <div key={a.id} id={`ann-${a.id}`} style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-hairline-strong)', borderRight: '3px solid var(--teal)', borderRadius: '10px', padding: '16px', marginBottom: '14px', scrollMarginTop: '90px' }}>
           <div style={{ fontSize: '15px', fontWeight: 700, marginBottom: '4px' }}>{a.title}</div>
           <div style={{ fontSize: '11.5px', color: 'var(--teal)', fontFamily: 'var(--font-mono)', marginBottom: '8px' }}>{formatDateTime(a.created_at)}</div>
-          <p style={{ fontSize: '13.5px', color: 'var(--text-secondary)', lineHeight: 1.7, whiteSpace: 'pre-line' }}>{a.content}</p>
+          <p style={{ fontSize: '13.5px', color: 'var(--text-secondary)', lineHeight: 1.7, whiteSpace: 'pre-line' }}><FormattedText text={a.content} /></p>
         </div>
       ))}
 
