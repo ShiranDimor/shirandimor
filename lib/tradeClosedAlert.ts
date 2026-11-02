@@ -7,7 +7,7 @@ import { sendPushToActiveSubscribers, sendPushToNonSubscribers } from '@/lib/web
 
 // מופעל - המייל יוצא לכל המנויים הפעילים + לשירן. להחזרה למצב בדיקה (רק לכתובת הבדיקה): false
 const TRADE_CLOSED_BROADCAST_LIVE = true;
-export const SUBSCRIBER_BROADCAST_TEST_RECIPIENT = 'shiran@shirandizi.com';
+export const SUBSCRIBER_BROADCAST_TEST_RECIPIENT = 'shiran@shirandimor.com';
 const OWNER_EMAIL = 'shiran@shirandimor.com';
 const SITE_URL = 'https://www.shirandimor.com';
 

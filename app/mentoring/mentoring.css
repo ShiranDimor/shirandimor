@@ -200,8 +200,8 @@ body.mt-bar-on .dor-callout { bottom: calc(152px + env(safe-area-inset-bottom));
 
 /* ===== טאבלט ומחשב ===== */
 @media (min-width: 768px) {
-  .mt-sticky { display: none; }
-  body.mt-bar-on .dor-float-btn, body.mt-bar-on .wa-float-btn { bottom: 20px; }
+  /* גם במחשב: פס תחתון עם כפתור ממורכז (הכפתורים הצפים של וואטסאפ ודור מורמים מעליו) */
+  .mt-sticky a { max-width: 360px; border-radius: 999px; }
   .mt-hero h1 { font-size: 36px; }
   .mt-hero .mt-cta, .mt-hero .cta-sub-link { max-width: 420px; }
   .mt-final .mt-cta { max-width: 420px; margin-inline: auto; }
