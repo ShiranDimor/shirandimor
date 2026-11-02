@@ -29,14 +29,22 @@ export default function AnnouncementsPage() {
   useEffect(() => {
     loadAnnouncements();
 
-    // רענון כשחוזרים לטאב - אחרת מי שכבר היה לו הדף הזה פתוח (למשל ברקע, או שהגיע אליו
-    // קודם ועבר לאפליקציה אחרת) ולוחץ על התראת פוש שרק מחזירה פוקוס לטאב הקיים, ימשיך
-    // לראות את הרשימה הישנה שנטענה לפני שההודעה החדשה פורסמה
-    function onVisible() {
+    // רענון כשחוזרים לדף - אחרת מי שכבר היה לו הדף הזה פתוח (למשל ברקע, או שהגיע אליו קודם
+    // ועבר לאפליקציה אחרת) ולוחץ על התראת פוש שרק מחזירה פוקוס לטאב הקיים, ימשיך לראות את
+    // הרשימה הישנה שנטענה לפני שההודעה החדשה פורסמה. שלושה אירועים שונים כי לכל דפדפן/מצב
+    // (החזרת פוקוס לטאב, שחזור מ-bfcache בניווט אחורה/קדימה, מעבר אפליקציות בנייד) יש התנהגות
+    // קצת שונה - ולא תמיד רק אחד מהם נורה בפועל
+    function refreshIfVisible() {
       if (document.visibilityState === 'visible') loadAnnouncements();
     }
-    document.addEventListener('visibilitychange', onVisible);
-    return () => document.removeEventListener('visibilitychange', onVisible);
+    document.addEventListener('visibilitychange', refreshIfVisible);
+    window.addEventListener('focus', refreshIfVisible);
+    window.addEventListener('pageshow', refreshIfVisible);
+    return () => {
+      document.removeEventListener('visibilitychange', refreshIfVisible);
+      window.removeEventListener('focus', refreshIfVisible);
+      window.removeEventListener('pageshow', refreshIfVisible);
+    };
   }, []);
 
   // התראת פוש/פעמון על הודעה ספציפית מגיעה עם #ann-<id> - גוללים אליה ומדגישים אותה לרגע,

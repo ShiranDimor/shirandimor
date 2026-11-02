@@ -61,13 +61,19 @@ export default function LivesPage() {
       // localStorage לא זמין (למשל גלישה פרטית) - לא קריטי, פשוט לא ישוחזר המצב
     }
 
-    // רענון כשחוזרים לטאב - אחרת מי שכבר היה לו הדף הזה פתוח ולוחץ על התראת פוש שרק
-    // מחזירה פוקוס לטאב הקיים, ימשיך לראות רשימת מפגשים ישנה
-    function onVisible() {
+    // רענון כשחוזרים לדף - שלושה אירועים שונים כי לכל דפדפן/מצב (החזרת פוקוס לטאב, שחזור
+    // מ-bfcache בניווט אחורה/קדימה, מעבר אפליקציות בנייד) יש התנהגות קצת שונה
+    function refreshIfVisible() {
       if (document.visibilityState === 'visible') loadLives();
     }
-    document.addEventListener('visibilitychange', onVisible);
-    return () => document.removeEventListener('visibilitychange', onVisible);
+    document.addEventListener('visibilitychange', refreshIfVisible);
+    window.addEventListener('focus', refreshIfVisible);
+    window.addEventListener('pageshow', refreshIfVisible);
+    return () => {
+      document.removeEventListener('visibilitychange', refreshIfVisible);
+      window.removeEventListener('focus', refreshIfVisible);
+      window.removeEventListener('pageshow', refreshIfVisible);
+    };
   }, []);
 
   async function loadLives() {
