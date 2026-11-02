@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { supabase, setRememberPreference } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase';
 import ClearableInput from '@/components/ClearableInput';
 
 type Step = 'email' | 'sent' | 'code' | 'phone' | 'rejected' | 'password';
@@ -26,7 +26,6 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [code, setCode] = useState('');
-  const [remember, setRemember] = useState(true);
   const [resending, setResending] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -54,7 +53,6 @@ export default function LoginPage() {
     if (!email || !password) return;
     setLoading(true);
     setError('');
-    setRememberPreference(remember);
 
     const { data, error: authError } = await supabase.auth.signInWithPassword({ email, password });
 
@@ -118,13 +116,10 @@ export default function LoginPage() {
     }
     setLoading(true);
     setError('');
-    // נקבע *לפני* setSession - כדי שברגע שה-session נכתב לאחסון, ההעדפה הנוכחית כבר
-    // תקבע אם זה הולך ל-localStorage או ל-sessionStorage
-    setRememberPreference(remember);
 
     // הקוד מאומת בשרת (לא ישירות מול supabase.auth.verifyOtp בדפדפן) - ר' הערה ב-
     // app/api/verify-login-code/route.ts על הסיבה. מקבלים בחזרה session אמיתי ושומרים
-    // אותו בעצמנו עם setSession, כדי שהוא ייכתב דרך ה-storage המותאם שלנו (lib/supabase.ts)
+    // אותו בעצמנו עם setSession
     let userId: string | undefined;
     try {
       const res = await fetch('/api/verify-login-code', {
@@ -224,11 +219,6 @@ export default function LoginPage() {
             />
           </div>
 
-          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12.5px', color: 'var(--text-secondary)', margin: '10px 0 14px', cursor: 'pointer' }}>
-            <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} style={{ width: '16px', height: '16px', cursor: 'pointer' }} />
-            השאר אותי מחובר/ת במכשיר הזה
-          </label>
-
           <button className="btn-primary" style={{ background: 'var(--lavender)' }} onClick={handleEmailSubmit} disabled={loading || !email}>
             {loading ? 'בודקים...' : 'המשך'}
           </button>
@@ -275,11 +265,6 @@ export default function LoginPage() {
               style={{ borderColor: 'var(--lavender-dim)', textAlign: 'center', fontFamily: 'var(--font-mono)', fontSize: '20px', letterSpacing: '4px' }}
             />
           </div>
-
-          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12.5px', color: 'var(--text-secondary)', margin: '0 0 14px', cursor: 'pointer' }}>
-            <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} style={{ width: '16px', height: '16px', cursor: 'pointer' }} />
-            השאר אותי מחובר/ת במכשיר הזה
-          </label>
 
           <button className="btn-primary" style={{ background: 'var(--lavender)' }} onClick={handleVerifyCode} disabled={loading || code.length !== 6}>
             {loading ? 'בודקים...' : 'כניסה'}
@@ -340,11 +325,6 @@ export default function LoginPage() {
               </button>
             </div>
           </div>
-
-          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12.5px', color: 'var(--text-secondary)', margin: '0 0 14px', cursor: 'pointer' }}>
-            <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} style={{ width: '16px', height: '16px', cursor: 'pointer' }} />
-            השאר אותי מחובר/ת במכשיר הזה
-          </label>
 
           <button className="btn-primary" style={{ background: 'var(--lavender)' }} onClick={handlePasswordLogin} disabled={loading || !email || !password}>
             {loading ? 'מתבצעת כניסה...' : 'כניסה'}
