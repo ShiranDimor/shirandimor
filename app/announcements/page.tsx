@@ -56,14 +56,16 @@ export default function AnnouncementsPage() {
     };
   }, []);
 
-  // התראת פוש/פעמון על הודעה ספציפית מגיעה עם #ann-<id> - גוללים אליה ומדגישים אותה לרגע,
-  // כדי שמי שלחץ כדי "לקרוא את ההודעה הזו" לא ייחת סתם בראש הרשימה ויצטרך לחפש אותה
+  // התראת פוש/פעמון על הודעה ספציפית מגיעה עם #ann-<id> - פותחים אותה (היא קפלית, סגורה
+  // כברירת מחדל), גוללים אליה ומדגישים אותה לרגע, כדי שמי שלחץ כדי "לקרוא את ההודעה הזו"
+  // לא ייחת סתם בראש הרשימה ויצטרך לפתוח ולחפש אותה בעצמו
   useEffect(() => {
     if (loading || announcements.length === 0) return;
     const hash = window.location.hash;
     if (!hash.startsWith('#ann-')) return;
     const el = document.getElementById(hash.slice(1));
     if (!el) return;
+    if (el instanceof HTMLDetailsElement) el.open = true;
     el.scrollIntoView({ behavior: 'smooth', block: 'center' });
     el.classList.add('attention-pulse');
     setTimeout(() => el.classList.remove('attention-pulse'), 2000);
@@ -85,11 +87,18 @@ export default function AnnouncementsPage() {
       )}
 
       {!loading && announcements.map((a) => (
-        <div key={a.id} id={`ann-${a.id}`} style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-hairline-strong)', borderRight: '3px solid var(--teal)', borderRadius: '10px', padding: '16px', marginBottom: '14px', scrollMarginTop: '90px' }}>
-          <div style={{ fontSize: '15px', fontWeight: 700, marginBottom: '4px' }}>{a.title}</div>
-          <div style={{ fontSize: '11.5px', color: 'var(--teal)', fontFamily: 'var(--font-mono)', marginBottom: '8px' }}>{formatDateTime(a.created_at)}</div>
-          <p style={{ fontSize: '13.5px', color: 'var(--text-secondary)', lineHeight: 1.7, whiteSpace: 'pre-line' }}><FormattedText text={a.content} /></p>
-        </div>
+        <details key={a.id} id={`ann-${a.id}`} className="section-collapse" style={{ scrollMarginTop: '90px' }}>
+          <summary>
+            <div>
+              <div style={{ fontSize: '14px', fontWeight: 700 }}>{a.title}</div>
+              <div style={{ fontSize: '11px', color: 'var(--teal)', fontFamily: 'var(--font-mono)', marginTop: '2px' }}>{formatDateTime(a.created_at)}</div>
+            </div>
+            <span className="collapse-chevron">▾</span>
+          </summary>
+          <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-hairline-strong)', borderTop: 'none', borderRadius: '0 0 10px 10px', padding: '16px' }}>
+            <p style={{ fontSize: '13.5px', color: 'var(--text-secondary)', lineHeight: 1.7, whiteSpace: 'pre-line' }}><FormattedText text={a.content} /></p>
+          </div>
+        </details>
       ))}
 
     </div>
