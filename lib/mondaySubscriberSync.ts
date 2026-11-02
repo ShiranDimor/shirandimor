@@ -51,6 +51,7 @@ export type BidirectionalSyncResult = {
   removed: number;
   removedNames: string[];
   skippedNoPhone: number;
+  unverifiedNoPhone: string[];
   created: number;
   createdNames: string[];
   placeholderEmailNames: string[];
@@ -89,11 +90,19 @@ export async function syncSubscribersBidirectional(): Promise<BidirectionalSyncR
     return { error: 'לא נמצאו נתונים בקבוצת "קבוצת סוחרים" במאנדיי' };
   }
 
-  const toRemove = withContact.filter(
+  const notFoundInMonday = withContact.filter(
     (s) =>
       !(s.phone && activePhones.has(normalizePhone(s.phone))) &&
       !(s.email && activeEmails.has(normalizeEmail(s.email)))
   );
+
+  // מי שאין לו/ה בכלל טלפון שמור בפרופיל נבדק/ת רק מול מייל - וזה לא אמין מספיק כדי להוריד
+  // מנוי/ה אמיתי/ת: במאנדיי יש לא מעט מנויים בלי מייל שמור כלל, ואצל אחרים המייל שרשום שם
+  // שונה מהמייל שבו נרשמו באתר. הורדה אוטומטית במצב כזה כבר גרמה בפועל למנויים משלמים לחזור
+  // ל"ממתינים לאישור" בלי סיבה אמיתית. לכן לא מורידים אוטומטית מי שאין לו/ה טלפון בפרופיל -
+  // רק מסמנים לבדיקה ידנית
+  const toRemove = notFoundInMonday.filter((s) => s.phone);
+  const unverifiedNoPhone = notFoundInMonday.filter((s) => !s.phone);
 
   // רשת ביטחון: הסרה של חלק גדול ופתאומי מהמנויים כמעט תמיד אומרת שהשליפה ממאנדיי הייתה
   // חלקית/נכשלה (למשל rate limit באמצע pagination) ולא שבאמת כולם עזבו בבת אחת
@@ -159,6 +168,7 @@ export async function syncSubscribersBidirectional(): Promise<BidirectionalSyncR
     removed: toRemove.length,
     removedNames: toRemove.map((s) => s.full_name || s.email),
     skippedNoPhone,
+    unverifiedNoPhone: unverifiedNoPhone.map((s) => s.full_name || s.email),
     created: createdNames.length,
     createdNames,
     placeholderEmailNames,

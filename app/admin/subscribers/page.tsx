@@ -110,11 +110,14 @@ export default function AdminSubscribersPage() {
         const skippedNoContactText = data.skippedNoContact?.length > 0
           ? ` · ${data.skippedNoContact.length} בקבוצת הסוחרים במאנדיי בלי מייל ובלי טלפון בכלל, לא ניתן ליצור להם חשבון (${data.skippedNoContact.join(', ')})`
           : '';
+        const unverifiedText = data.unverifiedNoPhone?.length > 0
+          ? ` · ⚠️ ${data.unverifiedNoPhone.length} לא נמצאו במאנדיי לפי המייל שלהם אבל אין להם טלפון שמור כדי לוודא - לא הוסרו אוטומטית, כדאי לבדוק ידנית מול מאנדיי: ${data.unverifiedNoPhone.join(', ')}`
+          : '';
         const diagText = ` [אבחון: מאנדיי - ${data.mondayTotalContacts} אנשים בקבוצה, ${data.mondayPhonesCount} טלפונים, ${data.mondayEmailsCount} מיילים]`;
         setSyncMessage(
           `נבדקו ${data.checked} מנויים · ${data.removed} הוסרו${removedText}${createdText}${placeholderText}` +
           (data.skippedNoPhone > 0 ? ` · ${data.skippedNoPhone} לא נבדקו (אין טלפון ואין מייל בפרופיל)` : '') +
-          skippedNoContactText + diagText
+          skippedNoContactText + unverifiedText + diagText
         );
         loadApprovedSubs();
       }
