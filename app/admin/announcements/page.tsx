@@ -30,6 +30,9 @@ export default function AdminAnnouncementsPage() {
   const [content, setContent] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [brief, setBrief] = useState('');
+  const [drafting, setDrafting] = useState(false);
+  const [draftError, setDraftError] = useState('');
   const [deletingId, setDeletingId] = useState('');
   const [notifyingId, setNotifyingId] = useState('');
   const [testNotifyingId, setTestNotifyingId] = useState('');
@@ -62,6 +65,29 @@ export default function AdminAnnouncementsPage() {
       setAnnouncements(data.announcements || []);
     }
     setLoading(false);
+  }
+
+  async function handleDraft() {
+    if (!brief.trim()) return;
+    setDrafting(true);
+    setDraftError('');
+    try {
+      const res = await fetch('/api/admin/announcements/draft', {
+        method: 'POST',
+        headers: await authHeader(),
+        body: JSON.stringify({ brief: brief.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setDraftError(data.error || 'שגיאה בניסוח');
+        return;
+      }
+      setTitle(data.title || '');
+      setContent(data.content || '');
+    } catch (e) {
+      setDraftError('משהו השתבש - כדאי לנסות שוב');
+    }
+    setDrafting(false);
   }
 
   async function handlePublish() {
@@ -166,6 +192,25 @@ export default function AdminAnnouncementsPage() {
       <p style={{ fontSize: '12.5px', color: 'var(--text-tertiary)', marginBottom: '18px', lineHeight: 1.6 }}>
         פרסום הודעה רק שומר אותה בעמוד הציבורי /announcements (מהחדשה לישנה) - שליחת ההתראה היא כפתור נפרד, כדי שאפשר יהיה לערוך לפני ששולחים. ההתראה יוצאת לכולם - מנויים ולא-מנויים כאחד, בלי טשטוש.
       </p>
+
+      <div className="tp-question-card" style={{ marginBottom: '14px' }}>
+        <div className="tp-question-title">✍️ ניסוח עם AI</div>
+        <p style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginBottom: '10px' }}>
+          כותבים במשפט חופשי מה רוצים להגיד, ומקבלים כותרת ותוכן מנוסחים למטה - אפשר ואפילו כדאי לערוך לפני שמירה.
+        </p>
+        <textarea
+          className="tp-text-input"
+          style={{ marginBottom: '8px', minHeight: '60px' }}
+          placeholder="לדוגמה: תזכורת ללייב של מחר ב-16:30, ושיש השבוע הרבה דוחות מעניינים"
+          rows={2}
+          value={brief}
+          onChange={(e) => setBrief(e.target.value)}
+        />
+        {draftError && <p style={{ color: 'var(--loss)', fontSize: '12px', marginBottom: '8px' }}>{draftError}</p>}
+        <button className="btn-outline" onClick={handleDraft} disabled={drafting || !brief.trim()}>
+          {drafting ? 'מנסח/ת...' : '✍️ ניסוח'}
+        </button>
+      </div>
 
       <div className="tp-question-card">
         <div className="tp-question-title">הודעה חדשה</div>
