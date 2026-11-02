@@ -31,6 +31,7 @@ export default function AdminAnnouncementsPage() {
   const [error, setError] = useState('');
   const [deletingId, setDeletingId] = useState('');
   const [notifyingId, setNotifyingId] = useState('');
+  const [testNotifyingId, setTestNotifyingId] = useState('');
 
   useEffect(() => {
     checkAdmin();
@@ -102,6 +103,15 @@ export default function AdminAnnouncementsPage() {
       const data = await res.json();
       setAnnouncements((prev) => prev.map((a) => (a.id === id ? data.announcement : a)));
     }
+  }
+
+  // שליחת התראה רק אלי, בלי לגעת בסטטוס "נשלח" של ההודעה - כדי לראות איך זה ייראה בפועל
+  // לפני ששולחים לכולם
+  async function handleTestNotify(id: string) {
+    setTestNotifyingId(id);
+    const res = await fetch(`/api/admin/announcements/${id}/notify?test=1`, { method: 'POST', headers: await authHeader() });
+    setTestNotifyingId('');
+    if (!res.ok) window.alert('השליחה נכשלה - יש לוודא שההתראות מופעלות אצלך במכשיר הזה');
   }
 
   async function handleLogout() {
@@ -178,6 +188,9 @@ export default function AdminAnnouncementsPage() {
               </div>
             </div>
             <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
+              <button onClick={() => handleTestNotify(a.id)} disabled={testNotifyingId === a.id} className="btn-outline" style={{ padding: '6px 12px', fontSize: '12.5px' }} title="שליחת בדיקה רק אלי, לפני שליחה לכולם">
+                {testNotifyingId === a.id ? '…' : '🔔 בדיקה לעצמי'}
+              </button>
               <button onClick={() => handleNotify(a.id)} disabled={notifyingId === a.id} className="btn-outline" style={{ padding: '6px 12px', fontSize: '12.5px' }}>
                 {notifyingId === a.id ? '…' : a.notification_sent_at ? '📣 שליחה שוב' : '📣 שליחת התראה'}
               </button>

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/instantLogin';
-import { sendPushToActiveSubscribers, sendPushToNonSubscribers, sendPushToEveryone } from '@/lib/webPush';
+import { sendPushToActiveSubscribers, sendPushToNonSubscribers, sendPushToEveryone, sendPushToUser } from '@/lib/webPush';
 
 async function requireAdmin(request: Request) {
   const authHeader = request.headers.get('Authorization') || '';
@@ -26,6 +26,15 @@ export async function POST(request: Request, { params }: { params: { id: string 
   if (error || !live) return NextResponse.json({ error: 'הלייב לא נמצא' }, { status: 404 });
 
   const dateLabel = new Date(live.scheduled_at).toLocaleDateString('he-IL', { weekday: 'long', day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+  // בדיקה לעצמי - שולח רק אלי (בגרסת "המנויים", כולל כל הפרטים), בלי לגעת ב-notification_sent_at
+  // כדי שהשליחה האמיתית לכולם תישאר זמינה בלי "שהתראה כבר נשלחה"
+  const { searchParams } = new URL(request.url);
+  if (searchParams.get('test') === '1') {
+    await sendPushToUser(admin.id, { title: `🎥 מפגש חדש - ${live.title}`, body: dateLabel, url: '/lives' });
+    return NextResponse.json({ ok: true, test: true });
+  }
+
   if (live.open_to_all) {
     await sendPushToEveryone({ title: `🎥 מפגש חדש - ${live.title}`, body: dateLabel, url: '/lives' }, 'live', params.id);
   } else {

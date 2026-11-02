@@ -63,6 +63,7 @@ export default function AdminLivesPage() {
   const [formError, setFormError] = useState('');
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [notifyingId, setNotifyingId] = useState<string | null>(null);
+  const [testNotifyingId, setTestNotifyingId] = useState<string | null>(null);
 
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [registrations, setRegistrations] = useState<Record<string, Registration[]>>({});
@@ -192,6 +193,15 @@ export default function AdminLivesPage() {
       const data = await res.json();
       setLives((prev) => prev.map((l) => (l.id === id ? data.live : l)));
     }
+  }
+
+  // שליחת התראה רק אלי, בלי לגעת בסטטוס "נשלח" של המפגש - כדי לראות איך זה ייראה בפועל
+  // לפני ששולחים לכולם
+  async function handleTestNotify(id: string) {
+    setTestNotifyingId(id);
+    const res = await fetch(`/api/admin/lives/${id}/notify?test=1`, { method: 'POST', headers: await authHeader() });
+    setTestNotifyingId(null);
+    if (!res.ok) window.alert('השליחה נכשלה - יש לוודא שההתראות מופעלות אצלך במכשיר הזה');
   }
 
   async function toggleRegistrations(id: string) {
@@ -328,6 +338,9 @@ export default function AdminLivesPage() {
               {togglingOpenToAllId === live.id ? '...' : live.open_to_all ? '✓ פתוח לכולם' : 'פתוח רק למנויים'}
             </button>
             <button type="button" className="btn-outline" style={{ padding: '8px 12px', fontSize: '12.5px' }} onClick={() => startEdit(live)}>עריכה</button>
+            <button type="button" className="btn-outline" style={{ padding: '8px 12px', fontSize: '12.5px' }} onClick={() => handleTestNotify(live.id)} disabled={testNotifyingId === live.id} title="שליחת בדיקה רק אלי, לפני שליחה לכולם">
+              {testNotifyingId === live.id ? '…' : '🔔 בדיקה לעצמי'}
+            </button>
             <button type="button" className="btn-outline" style={{ padding: '8px 12px', fontSize: '12.5px' }} onClick={() => handleNotify(live.id, live.title)} disabled={notifyingId === live.id}>
               {notifyingId === live.id ? '…' : '📣 התראה'}
             </button>

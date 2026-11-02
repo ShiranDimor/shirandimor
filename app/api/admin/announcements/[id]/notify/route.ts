@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/instantLogin';
-import { sendPushToEveryone } from '@/lib/webPush';
+import { sendPushToEveryone, sendPushToUser } from '@/lib/webPush';
 
 async function requireAdmin(request: Request) {
   const authHeader = request.headers.get('Authorization') || '';
@@ -24,11 +24,21 @@ export async function POST(request: Request, { params }: { params: { id: string 
   const { data: announcement, error } = await supabaseAdmin.from('announcements').select('*').eq('id', params.id).maybeSingle();
   if (error || !announcement) return NextResponse.json({ error: 'ההודעה לא נמצאה' }, { status: 404 });
 
-  await sendPushToEveryone({
+  const payload = {
     title: `📌 ${announcement.title}`,
     body: announcement.content.length > 120 ? `${announcement.content.slice(0, 117)}...` : announcement.content,
     url: `/announcements#ann-${params.id}`,
-  }, 'announcement', params.id);
+  };
+
+  // בדיקה לעצמי - שולח רק אלי, בלי לגעת ב-notification_sent_at ובלי לרשום ביומן ההתראות
+  // (sendPushToUser לא רושם), כדי שהשליחה האמיתית לכולם תישאר זמינה בלי "שהתראה כבר נשלחה"
+  const { searchParams } = new URL(request.url);
+  if (searchParams.get('test') === '1') {
+    await sendPushToUser(admin.id, payload);
+    return NextResponse.json({ ok: true, test: true });
+  }
+
+  await sendPushToEveryone(payload, 'announcement', params.id);
 
   const { data: updated } = await supabaseAdmin
     .from('announcements')
