@@ -29,13 +29,20 @@ self.addEventListener('push', (event) => {
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   const url = event.notification.data?.url || '/';
+  const targetUrl = new URL(url, self.location.origin).href;
 
   event.waitUntil(
-    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
-      for (const client of clients) {
-        if (client.url.includes(url) && 'focus' in client) return client.focus();
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientsArr) => {
+      // חיפוש התאמה מדויקת, לא includes() - "/admin/lives".includes("/lives") הוא true,
+      // אז מי שהיה פתוח בטעות בעמוד הניהול "קפץ" חזרה לשם במקום לעבור ליעד האמיתי של ההתראה
+      for (const client of clientsArr) {
+        if (client.url === targetUrl && 'focus' in client) return client.focus();
       }
-      if (self.clients.openWindow) return self.clients.openWindow(url);
+      // אין טאב פתוח בדיוק ביעד - לוקחים טאב קיים (אם יש) וממנים אותו ליעד, במקום לפתוח
+      // חלון/טאב נוסף על כל לחיצה על התראה
+      const existing = clientsArr.find((c) => 'focus' in c && 'navigate' in c);
+      if (existing) return existing.focus().then(() => existing.navigate(targetUrl));
+      if (self.clients.openWindow) return self.clients.openWindow(targetUrl);
     })
   );
 });
