@@ -70,6 +70,10 @@ export default function PushNotificationButton({ variant = 'default', autoOpenLe
 
     try {
       const reg = await navigator.serviceWorker.getRegistration();
+      // בודקים גרסה חדשה של ה-Service Worker באופן יזום - דפדפנים לא תמיד בודקים גרסה חדשה
+      // בעצמם אלא אם עבר זמן מה מהבדיקה הקודמת, גם אחרי סגירה ופתיחה מלאה של הדפדפן. בלי זה
+      // תיקון בקובץ ה-sw.js (למשל בלחיצה על התראת פוש) יכול לא להיכנס לתוקף הרבה זמן
+      reg?.update().catch(() => {});
       const sub = await reg?.pushManager.getSubscription();
       if (sub) {
         setStatus('on');

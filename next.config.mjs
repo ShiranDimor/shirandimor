@@ -1,5 +1,17 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // בלי זה, דפדפנים (ו/או Vercel) יכולים לשמור את sw.js בקאש ולא לבדוק גרסה חדשה שלו
+  // בפתיחה הבאה של האתר - כך שגם סגירה ופתיחה מלאה של הדפדפן לא מכניסה לתוקף Service Worker
+  // שעודכן (למשל תיקון בלחיצה על התראת פוש) עד שעובר הרבה זמן. חובה no-cache דווקא על הקובץ
+  // הזה - שאר קבצי public יכולים להישאר בקאש ארוך כרגיל
+  async headers() {
+    return [
+      {
+        source: '/sw.js',
+        headers: [{ key: 'Cache-Control', value: 'no-cache, no-store, must-revalidate' }],
+      },
+    ];
+  },
   // Guy's speech-practice game is a standalone static page in public/guy (no site layout, chat or tracking).
   async redirects() {
     // Case-insensitive: Android keyboards often type "Guy".
