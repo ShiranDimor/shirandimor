@@ -21,5 +21,7 @@ export async function GET() {
   // Cache-Control מפורש, לא רק dynamic='force-dynamic' - אחרת יש סיכוי שדפדפן/CDN בדרך עדיין
   // ישמור תגובה ישנה (בלי הודעה חדשה שזה עתה פורסמה) על בסיס היוריסטיקה שלו, לא רק על בסיס
   // ה-cache הפנימי של Next עצמו
-  return NextResponse.json({ announcements: data }, { headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate' } });
+  // s-maxage=0 בנוסף ל-no-store - מכוון במפורש גם ל-CDN/שכבת edge שבדרך (לא רק לדפדפן),
+  // שעשוי להתייחס אליהם בנפרד
+  return NextResponse.json({ announcements: data }, { headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate, s-maxage=0' } });
 }

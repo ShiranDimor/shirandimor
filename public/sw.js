@@ -44,12 +44,11 @@ self.addEventListener('notificationclick', (event) => {
           return client.focus();
         }
       }
-      // אין טאב פתוח בדיוק ביעד - לוקחים טאב קיים (אם יש) וממנים אותו ליעד, במקום לפתוח
-      // חלון/טאב נוסף על כל לחיצה על התראה
-      const existing = clientsArr.find((c) => 'focus' in c && 'navigate' in c);
-      if (existing) {
-        return existing.focus().then(() => existing.navigate(targetUrl)).then(() => existing.postMessage({ type: 'refresh-data' }));
-      }
+      // אין טאב פתוח בדיוק ביעד - פותחים טאב/חלון חדש, לא מנסים לנווט טאב קיים אליו.
+      // client.navigate() לכתובת שזהה בנתיב שלה אבל שונה רק ב-hash (המצב הנפוץ כאן - כל
+      // ההתראות על לוח המודעות מצביעות ל-/announcements עם hash שונה לכל הודעה) עלול להיחשב
+      // בדפדפן כניווט "באותו מסמך" בלי טעינה מחדש אמיתית של הדף - בדיוק מה שהשאיר תוכן ישן
+      // על המסך למרות כל שאר התיקונים. openWindow תמיד טעינה אמיתית, בלי האי-ודאות הזו
       if (self.clients.openWindow) return self.clients.openWindow(targetUrl);
     })
   );
