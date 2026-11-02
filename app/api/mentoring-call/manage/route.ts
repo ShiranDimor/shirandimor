@@ -23,7 +23,7 @@ export async function GET(request: Request) {
   if (!ev || ev.cancelled) return NextResponse.json({ status: 'cancelled' }, { headers: { 'Cache-Control': 'no-store' } });
   const start = new Date(ev.start);
   return NextResponse.json(
-    { status: start.getTime() < Date.now() ? 'past' : 'active', start: start.toISOString(), when: formatSlotForHumans(start), name: ev.props.name || '' },
+    { status: start.getTime() < Date.now() ? 'past' : 'active', start: start.toISOString(), when: formatSlotForHumans(start), name: ev.props.name || '', eventLink: ev.htmlLink },
     { headers: { 'Cache-Control': 'no-store' } }
   );
 }
@@ -75,7 +75,7 @@ export async function POST(request: Request) {
       ev.props.leadId ? addMondayUpdate(ev.props.leadId, line) : Promise.resolve(false),
       notifyShiran(lead, `${line}\n\n${contactLines}`, `שיחת התאמה הוזזה: ${lead.name}, ${when}`, 'שיחת התאמה לליווי האישי הוזזה דרך הקישור האישי.').catch(() => false),
     ]);
-    return NextResponse.json({ ok: true, status: 'active', start: start.toISOString(), when });
+    return NextResponse.json({ ok: true, status: 'active', start: start.toISOString(), when, eventLink: ev.htmlLink });
   }
 
   return NextResponse.json({ error: 'פעולה לא מוכרת' }, { status: 400 });

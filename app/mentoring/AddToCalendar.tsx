@@ -1,28 +1,19 @@
 'use client';
 
-import { buildGoogleCalendarUrl, buildIcsDataUri } from '@/lib/calendar';
-
-const TITLE = 'שיחת התאמה לליווי אישי עם שירן דימור';
-const MINUTES = 20;
-
-// כפתורי "הוספה ליומן" (Google / קובץ לכל יומן אחר) - על בסיס העוזרים הקיימים של עמוד הלייבים
-export default function AddToCalendar({ start, manageUrl }: { start: string; manageUrl?: string }) {
-  const description = [
-    'שיחת טלפון קצרה עם שירן - שירן מתקשרת אלייך.',
-    manageUrl ? `צריך לשנות מועד או לבטל? ${manageUrl}` : '',
-    'shirandimor.com/mentoring',
-  ]
-    .filter(Boolean)
-    .join('\n');
-
+// כפתור לפתיחת הזימון האמיתי ביומן Google - לא יצירת עותק נפרד. כך כל שינוי מועד או ביטול מתעדכנים אוטומטית
+// גם ביומן של שירן וגם ביומן של מי שקבע/ה (דרך הזימון שנשלח למייל). עותק ידני (קישור "הוספה" או קובץ ics)
+// לא היה מתעדכן, ולכן אין כאן כפתור כזה.
+export default function AddToCalendar({ eventLink }: { eventLink?: string }) {
   return (
-    <div className="mt-cal-actions">
-      <a className="mt-cal-btn" href={buildGoogleCalendarUrl(TITLE, description, start, MINUTES)} target="_blank" rel="noopener noreferrer">
-        הוספה ליומן Google
-      </a>
-      <a className="mt-cal-btn" href={buildIcsDataUri(TITLE, description, start, MINUTES)} download="shiran-call.ics">
-        הוספה ליומן אחר (אייפון / אאוטלוק)
-      </a>
-    </div>
+    <>
+      <p className="mt-cal-note">הזימון נשלח למייל שלך - לחיצה על &quot;כן&quot; בזימון מוסיפה אותו ליומן (Google, אייפון או אאוטלוק), וכל שינוי מועד או ביטול יתעדכנו בו לבד.</p>
+      {eventLink && (
+        <div className="mt-cal-actions">
+          <a className="mt-cal-btn" href={eventLink} target="_blank" rel="noopener noreferrer">
+            פתיחת הזימון ביומן Google
+          </a>
+        </div>
+      )}
+    </>
   );
 }

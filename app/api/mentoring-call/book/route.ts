@@ -55,7 +55,9 @@ export async function POST(request: Request) {
   // המזהה נקבע מראש כדי שהקישור לשינוי/ביטול ייכנס כבר לתוך הזימון שנשלח למייל
   const plannedId = newCallEventId();
   const manageUrl = callManageUrl(plannedId);
+  let eventLink = '';
   const eventId = await createFitCallEvent({
+    onHtmlLink: (l) => { eventLink = l; },
     id: plannedId,
     start,
     minutes: MENTORING_CALL_MINUTES,
@@ -86,5 +88,5 @@ export async function POST(request: Request) {
     ),
   ]);
 
-  return NextResponse.json({ ok: true, when, start: start.toISOString(), manageUrl });
+  return NextResponse.json({ ok: true, when, start: start.toISOString(), manageUrl, eventLink });
 }

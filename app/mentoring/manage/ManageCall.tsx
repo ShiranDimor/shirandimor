@@ -7,14 +7,13 @@ import AddToCalendar from '../AddToCalendar';
 import SlotPicker, { type Slot } from '../SlotPicker';
 import { WHATSAPP_URL } from '../content';
 
-type Info = { status: 'active' | 'past' | 'cancelled' | 'invalid' | 'error'; start?: string; when?: string; name?: string };
+type Info = { status: 'active' | 'past' | 'cancelled' | 'invalid' | 'error'; start?: string; when?: string; name?: string; eventLink?: string };
 type Mode = 'view' | 'reschedule' | 'confirm-cancel';
 
 export default function ManageCall() {
   const params = useSearchParams();
   const e = params.get('e') || '';
   const t = params.get('t') || '';
-  const manageUrl = typeof window !== 'undefined' ? window.location.href : '';
 
   const [info, setInfo] = useState<Info | null>(null);
   const [mode, setMode] = useState<Mode>('view');
@@ -70,8 +69,8 @@ export default function ManageCall() {
         setInfo({ status: 'cancelled' });
         setDone('השיחה בוטלה. הודעה על הביטול נשלחה גם ליומן.');
       } else {
-        setInfo({ status: 'active', start: j.start, when: j.when, name: info?.name });
-        setDone('המועד עודכן. הזימון ביומן שלך יתעדכן אוטומטית.');
+        setInfo({ status: 'active', start: j.start, when: j.when, name: info?.name, eventLink: j.eventLink || info?.eventLink });
+        setDone('המועד עודכן - גם ביומן של שירן וגם בזימון שלך.');
       }
       setMode('view');
     } catch {
@@ -111,7 +110,7 @@ export default function ManageCall() {
       <div className="mt-done">
         <p className="mt-done-title">{done || (info.status === 'past' ? 'מועד השיחה כבר עבר' : 'השיחה קבועה')}</p>
         <p>{info.name ? `${info.name}, ` : ''}שיחת התאמה טלפונית ב{info.when}.</p>
-        {info.status === 'active' && info.start && <AddToCalendar start={info.start} manageUrl={manageUrl} />}
+        {info.status === 'active' && <AddToCalendar eventLink={info.eventLink} />}
       </div>
 
       {info.status === 'active' && mode === 'view' && (

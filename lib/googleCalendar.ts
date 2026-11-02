@@ -164,6 +164,8 @@ export async function createFitCallEvent(opts: {
   id?: string;
   // פרטים נוספים שנשמרים באירוע (לא גלויים לפונה) - למשל שם, טלפון ומזהה הליד במאנדיי, לשימוש בביטול/שינוי
   privateProps?: Record<string, string>;
+  // מקבל את הקישור לאירוע האמיתי ביומן (htmlLink) - כדי לתת לפונה לפתוח אותו במקום ליצור עותק נפרד
+  onHtmlLink?: (link: string) => void;
 }): Promise<string | null> {
   const accessToken = await getAccessToken();
   if (!accessToken) return null;
@@ -189,6 +191,7 @@ export async function createFitCallEvent(opts: {
       return null;
     }
     const data = await res.json();
+    if (data.htmlLink) opts.onHtmlLink?.(data.htmlLink);
     return data.id || null;
   } catch (e) {
     console.error('שגיאה ביצירת אירוע שיחת התאמה ביומן', e);
@@ -204,6 +207,7 @@ export type FitCallEvent = {
   end: string;
   cancelled: boolean;
   props: Record<string, string>;
+  htmlLink: string;
 };
 
 // קורא אירוע שיחת התאמה לפי המזהה. מחזיר null אם החיבור לא מוגדר, האירוע לא קיים, או שהוא לא שיחת התאמה מהאתר
@@ -220,7 +224,7 @@ export async function getFitCallEvent(id: string): Promise<FitCallEvent | null> 
     const ev = await res.json();
     const props = ev.extendedProperties?.private || {};
     if (props[FIT_CALL_TAG] !== '1' || !ev.start?.dateTime) return null;
-    return { id: ev.id, start: ev.start.dateTime, end: ev.end?.dateTime || ev.start.dateTime, cancelled: ev.status === 'cancelled', props };
+    return { id: ev.id, start: ev.start.dateTime, end: ev.end?.dateTime || ev.start.dateTime, cancelled: ev.status === 'cancelled', props, htmlLink: ev.htmlLink || '' };
   } catch (e) {
     console.error('שגיאה בקריאת אירוע שיחת התאמה', e);
     return null;

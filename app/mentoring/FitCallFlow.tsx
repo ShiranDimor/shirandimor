@@ -25,7 +25,7 @@ export default function FitCallFlow({ whatsappUrl }: { whatsappUrl: string }) {
   const [day, setDay] = useState('');
   const [slot, setSlot] = useState<Slot | null>(null);
   const [when, setWhen] = useState('');
-  const [booked, setBooked] = useState<{ start: string; manageUrl: string } | null>(null);
+  const [booked, setBooked] = useState<{ start: string; manageUrl: string; eventLink: string } | null>(null);
   const started = useRef(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -127,7 +127,7 @@ export default function FitCallFlow({ whatsappUrl }: { whatsappUrl: string }) {
       }
       if (!res.ok) throw new Error(String(res.status));
       setWhen(String(json.when || `${slot.dayLabel} בשעה ${slot.time}`));
-      setBooked({ start: String(json.start || slot.start), manageUrl: String(json.manageUrl || '') });
+      setBooked({ start: String(json.start || slot.start), manageUrl: String(json.manageUrl || ''), eventLink: String(json.eventLink || '') });
       setStep('booked');
       trackFunnelEvent('mentoring_call_booked', { phone: lead.phone, email: lead.email });
       scrollIntoFlow();
@@ -263,8 +263,8 @@ export default function FitCallFlow({ whatsappUrl }: { whatsappUrl: string }) {
       {step === 'booked' && (
         <div className="mt-done" role="status">
           <p className="mt-done-title">השיחה נקבעה</p>
-          <p>אתקשר אלייך ב{when}. זימון ליומן כבר בדרך למייל, ואפשר גם להוסיף אותו מכאן:</p>
-          {booked && <AddToCalendar start={booked.start} manageUrl={booked.manageUrl} />}
+          <p>אתקשר אלייך ב{when}.</p>
+          {booked && <AddToCalendar eventLink={booked.eventLink} />}
           {booked?.manageUrl && (
             <p>
               משהו השתנה? <a className="mt-inline-link" href={booked.manageUrl}>לשנות מועד או לבטל את השיחה</a> (הקישור נמצא גם בזימון במייל).
