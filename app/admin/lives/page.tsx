@@ -313,7 +313,7 @@ export default function AdminLivesPage() {
               <div className="email" style={{ marginTop: '2px', color: backfillMessage.text.startsWith('שגיאה') ? 'var(--loss)' : 'var(--profit)' }}>{backfillMessage.text}</div>
             )}
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '6px' }}>
             <button type="button" className="btn-outline" style={{ padding: '8px 12px', fontSize: '12.5px' }} onClick={() => toggleRegistrations(live.id)}>
               {expandedId === live.id ? 'הסתרת נרשמים' : `נרשמים (${live.registrationsCount})`}
             </button>
