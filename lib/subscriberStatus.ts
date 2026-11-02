@@ -71,14 +71,14 @@ export async function ensureActiveSubscriberAccount(email: string, phone: string
   // טלפון קודם, מייל רק כגיבוי: לכל אדם יש נייד אחד ויחיד, אבל אותו אדם יכול להופיע עם כמה
   // מיילים שונים (למשל שילם פעם עם מייל אחר) - התאמה לפי מייל קודם הייתה מפספסת את זה ויוצרת
   // בטעות חשבון מנוי כפול
-  let matched: { id: string; role: string; subscription_status: string | null } | null = null;
+  let matched: { id: string; role: string; subscription_status: string | null; email: string | null } | null = null;
   const normalizedNewPhone = normalizePhone(phone);
   if (normalizedNewPhone) {
-    const { data: withPhone } = await supabaseAdmin.from('profiles').select('id, role, subscription_status, phone').not('phone', 'is', null);
+    const { data: withPhone } = await supabaseAdmin.from('profiles').select('id, role, subscription_status, phone, email').not('phone', 'is', null);
     matched = (withPhone || []).find((p) => normalizePhone(p.phone) === normalizedNewPhone) || null;
   }
   if (!matched) {
-    const { data: existing } = await supabaseAdmin.from('profiles').select('id, role, subscription_status').eq('email', email).maybeSingle();
+    const { data: existing } = await supabaseAdmin.from('profiles').select('id, role, subscription_status, email').eq('email', email).maybeSingle();
     matched = existing;
   }
 
@@ -93,6 +93,19 @@ export async function ensureActiveSubscriberAccount(email: string, phone: string
       updates.subscription_cancelled_at = null;
     }
     if (isFirstMonthPrice) updates.trial_price_used = true;
+
+    // התאמה לפי טלפון יכולה למצוא פרופיל עם מייל אחר (למשל פלייסהולדר שנוצר אוטומטית מסנכרון
+    // מאנדיי, או מייל ישן) - אם המייל שהתקבל עכשיו שונה, מעדכנים גם אותו, וגם את חשבון
+    // ההתחברות (auth.users) כדי שהשניים יישארו מסונכרנים. בלי זה, קוד/קישור כניסה שנשלח
+    // בהמשך ל"מייל שונה" הזה היה יוצר בטעות חשבון נפרד חדש (role="lead") ולא מגיע בכלל
+    // לפרופיל המנוי הקיים - בדיוק התקלה שגרמה למנוי ששילם לא להצליח להירשם
+    if (email && matched.email?.toLowerCase() !== email.toLowerCase()) {
+      updates.email = email;
+      await supabaseAdmin.auth.admin.updateUserById(matched.id, { email, email_confirm: true }).catch((e) => {
+        console.error('שגיאה בעדכון מייל התחברות לפרופיל קיים', matched!.id, e);
+      });
+    }
+
     await supabaseAdmin.from('profiles').update(updates).eq('id', matched.id);
     return;
   }
