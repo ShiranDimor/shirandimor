@@ -71,7 +71,7 @@ export default function AdminDashboard() {
         if (data.whatsappText && waWindow) {
           // מנווטים את הטאב שכבר נפתח (בתוך אירוע הלחיצה) ישר לצ'אט האישי של שירן -
           // לא לחלון בחירת איש קשר - כדי שאפשר יהיה לשלוח לעצמה קודם ולהעביר הלאה לקבוצה
-          waWindow.location.href = `https://wa.me/972547167419?text=${encodeURIComponent(data.whatsappText)}`;
+          waWindow.location.href = `https://wa.me/972529115377?text=${encodeURIComponent(data.whatsappText)}`;
         } else if (data.whatsappText) {
           setSummaryMessage((prev) => `${prev} · הדפדפן חסם את פתיחת הטאב - נסי שוב או אשרי חלונות קופצים לאתר`);
         }

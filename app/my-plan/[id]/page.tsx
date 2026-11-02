@@ -338,7 +338,7 @@ function MyPlanProgressPageInner() {
                   ביטול
                 </button>
               )}
-              <a href="https://wa.me/972547167419" target="_blank" rel="noopener noreferrer" style={{ display: 'block', marginTop: '14px', fontSize: '11.5px', color: 'var(--text-tertiary)', textDecoration: 'none' }}>
+              <a href="https://wa.me/972529115377" target="_blank" rel="noopener noreferrer" style={{ display: 'block', marginTop: '14px', fontSize: '11.5px', color: 'var(--text-tertiary)', textDecoration: 'none' }}>
                 נתקעת עם זה? אפשר גם לכתוב לי בוואטסאפ ←
               </a>
             </div>

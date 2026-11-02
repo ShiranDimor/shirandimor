@@ -108,7 +108,7 @@ export default function SummaryScreen({ answers, onCtaClick, responseId }: Props
 
       <p className="tp-checklist-footer" style={{ textAlign: 'center', marginBottom: '18px' }}>
         התוכנית האישית נשלחת גם למייל שהוזן (כדאי לבדוק גם בספאם). אם היא לא מגיעה תוך כמה דקות,{' '}
-        <a href="https://wa.me/972547167419" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--teal)', fontWeight: 600 }}>
+        <a href="https://wa.me/972529115377" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--teal)', fontWeight: 600 }}>
           אפשר לעדכן בוואטסאפ ←
         </a>
       </p>

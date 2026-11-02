@@ -82,7 +82,7 @@ export function mentoringInviteDescription(name: string, phone: string, manageLi
     MENTORING_PAGE_URL,
     '',
     ...(manageLink ? ['צריך להזיז את השיחה או לבטל? אפשר כאן, בלחיצה:', manageLink, ''] : []),
-    'או לכתוב לשירן בוואטסאפ: 054-716-7419',
+    'או לכתוב לשירן בוואטסאפ: 052-911-5377',
     '',
     'שירן דימור | מסחר אחראי במניות',
   ].join('\n');

@@ -225,7 +225,7 @@ export function buildFollowupUserEmailHtml(r: FollowupRow): string {
         <p style="font-size:14px;color:#F2EFF1;line-height:1.7;">אז - איך הלך? הכלל נשמר? היה קשה? השתנה משהו בדרך?</p>
         <p style="font-size:14px;color:#F2EFF1;line-height:1.7;">אשמח לשמוע - אפשר פשוט להשיב למייל הזה, או לכתוב לי בוואטסאפ.</p>
 
-        <a href="https://wa.me/972547167419" style="display:block;text-align:center;background:#25D366;color:#fff;text-decoration:none;font-weight:700;padding:13px;border-radius:10px;margin-top:20px;">
+        <a href="https://wa.me/972529115377" style="display:block;text-align:center;background:#25D366;color:#fff;text-decoration:none;font-weight:700;padding:13px;border-radius:10px;margin-top:20px;">
           זמינה בשבילך בוואטסאפ ←
         </a>
       </div>
@@ -274,7 +274,7 @@ export function buildAbandonedEmailHtml(r: AbandonedRow, reminderNumber: 1 | 2 =
         </a>
 
         <p style="font-size:12.5px;color:#9A939B;line-height:1.7;margin-top:20px;margin-bottom:8px;text-align:center;">אם יש שאלה בדרך - אפשר תמיד לכתוב לי בוואטסאפ:</p>
-        <a href="https://wa.me/972547167419" style="display:block;text-align:center;background:#25D366;color:#fff;text-decoration:none;font-weight:700;padding:11px;border-radius:10px;">
+        <a href="https://wa.me/972529115377" style="display:block;text-align:center;background:#25D366;color:#fff;text-decoration:none;font-weight:700;padding:11px;border-radius:10px;">
           זמינה בשבילך בוואטסאפ ←
         </a>
       </div>

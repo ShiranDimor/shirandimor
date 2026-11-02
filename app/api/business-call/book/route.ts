@@ -6,7 +6,7 @@ import { CALL_CONFIG, computeSlots, formatSlotForHumans, slotRange } from '@/lib
 export const dynamic = 'force-dynamic';
 
 const BUSINESS_PAGE_URL = 'https://www.shirandimor.com/business';
-const WHATSAPP_DISPLAY = '054-716-7419';
+const WHATSAPP_DISPLAY = '052-911-5377';
 
 // הטקסט שהפונה רואה בזימון ליומן. הוא עוד לא מכיר את שירן, אז מסבירים מי זו ומה השיחה, ומצרפים קישור לעמוד.
 function inviteDescription(name: string, org: string, phone: string) {

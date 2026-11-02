@@ -224,7 +224,7 @@ export default function LivesPage() {
                 <Link href="/?join=1" style={{ color: 'var(--text-tertiary)', fontSize: '12px', textDecoration: 'underline' }}>עדיין לא בטוח/ה? אפשר להתחיל מעדכונים בזמן אמת, בחינם ←</Link>
               </p>
               <p style={{ marginBottom: '8px' }}>יש שאלות לפני שמצטרפים? אפשר לשלוח לי הודעה בוואטסאפ:</p>
-              <a href="https://wa.me/972547167419" target="_blank" rel="noopener noreferrer" style={{ display: 'block', textAlign: 'center', background: '#25D366', color: '#fff', textDecoration: 'none', fontWeight: 700, padding: '10px', borderRadius: '8px' }}>
+              <a href="https://wa.me/972529115377" target="_blank" rel="noopener noreferrer" style={{ display: 'block', textAlign: 'center', background: '#25D366', color: '#fff', textDecoration: 'none', fontWeight: 700, padding: '10px', borderRadius: '8px' }}>
                 שליחת הודעה בוואטסאפ ←
               </a>
             </div>

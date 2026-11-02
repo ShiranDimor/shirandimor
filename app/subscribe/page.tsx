@@ -80,7 +80,7 @@ export default function SubscribePage() {
           כבר ניצלת בעבר את מחיר החודש הראשון ב-₪1 (הוא חד-פעמי, לאימות בלבד) - אבל אשמח לחדש אישית ב-₪400 לחודש, בלי בירוקרטיה.
         </p>
         <a
-          href="https://wa.me/972547167419?text=%D7%94%D7%99%D7%99%2C%20%D7%90%D7%A0%D7%99%20%D7%A8%D7%95%D7%A6%D7%94%20%D7%9C%D7%97%D7%96%D7%95%D7%A8%20%D7%9C%D7%94%D7%99%D7%95%D7%AA%20%D7%9E%D7%A0%D7%95%D7%99%20%D7%91%D7%9E%D7%93%D7%91%D7%A8%D7%99%D7%9D%20%D7%A2%D7%A1%D7%A7%D7%90%D7%95%D7%AA"
+          href="https://wa.me/972529115377?text=%D7%94%D7%99%D7%99%2C%20%D7%90%D7%A0%D7%99%20%D7%A8%D7%95%D7%A6%D7%94%20%D7%9C%D7%97%D7%96%D7%95%D7%A8%20%D7%9C%D7%94%D7%99%D7%95%D7%AA%20%D7%9E%D7%A0%D7%95%D7%99%20%D7%91%D7%9E%D7%93%D7%91%D7%A8%D7%99%D7%9D%20%D7%A2%D7%A1%D7%A7%D7%90%D7%95%D7%AA"
           target="_blank"
           rel="noopener noreferrer"
           style={{ display: 'block', textAlign: 'center', background: '#25D366', color: '#fff', textDecoration: 'none', fontWeight: 700, padding: '13px', borderRadius: '10px' }}

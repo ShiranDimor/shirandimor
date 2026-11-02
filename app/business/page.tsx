@@ -21,11 +21,11 @@ export const metadata: Metadata = {
   },
 };
 
-const PHONE_DISPLAY = '054-716-7419';
-const PHONE_TEL = '+972547167419';
+const PHONE_DISPLAY = '052-911-5377';
+const PHONE_TEL = '+972529115377';
 const EMAIL = 'shiran@shirandimor.com';
 const WHATSAPP_URL =
-  'https://wa.me/972547167419?text=' +
+  'https://wa.me/972529115377?text=' +
   encodeURIComponent('היי שירן, הגעתי מהעמוד לארגונים ואשמח לשמוע על מפגש לעובדים שלנו');
 const EMAIL_SUBJECT = 'מפגש לעובדים בארגון שלנו';
 const CTA_LABEL = 'בואו נדבר 15 דקות';
