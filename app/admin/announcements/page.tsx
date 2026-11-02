@@ -169,7 +169,7 @@ export default function AdminAnnouncementsPage() {
       <div className="tp-question-card">
         <div className="tp-question-title">הודעה חדשה</div>
         <input className="tp-text-input" style={{ minHeight: 'auto', marginBottom: '10px' }} placeholder="כותרת" value={title} onChange={(e) => setTitle(e.target.value)} />
-        <textarea className="tp-text-input" style={{ marginBottom: '10px' }} placeholder="תוכן ההודעה" rows={4} value={content} onChange={(e) => setContent(e.target.value)} />
+        <textarea className="tp-text-input" style={{ marginBottom: '10px' }} placeholder="תוכן ההודעה" rows={12} value={content} onChange={(e) => setContent(e.target.value)} />
         {error && <p style={{ color: 'var(--loss)', fontSize: '13px', marginBottom: '10px' }}>{error}</p>}
         <button className="btn-primary" onClick={handlePublish} disabled={saving}>{saving ? 'שומר...' : '📌 שמירת הודעה'}</button>
       </div>
