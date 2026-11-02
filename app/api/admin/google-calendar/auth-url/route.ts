@@ -16,7 +16,7 @@ async function requireAdmin(request: Request) {
 // מצב החיבור הנוכחי + קישור למסך האישור של גוגל (אדמין בלבד)
 export async function GET(request: Request) {
   if (!(await requireAdmin(request))) return NextResponse.json({ error: 'אין הרשאת ניהול' }, { status: 403 });
-  const clientId = process.env.GOOGLE_CALENDAR_CLIENT_ID;
+  const clientId = (process.env.GOOGLE_CALENDAR_CLIENT_ID || '').trim().replace(/^["']+|["']+$/g, '').trim();
   const status = await diagnoseCalendarConnection();
   if (!clientId) return NextResponse.json({ status, url: null, redirectUri: redirectUri(request.url) });
   const params = new URLSearchParams({

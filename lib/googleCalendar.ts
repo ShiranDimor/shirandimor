@@ -5,10 +5,15 @@ const TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const EVENTS_URL = 'https://www.googleapis.com/calendar/v3/calendars/primary/events';
 const DEFAULT_DURATION_MINUTES = 60;
 
+// קורא משתנה סביבה ומנקה רווחים ומירכאות שנכנסו בטעות בהדבקה (למשל מתוך קובץ JSON)
+function env(name: string) {
+  return (process.env[name] || '').trim().replace(/^["']+|["']+$/g, '').trim();
+}
+
 async function getAccessToken(): Promise<string | null> {
-  const clientId = process.env.GOOGLE_CALENDAR_CLIENT_ID;
-  const clientSecret = process.env.GOOGLE_CALENDAR_CLIENT_SECRET;
-  const refreshToken = process.env.GOOGLE_CALENDAR_REFRESH_TOKEN;
+  const clientId = env('GOOGLE_CALENDAR_CLIENT_ID');
+  const clientSecret = env('GOOGLE_CALENDAR_CLIENT_SECRET');
+  const refreshToken = env('GOOGLE_CALENDAR_REFRESH_TOKEN');
   if (!clientId || !clientSecret || !refreshToken) return null;
 
   try {
@@ -262,9 +267,9 @@ export const GOOGLE_CALENDAR_SCOPE = 'https://www.googleapis.com/auth/calendar.e
 // token = חידוש ההרשאה נכשל (למשל invalid_grant = ההרשאה פגה או בוטלה, צריך לחבר מחדש);
 // list = ההרשאה תקינה אבל אין גישה לקריאת היומן
 export async function diagnoseCalendarConnection(refreshTokenOverride?: string): Promise<{ ok: true } | { ok: false; step: 'config' | 'token' | 'list'; detail: string }> {
-  const clientId = process.env.GOOGLE_CALENDAR_CLIENT_ID;
-  const clientSecret = process.env.GOOGLE_CALENDAR_CLIENT_SECRET;
-  const refreshToken = refreshTokenOverride || process.env.GOOGLE_CALENDAR_REFRESH_TOKEN;
+  const clientId = env('GOOGLE_CALENDAR_CLIENT_ID');
+  const clientSecret = env('GOOGLE_CALENDAR_CLIENT_SECRET');
+  const refreshToken = refreshTokenOverride || env('GOOGLE_CALENDAR_REFRESH_TOKEN');
   if (!clientId || !clientSecret || !refreshToken) return { ok: false, step: 'config', detail: 'missing_env' };
   try {
     const res = await fetch(TOKEN_URL, {
@@ -290,8 +295,8 @@ export async function diagnoseCalendarConnection(refreshTokenOverride?: string):
 
 // מחליף קוד הרשאה (אחרי אישור במסך של גוגל) בטוקן קבוע (refresh token)
 export async function exchangeGoogleAuthCode(code: string, redirectUri: string): Promise<{ refreshToken?: string; error?: string }> {
-  const clientId = process.env.GOOGLE_CALENDAR_CLIENT_ID;
-  const clientSecret = process.env.GOOGLE_CALENDAR_CLIENT_SECRET;
+  const clientId = env('GOOGLE_CALENDAR_CLIENT_ID');
+  const clientSecret = env('GOOGLE_CALENDAR_CLIENT_SECRET');
   if (!clientId || !clientSecret) return { error: 'missing_env' };
   const res = await fetch(TOKEN_URL, {
     method: 'POST',

@@ -4,7 +4,7 @@ import { createHmac, timingSafeEqual } from 'crypto';
 export const GOOGLE_REDIRECT_PATH = '/api/admin/google-calendar/callback';
 
 function secret() {
-  return process.env.GOOGLE_CALENDAR_CLIENT_SECRET || '';
+  return (process.env.GOOGLE_CALENDAR_CLIENT_SECRET || '').trim().replace(/^["']+|["']+$/g, '').trim();
 }
 
 export function makeState() {
