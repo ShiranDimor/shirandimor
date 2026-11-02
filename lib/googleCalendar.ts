@@ -6,8 +6,18 @@ const EVENTS_URL = 'https://www.googleapis.com/calendar/v3/calendars/primary/eve
 const DEFAULT_DURATION_MINUTES = 60;
 
 // קורא משתנה סביבה ומנקה רווחים ומירכאות שנכנסו בטעות בהדבקה (למשל מתוך קובץ JSON)
-function env(name: string) {
-  return (process.env[name] || '').trim().replace(/^["']+|["']+$/g, '').trim();
+export function env(name: string) {
+  const raw = (process.env[name] || '').trim();
+  // הודבק בטעות כל קובץ ה-JSON שהורד מגוגל - מחלצים ממנו את הערך הנכון
+  if (raw.startsWith('{')) {
+    try {
+      const j = JSON.parse(raw);
+      const c = j.web || j.installed || j;
+      if (name.endsWith('CLIENT_SECRET') && c.client_secret) return String(c.client_secret).trim();
+      if (name.endsWith('CLIENT_ID') && c.client_id) return String(c.client_id).trim();
+    } catch {}
+  }
+  return raw.replace(/^["']+|["']+$/g, '').trim();
 }
 
 async function getAccessToken(): Promise<string | null> {

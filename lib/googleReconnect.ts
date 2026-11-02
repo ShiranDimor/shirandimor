@@ -1,10 +1,11 @@
 // חיבור מחדש של יומן Google (כשההרשאה פגה): state חתום כדי שרק התחלה מעמוד האדמין תוביל להחלפת קוד בטוקן
 import { createHmac, timingSafeEqual } from 'crypto';
+import { env } from './googleCalendar';
 
 export const GOOGLE_REDIRECT_PATH = '/api/admin/google-calendar/callback';
 
 function secret() {
-  return (process.env.GOOGLE_CALENDAR_CLIENT_SECRET || '').trim().replace(/^["']+|["']+$/g, '').trim();
+  return env('GOOGLE_CALENDAR_CLIENT_SECRET');
 }
 
 export function makeState() {

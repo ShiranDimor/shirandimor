@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/instantLogin';
-import { GOOGLE_CALENDAR_SCOPE, diagnoseCalendarConnection } from '@/lib/googleCalendar';
+import { GOOGLE_CALENDAR_SCOPE, diagnoseCalendarConnection, env } from '@/lib/googleCalendar';
 import { makeState, redirectUri } from '@/lib/googleReconnect';
 
 export const dynamic = 'force-dynamic';
@@ -16,10 +16,10 @@ async function requireAdmin(request: Request) {
 // מצב החיבור הנוכחי + קישור למסך האישור של גוגל (אדמין בלבד)
 export async function GET(request: Request) {
   if (!(await requireAdmin(request))) return NextResponse.json({ error: 'אין הרשאת ניהול' }, { status: 403 });
-  const clientId = (process.env.GOOGLE_CALENDAR_CLIENT_ID || '').trim().replace(/^["']+|["']+$/g, '').trim();
+  const clientId = env('GOOGLE_CALENDAR_CLIENT_ID');
   const status = await diagnoseCalendarConnection();
   // "טביעת אצבע" של הערכים שהאתר רואה - בלי לחשוף אותם - כדי להשוות מול קובץ ה-JSON מגוגל
-  const clean = (k: string) => (process.env[k] || '').trim().replace(/^["']+|["']+$/g, '').trim();
+  const clean = env;
   const sec = clean('GOOGLE_CALENDAR_CLIENT_SECRET');
   const cid = clean('GOOGLE_CALENDAR_CLIENT_ID');
   const fingerprint = {
