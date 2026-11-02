@@ -211,15 +211,17 @@ export type FitCallEvent = {
 };
 
 // קורא אירוע שיחת התאמה לפי המזהה. מחזיר null אם החיבור לא מוגדר, האירוע לא קיים, או שהוא לא שיחת התאמה מהאתר
-export async function getFitCallEvent(id: string): Promise<FitCallEvent | null> {
+// קורא אירוע שיחת התאמה לפי המזהה. null = האירוע לא קיים (נמחק/בוטל); 'error' = תקלה בחיבור ליומן -
+// כדי לא להציג לפונה "השיחה בוטלה" כשבפועל היא קיימת ורק הקריאה נכשלה
+export async function getFitCallEvent(id: string): Promise<FitCallEvent | null | 'error'> {
   const accessToken = await getAccessToken();
-  if (!accessToken) return null;
+  if (!accessToken) return 'error';
   try {
     const res = await fetch(`${EVENTS_URL}/${encodeURIComponent(id)}`, { headers: { Authorization: `Bearer ${accessToken}` }, cache: 'no-store' });
     if (res.status === 404 || res.status === 410) return null;
     if (!res.ok) {
       console.error('שגיאה בקריאת אירוע שיחת התאמה', await res.text().catch(() => ''));
-      return null;
+      return 'error';
     }
     const ev = await res.json();
     const props = ev.extendedProperties?.private || {};
@@ -227,7 +229,7 @@ export async function getFitCallEvent(id: string): Promise<FitCallEvent | null> 
     return { id: ev.id, start: ev.start.dateTime, end: ev.end?.dateTime || ev.start.dateTime, cancelled: ev.status === 'cancelled', props, htmlLink: ev.htmlLink || '' };
   } catch (e) {
     console.error('שגיאה בקריאת אירוע שיחת התאמה', e);
-    return null;
+    return 'error';
   }
 }
 

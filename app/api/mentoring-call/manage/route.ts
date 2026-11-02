@@ -20,6 +20,7 @@ export async function GET(request: Request) {
   if (!verifyCallToken(id, searchParams.get('t') || '')) return deny();
 
   const ev = await getFitCallEvent(id);
+  if (ev === 'error') return NextResponse.json({ status: 'error' }, { status: 503 });
   if (!ev || ev.cancelled) return NextResponse.json({ status: 'cancelled' }, { headers: { 'Cache-Control': 'no-store' } });
   const start = new Date(ev.start);
   return NextResponse.json(
@@ -39,6 +40,7 @@ export async function POST(request: Request) {
   if (!verifyCallToken(id, clean(body.t, 64))) return deny();
 
   const ev = await getFitCallEvent(id);
+  if (ev === 'error') return NextResponse.json({ error: 'היומן לא זמין כרגע' }, { status: 503 });
   if (!ev || ev.cancelled) return NextResponse.json({ error: 'השיחה כבר בוטלה' }, { status: 410 });
   const oldWhen = formatSlotForHumans(new Date(ev.start));
   const lead = { name: ev.props.name || '', phone: ev.props.phone || '', email: ev.props.email || '' };
