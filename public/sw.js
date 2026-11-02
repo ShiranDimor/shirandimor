@@ -36,12 +36,20 @@ self.addEventListener('notificationclick', (event) => {
       // חיפוש התאמה מדויקת, לא includes() - "/admin/lives".includes("/lives") הוא true,
       // אז מי שהיה פתוח בטעות בעמוד הניהול "קפץ" חזרה לשם במקום לעבור ליעד האמיתי של ההתראה
       for (const client of clientsArr) {
-        if (client.url === targetUrl && 'focus' in client) return client.focus();
+        if (client.url === targetUrl && 'focus' in client) {
+          // טאב שכבר בדיוק ביעד (למשל התראה נוספת על אותה הודעה) - focus() לבד לא מבטיח
+          // שהדף יביא נתונים טריים (אירועי visibility/focus לא תמיד נורים באופן אמין כשחוזרים
+          // מהתראה, תלוי בדפדפן/מערכת), אז שולחים גם הודעה מפורשת שהדף יודע להקשיב לה ולרענן
+          client.postMessage({ type: 'refresh-data' });
+          return client.focus();
+        }
       }
       // אין טאב פתוח בדיוק ביעד - לוקחים טאב קיים (אם יש) וממנים אותו ליעד, במקום לפתוח
       // חלון/טאב נוסף על כל לחיצה על התראה
       const existing = clientsArr.find((c) => 'focus' in c && 'navigate' in c);
-      if (existing) return existing.focus().then(() => existing.navigate(targetUrl));
+      if (existing) {
+        return existing.focus().then(() => existing.navigate(targetUrl)).then(() => existing.postMessage({ type: 'refresh-data' }));
+      }
       if (self.clients.openWindow) return self.clients.openWindow(targetUrl);
     })
   );

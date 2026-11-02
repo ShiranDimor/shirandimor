@@ -56,5 +56,5 @@ export async function GET(request: Request) {
     };
   });
 
-  return NextResponse.json({ lives, viewerIsSubscriber });
+  return NextResponse.json({ lives, viewerIsSubscriber }, { headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate' } });
 }

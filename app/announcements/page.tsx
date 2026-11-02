@@ -20,7 +20,7 @@ export default function AnnouncementsPage() {
   const [loading, setLoading] = useState(true);
 
   function loadAnnouncements() {
-    fetch('/api/announcements')
+    fetch('/api/announcements', { cache: 'no-store' })
       .then((res) => res.json())
       .then((data) => setAnnouncements(data.announcements || []))
       .finally(() => setLoading(false));
@@ -40,10 +40,19 @@ export default function AnnouncementsPage() {
     document.addEventListener('visibilitychange', refreshIfVisible);
     window.addEventListener('focus', refreshIfVisible);
     window.addEventListener('pageshow', refreshIfVisible);
+
+    // איתות מפורש מה-Service Worker בלחיצה על התראה (ר' public/sw.js) - לא סומכים רק על
+    // אירועי focus/visibility, כי הם לא תמיד נורים באופן אמין בכל דפדפן/מערכת כשחוזרים מהתראה
+    function onSwMessage(event: MessageEvent) {
+      if (event.data?.type === 'refresh-data') loadAnnouncements();
+    }
+    navigator.serviceWorker?.addEventListener('message', onSwMessage);
+
     return () => {
       document.removeEventListener('visibilitychange', refreshIfVisible);
       window.removeEventListener('focus', refreshIfVisible);
       window.removeEventListener('pageshow', refreshIfVisible);
+      navigator.serviceWorker?.removeEventListener('message', onSwMessage);
     };
   }, []);
 

@@ -69,10 +69,19 @@ export default function LivesPage() {
     document.addEventListener('visibilitychange', refreshIfVisible);
     window.addEventListener('focus', refreshIfVisible);
     window.addEventListener('pageshow', refreshIfVisible);
+
+    // איתות מפורש מה-Service Worker בלחיצה על התראה (ר' public/sw.js) - לא סומכים רק על
+    // אירועי focus/visibility, כי הם לא תמיד נורים באופן אמין בכל דפדפן/מערכת כשחוזרים מהתראה
+    function onSwMessage(event: MessageEvent) {
+      if (event.data?.type === 'refresh-data') loadLives();
+    }
+    navigator.serviceWorker?.addEventListener('message', onSwMessage);
+
     return () => {
       document.removeEventListener('visibilitychange', refreshIfVisible);
       window.removeEventListener('focus', refreshIfVisible);
       window.removeEventListener('pageshow', refreshIfVisible);
+      navigator.serviceWorker?.removeEventListener('message', onSwMessage);
     };
   }, []);
 
@@ -81,6 +90,7 @@ export default function LivesPage() {
     setCheckingAuth(true);
     const { data: { session } } = await supabase.auth.getSession();
     const res = await fetch('/api/lives', {
+      cache: 'no-store',
       headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {},
     });
     if (res.ok) {

@@ -18,5 +18,8 @@ export async function GET() {
 
   if (error) return NextResponse.json({ error: 'שגיאה בשליפה' }, { status: 500 });
 
-  return NextResponse.json({ announcements: data });
+  // Cache-Control מפורש, לא רק dynamic='force-dynamic' - אחרת יש סיכוי שדפדפן/CDN בדרך עדיין
+  // ישמור תגובה ישנה (בלי הודעה חדשה שזה עתה פורסמה) על בסיס היוריסטיקה שלו, לא רק על בסיס
+  // ה-cache הפנימי של Next עצמו
+  return NextResponse.json({ announcements: data }, { headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate' } });
 }
