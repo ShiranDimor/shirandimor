@@ -16,7 +16,7 @@ export const fetchCache = 'force-no-store';
 export async function GET() {
   const { data, error } = await supabaseAdmin
     .from('announcements')
-    .select('id, title, content, created_at')
+    .select('id, title, content, image_url, created_at')
     .eq('published', true)
     .order('created_at', { ascending: false });
 

@@ -16,13 +16,21 @@ const SYSTEM_PROMPT = `את/ה כותב/ת הודעות ללוח מודעות ע
 
 אל תמציא/י נתונים עובדתיים (מספרים, תאריכים, שמות מניות ספציפיים) שלא ניתנו במשפט של שירן - אם היא לא ציינה מספר/תאריך מדויק, תישאר/י כללי/ת.
 
+אם מצורפת תמונה (למשל צילום מסך של יומן כלכלי, גרף או טבלה) - אפשר להתייחס לתוכן שבאמת מופיע בה (נתונים, זמנים, כותרות), אבל רק למה שרואים בפועל בתמונה, בלי להמציא פרטים נוספים שלא מופיעים בה.
+
 ענה/י אך ורק ב-JSON תקין (בלי טקסט לפני/אחרי, בלי markdown code fence):
 {"title": "כותרת קצרה וממוקדת (עד 70 תווים)", "content": "תוכן ההודעה המלא, כולל שורות ריקות בין פסקאות אם מתאים"}`;
 
-export async function draftAnnouncement(brief: string): Promise<{ title: string; content: string }> {
+export async function draftAnnouncement(brief: string, imageUrl?: string): Promise<{ title: string; content: string }> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error('ANTHROPIC_API_KEY לא מוגדר');
   const model = process.env.ANTHROPIC_MODEL || 'claude-sonnet-5-5';
+
+  // אם שירן צירפה תמונה (למשל צילום מסך של יומן כלכלי) - מצרפים אותה כקלט חזותי לניסוח,
+  // כדי שהתוכן יתייחס למה שבאמת מופיע בה ולא רק למשפט החופשי
+  const userContent: Array<Record<string, unknown>> = [];
+  if (imageUrl) userContent.push({ type: 'image', source: { type: 'url', url: imageUrl } });
+  userContent.push({ type: 'text', text: `מה שירן רוצה לשלוח (במשפט קצר שלה):\n${brief}` });
 
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -32,7 +40,7 @@ export async function draftAnnouncement(brief: string): Promise<{ title: string;
       max_tokens: 1024,
       output_config: { effort: 'low' },
       system: SYSTEM_PROMPT,
-      messages: [{ role: 'user', content: `מה שירן רוצה לשלוח (במשפט קצר שלה):\n${brief}` }],
+      messages: [{ role: 'user', content: userContent }],
     }),
   });
 

@@ -8,6 +8,7 @@ type Announcement = {
   id: string;
   title: string;
   content: string;
+  image_url: string | null;
   created_at: string;
 };
 
@@ -96,6 +97,7 @@ export default function AnnouncementsPage() {
             <span className="collapse-chevron">▾</span>
           </summary>
           <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-hairline-strong)', borderTop: 'none', borderRadius: '0 0 10px 10px', padding: '16px' }}>
+            {a.image_url && <img src={a.image_url} alt="" style={{ width: '100%', borderRadius: '10px', marginBottom: '12px' }} />}
             <p style={{ fontSize: '13.5px', color: 'var(--text-secondary)', lineHeight: 1.7, whiteSpace: 'pre-line' }}><FormattedText text={a.content} /></p>
           </div>
         </details>

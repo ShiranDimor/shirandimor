@@ -32,7 +32,7 @@ export async function POST(request: Request) {
   if (!admin) return NextResponse.json({ error: 'אין הרשאת ניהול' }, { status: 403 });
 
   const body = await request.json().catch(() => ({}));
-  const { title, content, published } = body as { title?: string; content?: string; published?: boolean };
+  const { title, content, published, image_url } = body as { title?: string; content?: string; published?: boolean; image_url?: string };
 
   if (!title || !content) {
     return NextResponse.json({ error: 'חסרים כותרת או תוכן' }, { status: 400 });
@@ -40,7 +40,7 @@ export async function POST(request: Request) {
 
   const { data, error } = await supabaseAdmin
     .from('announcements')
-    .insert({ title, content, published: published !== false })
+    .insert({ title, content, published: published !== false, image_url: image_url || null })
     .select('*')
     .single();
 

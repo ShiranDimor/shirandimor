@@ -9,6 +9,7 @@ type Announcement = {
   id: string;
   title: string;
   content: string;
+  image_url: string | null;
   published: boolean;
   created_at: string;
   notification_sent_at: string | null;
@@ -33,6 +34,9 @@ export default function AdminAnnouncementsPage() {
   const [brief, setBrief] = useState('');
   const [drafting, setDrafting] = useState(false);
   const [draftError, setDraftError] = useState('');
+  const [imageUrl, setImageUrl] = useState('');
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [imageError, setImageError] = useState('');
   const [deletingId, setDeletingId] = useState('');
   const [notifyingId, setNotifyingId] = useState('');
   const [testNotifyingId, setTestNotifyingId] = useState('');
@@ -67,6 +71,34 @@ export default function AdminAnnouncementsPage() {
     setLoading(false);
   }
 
+  async function handleImageSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+
+    setUploadingImage(true);
+    setImageError('');
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const form = new FormData();
+      form.append('file', file);
+      const res = await fetch('/api/admin/announcements/upload-image', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session?.access_token}` },
+        body: form,
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setImageError(data.error || 'שגיאה בהעלאת התמונה');
+        return;
+      }
+      setImageUrl(data.url);
+    } catch (e) {
+      setImageError('משהו השתבש בהעלאה - כדאי לנסות שוב');
+    }
+    setUploadingImage(false);
+  }
+
   async function handleDraft() {
     if (!brief.trim()) return;
     setDrafting(true);
@@ -75,7 +107,7 @@ export default function AdminAnnouncementsPage() {
       const res = await fetch('/api/admin/announcements/draft', {
         method: 'POST',
         headers: await authHeader(),
-        body: JSON.stringify({ brief: brief.trim() }),
+        body: JSON.stringify({ brief: brief.trim(), imageUrl: imageUrl || undefined }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -98,7 +130,7 @@ export default function AdminAnnouncementsPage() {
     const res = await fetch('/api/admin/announcements', {
       method: 'POST',
       headers: await authHeader(),
-      body: JSON.stringify({ title: title.trim(), content: content.trim() }),
+      body: JSON.stringify({ title: title.trim(), content: content.trim(), image_url: imageUrl || undefined }),
     });
     setSaving(false);
 
@@ -110,6 +142,8 @@ export default function AdminAnnouncementsPage() {
 
     setTitle('');
     setContent('');
+    setImageUrl('');
+    setBrief('');
     loadAnnouncements();
   }
 
@@ -206,6 +240,22 @@ export default function AdminAnnouncementsPage() {
           value={brief}
           onChange={(e) => setBrief(e.target.value)}
         />
+
+        <div style={{ marginBottom: '10px' }}>
+          {imageUrl ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <img src={imageUrl} alt="" style={{ width: '70px', height: '70px', objectFit: 'cover', borderRadius: '8px', border: '1px solid var(--border-hairline-strong)' }} />
+              <button className="btn-outline" style={{ padding: '6px 12px', fontSize: '12px' }} onClick={() => setImageUrl('')}>הסרת תמונה</button>
+            </div>
+          ) : (
+            <label className="btn-outline" style={{ padding: '6px 12px', fontSize: '12px', display: 'inline-block', cursor: 'pointer' }}>
+              {uploadingImage ? 'מעלה תמונה...' : '📷 צירוף תמונה'}
+              <input type="file" accept="image/*" onChange={handleImageSelect} disabled={uploadingImage} style={{ display: 'none' }} />
+            </label>
+          )}
+          {imageError && <p style={{ color: 'var(--loss)', fontSize: '12px', marginTop: '6px' }}>{imageError}</p>}
+        </div>
+
         {draftError && <p style={{ color: 'var(--loss)', fontSize: '12px', marginBottom: '8px' }}>{draftError}</p>}
         <button className="btn-outline" onClick={handleDraft} disabled={drafting || !brief.trim()}>
           {drafting ? 'מנסח/ת...' : '✍️ ניסוח'}
@@ -253,6 +303,7 @@ export default function AdminAnnouncementsPage() {
             </div>
           </summary>
           <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-hairline-strong)', borderTop: 'none', borderRadius: '0 0 10px 10px', padding: '14px' }}>
+            {a.image_url && <img src={a.image_url} alt="" style={{ width: '100%', borderRadius: '8px', marginBottom: '10px' }} />}
             <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6, whiteSpace: 'pre-line' }}><FormattedText text={a.content} /></p>
           </div>
         </details>

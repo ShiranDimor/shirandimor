@@ -14,11 +14,11 @@ export async function POST(request: Request) {
   const { data: adminProfile } = await supabaseAdmin.from('profiles').select('role').eq('id', user.id).single();
   if (adminProfile?.role !== 'admin') return NextResponse.json({ error: 'אין הרשאת ניהול' }, { status: 403 });
 
-  const { brief } = await request.json().catch(() => ({}));
+  const { brief, imageUrl } = await request.json().catch(() => ({}));
   if (!brief || !String(brief).trim()) return NextResponse.json({ error: 'חסר תיאור של ההודעה' }, { status: 400 });
 
   try {
-    const draft = await draftAnnouncement(String(brief).trim());
+    const draft = await draftAnnouncement(String(brief).trim(), imageUrl ? String(imageUrl) : undefined);
     return NextResponse.json(draft);
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : 'שגיאה בניסוח' }, { status: 500 });
