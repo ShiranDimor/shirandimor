@@ -3,11 +3,11 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import AddToCalendar from '../AddToCalendar';
+import AddToCalendar, { type CalendarInfo } from '../AddToCalendar';
 import SlotPicker, { type Slot } from '../SlotPicker';
 import { WHATSAPP_URL } from '../content';
 
-type Info = { status: 'active' | 'past' | 'cancelled' | 'invalid' | 'error'; start?: string; when?: string; name?: string; eventLink?: string };
+type Info = { status: 'active' | 'past' | 'cancelled' | 'invalid' | 'error'; start?: string; when?: string; name?: string; calendar?: CalendarInfo | null };
 type Mode = 'view' | 'reschedule' | 'confirm-cancel';
 
 export default function ManageCall() {
@@ -69,8 +69,8 @@ export default function ManageCall() {
         setInfo({ status: 'cancelled' });
         setDone('השיחה בוטלה. הודעה על הביטול נשלחה גם ליומן.');
       } else {
-        setInfo({ status: 'active', start: j.start, when: j.when, name: info?.name, eventLink: j.eventLink || info?.eventLink });
-        setDone('המועד עודכן - גם ביומן של שירן וגם בזימון שלך.');
+        setInfo({ status: 'active', start: j.start, when: j.when, name: info?.name, calendar: j.calendar || info?.calendar });
+        setDone('המועד עודכן - ביומן של שירן וביומן שלך.');
       }
       setMode('view');
     } catch {
@@ -110,7 +110,7 @@ export default function ManageCall() {
       <div className="mt-done">
         <p className="mt-done-title">{done || (info.status === 'past' ? 'מועד השיחה כבר עבר' : 'השיחה קבועה')}</p>
         <p>{info.name ? `${info.name}, ` : ''}שיחת התאמה טלפונית ב{info.when}.</p>
-        {info.status === 'active' && <AddToCalendar eventLink={info.eventLink} />}
+        {info.status === 'active' && info.start && <AddToCalendar start={info.start} manageUrl={typeof window !== 'undefined' ? window.location.href : ''} calendar={info.calendar} />}
       </div>
 
       {info.status === 'active' && mode === 'view' && (

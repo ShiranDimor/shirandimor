@@ -164,8 +164,9 @@ export async function createFitCallEvent(opts: {
   id?: string;
   // פרטים נוספים שנשמרים באירוע (לא גלויים לפונה) - למשל שם, טלפון ומזהה הליד במאנדיי, לשימוש בביטול/שינוי
   privateProps?: Record<string, string>;
-  // מקבל את הקישור לאירוע האמיתי ביומן (htmlLink) - כדי לתת לפונה לפתוח אותו במקום ליצור עותק נפרד
-  onHtmlLink?: (link: string) => void;
+  // פרטי האירוע האמיתי (קישור, מזהה iCal, מארגן) - כדי שכפתורי "הוספה ליומן" יוסיפו את אותו אירוע
+  // ולא עותק נפרד, וכך שינוי מועד/ביטול יתעדכנו גם ביומן של מי שקבע/ה
+  onCreated?: (info: { htmlLink: string; iCalUID: string; organizer: string; sequence: number }) => void;
 }): Promise<string | null> {
   const accessToken = await getAccessToken();
   if (!accessToken) return null;
@@ -191,7 +192,7 @@ export async function createFitCallEvent(opts: {
       return null;
     }
     const data = await res.json();
-    if (data.htmlLink) opts.onHtmlLink?.(data.htmlLink);
+    opts.onCreated?.({ htmlLink: data.htmlLink || '', iCalUID: data.iCalUID || '', organizer: data.organizer?.email || '', sequence: Number(data.sequence) || 0 });
     return data.id || null;
   } catch (e) {
     console.error('שגיאה ביצירת אירוע שיחת התאמה ביומן', e);
@@ -208,6 +209,9 @@ export type FitCallEvent = {
   cancelled: boolean;
   props: Record<string, string>;
   htmlLink: string;
+  iCalUID: string;
+  organizer: string;
+  sequence: number;
 };
 
 // קורא אירוע שיחת התאמה לפי המזהה. מחזיר null אם החיבור לא מוגדר, האירוע לא קיים, או שהוא לא שיחת התאמה מהאתר
@@ -226,7 +230,7 @@ export async function getFitCallEvent(id: string): Promise<FitCallEvent | null |
     const ev = await res.json();
     const props = ev.extendedProperties?.private || {};
     if (props[FIT_CALL_TAG] !== '1' || !ev.start?.dateTime) return null;
-    return { id: ev.id, start: ev.start.dateTime, end: ev.end?.dateTime || ev.start.dateTime, cancelled: ev.status === 'cancelled', props, htmlLink: ev.htmlLink || '' };
+    return { id: ev.id, start: ev.start.dateTime, end: ev.end?.dateTime || ev.start.dateTime, cancelled: ev.status === 'cancelled', props, htmlLink: ev.htmlLink || '', iCalUID: ev.iCalUID || '', organizer: ev.organizer?.email || '', sequence: Number(ev.sequence) || 0 };
   } catch (e) {
     console.error('שגיאה בקריאת אירוע שיחת התאמה', e);
     return 'error';

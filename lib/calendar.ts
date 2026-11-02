@@ -42,3 +42,40 @@ export function buildIcsDataUri(title: string, description: string, scheduledAtI
 
   return `data:text/calendar;charset=utf-8,${encodeURIComponent(ics)}`;
 }
+
+// קובץ ics שמייצג את *אותו* אירוע כמו הזימון שגוגל שלחה (אותו UID ומארגן) - יומן אפל/אאוטלוק מזהים אותו
+// כזימון, ומיילי העדכון של גוגל (שינוי מועד/ביטול) מעדכנים אותו אוטומטית במקום להשאיר עותק תקוע
+export function buildInviteIcsDataUri(opts: {
+  uid: string;
+  sequence: number;
+  title: string;
+  description: string;
+  start: string;
+  minutes: number;
+  organizer: string;
+  attendee?: string;
+}): string {
+  const start = new Date(opts.start);
+  const end = new Date(start.getTime() + opts.minutes * 60 * 1000);
+  const escape = (s: string) => s.replace(/[\\;,]/g, (c) => `\\${c}`).replace(/\n/g, '\\n');
+  const ics = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//shirandimor.com//mentoring//HE',
+    'METHOD:REQUEST',
+    'BEGIN:VEVENT',
+    `UID:${opts.uid}`,
+    `SEQUENCE:${opts.sequence}`,
+    `DTSTAMP:${toIcsDate(new Date().toISOString())}`,
+    `DTSTART:${toIcsDate(start.toISOString())}`,
+    `DTEND:${toIcsDate(end.toISOString())}`,
+    `SUMMARY:${escape(opts.title)}`,
+    opts.description ? `DESCRIPTION:${escape(opts.description)}` : '',
+    opts.organizer ? `ORGANIZER;CN=שירן דימור:mailto:${opts.organizer}` : '',
+    opts.attendee ? `ATTENDEE;ROLE=REQ-PARTICIPANT;PARTSTAT=ACCEPTED;RSVP=FALSE:mailto:${opts.attendee}` : '',
+    'STATUS:CONFIRMED',
+    'END:VEVENT',
+    'END:VCALENDAR',
+  ].filter(Boolean).join('\r\n');
+  return `data:text/calendar;charset=utf-8;method=REQUEST,${encodeURIComponent(ics)}`;
+}
