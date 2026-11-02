@@ -2,6 +2,11 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/instantLogin';
 import { hasActiveEntitlement } from '@/lib/entitlement';
 
+// דגלים מפורשים נגד קיפאון על תמונת מצב ישנה - ר' הערה מקבילה ב-app/api/announcements/route.ts
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+export const fetchCache = 'force-no-store';
+
 // GET - רשימת הלייבים הקרובים המפורסמים, לתצוגה ציבורית. לא כולל join_info - זה נחשף רק
 // אחרי הרשמה בפועל (במסך ההרשמה, או במייל/הודעה שנשלחת לליד).
 // אם המשתמש מחובר, גם מסמן אילו לייבים הוא כבר רשום אליהם ומחזיר את viewerIsSubscriber

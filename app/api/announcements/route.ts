@@ -3,9 +3,13 @@ import { supabaseAdmin } from '@/lib/instantLogin';
 
 // ה-route הזה היה הפוך-GET-בלי-request היחיד באתר (ראה business-call/slots) בלי dynamic
 // מפורש - Next App Router מזהה route כזה (בלי headers/cookies/searchParams) כסטטי לגמרי
-// ומקפיא אותו ב-build/deploy. זה בדיוק מה שגרם לכך שהודעה חדשה הופיעה בפעמון (push, לא
-// עובר דרך ה-route הזה) אבל לא בלוח /announcements עד הדיפלוי הבא
+// ומקפיא אותו ב-build/deploי. בפועל dynamic='force-dynamic' לבדו לא הספיק - גם אחרי כמה
+// דיפלויים נוספים ו-Cache-Control מפורש על התגובה, התוכן נשאר קפוא על תמונת מצב ישנה (כל מה
+// שפורסם עד יום מסוים, כלום אחריו) - אז מוסיפים כאן את כל הדגלים המפורשים שיש ל-Next בשביל
+// זה, לא רק את dynamic
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+export const fetchCache = 'force-no-store';
 
 // GET - כל ההודעות המפורסמות בלוח המודעות, מהחדש לישן - ציבורי לגמרי (גם בלי להתחבר),
 // כדי שגם מי שהגיע מהתראת פוש בלי חשבון יוכל לראות את התוכן
