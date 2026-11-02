@@ -67,6 +67,13 @@ export async function findCompletedTradingPlanIdByContact(phone: string | null |
 // שאפשר יהיה בעתיד לזהות מי כבר ניצל את המחיר הסמלי ולא להציע לו אותו שוב ב-/subscribe
 export async function ensureActiveSubscriberAccount(email: string, phone: string, fullName: string, startedAt?: string, isFirstMonthPrice = false) {
   const subscriptionStartedAt = startedAt || new Date().toISOString();
+  const normalizedPhoneForPlaceholder = normalizePhone(phone);
+  // Grow לא תמיד מעביר מייל בתשלום (למשל אם טופס הסליקה אסף רק טלפון) - בלי מייל אין אפשרות
+  // ליצור חשבון התחברות אמיתי (Supabase Auth מחייב מייל), אבל אסור שהמנוי ישלם ויישאר בלי גישה
+  // בגלל זה: יוצרים placeholder ייחודי לפי הטלפון כדי שהחשבון יהיה פעיל ומלא מהרגע הראשון.
+  // כשהוא בעצמו ינסה להתחבר עם המייל האמיתי שלו, ההתאמה לפי טלפון כאן תחליף את הplaceholder
+  // במייל האמיתי אוטומטית (ראה הסנכרון בהמשך הפונקציה)
+  const effectiveEmail = email || `${normalizedPhoneForPlaceholder}@no-email.shirandimor.com`;
 
   // טלפון קודם, מייל רק כגיבוי: לכל אדם יש נייד אחד ויחיד, אבל אותו אדם יכול להופיע עם כמה
   // מיילים שונים (למשל שילם פעם עם מייל אחר) - התאמה לפי מייל קודם הייתה מפספסת את זה ויוצרת
@@ -77,7 +84,7 @@ export async function ensureActiveSubscriberAccount(email: string, phone: string
     const { data: withPhone } = await supabaseAdmin.from('profiles').select('id, role, subscription_status, phone, email').not('phone', 'is', null);
     matched = (withPhone || []).find((p) => normalizePhone(p.phone) === normalizedNewPhone) || null;
   }
-  if (!matched) {
+  if (!matched && email) {
     const { data: existing } = await supabaseAdmin.from('profiles').select('id, role, subscription_status, email').eq('email', email).maybeSingle();
     matched = existing;
   }
@@ -113,7 +120,7 @@ export async function ensureActiveSubscriberAccount(email: string, phone: string
   // role/subscription_status מועברים כבר כאן ב-metadata, כדי שהטריגר שיוצר את הפרופיל (handle_new_user)
   // ייצור אותו ישר כמנוי פעיל - בלי לעבור דרך "ליד" רגעי שמפעיל בטעות את מייל "בקשת הצטרפות לאישור"
   const { data: created, error } = await supabaseAdmin.auth.admin.createUser({
-    email,
+    email: effectiveEmail,
     email_confirm: true,
     user_metadata: { phone, full_name: fullName, role: 'subscriber', subscription_status: 'active' },
   });
@@ -124,7 +131,7 @@ export async function ensureActiveSubscriberAccount(email: string, phone: string
     // חשבון התחברות כבר קיים באימייל הזה בלי פרופיל (למשל מחיקת מנוי שנעצרה באמצע) - נשלים את הפרופיל
     // החסר על אותו חשבון קיים במקום להיכשל
     if (error?.code === 'email_exists' || /already.*registered/i.test(error?.message || '')) {
-      const { data: existingUserId } = await supabaseAdmin.rpc('find_auth_user_id_by_email', { p_email: email });
+      const { data: existingUserId } = await supabaseAdmin.rpc('find_auth_user_id_by_email', { p_email: effectiveEmail });
       if (!existingUserId) throw new Error(error?.message || 'שגיאה ביצירת חשבון');
       userId = existingUserId;
     } else {
@@ -135,7 +142,7 @@ export async function ensureActiveSubscriberAccount(email: string, phone: string
   await supabaseAdmin
     .from('profiles')
     .upsert({
-      id: userId, email, full_name: fullName, role: 'subscriber', subscription_status: 'active',
+      id: userId, email: effectiveEmail, full_name: fullName, role: 'subscriber', subscription_status: 'active',
       subscription_started_at: subscriptionStartedAt, phone, trial_price_used: isFirstMonthPrice,
     });
 }

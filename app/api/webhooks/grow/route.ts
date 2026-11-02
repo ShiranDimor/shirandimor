@@ -60,21 +60,23 @@ export async function POST(request: Request) {
     console.error('Grow webhook: סנכרון מאנדיי נכשל', mondayResult.reason);
   }
 
-  let siteAccount: 'ok' | 'skipped_no_email' | 'error' = 'skipped_no_email';
-  if (payment.email) {
-    try {
-      await ensureActiveSubscriberAccount(
-        payment.email, payment.phone || '', payment.fullName || payment.email,
-        undefined, payment.amount === FIRST_MONTH_PRICE
-      );
+  // תמיד מפעילים את החשבון, גם אם Grow לא העביר מייל בתשלום הזה (קרה בפועל - תשלום שהתקבל
+  // והופיע במאנדיי, בלי שום חשבון נוצר באתר כי כל הבלוק הזה פשוט לא רץ). ensureActiveSubscriberAccount
+  // מתמודד עם מייל חסר בעצמו (מתאים לפי טלפון, ואם צריך ליצור חשבון חדש - עם placeholder זמני)
+  let siteAccount: 'ok' | 'error' = 'ok';
+  try {
+    await ensureActiveSubscriberAccount(
+      payment.email || '', payment.phone || '', payment.fullName || payment.email || payment.phone || '',
+      undefined, payment.amount === FIRST_MONTH_PRICE
+    );
+    if (payment.email) {
       await sendLoginEmail(payment.email);
-      siteAccount = 'ok';
-    } catch (e) {
-      console.error('Grow webhook: נכשל אישור המנוי באתר', e);
-      siteAccount = 'error';
+    } else {
+      console.error('Grow webhook: אין מייל בבקשה - החשבון הופעל לפי טלפון בלבד, לא נשלח מייל כניסה', body);
     }
-  } else {
-    console.error('Grow webhook: אין מייל בבקשה - לא ניתן ליצור/לאשר חשבון באתר', body);
+  } catch (e) {
+    console.error('Grow webhook: נכשל אישור המנוי באתר', e);
+    siteAccount = 'error';
   }
 
   return NextResponse.json({ ok: true, monday: mondayResult.ok, siteAccount });
