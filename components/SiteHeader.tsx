@@ -9,7 +9,7 @@ import { supabase, getResilientUser } from '@/lib/supabase';
 const QUICK_LINKS = [
   { href: '/trading-plan', label: 'תוכנית מסחר' },
   { href: '/lives', label: 'מפגשים קרובים' },
-  { href: '/portfolio', label: 'תיק מסחר' },
+  { href: '/portfolio', label: 'תיק מסחר של שירן' },
   { href: '/lessons', label: 'ספריית שיעורים' },
   { href: '/mentoring', label: 'ליווי אישי' },
   { href: '/business', label: 'לארגונים' },
