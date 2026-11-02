@@ -19,7 +19,11 @@ export default function AddToCalendar({ start, manageUrl, calendar }: { start: s
     .filter(Boolean)
     .join('\n');
 
-  const googleHref = calendar?.eventLink || buildGoogleCalendarUrl(TITLE, description, start, MINUTES);
+  // פותחים את האירוע בחשבון הגוגל של מי שקבע/ה (authuser) - אחרת הדפדפן פותח בחשבון שמחובר כרגע,
+  // ושם האירוע "לא נמצא"
+  const googleHref = calendar?.eventLink
+    ? `${calendar.eventLink}${calendar.eventLink.includes('?') ? '&' : '?'}${calendar.attendee ? `authuser=${encodeURIComponent(calendar.attendee)}` : ''}`
+    : buildGoogleCalendarUrl(TITLE, description, start, MINUTES);
   const icsHref = calendar?.uid
     ? buildInviteIcsDataUri({ uid: calendar.uid, sequence: calendar.sequence, title: TITLE, description, start, minutes: MINUTES, organizer: calendar.organizer, attendee: calendar.attendee })
     : buildIcsDataUri(TITLE, description, start, MINUTES);
