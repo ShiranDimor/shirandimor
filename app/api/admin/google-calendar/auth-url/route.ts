@@ -18,7 +18,17 @@ export async function GET(request: Request) {
   if (!(await requireAdmin(request))) return NextResponse.json({ error: 'אין הרשאת ניהול' }, { status: 403 });
   const clientId = (process.env.GOOGLE_CALENDAR_CLIENT_ID || '').trim().replace(/^["']+|["']+$/g, '').trim();
   const status = await diagnoseCalendarConnection();
-  if (!clientId) return NextResponse.json({ status, url: null, redirectUri: redirectUri(request.url) });
+  // "טביעת אצבע" של הערכים שהאתר רואה - בלי לחשוף אותם - כדי להשוות מול קובץ ה-JSON מגוגל
+  const clean = (k: string) => (process.env[k] || '').trim().replace(/^["']+|["']+$/g, '').trim();
+  const sec = clean('GOOGLE_CALENDAR_CLIENT_SECRET');
+  const cid = clean('GOOGLE_CALENDAR_CLIENT_ID');
+  const fingerprint = {
+    clientIdStart: cid.slice(0, 12),
+    secretStartsRight: sec.startsWith('GOCSPX-'),
+    secretLength: sec.length,
+    secretEnd: sec.slice(-4),
+  };
+  if (!clientId) return NextResponse.json({ status, fingerprint, url: null, redirectUri: redirectUri(request.url) });
   const params = new URLSearchParams({
     client_id: clientId,
     redirect_uri: redirectUri(request.url),
@@ -30,5 +40,5 @@ export async function GET(request: Request) {
     login_hint: process.env.GOOGLE_CALENDAR_ACCOUNT_EMAIL || 'shiran@shirandimor.com',
     state: makeState(),
   });
-  return NextResponse.json({ status, url: `https://accounts.google.com/o/oauth2/v2/auth?${params}`, redirectUri: redirectUri(request.url) });
+  return NextResponse.json({ status, fingerprint, url: `https://accounts.google.com/o/oauth2/v2/auth?${params}`, redirectUri: redirectUri(request.url) });
 }

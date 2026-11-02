@@ -16,7 +16,7 @@ const STEP_TEXT: Record<string, string> = {
 export default function GoogleCalendarAdminPage() {
   const [checking, setChecking] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [data, setData] = useState<{ status: Status; url: string | null; redirectUri: string } | null>(null);
+  const [data, setData] = useState<{ status: Status; url: string | null; redirectUri: string; fingerprint?: { clientIdStart: string; secretStartsRight: boolean; secretLength: number; secretEnd: string } } | null>(null);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -55,6 +55,15 @@ export default function GoogleCalendarAdminPage() {
               <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 4 }}>{STEP_TEXT[data.status.step] || 'החיבור נכשל'}</p>
               <p style={{ fontSize: 12, color: 'var(--text-tertiary)', direction: 'ltr', textAlign: 'right' }}>{data.status.step}: {data.status.detail}</p>
             </>
+          )}
+
+          {data.fingerprint && (
+            <div style={{ marginTop: 14, padding: 12, borderRadius: 10, background: 'var(--bg-void)', fontSize: 12.5, color: 'var(--text-secondary)', lineHeight: 1.8 }}>
+              <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>מה שמור כרגע ב-Vercel (להשוואה מול קובץ ה-JSON):</div>
+              <div>Client ID מתחיל ב: <span dir="ltr">{data.fingerprint.clientIdStart || '(ריק)'}</span></div>
+              <div>Client secret מתחיל ב-GOCSPX-: {data.fingerprint.secretStartsRight ? '✓ כן' : '✕ לא'}</div>
+              <div>Client secret - אורך {data.fingerprint.secretLength} תווים, 4 התווים האחרונים: <span dir="ltr">{data.fingerprint.secretEnd || '(ריק)'}</span></div>
+            </div>
           )}
 
           {data.url && (
