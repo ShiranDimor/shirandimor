@@ -278,6 +278,7 @@ export default function AdminSubscribersPage() {
       .from('profiles')
       .select('id, email, phone, full_name, subscription_status, subscription_started_at, subscription_paid_until')
       .eq('role', 'subscriber')
+      .neq('subscription_status', 'cancelled') // מי שכבר בוטל סופית (role נשאר subscriber בכוונה, ר' lib/entitlement.ts) לא שייך לרשימת המנויים הפעילים
       .order('subscription_started_at', { ascending: false });
     if (data) setApprovedSubs(data);
   }
@@ -521,6 +522,7 @@ export default function AdminSubscribersPage() {
             <div>
               <div className="name">{sub.full_name || 'ללא שם'}</div>
               <div className="email">{sub.email}</div>
+              {sub.phone && <div className="email" style={{ marginTop: '2px' }}>{sub.phone}</div>}
               <div className="email" style={{ marginTop: '2px' }}>
                 תאריך הצטרפות: {sub.subscription_started_at ? new Date(sub.subscription_started_at).toLocaleDateString('he-IL') : '—'}
               </div>
