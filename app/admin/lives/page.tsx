@@ -192,6 +192,10 @@ export default function AdminLivesPage() {
     if (res.ok) {
       const data = await res.json();
       setLives((prev) => prev.map((l) => (l.id === id ? data.live : l)));
+    } else {
+      // בלי זה כישלון (למשל אסימון כניסה שפג) היה שקט לגמרי - נראה בדיוק כמו הצלחה
+      const data = await res.json().catch(() => ({}));
+      window.alert(`השליחה נכשלה: ${data.error || 'שגיאה לא ידועה'}`);
     }
   }
 

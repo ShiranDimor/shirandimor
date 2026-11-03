@@ -176,6 +176,10 @@ export default function AdminAnnouncementsPage() {
     if (res.ok) {
       const data = await res.json();
       setAnnouncements((prev) => prev.map((a) => (a.id === id ? data.announcement : a)));
+    } else {
+      // בלי זה כישלון (למשל אסימון כניסה שפג) היה שקט לגמרי - נראה בדיוק כמו הצלחה
+      const data = await res.json().catch(() => ({}));
+      window.alert(`השליחה נכשלה: ${data.error || 'שגיאה לא ידועה'}`);
     }
   }
 
