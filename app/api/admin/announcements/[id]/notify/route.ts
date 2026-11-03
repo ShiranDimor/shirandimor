@@ -24,10 +24,13 @@ export async function POST(request: Request, { params }: { params: { id: string 
   const { data: announcement, error } = await supabaseAdmin.from('announcements').select('*').eq('id', params.id).maybeSingle();
   if (error || !announcement) return NextResponse.json({ error: 'ההודעה לא נמצאה' }, { status: 404 });
 
+  // טיוטה (published=false, למשל סיכום שוק יומי שממתין לאישור) לא מופיעה בלוח הציבורי בכלל -
+  // קישור לשם היה מראה "ריק" ונראה בטעות כמו הבאג הישן של לוח מודעות קפוא. לטיוטה מפנים
+  // לעמוד הניהול, שם היא כן מוצגת (פתוחה, למעלה) עם כפתור "אישור ופרסום"
   const payload = {
     title: `📌 ${announcement.title}`,
     body: announcement.content.length > 120 ? `${announcement.content.slice(0, 117)}...` : announcement.content,
-    url: `/announcements#ann-${params.id}`,
+    url: announcement.published ? `/announcements#ann-${params.id}` : '/admin/announcements',
   };
 
   // בדיקה לעצמי - שולח רק אלי, בלי לגעת ב-notification_sent_at ובלי לרשום ביומן ההתראות
