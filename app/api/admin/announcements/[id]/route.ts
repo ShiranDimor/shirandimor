@@ -14,6 +14,21 @@ async function requireAdmin(request: Request) {
   return user;
 }
 
+// PATCH - אישור ופרסום טיוטה (כרגע רק סיכום השוק היומי האוטומטי נוצר כטיוטה, published=false -
+// ממתין שתבדקי ותאשרי לפני שהוא מופיע בלוח הציבורי)
+export async function PATCH(request: Request, { params }: { params: { id: string } }) {
+  const admin = await requireAdmin(request);
+  if (!admin) return NextResponse.json({ error: 'אין הרשאת ניהול' }, { status: 403 });
+
+  const { published } = await request.json().catch(() => ({}));
+  if (typeof published !== 'boolean') return NextResponse.json({ error: 'חסר published' }, { status: 400 });
+
+  const { data, error } = await supabaseAdmin.from('announcements').update({ published }).eq('id', params.id).select('*').single();
+  if (error) return NextResponse.json({ error: 'שגיאה בעדכון' }, { status: 500 });
+
+  return NextResponse.json({ announcement: data });
+}
+
 // DELETE - מחיקת הודעה מלוח המודעות, וגם רשומת ההתראה שנשלחה עליה (אם נשלחה) - כדי שלא תישאר
 // "רפאים" בפעמון ההתראות אחרי שהתוכן המקורי כבר לא קיים
 export async function DELETE(request: Request, { params }: { params: { id: string } }) {

@@ -40,6 +40,7 @@ export default function AdminAnnouncementsPage() {
   const [deletingId, setDeletingId] = useState('');
   const [notifyingId, setNotifyingId] = useState('');
   const [testNotifyingId, setTestNotifyingId] = useState('');
+  const [publishingId, setPublishingId] = useState('');
 
   useEffect(() => {
     checkAdmin();
@@ -145,6 +146,18 @@ export default function AdminAnnouncementsPage() {
     setImageUrl('');
     setBrief('');
     loadAnnouncements();
+  }
+
+  // אישור ופרסום טיוטה (כרגע רק סיכום השוק היומי האוטומטי נוצר כטיוטה) - הופך את ההודעה
+  // ל-published כדי שתופיע בלוח הציבורי. לא שולח התראת פוש - זו עדיין פעולה נפרדת ומכוונת
+  async function handlePublishDraft(id: string) {
+    setPublishingId(id);
+    const res = await fetch(`/api/admin/announcements/${id}`, { method: 'PATCH', headers: await authHeader(), body: JSON.stringify({ published: true }) });
+    setPublishingId('');
+    if (res.ok) {
+      const data = await res.json();
+      setAnnouncements((prev) => prev.map((a) => (a.id === id ? data.announcement : a)));
+    }
   }
 
   async function handleDelete(id: string) {
@@ -277,24 +290,32 @@ export default function AdminAnnouncementsPage() {
       {!loading && announcements.length === 0 && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>אין עדיין הודעות</p>}
 
       {announcements.map((a) => (
-        <details key={a.id} className="section-collapse">
+        <details key={a.id} className="section-collapse" open={!a.published}>
           <summary>
             <div>
               <div style={{ fontSize: '13.5px', fontWeight: 700 }}>{a.title}</div>
               <div style={{ fontSize: '11.5px', color: 'var(--text-tertiary)', marginTop: '2px' }}>
                 {formatDateTime(a.created_at)}
+                {!a.published && <span style={{ color: 'var(--lavender)' }}> · 📝 טיוטה - ממתינה לאישור</span>}
                 {a.notification_sent_at && <span style={{ color: 'var(--profit)' }}> · ✓ התראה נשלחה</span>}
               </div>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
               {/* עצירת ה-click שלא יגלוש ל-summary ויפתח/יסגור בטעות כשלוחצים על כפתור פעולה */}
               <span style={{ display: 'flex', gap: '6px' }} onClick={(e) => e.stopPropagation()}>
+                {!a.published && (
+                  <button onClick={() => handlePublishDraft(a.id)} disabled={publishingId === a.id} className="btn-primary" style={{ padding: '6px 12px', fontSize: '12.5px' }}>
+                    {publishingId === a.id ? '…' : '✅ אישור ופרסום'}
+                  </button>
+                )}
                 <button onClick={() => handleTestNotify(a.id)} disabled={testNotifyingId === a.id} className="btn-outline" style={{ padding: '6px 12px', fontSize: '12.5px' }} title="שליחת בדיקה רק אלי, לפני שליחה לכולם">
                   {testNotifyingId === a.id ? '…' : '🔔 בדיקה לעצמי'}
                 </button>
-                <button onClick={() => handleNotify(a.id)} disabled={notifyingId === a.id} className="btn-outline" style={{ padding: '6px 12px', fontSize: '12.5px' }}>
-                  {notifyingId === a.id ? '…' : a.notification_sent_at ? '📣 שליחה שוב' : '📣 שליחת התראה'}
-                </button>
+                {a.published && (
+                  <button onClick={() => handleNotify(a.id)} disabled={notifyingId === a.id} className="btn-outline" style={{ padding: '6px 12px', fontSize: '12.5px' }}>
+                    {notifyingId === a.id ? '…' : a.notification_sent_at ? '📣 שליחה שוב' : '📣 שליחת התראה'}
+                  </button>
+                )}
                 <button onClick={() => handleDelete(a.id)} disabled={deletingId === a.id} className="btn-outline" style={{ padding: '6px 12px', fontSize: '12.5px' }}>
                   {deletingId === a.id ? '…' : 'מחיקה'}
                 </button>
