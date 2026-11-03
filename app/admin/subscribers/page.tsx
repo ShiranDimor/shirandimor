@@ -31,6 +31,7 @@ export default function AdminSubscribersPage() {
   const [userEmail, setUserEmail] = useState('');
 
   const [approvedSubs, setApprovedSubs] = useState<ApprovedSub[]>([]);
+  const [pushEnabledIds, setPushEnabledIds] = useState<Set<string>>(new Set());
   const [sortBy, setSortBy] = useState<'date' | 'name'>('date');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
 
@@ -275,6 +276,9 @@ export default function AdminSubscribersPage() {
       .eq('role', 'subscriber')
       .order('subscription_started_at', { ascending: false });
     if (data) setApprovedSubs(data);
+
+    const { data: pushRows } = await supabase.from('push_subscriptions').select('user_id').not('user_id', 'is', null);
+    setPushEnabledIds(new Set((pushRows || []).map((r) => r.user_id as string)));
   }
 
   async function checkAdmin() {
@@ -479,6 +483,7 @@ export default function AdminSubscribersPage() {
               <div className="email">{sub.email}</div>
               <div className="email" style={{ marginTop: '2px' }}>
                 תאריך הצטרפות: {sub.subscription_started_at ? new Date(sub.subscription_started_at).toLocaleDateString('he-IL') : '—'}
+                {pushEnabledIds.has(sub.id) && <span style={{ color: 'var(--profit)' }}> · 🔔 הפעיל/ה התראות</span>}
               </div>
             </div>
             <div style={{ textAlign: 'left', flexShrink: 0 }}>

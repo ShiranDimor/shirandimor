@@ -55,6 +55,7 @@ export default function AdminViewSubscriberJournal() {
   const [userEmail, setUserEmail] = useState('');
 
   const [subscriber, setSubscriber] = useState<Profile | null>(null);
+  const [pushEnabled, setPushEnabled] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState('');
   const [savingName, setSavingName] = useState(false);
@@ -153,13 +154,15 @@ export default function AdminViewSubscriberJournal() {
   }
 
   async function loadData() {
-    const [{ data: sub }, { data: journalEntries }] = await Promise.all([
+    const [{ data: sub }, { data: journalEntries }, { count: pushCount }] = await Promise.all([
       supabase.from('profiles').select('full_name, email, phone').eq('id', subscriberId).single(),
       supabase.from('journal_entries').select('*').eq('user_id', subscriberId).order('opened_at', { ascending: false }),
+      supabase.from('push_subscriptions').select('id', { count: 'exact', head: true }).eq('user_id', subscriberId),
     ]);
 
     if (sub) setSubscriber(sub);
     if (journalEntries) setEntries(journalEntries);
+    setPushEnabled((pushCount || 0) > 0);
     setLoadingData(false);
 
     const { data: { session } } = await supabase.auth.getSession();
@@ -652,7 +655,10 @@ export default function AdminViewSubscriberJournal() {
           </>
         )}
       </div>
-      <p style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginBottom: '10px', fontFamily: 'var(--font-mono)' }}>{subscriber?.email}</p>
+      <p style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginBottom: '2px', fontFamily: 'var(--font-mono)' }}>{subscriber?.email}</p>
+      <p style={{ fontSize: '12px', marginBottom: '10px', color: pushEnabled ? 'var(--profit)' : 'var(--text-tertiary)' }}>
+        {pushEnabled ? '🔔 הפעיל/ה התראות באתר' : '🔕 לא הפעיל/ה התראות באתר'}
+      </p>
 
       {tradingPlanId === null && (
         <p style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginBottom: '20px' }}>עדיין אין תוכנית מסחר</p>
