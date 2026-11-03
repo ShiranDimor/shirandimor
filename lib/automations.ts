@@ -9,6 +9,32 @@ function israelTimeLabel(d: Date): string {
   return d.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem' });
 }
 
+// "תאריך מוזז" לשעון ישראל - כדי ש-getDay()/getHours() יחזירו את היום/השעה הנכונים בישראל, לא
+// בשרת (ר' גם lib/automationDraft.ts)
+function israelNow(): Date {
+  return new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Jerusalem' }));
+}
+
+// פתיחה לפי שעת היום בישראל - תמיד עם "חברים", לפי בקשת שירן
+function greeting(): string {
+  const hour = israelNow().getHours();
+  if (hour < 12) return 'בוקר טוב חברים 😊';
+  if (hour < 17) return 'צהריים טובים חברים 😊';
+  if (hour < 21) return 'ערב טוב חברים 😊';
+  return 'לילה טוב חברים 😊';
+}
+
+// סיום לפי יום/שעה בישראל - שישי: ברכת סופ"ש, ראשון: ברכת שבוע ירוק, אחרת: יום/לילה שקט
+function closing(): string {
+  const now = israelNow();
+  const day = now.getDay();
+  if (day === 5) return 'סופ"ש שקט ועם האייקון הזה 🙏🏾';
+  if (day === 0) return 'שבוע ירוק ושקט לכולנו 🙏🏾';
+  return now.getHours() < 18 ? 'יום שקט לכולנו 🙏🏾' : 'לילה שקט לכולנו 🙏🏾';
+}
+
+const GREETING_CLOSING_PLACEHOLDERS = { greeting: 'פתיחה לפי שעת היום (ממולא אוטומטית)', closing: 'סיום לפי יום/שעה (ממולא אוטומטית)' };
+
 // כל אוטומציה (חוץ מסיכום השוק היומי שנכתב ע"י AI) מוגדרת כתבנית: כותרת+תוכן ברירת מחדל עם
 // משתנים בסוגריים מסולסלים ({live_title} וכו'), שממולאים בזמן ריצה מהנתונים האמיתיים. בעמוד
 // /admin/automations אפשר לערוך את התבנית (נשמר ב-automation_rules.title_template /
@@ -105,20 +131,22 @@ const NO_VARS = async (): Promise<VarsResult> => ({ vars: {} });
 export const AUTOMATION_TEMPLATES: Record<string, AutomationTemplate> = {
   'new-lesson-announcement': {
     title: '{headline} בספרייה: {lessons_plain}',
-    content: `היי 😊
+    content: `{greeting}
 
 עלה {headline} לספריית השיעורים שלנו: {lessons}.
 
 כנסו לצפות כשנוח לכם, הקצב שלכם:
-https://www.shirandimor.com/lessons`,
-    placeholders: { headline: '"שיעור חדש" או "3 שיעורים חדשים"', lessons: 'שמות השיעורים (מודגשים)', lessons_plain: 'שמות השיעורים (טקסט רגיל)' },
+https://www.shirandimor.com/lessons
+
+{closing}`,
+    placeholders: { headline: '"שיעור חדש" או "3 שיעורים חדשים"', lessons: 'שמות השיעורים (מודגשים)', lessons_plain: 'שמות השיעורים (טקסט רגיל)', ...GREETING_CLOSING_PLACEHOLDERS },
     sample: { headline: 'שיעור חדש', lessons: '*איך לקבוע סטופ לוס*', lessons_plain: 'איך לקבוע סטופ לוס' },
     getVars: newLessonVars,
   },
 
   'weekly-lessons-reminder': {
     title: 'תזכורת: יש לכם ספריית שיעורים שלמה באתר',
-    content: `היי 😊
+    content: `{greeting}
 
 תזכורת קצרה - יש לכם ספריית שיעורים מלאה באתר, שווה להיכנס אליה:
 
@@ -128,23 +156,27 @@ https://www.shirandimor.com/lessons`,
 *אסטרטגיות שונות*
 
 ועוד הרבה. כנסו בזמן שנוח לכם:
-https://www.shirandimor.com/lessons`,
-    placeholders: {},
+https://www.shirandimor.com/lessons
+
+{closing}`,
+    placeholders: GREETING_CLOSING_PLACEHOLDERS,
     sample: {},
     getVars: NO_VARS,
   },
 
   'weekly-lives-reminder': {
     title: 'הלייבים שלנו השבוע',
-    content: `בוקר טוב 😊
+    content: `{greeting}
 
 אלו הלייבים שמחכים לנו השבוע:
 
 {lives_list}
 
-כדאי להכניס ליומן מראש כדי שלא תפספסו:
-https://www.shirandimor.com/lives`,
-    placeholders: { lives_list: 'רשימת הלייבים של השבוע (שורה לכל לייב)' },
+כדאי להכניס ליומן מראש כדי שלא תפספסו - כשתוסיפו את הזימון ליומן, תקבלו בתוכו גם את הלינק לכניסה ללייב עצמו:
+https://www.shirandimor.com/lives
+
+{closing}`,
+    placeholders: { lives_list: 'רשימת הלייבים של השבוע (שורה לכל לייב)', ...GREETING_CLOSING_PLACEHOLDERS },
     sample: { lives_list: '*יום שני, 9.11, 16:30* - ניתוח שוק שבועי\n*יום רביעי, 11.11, 20:00* - שאלות ותשובות' },
     getVars: weeklyLivesVars,
   },
@@ -152,9 +184,11 @@ https://www.shirandimor.com/lives`,
   // שחזור מדויק של ההודעה האמיתית ששירן כבר שלחה
   'trades-explanation': {
     title: 'עסקאות פתוחות בתיק המסחר שלי - עדיין רלוונטיות?',
-    content: `היי חברים 👋
+    content: `{greeting}
 
 רציתי להזכיר: עסקאות פתוחות בתיק המסחר שלי יכולות להיות *עדיין רלוונטיות*, כל עוד הן לא הגיעו לסטופ לוס ולא עברו את המחיר המקסימלי.
+
+חשוב לדעת שהמחיר המקסימלי מתעדכן בכל עסקה פתוחה - בתיק המסחר שלי יש עמודה שמראה עד איזה מחיר עדיין אפשר להיכנס לעסקה.
 
 אז כנסו לתיק המסחר שלי, תבדקו מה מתאים לכם, ותחליטו בעצמכם על מה אתם רוצים לעבוד. 📂
 
@@ -166,23 +200,27 @@ https://www.shirandimor.com/lives`,
 
 קודם הסיכון, ורק אחריו הכניסה.
 
-שירן`,
-    placeholders: {},
+שירן
+
+{closing}`,
+    placeholders: GREETING_CLOSING_PLACEHOLDERS,
     sample: {},
     getVars: NO_VARS,
   },
 
   'live-tomorrow-reminder': {
     title: 'מחר יש לייב - {live_title}',
-    content: `היי 😊
+    content: `{greeting}
 
 תזכורת - *מחר*, {date}, ב-*{time}* יש לנו לייב: {live_title}.
 
-כבר עכשיו תיכנסו לעמוד הלייבים ותוסיפו את המפגש ליומן, כדי שלא תפספסו:
+כבר עכשיו תיכנסו לעמוד הלייבים ותוסיפו את המפגש ליומן, כדי שלא תפספסו - כשתוסיפו את הזימון ליומן, תקבלו בתוכו גם את הלינק לכניסה ללייב עצמו:
 https://www.shirandimor.com/lives
 
-נתראה מחר 🤩`,
-    placeholders: LIVE_PLACEHOLDERS,
+נתראה מחר 🤩
+
+{closing}`,
+    placeholders: { ...LIVE_PLACEHOLDERS, ...GREETING_CLOSING_PLACEHOLDERS },
     sample: LIVE_SAMPLE,
     getVars: async () => {
       const live = await getLiveOnDate(new Date(Date.now() + 24 * 60 * 60 * 1000));
@@ -192,15 +230,17 @@ https://www.shirandimor.com/lives
 
   'live-today-reminder': {
     title: 'היום יש לייב - {live_title}',
-    content: `היי 😊
+    content: `{greeting}
 
 תזכורת - *היום ב-{time}* יש לנו לייב: {live_title}.
 
 הכניסה דרך האתר:
 https://www.shirandimor.com/lives
 
-נתראה בלייב 🤩`,
-    placeholders: LIVE_PLACEHOLDERS,
+נתראה בלייב 🤩
+
+{closing}`,
+    placeholders: { ...LIVE_PLACEHOLDERS, ...GREETING_CLOSING_PLACEHOLDERS },
     sample: LIVE_SAMPLE,
     getVars: async () => {
       const live = await getLiveOnDate(new Date());
@@ -211,15 +251,15 @@ https://www.shirandimor.com/lives
   // רץ ב-16:00 שעון ישראל - בודק אם יש לייב שמתחיל בשעה הקרובה (מגבלת cron יומי ב-Vercel)
   'live-starting-soon-reminder': {
     title: 'עוד מעט מתחיל הלייב - {live_title}',
-    content: `היי 😊
+    content: `{greeting}
 
 עוד מעט, *ב-{time}*, מתחיל הלייב: {live_title}.
 
 הכניסה דרך האתר:
 https://www.shirandimor.com/lives
 
-מתראים עוד רגע 🤩`,
-    placeholders: LIVE_PLACEHOLDERS,
+מתחילים בזמן ⏰`,
+    placeholders: { ...LIVE_PLACEHOLDERS, greeting: GREETING_CLOSING_PLACEHOLDERS.greeting },
     sample: LIVE_SAMPLE,
     getVars: async () => {
       const live = await getLiveOnDate(new Date());
@@ -232,15 +272,17 @@ https://www.shirandimor.com/lives
 
   'weekly-trading-plan-reminder': {
     title: 'כבר בניתם לעצמכם תוכנית מסחר?',
-    content: `היי 😊
+    content: `{greeting}
 
 תזכורת לסוף השבוע - יש באתר כלי לבניית תוכנית מסחר אישית: לאיזה טווח אתם פונים, איפה הכניסה, איפה העסקה מפסיקה להיות רלוונטית, וכמה מוכנים לסכן.
 
-תוכנית ברורה היא מה שמבדיל בין מסחר מתוכנן למסחר אימפולסיבי. אם עוד לא בניתם לעצמכם אחת, או שרוצים לרענן - זה הזמן:
+תוכנית ברורה היא מה שמבדיל בין מסחר מתוכנן למסחר אימפולסיבי - והיא עוזרת לא רק *מקצועית* (כניסה ויציאה מוגדרות מראש, בלי החלטות ברגע), אלא בעיקר *מנטלית*: כשיש לכם תוכנית, אתם לא נסחפים אחרי הרגש של הרגע, לא נכנסים מתוך פחד לפספס ולא נשארים בעסקה מתוך תקווה. התוכנית היא מה שנותן לכם רוגע ושליטה גם כשהשוק זז מהר.
+
+אם עוד לא בניתם לעצמכם אחת, או שרוצים לרענן - זה הזמן:
 https://www.shirandimor.com/trading-plan
 
-שבת שלום 🤍`,
-    placeholders: {},
+{closing}`,
+    placeholders: GREETING_CLOSING_PLACEHOLDERS,
     sample: {},
     getVars: NO_VARS,
   },
@@ -268,7 +310,9 @@ export async function buildAutomationMessage(key: string, useSampleIfMissing: bo
   const result = await def.getVars();
   if ('reason' in result && !useSampleIfMissing) return { error: result.reason };
 
-  const vars = 'vars' in result ? result.vars : def.sample;
+  // greeting/closing ממולאים תמיד אוטומטית, גם בתבנית ערוכה - כדי שתמיד יתאימו לשעה/ליום
+  // האמיתיים, בלי תלות בכל תבנית בנפרד
+  const vars = { greeting: greeting(), closing: closing(), ...('vars' in result ? result.vars : def.sample) };
   return {
     title: renderTemplate(tpl.title, vars),
     content: renderTemplate(tpl.content, vars),
