@@ -246,9 +246,9 @@ export default function AdminAutomationsPage() {
                     {d.preview?.usedSample ? 'תצוגה מקדימה (עם נתוני דוגמה - כרגע אין נתונים אמיתיים להודעה הזו):' : 'תצוגה מקדימה - כך ההודעה הייתה יוצאת עכשיו:'}
                   </div>
                   {d.preview && (
-                    <div style={{ border: '1px solid var(--border-hairline-strong)', borderRadius: '8px', padding: '12px', marginBottom: '12px' }}>
-                      <div style={{ fontSize: '13.5px', fontWeight: 700, marginBottom: '8px' }}>{d.preview.title}</div>
-                      <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6, whiteSpace: 'pre-line' }}><FormattedText text={d.preview.content} /></p>
+                    <div style={{ background: 'var(--bg-void)', border: '1px solid var(--border-hairline-strong)', borderRadius: '8px', padding: '12px', marginBottom: '12px' }}>
+                      <div style={{ fontSize: '14.5px', fontWeight: 700, marginBottom: '8px' }}>{d.preview.title}</div>
+                      <p style={{ fontSize: '14.5px', color: 'var(--text-primary)', lineHeight: 1.7, whiteSpace: 'pre-line' }}><FormattedText text={d.preview.content} /></p>
                     </div>
                   )}
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
