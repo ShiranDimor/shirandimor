@@ -288,6 +288,12 @@ export default function AdminDashboard() {
           <div className="at-count">פרסום עדכון לכולם</div>
         </Link>
 
+        <Link href="/admin/automations" className="admin-tile">
+          <div className="at-icon">⚙️</div>
+          <div className="at-title">אוטומציות</div>
+          <div className="at-count">תזכורות וטיוטות אוטומטיות</div>
+        </Link>
+
         <Link href="/admin/support-bot" className="admin-tile">
           <div className="at-icon">🤖</div>
           <div className="at-title">בוט תמיכה - בדיקה</div>

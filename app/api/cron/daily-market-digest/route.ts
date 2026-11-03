@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/instantLogin';
 import { generateMarketDigest } from '@/lib/marketDigest';
-import { sendPushToUsers } from '@/lib/webPush';
+import { draftAutomatedAnnouncement } from '@/lib/automationDraft';
 
 export const maxDuration = 60;
 
@@ -15,25 +15,21 @@ export async function GET(request: Request) {
   }
 
   try {
+    // בודקים אם הכלל כבוי לפני שמריצים חיפוש אינטרנט יקר - אין טעם לשלם על מחקר אם זה
+    // ממילא לא יתפרסם
+    const { data: rule } = await supabaseAdmin.from('automation_rules').select('enabled').eq('key', 'market-digest').maybeSingle();
+    if (rule?.enabled === false) {
+      return NextResponse.json({ ok: true, drafted: false, reason: 'disabled' });
+    }
+
     const digest = await generateMarketDigest();
     if (!digest) {
       console.error('סיכום שוק יומי: אין מספיק מידע מאומת לפרסום היום');
-      return NextResponse.json({ ok: true, posted: false, reason: 'no_digest' });
+      return NextResponse.json({ ok: true, drafted: false, reason: 'no_digest' });
     }
 
-    const { error } = await supabaseAdmin.from('announcements').insert({ title: digest.title, content: digest.content, published: false });
-    if (error) {
-      console.error('סיכום שוק יומי: שגיאה בשמירה', error);
-      return NextResponse.json({ ok: false, error: 'שגיאה בשמירה' }, { status: 500 });
-    }
-
-    const { data: admins } = await supabaseAdmin.from('profiles').select('id').eq('role', 'admin');
-    await sendPushToUsers(
-      (admins || []).map((a) => a.id),
-      { title: '📰 סיכום השוק של היום מוכן', body: 'מחכה לאישור שלך לפני שהוא עולה ללוח המודעות', url: '/admin/announcements' }
-    );
-
-    return NextResponse.json({ ok: true, drafted: true });
+    const result = await draftAutomatedAnnouncement('market-digest', digest.title, digest.content);
+    return NextResponse.json({ ok: true, ...result });
   } catch (e) {
     console.error('סיכום שוק יומי: נכשל', e);
     return NextResponse.json({ ok: false, error: e instanceof Error ? e.message : 'שגיאה' }, { status: 500 });
