@@ -25,7 +25,9 @@ export async function POST(request: Request, { params }: { params: { id: string 
   const { data: live, error } = await supabaseAdmin.from('lives').select('*').eq('id', params.id).maybeSingle();
   if (error || !live) return NextResponse.json({ error: 'הלייב לא נמצא' }, { status: 404 });
 
-  const dateLabel = new Date(live.scheduled_at).toLocaleDateString('he-IL', { weekday: 'long', day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' });
+  // timeZone מפורש חובה כאן - זה רץ על השרת (Vercel, UTC) ולא בדפדפן של מישהו בישראל, אז בלי
+  // זה ה-02:00- של ישראל "נבלע" וההתראה מציגה שעה מוקדמת ב-2/3 שעות ממה שבאמת נקבע
+  const dateLabel = new Date(live.scheduled_at).toLocaleDateString('he-IL', { weekday: 'long', day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem' });
 
   // בדיקה לעצמי - שולח רק אלי (בגרסת "המנויים", כולל כל הפרטים), בלי לגעת ב-notification_sent_at
   // כדי שהשליחה האמיתית לכולם תישאר זמינה בלי "שהתראה כבר נשלחה"
