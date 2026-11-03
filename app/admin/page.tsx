@@ -9,7 +9,6 @@ export default function AdminDashboard() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [userEmail, setUserEmail] = useState('');
 
-  const [pendingCount, setPendingCount] = useState(0);
   const [approvedCount, setApprovedCount] = useState(0);
   const [openTradesCount, setOpenTradesCount] = useState(0);
   const [abandonedTotal, setAbandonedTotal] = useState(0);
@@ -161,8 +160,7 @@ export default function AdminDashboard() {
   async function loadCounts() {
     const { data: { session } } = await supabase.auth.getSession();
 
-    const [pending, approved, openTrades, abandonedRes, livesRes, lessonsRes, revenueRes, salesLeadsRes] = await Promise.all([
-      supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'lead'),
+    const [approved, openTrades, abandonedRes, livesRes, lessonsRes, revenueRes, salesLeadsRes] = await Promise.all([
       supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'subscriber').eq('subscription_status', 'active'),
       supabase.from('trades').select('id', { count: 'exact', head: true }).eq('status', 'open'),
       fetch('/api/admin/trading-plan-abandoned/count', { headers: { Authorization: `Bearer ${session?.access_token}` } }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
@@ -172,7 +170,6 @@ export default function AdminDashboard() {
       fetch('/api/admin/sales-leads/stats', { headers: { Authorization: `Bearer ${session?.access_token}` } }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
     ]);
 
-    setPendingCount(pending.count || 0);
     setApprovedCount(approved.count || 0);
     setOpenTradesCount(openTrades.count || 0);
     setAbandonedTotal(abandonedRes?.total || 0);
@@ -244,12 +241,6 @@ export default function AdminDashboard() {
           <div className="at-icon">📞</div>
           <div className="at-title">שיחות מכירה - קבוצת עדכונים</div>
           <div className="at-count">{salesLeadsAttention > 0 ? `${salesLeadsAttention} דורשים טיפול · ` : ''}{salesLeadsInProgress} בטיפול</div>
-        </Link>
-
-        <Link href="/admin/pending" className={`admin-tile ${pendingCount > 0 ? 'attention' : ''}`}>
-          <div className="at-icon">🕒</div>
-          <div className="at-title">מנויים לאישור</div>
-          <div className="at-count">{pendingCount} ממתינים</div>
         </Link>
 
         <Link href="/admin/subscribers" className="admin-tile">
