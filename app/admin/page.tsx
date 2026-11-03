@@ -238,17 +238,12 @@ export default function AdminDashboard() {
 
       <div className="section-label"><h2>אזור הניהול</h2></div>
 
+      <div className="section-label" style={{ marginTop: 0 }}><h2>לידים ומנויים</h2></div>
       <div className="admin-tiles">
         <Link href="/admin/sales-leads" className={`admin-tile ${salesLeadsAttention > 0 ? 'attention' : ''}`}>
           <div className="at-icon">📞</div>
           <div className="at-title">שיחות מכירה - קבוצת עדכונים</div>
           <div className="at-count">{salesLeadsAttention > 0 ? `${salesLeadsAttention} דורשים טיפול · ` : ''}{salesLeadsInProgress} בטיפול</div>
-        </Link>
-
-        <Link href="/admin/trades" className="admin-tile">
-          <div className="at-icon">📊</div>
-          <div className="at-title">תיק מסחר</div>
-          <div className="at-count">{openTradesCount} עסקאות פתוחות</div>
         </Link>
 
         <Link href="/admin/pending" className={`admin-tile ${pendingCount > 0 ? 'attention' : ''}`}>
@@ -267,6 +262,21 @@ export default function AdminDashboard() {
           <div className="at-icon">📝</div>
           <div className="at-title">לידים - תוכנית מסחר</div>
           <div className="at-count">{abandonedUnread > 0 ? `${abandonedUnread} חדשים · ` : ''}{abandonedTotal} סה״כ</div>
+        </Link>
+
+        <Link href="/admin/push-subscriptions" className="admin-tile">
+          <div className="at-icon">🔔</div>
+          <div className="at-title">הפעילו התראות פוש</div>
+          <div className="at-count">מנויים ולידים שהפעילו</div>
+        </Link>
+      </div>
+
+      <div className="section-label"><h2>שאר האתר</h2></div>
+      <div className="admin-tiles">
+        <Link href="/admin/trades" className="admin-tile">
+          <div className="at-icon">📊</div>
+          <div className="at-title">תיק מסחר</div>
+          <div className="at-count">{openTradesCount} עסקאות פתוחות</div>
         </Link>
 
         <Link href="/admin/lessons" className="admin-tile">
@@ -350,12 +360,6 @@ export default function AdminDashboard() {
           {pushReminderMessage}
         </p>
       )}
-
-      <Link href="/admin/push-subscriptions" className="admin-tile" style={{ marginTop: '18px' }}>
-        <div className="at-icon">🔔</div>
-        <div className="at-title">ניהול התראות פוש</div>
-        <div className="at-count">מנויים ולידים</div>
-      </Link>
     </div>
   );
 }
