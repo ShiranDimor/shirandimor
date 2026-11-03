@@ -15,22 +15,26 @@ function israelNow(): Date {
   return new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Jerusalem' }));
 }
 
-// פתיחה לפי שעת היום בישראל - תמיד עם "חברים", לפי בקשת שירן
-function greeting(): string {
-  const hour = israelNow().getHours();
+// פתיחה לפי השעה - תמיד עם "חברים", לפי בקשת שירן. מתבססת על השעה הקבועה שבה האוטומציה הזו
+// באמת רצה (ר' scheduledHour בכל תבנית, תואם ל-vercel.json), ולא על השעה הנוכחית בפועל - כדי
+// שתצוגה מקדימה/בדיקה לעצמי שמופעלת ידנית בשעה אחרת עדיין תראה בדיוק את מה שבאמת ייצא בזמן האמיתי
+function greetingForHour(hour: number): string {
   if (hour < 12) return 'בוקר טוב חברים 😊';
   if (hour < 17) return 'צהריים טובים חברים 😊';
   if (hour < 21) return 'ערב טוב חברים 😊';
   return 'לילה טוב חברים 😊';
 }
 
-// סיום לפי יום/שעה בישראל - שישי: ברכת סופ"ש, ראשון: ברכת שבוע ירוק, אחרת: יום/לילה שקט
-function closing(): string {
-  const now = israelNow();
-  const day = now.getDay();
+// תוכנית סיום לכל אוטומציה: 'friday'/'sunday' - אוטומציה שתמיד רצה באותו יום קבוע; 'daily' -
+// אוטומציה שרצה כל יום ויכולה להתרחש גם בשישי/ראשון בפועל (כמו תזכורות לייב), אז בודקים את היום
+// האמיתי; 'generic' - אוטומציה שרצה בימים קבועים שלעולם אינם שישי/ראשון
+type ClosingPlan = 'friday' | 'sunday' | 'daily' | 'generic';
+
+function closingFor(plan: ClosingPlan, scheduledHour: number): string {
+  const day = plan === 'daily' ? israelNow().getDay() : plan === 'friday' ? 5 : plan === 'sunday' ? 0 : -1;
   if (day === 5) return 'סופ"ש שקט ועם האייקון הזה 🙏🏾';
   if (day === 0) return 'שבוע ירוק ושקט לכולנו 🙏🏾';
-  return now.getHours() < 18 ? 'יום שקט לכולנו 🙏🏾' : 'לילה שקט לכולנו 🙏🏾';
+  return scheduledHour < 18 ? 'יום שקט לכולנו 🙏🏾' : 'לילה שקט לכולנו 🙏🏾';
 }
 
 const GREETING_CLOSING_PLACEHOLDERS = { greeting: 'פתיחה לפי שעת היום (ממולא אוטומטית)', closing: 'סיום לפי יום/שעה (ממולא אוטומטית)' };
@@ -48,6 +52,8 @@ type AutomationTemplate = {
   placeholders: Record<string, string>; // שם משתנה -> הסבר בעברית לעמוד הניהול
   sample: Vars; // ערכים לדוגמה לתצוגה מקדימה, כשאין כרגע נתונים אמיתיים (למשל אין לייב מחר)
   getVars: () => Promise<VarsResult>;
+  scheduledHour: number; // השעה (שעון ישראל) שבה ה-cron של האוטומציה הזו באמת רץ, לפי vercel.json
+  closingPlan: ClosingPlan;
 };
 
 export function renderTemplate(template: string, vars: Vars): string {
@@ -142,6 +148,8 @@ https://www.shirandimor.com/lessons
     placeholders: { headline: '"שיעור חדש" או "3 שיעורים חדשים"', lessons: 'שמות השיעורים (מודגשים)', lessons_plain: 'שמות השיעורים (טקסט רגיל)', ...GREETING_CLOSING_PLACEHOLDERS },
     sample: { headline: 'שיעור חדש', lessons: '*איך לקבוע סטופ לוס*', lessons_plain: 'איך לקבוע סטופ לוס' },
     getVars: newLessonVars,
+    scheduledHour: 9,
+    closingPlan: 'daily',
   },
 
   'weekly-lessons-reminder': {
@@ -162,6 +170,8 @@ https://www.shirandimor.com/lessons
     placeholders: GREETING_CLOSING_PLACEHOLDERS,
     sample: {},
     getVars: NO_VARS,
+    scheduledHour: 10,
+    closingPlan: 'generic',
   },
 
   'weekly-lives-reminder': {
@@ -179,6 +189,8 @@ https://www.shirandimor.com/lives
     placeholders: { lives_list: 'רשימת הלייבים של השבוע (שורה לכל לייב)', ...GREETING_CLOSING_PLACEHOLDERS },
     sample: { lives_list: '*יום שני, 9.11, 16:30* - ניתוח שוק שבועי\n*יום רביעי, 11.11, 20:00* - שאלות ותשובות' },
     getVars: weeklyLivesVars,
+    scheduledHour: 12,
+    closingPlan: 'sunday',
   },
 
   // שחזור מדויק של ההודעה האמיתית ששירן כבר שלחה
@@ -206,6 +218,8 @@ https://www.shirandimor.com/lives
     placeholders: GREETING_CLOSING_PLACEHOLDERS,
     sample: {},
     getVars: NO_VARS,
+    scheduledHour: 13,
+    closingPlan: 'generic',
   },
 
   'live-tomorrow-reminder': {
@@ -226,6 +240,8 @@ https://www.shirandimor.com/lives
       const live = await getLiveOnDate(new Date(Date.now() + 24 * 60 * 60 * 1000));
       return live ? { vars: liveVars(live) } : { reason: 'no_live_tomorrow' };
     },
+    scheduledHour: 20,
+    closingPlan: 'daily',
   },
 
   'live-today-reminder': {
@@ -246,6 +262,8 @@ https://www.shirandimor.com/lives
       const live = await getLiveOnDate(new Date());
       return live ? { vars: liveVars(live) } : { reason: 'no_live_today' };
     },
+    scheduledHour: 13,
+    closingPlan: 'daily',
   },
 
   // רץ ב-16:00 שעון ישראל - בודק אם יש לייב שמתחיל בשעה הקרובה (מגבלת cron יומי ב-Vercel)
@@ -268,6 +286,8 @@ https://www.shirandimor.com/lives
       if (minutesUntil < 0 || minutesUntil > 75) return { reason: 'not_starting_soon' };
       return { vars: liveVars(live) };
     },
+    scheduledHour: 16,
+    closingPlan: 'daily',
   },
 
   'weekly-trading-plan-reminder': {
@@ -285,6 +305,8 @@ https://www.shirandimor.com/trading-plan
     placeholders: GREETING_CLOSING_PLACEHOLDERS,
     sample: {},
     getVars: NO_VARS,
+    scheduledHour: 11,
+    closingPlan: 'friday',
   },
 };
 
@@ -310,9 +332,10 @@ export async function buildAutomationMessage(key: string, useSampleIfMissing: bo
   const result = await def.getVars();
   if ('reason' in result && !useSampleIfMissing) return { error: result.reason };
 
-  // greeting/closing ממולאים תמיד אוטומטית, גם בתבנית ערוכה - כדי שתמיד יתאימו לשעה/ליום
-  // האמיתיים, בלי תלות בכל תבנית בנפרד
-  const vars = { greeting: greeting(), closing: closing(), ...('vars' in result ? result.vars : def.sample) };
+  // greeting/closing ממולאים תמיד אוטומטית, גם בתבנית ערוכה - לפי השעה הקבועה שבה האוטומציה
+  // הזו באמת רצה (לא השעה הנוכחית בפועל), כדי שתצוגה מקדימה/בדיקה לעצמי בשעה אחרת עדיין תציג
+  // בדיוק את מה שבאמת ייצא בזמן האמיתי
+  const vars = { greeting: greetingForHour(def.scheduledHour), closing: closingFor(def.closingPlan, def.scheduledHour), ...('vars' in result ? result.vars : def.sample) };
   return {
     title: renderTemplate(tpl.title, vars),
     content: renderTemplate(tpl.content, vars),
