@@ -461,6 +461,15 @@ export default function AdminSubscribersPage() {
         </p>
       )}
 
+      <details className="section-collapse">
+        <summary>
+          <h2>📋 הצגת רשימת המנויים</h2>
+          <div className="summary-right">
+            <span className="count">{approvedSubs.length}</span>
+            <span className="collapse-chevron">▾</span>
+          </div>
+        </summary>
+        <div className="trades-list">
       <div className="sort-header">
         <div className={`sort-col ${sortBy === 'name' ? 'active' : ''}`} onClick={() => toggleSort('name')}>
           שם <span className="sort-arrow">{sortBy === 'name' ? (sortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
@@ -521,6 +530,8 @@ export default function AdminSubscribersPage() {
           </div>
         </div>
       ))}
+        </div>
+      </details>
     </div>
   );
 }
