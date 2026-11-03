@@ -37,10 +37,14 @@ export async function GET(request: Request) {
   const deviceRows = (subs || []).map((s) => {
     const profile = s.user_id ? profileById.get(s.user_id) : null;
     const isSubscriber = hasActiveEntitlement(profile);
+    // role נשאר "subscriber" גם אחרי ביטול (ר' lib/entitlement.ts) - כך אפשר להבדיל בין מי
+    // שמעולם לא היה מנוי לבין מנוי לשעבר, גם כשלשניהם אין כרגע גישה פעילה
+    const isFormerSubscriber = !isSubscriber && profile?.role === 'subscriber';
     return {
       id: s.id,
       createdAt: s.created_at,
       isSubscriber,
+      isFormerSubscriber,
       name: profile?.full_name || s.name || null,
       email: profile?.email || s.email || null,
       phone: s.phone || null,
@@ -66,6 +70,7 @@ export async function GET(request: Request) {
       deviceCount: members.length,
       createdAt: latest.createdAt,
       isSubscriber: latest.isSubscriber,
+      isFormerSubscriber: latest.isFormerSubscriber,
       name: members.find((m) => m.name)?.name || null,
       email: members.find((m) => m.email)?.email || null,
       phone: members.find((m) => m.phone)?.phone || null,

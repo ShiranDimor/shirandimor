@@ -10,6 +10,7 @@ type Row = {
   deviceCount: number;
   createdAt: string;
   isSubscriber: boolean;
+  isFormerSubscriber: boolean;
   name: string | null;
   email: string | null;
   phone: string | null;
@@ -131,7 +132,10 @@ export default function AdminPushSubscriptionsPage() {
     return (
       <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-surface)', border: '1px solid var(--border-hairline)', borderRadius: '10px', padding: '12px 14px', marginBottom: '8px' }}>
         <div>
-          <div style={{ fontSize: '13.5px', fontWeight: 700 }}>{r.name || 'ללא שם'}</div>
+          <div style={{ fontSize: '13.5px', fontWeight: 700 }}>
+            {r.name || 'ללא שם'}
+            {r.isFormerSubscriber && <span style={{ fontWeight: 400, color: 'var(--text-tertiary)' }}> (מנוי שביטל)</span>}
+          </div>
           <div style={{ fontSize: '11.5px', color: 'var(--text-tertiary)', marginTop: '2px' }}>
             {[r.phone, r.email].filter(Boolean).join(' · ') || '—'} · הופעל ב-{formatDate(r.createdAt)}
             {r.deviceCount > 1 && ` · ${r.deviceCount} מכשירים`}
