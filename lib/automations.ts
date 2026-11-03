@@ -32,7 +32,7 @@ type ClosingPlan = 'friday' | 'sunday' | 'daily' | 'generic';
 
 function closingFor(plan: ClosingPlan, scheduledHour: number): string {
   const day = plan === 'daily' ? israelNow().getDay() : plan === 'friday' ? 5 : plan === 'sunday' ? 0 : -1;
-  if (day === 5) return 'סופ"ש שקט ועם האייקון הזה 🙏🏾';
+  if (day === 5) return 'סופ"ש שקט 🙏🏾';
   if (day === 0) return 'שבוע ירוק ושקט לכולנו 🙏🏾';
   return scheduledHour < 18 ? 'יום שקט לכולנו 🙏🏾' : 'לילה שקט לכולנו 🙏🏾';
 }
