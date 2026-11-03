@@ -27,6 +27,8 @@ export type NotificationKind = 'trade' | 'lesson' | 'live' | 'announcement';
 
 type SubscriptionRow = { id: string; endpoint: string; p256dh: string; auth: string };
 
+export type SendResult = { configured: boolean; attempted: number; sent: number; failed: number; removedStale: number };
+
 // רישום לטבלת "יומן התראות" - מקור האמת היחיד למרכז ההתראות (הפעמון) באתר, כדי שההיסטוריה
 // שמוצגת שם תהיה תמיד בדיוק מה שבאמת נשלח כהתראת פוש, כולל הניסוח המדויק לכל קהל (למנויים
 // עם הסימבול, ללא-מנויים בגרסה מטושטשת) - בלי לשחזר את זה בדיעבד מכמה טבלאות שונות.
@@ -38,9 +40,16 @@ async function logNotification(kind: NotificationKind, audience: 'subscribers' |
 
 // שולח לרשימת שורות מינוי גולמית (לא לפי user_id - כך גם לידים בלי חשבון, ששורת המינוי שלהם
 // user_id=null, מקבלים התראות). מוחק אוטומטית מינויים שפגו (404/410 - המשתמש ביטל הרשאה או
-// הסיר את האתר ממסך הבית) כדי שלא ננסה לשלוח אליהם שוב בכל פעם
-async function sendToRows(rows: SubscriptionRow[], payload: PushPayload) {
-  if (!ensureConfigured() || rows.length === 0) return;
+// הסיר את האתר ממסך הבית) כדי שלא ננסה לשלוח אליהם שוב בכל פעם. מחזיר סיכום אמיתי של מה שקרה
+// בפועל (configured/attempted/sent/failed/removedStale) - כדי שבדיקה-לעצמי תוכל לדווח משהו
+// אמיתי במקום "ok" גורף גם כשבפועל לא נשלח שום דבר
+async function sendToRows(rows: SubscriptionRow[], payload: PushPayload): Promise<SendResult> {
+  if (!ensureConfigured()) return { configured: false, attempted: rows.length, sent: 0, failed: 0, removedStale: 0 };
+  if (rows.length === 0) return { configured: true, attempted: 0, sent: 0, failed: 0, removedStale: 0 };
+
+  let sent = 0;
+  let failed = 0;
+  let removedStale = 0;
 
   await Promise.all(
     rows.map(async (sub) => {
@@ -49,21 +58,26 @@ async function sendToRows(rows: SubscriptionRow[], payload: PushPayload) {
           { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
           JSON.stringify(payload)
         );
+        sent++;
       } catch (e: unknown) {
         const statusCode = (e as { statusCode?: number })?.statusCode;
         if (statusCode === 404 || statusCode === 410) {
           await supabaseAdmin.from('push_subscriptions').delete().eq('id', sub.id);
+          removedStale++;
         } else {
           console.error('שגיאה בשליחת התראת פוש', e);
+          failed++;
         }
       }
     })
   );
+
+  return { configured: true, attempted: rows.length, sent, failed, removedStale };
 }
 
-export async function sendPushToUser(userId: string, payload: PushPayload) {
+export async function sendPushToUser(userId: string, payload: PushPayload): Promise<SendResult> {
   const { data: subs } = await supabaseAdmin.from('push_subscriptions').select('id, endpoint, p256dh, auth').eq('user_id', userId);
-  await sendToRows(subs || [], payload);
+  return sendToRows(subs || [], payload);
 }
 
 export async function sendPushToUsers(userIds: string[], payload: PushPayload) {

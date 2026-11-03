@@ -34,8 +34,8 @@ export async function POST(request: Request, { params }: { params: { id: string 
   // (sendPushToUser לא רושם), כדי שהשליחה האמיתית לכולם תישאר זמינה בלי "שהתראה כבר נשלחה"
   const { searchParams } = new URL(request.url);
   if (searchParams.get('test') === '1') {
-    await sendPushToUser(admin.id, payload);
-    return NextResponse.json({ ok: true, test: true });
+    const result = await sendPushToUser(admin.id, payload);
+    return NextResponse.json({ ok: true, test: true, ...result });
   }
 
   await sendPushToEveryone(payload, 'announcement', params.id);

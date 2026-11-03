@@ -184,8 +184,17 @@ export default function AdminAnnouncementsPage() {
   async function handleTestNotify(id: string) {
     setTestNotifyingId(id);
     const res = await fetch(`/api/admin/announcements/${id}/notify?test=1`, { method: 'POST', headers: await authHeader() });
+    const data = await res.json().catch(() => ({}));
     setTestNotifyingId('');
-    if (!res.ok) window.alert('השליחה נכשלה - יש לוודא שההתראות מופעלות אצלך במכשיר הזה');
+
+    // דיווח אמיתי על מה שבאמת קרה - לא "נשלח" גורף כשבפועל אולי לא הגיע לאף מכשיר
+    if (!res.ok) { window.alert('השליחה נכשלה - שגיאה בשרת'); return; }
+    if (data.configured === false) { window.alert('התראות פוש לא מוגדרות בשרת - צריך לפנות למפתח'); return; }
+    if (data.attempted === 0) { window.alert('אין לך מכשיר רשום לקבלת התראות - יש להפעיל התראות דרך הכפתור בעמוד הבית'); return; }
+    if (data.sent > 0) { window.alert(`נשלחה בהצלחה ל-${data.sent} מכשיר/ים 🎉`); return; }
+    window.alert(data.removedStale > 0
+      ? 'המכשיר שהיה רשום אצלך כבר לא תקף (הוסר) - יש להפעיל התראות מחדש בעמוד הבית'
+      : 'השליחה נכשלה בפועל - יש לבדוק שההתראות עדיין מופעלות אצלך במכשיר');
   }
 
   async function handleLogout() {
