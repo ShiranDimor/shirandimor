@@ -169,13 +169,33 @@ export default function AdminPushSubscriptionsPage() {
 
       {!loading && (
         <>
-          <div className="section-label"><h2>מנויים</h2><span className="count">{subscriberCount}</span></div>
-          {subscriberRows.length === 0 && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)', marginBottom: '16px' }}>אין עדיין מנויים עם התראות פעילות</p>}
-          {subscriberRows.map(renderRow)}
+          <details className="section-collapse">
+            <summary>
+              <h2>מנויים</h2>
+              <div className="summary-right">
+                <span className="count">{subscriberCount}</span>
+                <span className="collapse-chevron">▾</span>
+              </div>
+            </summary>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '10px' }}>
+              {subscriberRows.length === 0 && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>אין עדיין מנויים עם התראות פעילות</p>}
+              {subscriberRows.map(renderRow)}
+            </div>
+          </details>
 
-          <div className="section-label" style={{ marginTop: '24px' }}><h2>לידים (לא מנויים)</h2><span className="count">{leadCount}</span></div>
-          {leadRows.length === 0 && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>אין עדיין לידים עם התראות פעילות</p>}
-          {leadRows.map(renderRow)}
+          <details className="section-collapse" style={{ marginTop: '14px' }}>
+            <summary>
+              <h2>לידים (לא מנויים)</h2>
+              <div className="summary-right">
+                <span className="count">{leadCount}</span>
+                <span className="collapse-chevron">▾</span>
+              </div>
+            </summary>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '10px' }}>
+              {leadRows.length === 0 && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>אין עדיין לידים עם התראות פעילות</p>}
+              {leadRows.map(renderRow)}
+            </div>
+          </details>
         </>
       )}
     </div>
