@@ -61,6 +61,8 @@ export default function AdminSubscribersPage() {
   const [revenueTotal, setRevenueTotal] = useState(0);
   const [revenueMonth, setRevenueMonth] = useState('');
   const [revenueItems, setRevenueItems] = useState<RevenueItem[]>([]);
+  const [revenueMissingCost, setRevenueMissingCost] = useState<string[]>([]);
+  const [revenueDuplicatesRemoved, setRevenueDuplicatesRemoved] = useState<string[]>([]);
 
   function formatMonthLabel(month: string) {
     if (!month) return '';
@@ -77,6 +79,8 @@ export default function AdminSubscribersPage() {
       setRevenueTotal(data.totalAmount || 0);
       setRevenueMonth(data.month || '');
       setRevenueItems(data.items || []);
+      setRevenueMissingCost(data.missingMonthlyCost || []);
+      setRevenueDuplicatesRemoved(data.duplicatesRemoved || []);
     }
     setRevenueLoading(false);
     setRevenueRecomputing(false);
@@ -384,6 +388,22 @@ export default function AdminSubscribersPage() {
           <button className="btn-outline" style={{ width: 'auto', marginTop: '12px', fontSize: '12px', padding: '6px 14px' }} onClick={() => loadRevenue(true)} disabled={revenueRecomputing}>
             {revenueRecomputing ? 'מרעננים...' : 'רענון'}
           </button>
+        </div>
+      )}
+
+      {/* הסכום הזה חישוב משלנו, לא פשוט סכימה של עמודת "עלות חודשית" במאנדיי - יכול להיות שונה
+          מהסכום שמאנדיי עצמו מציג בתחתית הקבוצה, בעיקר בגלל שני דברים: מי שאין לו מספר תקין
+          בעמודה (אצלנו מקבל ברירת מחדל 400, אצל מאנדיי נספר כ-0), ואנשי קשר כפולים (אנחנו סופרים
+          רק את הכרטיס העדכני ביותר, מאנדיי סופר את כולם) - אז מציגים כאן בדיוק מי ולמה, כדי שפער
+          בין המספרים יהיה ניתן להסבר במקום "סתם לא מסתדר" */}
+      {(revenueMissingCost.length > 0 || revenueDuplicatesRemoved.length > 0) && (
+        <div style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginBottom: '20px', marginTop: '-10px' }}>
+          {revenueMissingCost.length > 0 && (
+            <p>⚠️ בלי "עלות חודשית" תקינה במאנדיי (נספרו כ-400 אצלנו, כנראה כ-0 אצל מאנדיי): {revenueMissingCost.join(', ')}</p>
+          )}
+          {revenueDuplicatesRemoved.length > 0 && (
+            <p>⚠️ כרטיסים כפולים באותו איש קשר במאנדיי (נספר רק החדש ביותר): {revenueDuplicatesRemoved.join(', ')}</p>
+          )}
         </div>
       )}
 
