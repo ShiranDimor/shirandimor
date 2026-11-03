@@ -176,6 +176,7 @@ export default function AdminAnnouncementsPage() {
     if (res.ok) {
       const data = await res.json();
       setAnnouncements((prev) => prev.map((a) => (a.id === id ? data.announcement : a)));
+      window.alert(`נשלח בפועל ל-${data.sent ?? 0} מתוך ${data.attempted ?? 0} מכשירים רשומים${data.failed ? ` (${data.failed} נכשלו)` : ''}`);
     } else {
       // בלי זה כישלון (למשל אסימון כניסה שפג) היה שקט לגמרי - נראה בדיוק כמו הצלחה
       const data = await res.json().catch(() => ({}));

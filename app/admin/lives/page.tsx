@@ -192,6 +192,7 @@ export default function AdminLivesPage() {
     if (res.ok) {
       const data = await res.json();
       setLives((prev) => prev.map((l) => (l.id === id ? data.live : l)));
+      window.alert(`נשלח בפועל ל-${data.sent ?? 0} מתוך ${data.attempted ?? 0} מכשירים רשומים${data.failed ? ` (${data.failed} נכשלו)` : ''}`);
     } else {
       // בלי זה כישלון (למשל אסימון כניסה שפג) היה שקט לגמרי - נראה בדיוק כמו הצלחה
       const data = await res.json().catch(() => ({}));

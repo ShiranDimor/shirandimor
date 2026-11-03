@@ -41,7 +41,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
     return NextResponse.json({ ok: true, test: true, ...result });
   }
 
-  await sendPushToEveryone(payload, 'announcement', params.id);
+  const result = await sendPushToEveryone(payload, 'announcement', params.id);
 
   const { data: updated } = await supabaseAdmin
     .from('announcements')
@@ -50,5 +50,5 @@ export async function POST(request: Request, { params }: { params: { id: string 
     .select('*')
     .single();
 
-  return NextResponse.json({ announcement: updated || announcement });
+  return NextResponse.json({ announcement: updated || announcement, ...result });
 }

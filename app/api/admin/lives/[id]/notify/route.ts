@@ -37,11 +37,19 @@ export async function POST(request: Request, { params }: { params: { id: string 
     return NextResponse.json({ ok: true, test: true, ...result });
   }
 
+  let result;
   if (live.open_to_all) {
-    await sendPushToEveryone({ title: `🎥 מפגש חדש - ${live.title}`, body: dateLabel, url: '/lives' }, 'live', params.id);
+    result = await sendPushToEveryone({ title: `🎥 מפגש חדש - ${live.title}`, body: dateLabel, url: '/lives' }, 'live', params.id);
   } else {
-    await sendPushToActiveSubscribers({ title: `🎥 מפגש חדש - ${live.title}`, body: dateLabel, url: '/lives' }, 'live', params.id);
-    await sendPushToNonSubscribers({ title: '🎥 נקבע מפגש חדש', body: 'פתוח למנויים - חודש ראשון ב-₪1 ←', url: '/subscribe' }, 'live', params.id);
+    const subsResult = await sendPushToActiveSubscribers({ title: `🎥 מפגש חדש - ${live.title}`, body: dateLabel, url: '/lives' }, 'live', params.id);
+    const nonSubsResult = await sendPushToNonSubscribers({ title: '🎥 נקבע מפגש חדש', body: 'פתוח למנויים - חודש ראשון ב-₪1 ←', url: '/subscribe' }, 'live', params.id);
+    result = {
+      configured: subsResult.configured && nonSubsResult.configured,
+      attempted: subsResult.attempted + nonSubsResult.attempted,
+      sent: subsResult.sent + nonSubsResult.sent,
+      failed: subsResult.failed + nonSubsResult.failed,
+      removedStale: subsResult.removedStale + nonSubsResult.removedStale,
+    };
   }
 
   const { data: updated } = await supabaseAdmin
@@ -51,5 +59,5 @@ export async function POST(request: Request, { params }: { params: { id: string 
     .select('*')
     .single();
 
-  return NextResponse.json({ live: updated || live });
+  return NextResponse.json({ live: updated || live, ...result });
 }
