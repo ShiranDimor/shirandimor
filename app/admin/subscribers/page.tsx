@@ -33,6 +33,7 @@ export default function AdminSubscribersPage() {
   const [approvedSubs, setApprovedSubs] = useState<ApprovedSub[]>([]);
   const [sortBy, setSortBy] = useState<'date' | 'name'>('date');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+  const [phoneSearch, setPhoneSearch] = useState('');
 
   const [syncing, setSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState('');
@@ -310,7 +311,12 @@ export default function AdminSubscribersPage() {
     window.location.href = '/';
   }
 
-  const sortedSubs = [...approvedSubs].sort((a, b) => {
+  const phoneSearchDigits = phoneSearch.replace(/\D/g, '');
+  const filteredSubs = phoneSearchDigits
+    ? approvedSubs.filter((sub) => normalizePhoneLocal(sub.phone).includes(phoneSearchDigits))
+    : approvedSubs;
+
+  const sortedSubs = [...filteredSubs].sort((a, b) => {
     const dir = sortDir === 'asc' ? 1 : -1;
     if (sortBy === 'name') {
       return dir * (a.full_name || a.email).localeCompare(b.full_name || b.email, 'he');
@@ -489,7 +495,15 @@ export default function AdminSubscribersPage() {
             <span className="collapse-chevron">▾</span>
           </div>
         </summary>
-        <div className="trades-list">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      <ClearableInput
+        type="tel"
+        value={phoneSearch}
+        onChange={(e) => setPhoneSearch(e.target.value)}
+        onClear={() => setPhoneSearch('')}
+        placeholder="חיפוש לפי מספר נייד"
+        style={{ marginBottom: '6px' }}
+      />
       <div className="sort-header">
         <div className={`sort-col ${sortBy === 'name' ? 'active' : ''}`} onClick={() => toggleSort('name')}>
           שם <span className="sort-arrow">{sortBy === 'name' ? (sortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
@@ -500,6 +514,7 @@ export default function AdminSubscribersPage() {
       </div>
 
       {approvedSubs.length === 0 && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)', marginBottom: '20px' }}>עדיין אין מנויים מאושרים</p>}
+      {approvedSubs.length > 0 && sortedSubs.length === 0 && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)', marginBottom: '20px' }}>לא נמצא מנוי עם המספר הזה</p>}
       {sortedSubs.map((sub) => (
         <div className="admin-row" key={sub.id} style={{ gap: '10px' }}>
           <Link href={`/admin/subscribers/${sub.id}`} style={{ textDecoration: 'none', color: 'inherit', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flex: 1, minWidth: 0 }}>
