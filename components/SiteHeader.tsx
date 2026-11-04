@@ -34,7 +34,7 @@ export default function SiteHeader({ current }: { current?: string }) {
         const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle();
 
         if (profile?.role === 'admin') setCta({ label: 'לאזור הניהול', href: '/admin' });
-        else if (profile?.role === 'subscriber') setCta({ label: 'לתיק שלי', href: '/journal' });
+        else if (profile?.role === 'subscriber') setCta({ label: 'האזור האישי שלי', href: '/account' });
       } catch (e) {
         // כישלון בדיקה שקט - נשאר על ברירת המחדל (כניסה לסוחרים), בדיוק כמו ההתנהגות הקודמת
       }

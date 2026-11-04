@@ -421,6 +421,7 @@ export default function JournalPage() {
         <Link href="/" className="brand">מסחר <span>אחראי</span> במניות</Link>
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
           <Link href="/" className="nav-link">בית</Link>
+          <Link href="/account" className="nav-link">האזור האישי שלי</Link>
           <Link href="/portfolio" className="nav-link">← לתיק</Link>
           <Link href={tradingPlanHref} className="nav-link" style={{ color: '#E8A33D' }}>תוכנית המסחר שלי</Link>
           <button onClick={handleLogout} className="nav-link" style={{ background: 'none', border: 'none', cursor: 'pointer', font: 'inherit', padding: 0 }}>התנתקות</button>
