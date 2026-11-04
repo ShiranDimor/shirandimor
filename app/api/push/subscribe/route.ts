@@ -49,9 +49,11 @@ export async function POST(request: Request) {
   }
 
   if (userId) {
+    // מנקים invalid_at/invalid_reason - אם זה היה endpoint שסומן כלא-תקף (ר' lib/webPush.ts),
+    // ה-upsert הזה עצמו הוא ההוכחה הכי טובה שההרשמה חזרה להיות תקפה
     const { error } = await supabaseAdmin
       .from('push_subscriptions')
-      .upsert({ user_id: userId, endpoint, p256dh: keys.p256dh, auth: keys.auth, name: null, phone: null, email: null }, { onConflict: 'endpoint' });
+      .upsert({ user_id: userId, endpoint, p256dh: keys.p256dh, auth: keys.auth, name: null, phone: null, email: null, invalid_at: null, invalid_reason: null }, { onConflict: 'endpoint' });
 
     if (error) return NextResponse.json({ error: 'שגיאה בשמירת המינוי' }, { status: 500 });
 
@@ -92,7 +94,7 @@ export async function POST(request: Request) {
     const { error } = await supabaseAdmin
       .from('push_subscriptions')
       .upsert(
-        { user_id: subscriberUserId, endpoint, p256dh: keys.p256dh, auth: keys.auth, name: subscriberUserId ? null : name, phone: subscriberUserId ? null : phone, email: subscriberUserId ? null : (email || null) },
+        { user_id: subscriberUserId, endpoint, p256dh: keys.p256dh, auth: keys.auth, name: subscriberUserId ? null : name, phone: subscriberUserId ? null : phone, email: subscriberUserId ? null : (email || null), invalid_at: null, invalid_reason: null },
         { onConflict: 'endpoint' }
       );
     if (error) return NextResponse.json({ error: 'שגיאה בשמירת המינוי' }, { status: 500 });
@@ -107,7 +109,7 @@ export async function POST(request: Request) {
 
   const { error } = await supabaseAdmin
     .from('push_subscriptions')
-    .upsert({ user_id: null, endpoint, p256dh: keys.p256dh, auth: keys.auth, name, phone, email: email || null, monday_sync_error: mondayResultLead.ok ? null : (mondayResultLead.error || 'unknown_error') }, { onConflict: 'endpoint' });
+    .upsert({ user_id: null, endpoint, p256dh: keys.p256dh, auth: keys.auth, name, phone, email: email || null, monday_sync_error: mondayResultLead.ok ? null : (mondayResultLead.error || 'unknown_error'), invalid_at: null, invalid_reason: null }, { onConflict: 'endpoint' });
 
   if (error) return NextResponse.json({ error: 'שגיאה בשמירת המינוי' }, { status: 500 });
   return NextResponse.json({ ok: true });

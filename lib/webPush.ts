@@ -54,10 +54,12 @@ async function recordSendResult(logId: string | null, result: SendResult) {
 }
 
 // שולח לרשימת שורות מינוי גולמית (לא לפי user_id - כך גם לידים בלי חשבון, ששורת המינוי שלהם
-// user_id=null, מקבלים התראות). מוחק אוטומטית מינויים שפגו (404/410 - המשתמש ביטל הרשאה או
-// הסיר את האתר ממסך הבית) כדי שלא ננסה לשלוח אליהם שוב בכל פעם. מחזיר סיכום אמיתי של מה שקרה
-// בפועל (configured/attempted/sent/failed/removedStale) - כדי שבדיקה-לעצמי תוכל לדווח משהו
-// אמיתי במקום "ok" גורף גם כשבפועל לא נשלח שום דבר
+// user_id=null, מקבלים התראות). מינוי שפג (404/410 - המשתמש ביטל הרשאה או הסיר את האתר ממסך
+// הבית) מסומן invalid_at/invalid_reason במקום להימחק - כדי שלא ננסה לשלוח אליו שוב (השורות
+// שנשלפות ל-sendToRows כבר מסוננות invalid_at is null), אבל גם כדי שיישאר תיעוד של מתי וזה
+// קרה במקום שהרשומה פשוט "תיעלם" בלי עקבות. resubscribe אמיתי (POST ל-/api/push/subscribe)
+// מנקה את הסימון חזרה. מחזיר סיכום אמיתי של מה שקרה בפועל (configured/attempted/sent/failed/
+// removedStale) - כדי שבדיקה-לעצמי תוכל לדווח משהו אמיתי במקום "ok" גורף גם כשבפועל לא נשלח כלום
 async function sendToRows(rows: SubscriptionRow[], payload: PushPayload): Promise<SendResult> {
   if (!ensureConfigured()) return { configured: false, attempted: rows.length, sent: 0, failed: 0, removedStale: 0 };
   if (rows.length === 0) return { configured: true, attempted: 0, sent: 0, failed: 0, removedStale: 0 };
@@ -77,7 +79,7 @@ async function sendToRows(rows: SubscriptionRow[], payload: PushPayload): Promis
       } catch (e: unknown) {
         const statusCode = (e as { statusCode?: number })?.statusCode;
         if (statusCode === 404 || statusCode === 410) {
-          await supabaseAdmin.from('push_subscriptions').delete().eq('id', sub.id);
+          await supabaseAdmin.from('push_subscriptions').update({ invalid_at: new Date().toISOString(), invalid_reason: `http_${statusCode}` }).eq('id', sub.id);
           removedStale++;
         } else {
           console.error('שגיאה בשליחת התראת פוש', e);
@@ -91,7 +93,7 @@ async function sendToRows(rows: SubscriptionRow[], payload: PushPayload): Promis
 }
 
 export async function sendPushToUser(userId: string, payload: PushPayload): Promise<SendResult> {
-  const { data: subs } = await supabaseAdmin.from('push_subscriptions').select('id, endpoint, p256dh, auth').eq('user_id', userId);
+  const { data: subs } = await supabaseAdmin.from('push_subscriptions').select('id, endpoint, p256dh, auth').eq('user_id', userId).is('invalid_at', null);
   return sendToRows(subs || [], payload);
 }
 
@@ -113,7 +115,7 @@ export async function sendPushToActiveSubscribers(payload: PushPayload, kind: No
     await recordSendResult(logId, result);
     return result;
   }
-  const { data: subs } = await supabaseAdmin.from('push_subscriptions').select('id, endpoint, p256dh, auth').in('user_id', ids);
+  const { data: subs } = await supabaseAdmin.from('push_subscriptions').select('id, endpoint, p256dh, auth').in('user_id', ids).is('invalid_at', null);
   const result = await sendToRows(subs || [], payload);
   await recordSendResult(logId, result);
   return result;
@@ -124,7 +126,7 @@ export async function sendPushToActiveSubscribers(payload: PushPayload, kind: No
 export async function sendPushToNonSubscribers(payload: PushPayload, kind: NotificationKind, sourceId?: string): Promise<SendResult> {
   const logId = await logNotification(kind, 'non_subscribers', payload, sourceId);
   const subscriberIds = await getActiveSubscriberUserIds();
-  const query = supabaseAdmin.from('push_subscriptions').select('id, endpoint, p256dh, auth, user_id');
+  const query = supabaseAdmin.from('push_subscriptions').select('id, endpoint, p256dh, auth, user_id').is('invalid_at', null);
   const { data: allSubs } = await query;
   const rows = (allSubs || []).filter((s) => !s.user_id || !subscriberIds.includes(s.user_id));
   const result = await sendToRows(rows, payload);
@@ -136,7 +138,7 @@ export async function sendPushToNonSubscribers(payload: PushPayload, kind: Notif
 // עסקה שנסגרה)
 export async function sendPushToEveryone(payload: PushPayload, kind: NotificationKind, sourceId?: string): Promise<SendResult> {
   const logId = await logNotification(kind, 'everyone', payload, sourceId);
-  const { data: rows } = await supabaseAdmin.from('push_subscriptions').select('id, endpoint, p256dh, auth');
+  const { data: rows } = await supabaseAdmin.from('push_subscriptions').select('id, endpoint, p256dh, auth').is('invalid_at', null);
   const result = await sendToRows(rows || [], payload);
   await recordSendResult(logId, result);
   return result;

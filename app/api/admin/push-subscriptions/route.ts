@@ -25,6 +25,7 @@ export async function GET(request: Request) {
   const { data: subs } = await supabaseAdmin
     .from('push_subscriptions')
     .select('id, user_id, name, phone, email, created_at')
+    .is('invalid_at', null)
     .order('created_at', { ascending: false });
 
   const userIds = Array.from(new Set((subs || []).map((s) => s.user_id).filter(Boolean))) as string[];

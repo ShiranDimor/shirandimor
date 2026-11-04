@@ -317,7 +317,7 @@ export default function AdminSubscribersPage() {
 
     // מי מהם יש לו/ה כרגע הרשמה פעילה להתראות פוש (באיזשהו מכשיר) - כדי שאפשר יהיה לראות
     // ברשימה עצמה מי "מנוי על הנייר" אבל בפועל לא יקבל/ה שום התראה
-    const { data: pushRows } = await supabase.from('push_subscriptions').select('user_id').in('user_id', data.map((d) => d.id));
+    const { data: pushRows } = await supabase.from('push_subscriptions').select('user_id').in('user_id', data.map((d) => d.id)).is('invalid_at', null);
     const withPush = new Set((pushRows || []).map((r) => r.user_id).filter(Boolean));
 
     setApprovedSubs(data.map((d) => ({ ...d, hasPushSub: withPush.has(d.id) })));
