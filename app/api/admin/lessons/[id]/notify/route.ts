@@ -26,7 +26,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
   const { data: lesson, error } = await supabaseAdmin.from('lessons').select('*').eq('id', params.id).maybeSingle();
   if (error || !lesson) return NextResponse.json({ error: 'השיעור לא נמצא' }, { status: 404 });
 
-  const lessonUrl = '/lessons';
+  const lessonUrl = `/lessons/${params.id}`;
   if (lesson.tier === 'subscriber') {
     await sendPushToActiveSubscribers({ title: `📚 שיעור חדש - ${lesson.title}`, body: 'נוסף לספריית השיעורים', url: lessonUrl }, 'lesson', params.id);
     await sendPushToNonSubscribers({ title: '📚 שיעור חדש בספרייה', body: 'שיעור חדש למנויים - חודש ראשון ב-₪1 ←', url: '/subscribe' }, 'lesson', params.id);
