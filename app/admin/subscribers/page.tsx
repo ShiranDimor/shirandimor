@@ -32,7 +32,7 @@ export default function AdminSubscribersPage() {
   const [userEmail, setUserEmail] = useState('');
 
   const [approvedSubs, setApprovedSubs] = useState<ApprovedSub[]>([]);
-  const [sortBy, setSortBy] = useState<'date' | 'name'>('date');
+  const [sortBy, setSortBy] = useState<'date' | 'name' | 'notifications'>('date');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [phoneSearch, setPhoneSearch] = useState('');
 
@@ -270,12 +270,13 @@ export default function AdminSubscribersPage() {
     window.open(`https://wa.me/${phoneDigits}?text=${encodeURIComponent(text)}`, '_blank');
   }
 
-  function toggleSort(col: 'date' | 'name') {
+  function toggleSort(col: 'date' | 'name' | 'notifications') {
     if (sortBy === col) {
       setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
     } else {
       setSortBy(col);
-      setSortDir(col === 'name' ? 'asc' : 'desc');
+      // 'asc' בהתראות = לא מופעל קודם (מי שצריך טיפול למעלה), לא לפי סדר א"ב
+      setSortDir(col === 'name' ? 'asc' : col === 'notifications' ? 'asc' : 'desc');
     }
   }
 
@@ -338,6 +339,10 @@ export default function AdminSubscribersPage() {
     const dir = sortDir === 'asc' ? 1 : -1;
     if (sortBy === 'name') {
       return dir * (a.full_name || a.email).localeCompare(b.full_name || b.email, 'he');
+    }
+    if (sortBy === 'notifications') {
+      if (a.hasPushSub === b.hasPushSub) return (a.full_name || a.email).localeCompare(b.full_name || b.email, 'he');
+      return dir * (Number(a.hasPushSub) - Number(b.hasPushSub));
     }
     return dir * (new Date(a.subscription_started_at || 0).getTime() - new Date(b.subscription_started_at || 0).getTime());
   });
@@ -528,6 +533,9 @@ export default function AdminSubscribersPage() {
         </div>
         <div className={`sort-col ${sortBy === 'date' ? 'active' : ''}`} onClick={() => toggleSort('date')}>
           תאריך הצטרפות <span className="sort-arrow">{sortBy === 'date' ? (sortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+        </div>
+        <div className={`sort-col ${sortBy === 'notifications' ? 'active' : ''}`} onClick={() => toggleSort('notifications')}>
+          התראות <span className="sort-arrow">{sortBy === 'notifications' ? (sortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
         </div>
       </div>
 
