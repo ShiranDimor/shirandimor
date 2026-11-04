@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/instantLogin';
 import { buildAutomationMessage } from '@/lib/automations';
 
+export const maxDuration = 60;
+
 async function requireAdmin(request: Request) {
   const authHeader = request.headers.get('Authorization') || '';
   const token = authHeader.replace('Bearer ', '');
@@ -30,10 +32,19 @@ export async function POST(request: Request, { params }: { params: { key: string
   const admin = await requireAdmin(request);
   if (!admin) return NextResponse.json({ error: 'אין הרשאת ניהול' }, { status: 403 });
 
-  const msg = await buildAutomationMessage(params.key, false);
-  if ('error' in msg) {
-    const reason = msg.error ? REASON_LABELS[msg.error] : undefined;
-    return NextResponse.json({ error: reason ? `אין כרגע ממה ליצור את ההודעה: ${reason}` : 'לאוטומציה הזו אין נוסח קבוע' }, { status: 400 });
+  let msg: { title: string; content: string };
+  if (params.key === 'market-digest') {
+    const { generateMarketDigest } = await import('@/lib/marketDigest');
+    const digest = await generateMarketDigest();
+    if (!digest) return NextResponse.json({ error: 'הכנת הסיכום נכשלה - אפשר לנסות שוב' }, { status: 500 });
+    msg = digest;
+  } else {
+    const built = await buildAutomationMessage(params.key, false);
+    if ('error' in built) {
+      const reason = built.error ? REASON_LABELS[built.error] : undefined;
+      return NextResponse.json({ error: reason ? `אין כרגע ממה ליצור את ההודעה: ${reason}` : 'לאוטומציה הזו אין נוסח קבוע' }, { status: 400 });
+    }
+    msg = built;
   }
 
   const { data, error } = await supabaseAdmin.from('announcements').insert({ title: msg.title, content: msg.content, published: false }).select('id').single();

@@ -23,8 +23,10 @@ export async function GET(request: Request, { params }: { params: { key: string 
 
   const def = AUTOMATION_TEMPLATES[params.key];
   if (!def) {
-    // סיכום השוק היומי נכתב מחדש ע"י AI בכל בוקר - אין לו תבנית קבועה לעריכה
-    return NextResponse.json({ templated: false });
+    // סיכום השוק היומי נכתב מחדש ע"י AI בכל בוקר - אין לו תבנית קבועה לעריכה. לא מריצים אותו
+    // כאן (זה היה עולה כסף אמיתי - חיפוש אינטרנט - בכל פתיחה של הכרטיס), רק מסמנים שאפשר
+    // ליצור טיוטה/לבדוק ידנית דרך כפתור
+    return NextResponse.json({ templated: false, marketDigest: params.key === 'market-digest' });
   }
 
   const { data: rule } = await supabaseAdmin.from('automation_rules').select('title_template, content_template').eq('key', params.key).maybeSingle();

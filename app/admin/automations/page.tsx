@@ -15,6 +15,7 @@ type AutomationRule = {
 
 type AutomationDetail = {
   templated: boolean;
+  marketDigest?: boolean;
   title_template?: string;
   content_template?: string;
   customized?: boolean;
@@ -235,9 +236,21 @@ export default function AdminAutomationsPage() {
               {!d && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>טוענים...</p>}
 
               {d && !d.templated && (
-                <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-                  ההודעה הזו נכתבת מחדש ע&quot;י AI בכל בוקר לפי מה שקרה בשוק, אז אין לה נוסח קבוע לעריכה. הטיוטה של כל יום מחכה ב<Link href="/admin/announcements" style={{ color: 'var(--teal)' }}>לוח המודעות</Link> - שם אפשר לבדוק, לשלוח לעצמי ולאשר.
-                </p>
+                <>
+                  <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: d.marketDigest ? '10px' : 0 }}>
+                    ההודעה הזו נכתבת מחדש ע&quot;י AI בכל בוקר לפי מה שקרה בשוק, אז אין לה נוסח קבוע לעריכה. הטיוטה של כל יום מחכה ב<Link href="/admin/announcements" style={{ color: 'var(--teal)' }}>לוח המודעות</Link> - שם אפשר לבדוק, לשלוח לעצמי ולאשר.
+                  </p>
+                  {d.marketDigest && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                      <button className="btn-outline" style={{ padding: '6px 12px', fontSize: '12.5px' }} onClick={() => testToSelf(rule.key)} disabled={busy === `${rule.key}:test`} title="שליחת התראת בדיקה רק אלי">
+                        {busy === `${rule.key}:test` ? '…' : '🔔 בדיקה לעצמי'}
+                      </button>
+                      <button className="btn-outline" style={{ padding: '6px 12px', fontSize: '12.5px' }} onClick={() => runNow(rule.key)} disabled={busy === `${rule.key}:run`} title="מכין את הסיכום עכשיו ויוצר טיוטה בלוח המודעות, בלי לחכות לשעה הקבועה">
+                        {busy === `${rule.key}:run` ? 'מכין...' : '📝 יצירת טיוטה עכשיו'}
+                      </button>
+                    </div>
+                  )}
+                </>
               )}
 
               {d?.templated && !editing && (

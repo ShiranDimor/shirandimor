@@ -3,6 +3,8 @@ import { supabaseAdmin } from '@/lib/instantLogin';
 import { buildAutomationMessage } from '@/lib/automations';
 import { sendPushToUser } from '@/lib/webPush';
 
+export const maxDuration = 60;
+
 async function requireAdmin(request: Request) {
   const authHeader = request.headers.get('Authorization') || '';
   const token = authHeader.replace('Bearer ', '');
@@ -22,8 +24,17 @@ export async function POST(request: Request, { params }: { params: { key: string
   const admin = await requireAdmin(request);
   if (!admin) return NextResponse.json({ error: 'אין הרשאת ניהול' }, { status: 403 });
 
-  const msg = await buildAutomationMessage(params.key, true);
-  if ('error' in msg) return NextResponse.json({ error: 'לאוטומציה הזו אין נוסח קבוע לבדיקה' }, { status: 400 });
+  let msg: { title: string; content: string; usedSample: boolean };
+  if (params.key === 'market-digest') {
+    const { generateMarketDigest } = await import('@/lib/marketDigest');
+    const digest = await generateMarketDigest();
+    if (!digest) return NextResponse.json({ error: 'הכנת הסיכום נכשלה - אפשר לנסות שוב' }, { status: 500 });
+    msg = { title: digest.title, content: digest.content, usedSample: false };
+  } else {
+    const built = await buildAutomationMessage(params.key, true);
+    if ('error' in built) return NextResponse.json({ error: 'לאוטומציה הזו אין נוסח קבוע לבדיקה' }, { status: 400 });
+    msg = built;
+  }
 
   const result = await sendPushToUser(admin.id, {
     title: `🧪 ${msg.title}`,
