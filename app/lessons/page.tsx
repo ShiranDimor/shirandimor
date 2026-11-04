@@ -319,7 +319,7 @@ export default function LessonsLibraryPage() {
                     style={{ '--tile-accent': `var(${LESSON_CATEGORY_COLORS[c] || '--orange'})` } as CSSProperties}
                     onClick={() => setActiveCategory(c)}
                   >
-                    {isStartHere && <span className="lesson-folder-tile--start-badge">👉 התחילו כאן</span>}
+                    {isStartHere && <span className="lesson-folder-tile--start-badge">התחילו כאן 👇</span>}
                     <div className="lesson-folder-icon">{LESSON_CATEGORY_ICONS[c] || '📁'}</div>
                     <div className="lesson-folder-title">{c}</div>
                     <div className="lesson-folder-count">{videoLessons.filter((l) => l.category === c).length}</div>
