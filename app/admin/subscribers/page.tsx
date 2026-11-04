@@ -13,6 +13,7 @@ type ApprovedSub = {
   subscription_status: string | null;
   subscription_started_at: string | null;
   subscription_paid_until: string | null;
+  hasPushSub: boolean;
 };
 
 type RevenueItem = { name: string | null; email: string | null; phone: string | null; joinDate: string | null; price: number };
@@ -280,7 +281,14 @@ export default function AdminSubscribersPage() {
       .eq('role', 'subscriber')
       .neq('subscription_status', 'cancelled') // מי שכבר בוטל סופית (role נשאר subscriber בכוונה, ר' lib/entitlement.ts) לא שייך לרשימת המנויים הפעילים
       .order('subscription_started_at', { ascending: false });
-    if (data) setApprovedSubs(data);
+    if (!data) return;
+
+    // מי מהם יש לו/ה כרגע הרשמה פעילה להתראות פוש (באיזשהו מכשיר) - כדי שאפשר יהיה לראות
+    // ברשימה עצמה מי "מנוי על הנייר" אבל בפועל לא יקבל/ה שום התראה
+    const { data: pushRows } = await supabase.from('push_subscriptions').select('user_id').in('user_id', data.map((d) => d.id));
+    const withPush = new Set((pushRows || []).map((r) => r.user_id).filter(Boolean));
+
+    setApprovedSubs(data.map((d) => ({ ...d, hasPushSub: withPush.has(d.id) })));
   }
 
   async function checkAdmin() {
@@ -520,7 +528,15 @@ export default function AdminSubscribersPage() {
         <div className="admin-row" key={sub.id} style={{ gap: '10px' }}>
           <Link href={`/admin/subscribers/${sub.id}`} style={{ textDecoration: 'none', color: 'inherit', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flex: 1, minWidth: 0 }}>
             <div>
-              <div className="name">{sub.full_name || 'ללא שם'}</div>
+              <div className="name">
+                {sub.full_name || 'ללא שם'}{' '}
+                <span
+                  title={sub.hasPushSub ? 'יש הרשמה פעילה להתראות פוש' : 'אין הרשמה פעילה להתראות פוש - לא יקבל/תקבל התראות'}
+                  style={{ fontSize: '11px', color: sub.hasPushSub ? 'var(--profit)' : 'var(--loss)' }}
+                >
+                  {sub.hasPushSub ? '🔔' : '🔕'}
+                </span>
+              </div>
               <div className="email">{sub.email}</div>
               {sub.phone && <div className="email" style={{ marginTop: '2px' }}>{sub.phone}</div>}
               <div className="email" style={{ marginTop: '2px' }}>
