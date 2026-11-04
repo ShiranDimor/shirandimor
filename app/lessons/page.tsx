@@ -1,11 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
-import { LESSONS_LIBRARY_PUBLIC, LESSON_CATEGORIES, LESSON_CATEGORY_ICONS } from '@/lib/lessonsConfig';
+import { LESSONS_LIBRARY_PUBLIC, LESSON_CATEGORIES, LESSON_CATEGORY_ICONS, LESSON_CATEGORY_COLORS } from '@/lib/lessonsConfig';
 
 const PRESENTATIONS_KEY = '__presentations__';
+// הנושא הראשון שמומלץ למי שנכנס/ת בפעם הראשונה - מסומן בתג "התחילו כאן" כדי שלא יצטרכו לנחש
+const START_HERE_CATEGORY = 'איך תכלס מתחילים?';
 
 type LessonSummary = {
   id: string;
@@ -296,19 +298,34 @@ export default function LessonsLibraryPage() {
           {!loading && !nothingToShow && !activeCategory && (
             <div className="lesson-folder-grid">
               {presentationLessons.length > 0 && (
-                <button type="button" className="lesson-folder-tile" onClick={() => setActiveCategory(PRESENTATIONS_KEY)}>
+                <button
+                  type="button"
+                  className="lesson-folder-tile"
+                  style={{ '--tile-accent': 'var(--orange)' } as CSSProperties}
+                  onClick={() => setActiveCategory(PRESENTATIONS_KEY)}
+                >
                   <div className="lesson-folder-icon">📊</div>
                   <div className="lesson-folder-title">מצגות</div>
                   <div className="lesson-folder-count">{presentationLessons.length}</div>
                 </button>
               )}
-              {presentCategories.map((c) => (
-                <button key={c} type="button" className="lesson-folder-tile" onClick={() => setActiveCategory(c)}>
-                  <div className="lesson-folder-icon">{LESSON_CATEGORY_ICONS[c] || '📁'}</div>
-                  <div className="lesson-folder-title">{c}</div>
-                  <div className="lesson-folder-count">{videoLessons.filter((l) => l.category === c).length}</div>
-                </button>
-              ))}
+              {presentCategories.map((c) => {
+                const isStartHere = c === START_HERE_CATEGORY;
+                return (
+                  <button
+                    key={c}
+                    type="button"
+                    className={`lesson-folder-tile${isStartHere ? ' lesson-folder-tile--start' : ''}`}
+                    style={{ '--tile-accent': `var(${LESSON_CATEGORY_COLORS[c] || '--orange'})` } as CSSProperties}
+                    onClick={() => setActiveCategory(c)}
+                  >
+                    {isStartHere && <span className="lesson-folder-tile--start-badge">👉 התחילו כאן</span>}
+                    <div className="lesson-folder-icon">{LESSON_CATEGORY_ICONS[c] || '📁'}</div>
+                    <div className="lesson-folder-title">{c}</div>
+                    <div className="lesson-folder-count">{videoLessons.filter((l) => l.category === c).length}</div>
+                  </button>
+                );
+              })}
             </div>
           )}
 

@@ -17,3 +17,12 @@ export const LESSON_CATEGORY_ICONS: Record<string, string> = {
   'ניהול סיכונים': '🛡️',
   'הקלטות מפגשי מסחר בזמן אמת': '🎥',
 };
+
+// צבע ייחודי לכל נושא (שם משתנה CSS קיים, ר' app/globals.css) - כדי שכל תיקייה תיראה שונה
+// ולא כולן באותו כתום שטוח כמו קודם
+export const LESSON_CATEGORY_COLORS: Record<string, string> = {
+  'איך תכלס מתחילים?': '--teal',
+  'נושאים מתקדמים': '--lavender',
+  'ניהול סיכונים': '--loss',
+  'הקלטות מפגשי מסחר בזמן אמת': '--profit',
+};
