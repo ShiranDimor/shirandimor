@@ -265,7 +265,7 @@ export default function AdminSubscribersPage() {
   function sendWhatsAppReminder(sub: ApprovedSub) {
     if (!sub.phone) return;
     const firstName = (sub.full_name || '').trim().split(' ')[0] || '';
-    const text = `היי${firstName ? ' ' + firstName : ''}, שמתי לב שההתראות באתר אצלך לא מופעלות - ככה מפספסים עדכונים חשובים. כדאי להיכנס לאתר וללחוץ על הפעמון 🔔 כדי להפעיל אותן מחדש. תודה! שירן`;
+    const text = `היי${firstName ? ' ' + firstName : ''}, שמתי לב שההתראות באתר אצלך לא מופעלות - ככה מפספסים עדכונים חשובים. כדאי להיכנס לאתר וללחוץ על הפעמון כדי להפעיל אותן מחדש.\n\nתודה!\nשירן`;
     const phoneDigits = sub.phone.replace(/\D/g, '').replace(/^0/, '972');
     window.open(`https://wa.me/${phoneDigits}?text=${encodeURIComponent(text)}`, '_blank');
   }
