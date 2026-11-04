@@ -690,7 +690,10 @@
 .notif-bell-close {
   background: none; border: none; color: var(--text-tertiary); font-size: 16px; cursor: pointer; font-family: inherit;
 }
-.notif-bell-list { overflow-y: auto; }
+/* flex:1 + min-height:0 - בלי זה הרשימה "גדלה" כדי להכיל את כל הפריטים במקום לגלול בתוך עצמה,
+   ודוחפת את כפתור הפעלת ההתראות (notif-bell-settings) מתחת לגבול הגובה של הפאנל - בלי שום
+   אפשרות לגלול אליו, כי לפאנל החיצוני יש overflow:hidden ולא גלילה */
+.notif-bell-list { overflow-y: auto; flex: 1; min-height: 0; }
 .notif-bell-empty { padding: 20px 14px; font-size: 13px; color: var(--text-tertiary); text-align: center; }
 .notif-bell-item {
   display: flex; gap: 10px; padding: 12px 14px; text-decoration: none; color: inherit;
