@@ -119,10 +119,13 @@ export async function notifyTradesClosed(trades: ClosedTradeInfo[]) {
       const title = `${isProfit ? '✅' : '🔻'} עסקה נסגרה ${isProfit ? 'ברווח' : 'בהפסד'} - ${t.symbol}`;
       const pctLabel = `${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%`;
 
-      // המנויים מקבלים את התוצאה בלבד וקישור לתיק. מי שאינו מנוי מקבל את אותה תוצאה (בכוונה -
-      // זו ההוכחה שמביאה הצטרפות) אבל עם משפט שמניע הצטרפות וקישור לניסיון במקום לתיק עצמו
+      // המנויים מקבלים את התוצאה המלאה תמיד, כולל הפסדים - הם משלמים, מגיע להם תמונה מדויקת.
+      // מי שאינו מנוי מקבל התראה רק על עסקאות שנסגרו ברווח (ההוכחה שמביאה הצטרפות) - הפסד
+      // לא נשלח ללידים בכלל, כדי לא לפגוע בפיץ' ההצטרפות עם ראיה הפוכה
       await sendPushToActiveSubscribers({ title, body: pctLabel, url: '/portfolio' }, 'trade');
-      await sendPushToNonSubscribers({ title, body: `${pctLabel} · חודש ראשון ב-₪1 ←`, url: '/subscribe' }, 'trade');
+      if (isProfit) {
+        await sendPushToNonSubscribers({ title, body: `${pctLabel} · חודש ראשון ב-₪1 ←`, url: '/subscribe' }, 'trade');
+      }
     }
   }
 }
