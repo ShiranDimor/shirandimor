@@ -80,7 +80,7 @@ export default function HomePage() {
       // דרך /api/portfolio/trades ולא קריאה ישירה לטבלת trades מהדפדפן - ר' הערה מקבילה
       // ב-app/portfolio/page.tsx. עמוד הבית לא צריך סימבולים בכלל (רק ספירה וסכומים), אבל
       // עדיין עובר דרך אותו endpoint כדי לא להשאיר נתיב גישה ישיר נוסף לטבלה מהדפדפן
-      const res = await fetch('/api/portfolio/trades?closedLimit=80');
+      const res = await fetch('/api/portfolio/trades?closedLimit=80', { cache: 'no-store' });
       if (!res.ok) throw new Error('שגיאה בטעינת נתוני התיק');
       const { open, closed, initialBalance } = await res.json();
 

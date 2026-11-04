@@ -152,6 +152,7 @@ export default function PortfolioPage() {
       // דרך קריאה ישירה מהדפדפן לטבלת trades - כדי שהזכאות (מנוי פעיל?) תיבדק בצד השרת
       // ושהטשטוש של סימבולים למי שאינו זכאי יהיה אכיפה אמיתית, לא רק עיצוב ב-UI
       const res = await fetch('/api/portfolio/trades', {
+        cache: 'no-store',
         headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
       });
       if (!res.ok) throw new Error('שגיאה בטעינת נתוני התיק');

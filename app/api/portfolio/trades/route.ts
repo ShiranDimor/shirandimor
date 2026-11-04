@@ -56,10 +56,17 @@ export async function GET(request: Request) {
     hasFullAccess ? t : { ...t, symbol: '•'.repeat(Math.max(3, (t.symbol || '').length)) }
   );
 
-  return NextResponse.json({
-    open: maskedOpen,
-    closed: closed || [],
-    initialBalance: settings ? Number(settings.initial_balance) : null,
-    hasFullAccess,
-  });
+  // Cache-Control מפורש - בלי זה נצפה מקרה אמיתי שבו עסקה חדשה/שנסגרה לא הופיעה בתיק הציבורי
+  // גם אחרי רענון מלא של הדף: "force-dynamic" מונע קאשינג בצד השרת (Next.js Data Cache), אבל
+  // לא קובע את כותרת התגובה עצמה - בלי כותרת מפורשת, CDN/דפדפן יכולים עדיין לשמור תגובת GET
+  // הזו כברירת מחדל ולהגיש אותה שוב בלי לפגוע כלל בשרת
+  return NextResponse.json(
+    {
+      open: maskedOpen,
+      closed: closed || [],
+      initialBalance: settings ? Number(settings.initial_balance) : null,
+      hasFullAccess,
+    },
+    { headers: { 'Cache-Control': 'no-store, must-revalidate' } }
+  );
 }
