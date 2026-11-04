@@ -69,7 +69,7 @@ async function newLessonVars(): Promise<VarsResult> {
 
   const { data: lessons } = await supabaseAdmin
     .from('lessons')
-    .select('title')
+    .select('id, title')
     .eq('published', true)
     .gte('created_at', weekAgo.toISOString())
     .order('created_at', { ascending: false })
@@ -80,6 +80,7 @@ async function newLessonVars(): Promise<VarsResult> {
   return {
     vars: {
       headline: 'שיעור חדש',
+      lesson_url: `https://www.shirandimor.com/lessons/${lessons[0].id}`,
       lessons: `*${lessons[0].title}*`,
       lessons_plain: lessons[0].title,
     },
@@ -145,11 +146,11 @@ export const AUTOMATION_TEMPLATES: Record<string, AutomationTemplate> = {
 עלה {headline} לספריית השיעורים שלנו: {lessons}.
 
 כנסו לצפות כשנוח לכם, הקצב שלכם:
-https://www.shirandimor.com/lessons
+{lesson_url}
 
 {closing}`,
-    placeholders: { headline: '"שיעור חדש" או "3 שיעורים חדשים"', lessons: 'שמות השיעורים (מודגשים)', lessons_plain: 'שמות השיעורים (טקסט רגיל)', ...GREETING_CLOSING_PLACEHOLDERS },
-    sample: { headline: 'שיעור חדש', lessons: '*איך לקבוע סטופ לוס*', lessons_plain: 'איך לקבוע סטופ לוס' },
+    placeholders: { headline: '"שיעור חדש" או "3 שיעורים חדשים"', lessons: 'שמות השיעורים (מודגשים)', lessons_plain: 'שמות השיעורים (טקסט רגיל)', lesson_url: 'קישור ישיר לשיעור עצמו', ...GREETING_CLOSING_PLACEHOLDERS },
+    sample: { headline: 'שיעור חדש', lessons: '*איך לקבוע סטופ לוס*', lessons_plain: 'איך לקבוע סטופ לוס', lesson_url: 'https://www.shirandimor.com/lessons' },
     getVars: newLessonVars,
     scheduledHour: 9,
     closingPlan: 'daily',
@@ -369,6 +370,7 @@ export async function runNewLessonAnnouncementForLesson(lessonId: string) {
     greeting: greetingForHour(hour),
     closing: closingFor('daily', hour),
     headline: 'שיעור חדש',
+    lesson_url: `https://www.shirandimor.com/lessons/${lessonId}`,
     lessons: `*${lesson.title}*`,
     lessons_plain: lesson.title,
   };
