@@ -36,7 +36,7 @@ export async function POST(request: Request, { params }: { params: { key: string
   if (params.key === 'market-digest') {
     const { generateMarketDigest } = await import('@/lib/marketDigest');
     const digest = await generateMarketDigest();
-    if (!digest) return NextResponse.json({ error: 'הכנת הסיכום נכשלה - אפשר לנסות שוב' }, { status: 500 });
+    if ('reason' in digest) return NextResponse.json({ error: `הכנת הסיכום נכשלה: ${digest.reason}` }, { status: 500 });
     msg = digest;
   } else {
     const built = await buildAutomationMessage(params.key, false);

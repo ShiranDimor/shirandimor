@@ -148,12 +148,15 @@ async function callClaudeWithSearch(apiKey: string, model: string, liveContext: 
   return { stopReason: lastResponse.stop_reason, content: lastResponse.content };
 }
 
+export type MarketDigestResult = { title: string; content: string; reason?: undefined } | { title?: undefined; content?: undefined; reason: string };
+
 // מייצר סיכום בוקר יומי על שוק ההון האמריקאי, מבוסס על חיפוש אינטרנט אמיתי (לא על ידע
 // מאומן בלבד - תאריך היום רחוק מתאריך גבול הידע של המודל) ועל נתון אמיתי מטבלת הלייבים שלנו.
-// מחזיר null אם אין מספיק מידע מאומת כדי לכתוב סיכום מדויק, כדי שלא יפורסם משהו מומצא
-export async function generateMarketDigest(): Promise<{ title: string; content: string } | null> {
+// מחזיר reason (בלי title/content) אם אין מספיק מידע מאומת כדי לכתוב סיכום מדויק, כדי שלא
+// יפורסם משהו מומצא - ה-reason עוזר לאבחן למה בלי לנחש (NO_DIGEST מפורש מול JSON לא תקין וכו')
+export async function generateMarketDigest(): Promise<MarketDigestResult> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) throw new Error('ANTHROPIC_API_KEY לא מוגדר');
+  if (!apiKey) return { reason: 'ANTHROPIC_API_KEY לא מוגדר בשרת' };
   const model = process.env.ANTHROPIC_MODEL || 'claude-sonnet-5-5';
 
   const liveContext = await getUpcomingLiveContext();
@@ -161,13 +164,14 @@ export async function generateMarketDigest(): Promise<{ title: string; content: 
   const textBlocks = (content as Array<{ type: string; text?: string }>).filter((b) => b.type === 'text');
   const raw = textBlocks.map((b) => b.text || '').join('\n').trim();
 
-  if (!raw || raw.includes('NO_DIGEST')) return null;
+  if (!raw) return { reason: 'ה-AI לא החזיר תוכן בכלל' };
+  if (raw.includes('NO_DIGEST')) return { reason: 'ה-AI לא הצליח לאמת מידע בסיסי בחיפוש (NO_DIGEST) - סימן לכשל בחיפוש האינטרנט, לא ליום "שקט"' };
 
   try {
     const parsed = JSON.parse(extractJson(raw));
-    if (!parsed.title || !parsed.content) return null;
+    if (!parsed.title || !parsed.content) return { reason: `תשובת ה-AI הייתה JSON תקין אבל חסר בה title/content: ${raw.slice(0, 300)}` };
     return { title: String(parsed.title), content: String(parsed.content) };
   } catch {
-    return null;
+    return { reason: `תשובת ה-AI לא הייתה JSON תקין: ${raw.slice(0, 300)}` };
   }
 }

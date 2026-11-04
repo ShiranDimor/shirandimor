@@ -23,9 +23,9 @@ export async function GET(request: Request) {
     }
 
     const digest = await generateMarketDigest();
-    if (!digest) {
-      console.error('סיכום שוק יומי: אין מספיק מידע מאומת לפרסום היום');
-      return NextResponse.json({ ok: true, drafted: false, reason: 'no_digest' });
+    if ('reason' in digest) {
+      console.error('סיכום שוק יומי: אין מספיק מידע מאומת לפרסום היום -', digest.reason);
+      return NextResponse.json({ ok: true, drafted: false, reason: 'no_digest', detail: digest.reason });
     }
 
     const result = await draftAutomatedAnnouncement('market-digest', digest.title, digest.content);
