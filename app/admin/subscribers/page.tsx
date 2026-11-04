@@ -40,6 +40,7 @@ export default function AdminSubscribersPage() {
   const [syncMessage, setSyncMessage] = useState('');
   const [removing, setRemoving] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState<string | null>(null);
+  const [testPushing, setTestPushing] = useState<string | null>(null);
 
   const [debugPhone, setDebugPhone] = useState('');
   const [debugging, setDebugging] = useState(false);
@@ -268,6 +269,26 @@ export default function AdminSubscribersPage() {
     const text = `היי${firstName ? ' ' + firstName : ''}, שמתי לב שההתראות באתר אצלך לא מופעלות - ככה מפספסים עדכונים חשובים. כדאי להיכנס לאתר וללחוץ על הפעמון כדי להפעיל אותן מחדש.\n\nתודה!\nשירן`;
     const phoneDigits = sub.phone.replace(/\D/g, '').replace(/^0/, '972');
     window.open(`https://wa.me/${phoneDigits}?text=${encodeURIComponent(text)}`, '_blank');
+  }
+
+  // שליחת התראת פוש אמיתית רק למנוי/ה הזה - לבדיקת תקלות מול אדם אחד ספציפי, בלי ליצור הודעה
+  // בלוח המודעות ובלי לשלוח לאף אחד אחר
+  async function sendTestPush(sub: ApprovedSub) {
+    const text = window.prompt(`טקסט לבדיקה שתישלח רק ל${sub.full_name || sub.email} (לא תתפרסם בלוח המודעות):`, 'זוהי הודעת בדיקה מהמערכת');
+    if (text === null) return;
+    setTestPushing(sub.id);
+    const { data: { session } } = await supabase.auth.getSession();
+    const res = await fetch(`/api/admin/subscribers/${sub.id}/test-push`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
+      body: JSON.stringify({ text }),
+    });
+    const data = await res.json().catch(() => ({}));
+    setTestPushing(null);
+    if (!res.ok) { window.alert(`השליחה נכשלה: ${data.error || 'שגיאה'}`); return; }
+    if (data.configured === false) { window.alert('התראות פוש לא מוגדרות בשרת'); return; }
+    if (data.attempted === 0) { window.alert('אין למנוי/ה הזה שום מכשיר רשום להתראות - לא נשלח כלום'); return; }
+    window.alert(`נשלח בפועל ל-${data.sent} מתוך ${data.attempted} מכשירים${data.failed ? ` (${data.failed} נכשלו)` : ''}${data.removedStale ? ` · ${data.removedStale} הרשמות לא-תקפות הוסרו` : ''}`);
   }
 
   function toggleSort(col: 'date' | 'name' | 'notifications') {
@@ -586,6 +607,15 @@ export default function AdminSubscribersPage() {
                 🔔 תזכורת
               </button>
             )}
+            <button
+              className="btn-outline"
+              style={{ padding: '5px 10px', fontSize: '11px', whiteSpace: 'nowrap' }}
+              onClick={() => sendTestPush(sub)}
+              disabled={testPushing === sub.id}
+              title="שליחת התראת בדיקה אמיתית רק למנוי/ה הזה - לא מתפרסם בלוח המודעות"
+            >
+              {testPushing === sub.id ? '…' : '📤 בדיקה'}
+            </button>
             <button
               className="btn-outline"
               style={{ padding: '5px 10px', fontSize: '11px', whiteSpace: 'nowrap' }}
