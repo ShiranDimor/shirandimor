@@ -149,6 +149,20 @@ export default function AdminTradesPage() {
 
   useEffect(() => {
     checkAdmin();
+
+    // רענון כשחוזרים לטאב - בלי זה, טאב ניהול שהיה פתוח ברקע כשעסקה נסגרת אוטומטית בסטופ
+    // לוס (או משתנה ממקור אחר) ממשיך להציג את הנתונים הישנים עד רילוד מלא
+    function refreshIfVisible() {
+      if (document.visibilityState === 'visible') loadTrades();
+    }
+    document.addEventListener('visibilitychange', refreshIfVisible);
+    window.addEventListener('focus', refreshIfVisible);
+    window.addEventListener('pageshow', refreshIfVisible);
+    return () => {
+      document.removeEventListener('visibilitychange', refreshIfVisible);
+      window.removeEventListener('focus', refreshIfVisible);
+      window.removeEventListener('pageshow', refreshIfVisible);
+    };
   }, []);
 
   function startEditBalance() {

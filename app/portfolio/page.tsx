@@ -74,6 +74,29 @@ export default function PortfolioPage() {
 
   useEffect(() => {
     load();
+
+    // רענון כשחוזרים לדף - אחרת מי שהדף הזה היה פתוח לו (למשל ברקע, או שהגיע אליו קודם ועבר
+    // לאפליקציה אחרת) וחוזר אחרי שעסקה נפתחה/נסגרה במקביל (כולל סגירה אוטומטית בסטופ לוס,
+    // שגם שולחת על זה התראה), ימשיך לראות את נתוני התיק הישנים שנטענו לפני השינוי - בדיוק
+    // כמו שתוקן בעמוד לוח המודעות
+    function refreshIfVisible() {
+      if (document.visibilityState === 'visible') load();
+    }
+    document.addEventListener('visibilitychange', refreshIfVisible);
+    window.addEventListener('focus', refreshIfVisible);
+    window.addEventListener('pageshow', refreshIfVisible);
+
+    function onSwMessage(event: MessageEvent) {
+      if (event.data?.type === 'refresh-data') load();
+    }
+    navigator.serviceWorker?.addEventListener('message', onSwMessage);
+
+    return () => {
+      document.removeEventListener('visibilitychange', refreshIfVisible);
+      window.removeEventListener('focus', refreshIfVisible);
+      window.removeEventListener('pageshow', refreshIfVisible);
+      navigator.serviceWorker?.removeEventListener('message', onSwMessage);
+    };
   }, []);
 
   useEffect(() => {
