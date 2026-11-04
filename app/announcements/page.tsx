@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { FormattedText } from '@/lib/formatText';
+import PushNotificationButton from '@/components/PushNotificationButton';
 
 type Announcement = {
   id: string;
@@ -81,6 +82,8 @@ export default function AnnouncementsPage() {
 
       <div className="form-title">לוח מודעות</div>
       <div className="form-sub">כל העדכונים שלי - מהאחרון לישן ביותר</div>
+
+      <PushNotificationButton />
 
       {loading && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)', textAlign: 'center', marginTop: '20px' }}>טוענים...</p>}
       {!loading && announcements.length === 0 && (

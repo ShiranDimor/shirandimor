@@ -3,6 +3,7 @@
 import { useEffect, useState, type CSSProperties } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
+import PushNotificationButton from '@/components/PushNotificationButton';
 
 type Profile = {
   full_name: string | null;
@@ -115,6 +116,8 @@ export default function AccountPage() {
           </div>
         )}
       </div>
+
+      <PushNotificationButton />
 
       <div className="lesson-folder-grid" style={{ marginBottom: '28px' }}>
         {QUICK_LINKS.map((link) => (

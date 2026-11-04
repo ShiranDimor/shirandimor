@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase';
 import { trackFunnelEvent } from '@/lib/trackEvent';
 import { buildGoogleCalendarUrl, buildIcsDataUri } from '@/lib/calendar';
 import ClearableInput from '@/components/ClearableInput';
+import PushNotificationButton from '@/components/PushNotificationButton';
 
 type Live = {
   id: string;
@@ -185,6 +186,8 @@ export default function LivesPage() {
 
       <div className="form-title">מסחר בזמן אמת</div>
       <div className="form-sub">סוחרים ביחד איתי בזמן אמת - לא רק לומדים או צופים מהצד</div>
+
+      <PushNotificationButton />
 
       {(loading || checkingAuth) && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)', textAlign: 'center', marginTop: '20px' }}>טוענים...</p>}
       {!loading && lives.length === 0 && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)', textAlign: 'center', marginTop: '20px' }}>אין כרגע מפגשים קרובים - שווה לחזור בקרוב</p>}

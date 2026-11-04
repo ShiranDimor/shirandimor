@@ -97,6 +97,12 @@ export default function NotificationBell() {
               <span>🔔 עדכונים</span>
               <button type="button" className="notif-bell-close" onClick={() => setOpen(false)}>✕</button>
             </div>
+            {/* כפתור הפעלת העדכונים קודם, לפני ההיסטוריה - לא בסוף רשימה שצריך לגלול אליה.
+                אנשים לא תמיד שמים לב שיש גלילה בתוך תיבה קטנה בתוך הדף, ולא מגיעים לכפתור
+                שם - זה גרם בפועל למנויים "לפספס" אותו לגמרי */}
+            <div className="notif-bell-settings">
+              <PushNotificationButton />
+            </div>
             <div className="notif-bell-list">
               {items.length === 0 && <p className="notif-bell-empty">אין עדיין עדכונים</p>}
               {items.map((it) => (
@@ -109,9 +115,6 @@ export default function NotificationBell() {
                   </span>
                 </a>
               ))}
-            </div>
-            <div className="notif-bell-settings">
-              <PushNotificationButton />
             </div>
           </div>
         </div>

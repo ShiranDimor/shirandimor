@@ -4,6 +4,7 @@ import { useEffect, useState, type CSSProperties } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { LESSONS_LIBRARY_PUBLIC, LESSON_CATEGORIES, LESSON_CATEGORY_ICONS, LESSON_CATEGORY_COLORS } from '@/lib/lessonsConfig';
+import PushNotificationButton from '@/components/PushNotificationButton';
 
 const PRESENTATIONS_KEY = '__presentations__';
 // הנושא הראשון שמומלץ למי שנכנס/ת בפעם הראשונה - מסומן בתג "התחילו כאן" כדי שלא יצטרכו לנחש
@@ -221,6 +222,8 @@ export default function LessonsLibraryPage() {
           </div>
         )}
       </div>
+
+      {!gateNeeded && <PushNotificationButton />}
 
       {gateNeeded && !loading && !enterResult && gateStep === 'phone' && (
         <div className="tp-question-card">
