@@ -98,7 +98,7 @@ export default function NotificationBell() {
               <button type="button" className="notif-bell-close" onClick={() => setOpen(false)}>✕</button>
             </div>
             <div className="notif-bell-list">
-              {items.length === 0 && <p className="notif-bell-empty">אין עדיין התראות</p>}
+              {items.length === 0 && <p className="notif-bell-empty">אין עדיין עדכונים</p>}
               {items.map((it) => (
                 <a key={it.id} href={it.url || '/'} className="notif-bell-item" onClick={() => setOpen(false)}>
                   <span className="notif-bell-icon">{KIND_ICON[it.kind] || '🔔'}</span>

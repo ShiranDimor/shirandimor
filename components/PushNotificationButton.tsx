@@ -199,7 +199,7 @@ export default function PushNotificationButton({ variant = 'default', autoOpenLe
       <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-hairline-strong)', borderRight: '3px solid var(--lavender)', borderRadius: '10px', padding: '12px 14px', marginBottom: '10px', display: 'flex', gap: '10px', alignItems: 'center' }}>
         <span style={{ fontSize: '20px', flexShrink: 0 }}>📲</span>
         <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', lineHeight: 1.6, margin: 0 }}>
-          <strong style={{ color: 'var(--text-primary)' }}>כדי לקבל התראות ב-iPhone:</strong> קודם מוסיפים את האתר למסך הבית - לוחצים על <strong>שיתוף</strong> <span aria-hidden="true">⎙</span> למטה בספארי, ואז על <strong>&quot;הוספה למסך הבית&quot;</strong>. אחר כך פותחים את האתר מהאייקון החדש.
+          <strong style={{ color: 'var(--text-primary)' }}>כדי לקבל עדכונים ב-iPhone:</strong> קודם מוסיפים את האתר למסך הבית - לוחצים על <strong>שיתוף</strong> <span aria-hidden="true">⎙</span> למטה בספארי, ואז על <strong>&quot;הוספה למסך הבית&quot;</strong>. אחר כך פותחים את האתר מהאייקון החדש.
         </p>
       </div>
     );
@@ -208,7 +208,7 @@ export default function PushNotificationButton({ variant = 'default', autoOpenLe
   if (status === 'denied') {
     return (
       <p style={{ fontSize: '12px', color: 'var(--text-tertiary)', textAlign: 'center', marginBottom: '10px' }}>
-        ההתראות חסומות בדפדפן - אפשר לאפשר אותן מהגדרות האתר בדפדפן.
+        העדכונים חסומים בדפדפן - אפשר לאפשר אותם מהגדרות האתר בדפדפן.
       </p>
     );
   }
@@ -219,7 +219,7 @@ export default function PushNotificationButton({ variant = 'default', autoOpenLe
         <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '10px' }}>
           {variant === 'hero'
             ? 'קהילת סוחרים שבונה תיק השקעות ביחד איתי, בזמן אמת - עדכונים על עסקאות, שיעורים ומפגשי מסחר ישר לנייד. בלי לפתוח חשבון, בלי עלות.'
-            : 'השארת פרטים פותחת התראות על עסקאות ועדכונים מהתיק - בלי לפתוח חשבון ובלי עלות.'}
+            : 'השארת פרטים פותחת עדכונים על עסקאות ותיק ההשקעות - בלי לפתוח חשבון ובלי עלות.'}
         </p>
         <div className="field" style={{ marginBottom: '8px' }}>
           <ClearableInput type="text" value={name} onChange={(e) => setName(e.target.value)} onClear={() => setName('')} placeholder="שם מלא" />
@@ -233,7 +233,7 @@ export default function PushNotificationButton({ variant = 'default', autoOpenLe
         {formError && <p style={{ color: 'var(--loss)', fontSize: '12px', marginBottom: '8px' }}>{formError}</p>}
         <div style={{ display: 'flex', gap: '8px' }}>
           <button type="button" className="btn-primary" style={{ flex: 1 }} onClick={handleLeadFormSubmit} disabled={busy}>
-            {busy ? 'שולחים...' : '🔔 הפעלת התראות'}
+            {busy ? 'שולחים...' : '🔔 הפעלת עדכונים'}
           </button>
           <button type="button" className="btn-outline" style={{ width: 'auto', flex: 'none', padding: '12px 16px' }} onClick={() => setStatus('off')}>ביטול</button>
         </div>
@@ -245,7 +245,7 @@ export default function PushNotificationButton({ variant = 'default', autoOpenLe
     if (status === 'on') {
       return (
         <p style={{ fontSize: '13.5px', color: 'var(--profit)', fontWeight: 700, textAlign: 'center', marginBottom: '6px' }}>
-          ✓ ההתראות שלכם פעילות
+          ✓ העדכונים שלכם פעילים
           <button type="button" onClick={handleDisable} disabled={busy} style={{ background: 'none', border: 'none', color: 'var(--text-tertiary)', fontSize: '11.5px', fontWeight: 400, textDecoration: 'underline', cursor: 'pointer', marginRight: '8px', padding: 0 }}>
             לכיבוי
           </button>
