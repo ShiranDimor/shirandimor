@@ -288,6 +288,7 @@ export default function AdminSubscribersPage() {
       .select('id, email, phone, full_name, subscription_status, subscription_started_at, subscription_paid_until')
       .eq('role', 'subscriber')
       .neq('subscription_status', 'cancelled') // מי שכבר בוטל סופית (role נשאר subscriber בכוונה, ר' lib/entitlement.ts) לא שייך לרשימת המנויים הפעילים
+      .eq('excluded_from_subscriber_list', false) // מנויים שהוענקו ידנית מחוץ למאנדיי (למשל בני משפחה) - לא נספרים כאן כדי שהמספר יישאר תואם לקבוצת הסוחרים במאנדיי, אבל נשארים מנויים מלאים בכל מקום אחר
       .order('subscription_started_at', { ascending: false });
     if (!data) return;
 

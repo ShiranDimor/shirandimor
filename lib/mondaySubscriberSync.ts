@@ -63,7 +63,7 @@ export type BidirectionalSyncResult = {
 
 // חריגים קבועים - אנשים עם חשבון מנוי אמיתי שהוענק ידנית מחוץ למאנדיי לגמרי (למשל בני משפחה),
 // ולכן תמיד "לא ימצאו" שם בבדיקה - זה לא באג, זה מצב קבוע ומכוון
-const MANUAL_EXEMPT_EMAILS = new Set(['sivandimor@gmail.com', 'gil_dicastro@icloud.com']);
+const MANUAL_EXEMPT_EMAILS = new Set(['sivandimor@gmail.com', 'gil_dicastro@icloud.com', 'p504735963@no-email.shirandimor.internal']);
 const PLACEHOLDER_EMAIL_DOMAIN = 'no-email.shirandimor.internal';
 
 // סנכרון דו-כיווני מלא מול "קבוצת סוחרים" במאנדיי - המקור היחיד שמשותף בין ההרצה היומית
