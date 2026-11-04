@@ -77,6 +77,11 @@ export default function PushNotificationButton({ variant = 'default', autoOpenLe
       const sub = await reg?.pushManager.getSubscription();
       if (sub) {
         setStatus('on');
+        // יש מינוי מקומי בדפדפן - אבל זה לא מוכיח שהוא באמת נשמר אצלנו בשרת (למשל אם הקריאה
+        // המקורית נכשלה בשקט בפעם שעברה, כמו טוקן כניסה שפג בדיוק באותו רגע). בלי הבדיקה הזו
+        // מישהו יכול להישאר תקוע לצמיתות במצב "פעיל" בדפדפן שלו בלי שום התראה אי פעם תגיע -
+        // כי ברגע שיש מינוי מקומי, הקוד לא מנסה לשמור אותו שוב. עדכון שקט, לא חוסם את התצוגה
+        resyncSubscriptionToServer(sub).catch(() => {});
       } else if (autoOpenLeadForm && !subscriberNow) {
         setStatus('lead-form');
       } else {
@@ -84,6 +89,25 @@ export default function PushNotificationButton({ variant = 'default', autoOpenLe
       }
     } catch (e) {
       setStatus(autoOpenLeadForm && !subscriberNow ? 'lead-form' : 'off');
+    }
+  }
+
+  // שומר מינוי קיים (מקומי בדפדפן) בשרת שוב - upsert לפי endpoint אצלנו, אז זה בטוח גם אם
+  // הוא כבר שמור שם. משמש גם בהפעלה חדשה וגם לריענון שקט של מינוי שכבר קיים
+  async function resyncSubscriptionToServer(sub: PushSubscription, leadDetails?: { name: string; phone: string; email: string }) {
+    const subJson = sub.toJSON();
+    const { data: { session } } = await supabase.auth.getSession();
+    const res = await fetch('/api/push/subscribe', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+      },
+      body: JSON.stringify({ endpoint: subJson.endpoint, keys: subJson.keys, ...leadDetails }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.error || 'שגיאה');
     }
   }
 
@@ -104,22 +128,8 @@ export default function PushNotificationButton({ variant = 'default', autoOpenLe
       userVisibleOnly: true,
       applicationServerKey: urlBase64ToUint8Array(vapidKey),
     });
-    const subJson = sub.toJSON();
 
-    const { data: { session } } = await supabase.auth.getSession();
-    const res = await fetch('/api/push/subscribe', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
-      },
-      body: JSON.stringify({ endpoint: subJson.endpoint, keys: subJson.keys, ...leadDetails }),
-    });
-
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      throw new Error(data.error || 'שגיאה');
-    }
+    await resyncSubscriptionToServer(sub, leadDetails);
     return true;
   }
 
