@@ -457,7 +457,15 @@ export default function AdminSubscribersPage() {
         </div>
       )}
 
-      <div className="section-label"><h2>מנויים מאושרים</h2><span className="count">{approvedSubs.length}</span></div>
+      <div className="section-label">
+        <h2>מנויים מאושרים</h2>
+        <span className="count">{approvedSubs.length}</span>
+        {approvedSubs.filter((s) => !s.hasPushSub).length > 0 && (
+          <span style={{ fontSize: '11.5px', color: 'var(--loss)', fontWeight: 700, marginRight: '8px' }}>
+            🔕 {approvedSubs.filter((s) => !s.hasPushSub).length} לא הפעילו
+          </span>
+        )}
+      </div>
 
       <button className="btn-outline" style={{ width: '100%', marginBottom: '14px' }} onClick={handleSyncSubscribers} disabled={syncing}>
         {syncing ? 'מסנכרנים מול מאנדיי...' : '🔄 סנכרון מלא מול קבוצת הסוחרים במאנדיי'}
