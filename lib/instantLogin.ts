@@ -1,8 +1,19 @@
 import { createClient } from '@supabase/supabase-js';
 
+// fetch מותאם אישית עם cache:'no-store' מפורש על כל קריאה - בלי זה, Next.js "מטליא" את
+// ה-fetch הגלובלי שהלקוח של Supabase משתמש בו ברקע ומפעיל עליו את ה-Data Cache שלו (ברירת
+// המחדל ב-Next.js 13/14 היא caching, לא no-store) - זה גרם בפועל לעמוד תיק ציבורי להציג
+// נתוני עסקאות ישנים לכל מבקר/ת (גם בגלישה פרטית, בלי שום קאש בצד הדפדפן בכלל), כי השרת
+// עצמו שמר תשובה ישנה מ-Supabase ולא פנה שוב למסד הנתונים. export const dynamic =
+// 'force-dynamic' בכל route לא מספיק להבטיח את זה עבור fetch שמוסתר בתוך ספריה חיצונית
+// כמו @supabase/supabase-js - רק no-store מפורש כאן מבטיח את זה בוודאות, בכל מקום שמשתמש
+// בלקוח הזה
+const noStoreFetch: typeof fetch = (input, init) => fetch(input, { ...init, cache: 'no-store' });
+
 export const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  { global: { fetch: noStoreFetch } }
 );
 
 function generateSixDigitCode(): string {
