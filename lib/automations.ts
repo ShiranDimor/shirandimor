@@ -61,24 +61,27 @@ export function renderTemplate(template: string, vars: Vars): string {
 }
 
 // --- 1. הודעה על שיעור חדש - יום אחרי שהוא עלה, לא מיד ------------------------------------
+// האוטומציה האמיתית רצה מיידית בפרסום (ר' runNewLessonAnnouncementForLesson, נקראת ישירות
+// מ-app/api/admin/lessons) - זה כאן משמש רק לתצוגה מקדימה/בדיקה/יצירה ידנית מעמוד הניהול,
+// אז פשוט מראה את השיעור המפורסם האחרון (עד 7 ימים אחורה, כדי לא "לזייף" שיעור ישן כחדש)
 async function newLessonVars(): Promise<VarsResult> {
-  const dayAgoStart = new Date(Date.now() - 48 * 60 * 60 * 1000);
-  const dayAgoEnd = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
   const { data: lessons } = await supabaseAdmin
     .from('lessons')
     .select('title')
     .eq('published', true)
-    .gte('created_at', dayAgoStart.toISOString())
-    .lt('created_at', dayAgoEnd.toISOString());
+    .gte('created_at', weekAgo.toISOString())
+    .order('created_at', { ascending: false })
+    .limit(1);
 
   if (!lessons || lessons.length === 0) return { reason: 'no_new_lessons' };
 
   return {
     vars: {
-      headline: lessons.length === 1 ? 'שיעור חדש' : `${lessons.length} שיעורים חדשים`,
-      lessons: lessons.map((l) => `*${l.title}*`).join(', '),
-      lessons_plain: lessons.map((l) => l.title).join(', '),
+      headline: 'שיעור חדש',
+      lessons: `*${lessons[0].title}*`,
+      lessons_plain: lessons[0].title,
     },
   };
 }
