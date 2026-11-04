@@ -256,10 +256,14 @@
 
   .section-collapse { margin-bottom: 16px; }
   .section-collapse summary {
-    display: flex; align-items: center; justify-content: space-between; cursor: pointer; list-style: none;
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; cursor: pointer; list-style: none;
     background: var(--bg-surface); border: 1px solid var(--border-hairline-strong); border-radius: 10px;
     padding: 13px 16px; transition: border-color 0.15s ease;
   }
+  /* כש"שם"/כותרת ארוכים דוחקים את כפתורי הפעולה - עדיף שהם יעברו לשורה חדשה (flex-wrap למעלה)
+     מאשר שיגלשו מחוץ לכרטיס. min-width:0 מאפשר לכותרת עצמה להצטמצם ולהתגלגל לשורה הבאה במקום
+     לדחוף את כל הרכיב לרוחב גדול מהמיכל שלו */
+  .section-collapse summary > div:first-child { min-width: 0; flex: 1 1 auto; }
   .section-collapse summary::-webkit-details-marker { display: none; }
   .section-collapse summary:hover { border-color: var(--teal); }
   .section-collapse summary h2 { font-family: var(--font-display); font-size: 15px; font-weight: 500; }

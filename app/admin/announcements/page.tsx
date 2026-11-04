@@ -316,7 +316,7 @@ export default function AdminAnnouncementsPage() {
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
               {/* עצירת ה-click שלא יגלוש ל-summary ויפתח/יסגור בטעות כשלוחצים על כפתור פעולה */}
-              <span style={{ display: 'flex', gap: '6px' }} onClick={(e) => e.stopPropagation()}>
+              <span style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }} onClick={(e) => e.stopPropagation()}>
                 {!a.published && (
                   <button onClick={() => handlePublishDraft(a.id)} disabled={publishingId === a.id} className="btn-primary" style={{ padding: '6px 12px', fontSize: '12.5px' }}>
                     {publishingId === a.id ? '…' : '✅ אישור ופרסום'}
