@@ -261,6 +261,15 @@ export default function AdminSubscribersPage() {
     }
   }
 
+  // פותח וואטסאפ עם הודעה מוכנה מראש, בלי שליחה אוטומטית - שירן בודקת ולוחצת שליחה בעצמה
+  function sendWhatsAppReminder(sub: ApprovedSub) {
+    if (!sub.phone) return;
+    const firstName = (sub.full_name || '').trim().split(' ')[0] || '';
+    const text = `היי${firstName ? ' ' + firstName : ''}, שמתי לב שההתראות באתר אצלך לא מופעלות - ככה מפספסים עדכונים חשובים. כדאי להיכנס לאתר וללחוץ על הפעמון 🔔 כדי להפעיל אותן מחדש. תודה! שירן`;
+    const phoneDigits = sub.phone.replace(/\D/g, '').replace(/^0/, '972');
+    window.open(`https://wa.me/${phoneDigits}?text=${encodeURIComponent(text)}`, '_blank');
+  }
+
   function toggleSort(col: 'date' | 'name') {
     if (sortBy === col) {
       setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
@@ -559,6 +568,16 @@ export default function AdminSubscribersPage() {
             </div>
           </Link>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flexShrink: 0 }}>
+            {!sub.hasPushSub && sub.phone && (
+              <button
+                className="btn-outline"
+                style={{ padding: '5px 10px', fontSize: '11px', whiteSpace: 'nowrap', color: '#25D366', borderColor: '#25D366' }}
+                onClick={() => sendWhatsAppReminder(sub)}
+                title="שליחת תזכורת בוואטסאפ להפעיל התראות"
+              >
+                🔔 תזכורת
+              </button>
+            )}
             <button
               className="btn-outline"
               style={{ padding: '5px 10px', fontSize: '11px', whiteSpace: 'nowrap' }}
