@@ -45,7 +45,20 @@ export default function NotificationBell() {
   async function load() {
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch('/api/notifications/feed', {
+
+      // מנוי פוש של המכשיר הזה (אם יש) - נשלח כגיבוי לזיהוי "מנוי" כשאין session מחובר
+      // תקף בדפדפן הזה (ר' הערה ב-/api/notifications/feed); לא חוסם את הטעינה אם זה נכשל
+      let deviceEndpoint = '';
+      try {
+        const reg = await navigator.serviceWorker?.getRegistration();
+        const sub = await reg?.pushManager.getSubscription();
+        if (sub) deviceEndpoint = sub.endpoint;
+      } catch (e) {
+        // ללא Service Worker/הרשאה - פשוט אין endpoint לשלוח
+      }
+
+      const feedUrl = deviceEndpoint ? `/api/notifications/feed?endpoint=${encodeURIComponent(deviceEndpoint)}` : '/api/notifications/feed';
+      const res = await fetch(feedUrl, {
         headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {},
       });
       if (!res.ok) return;
