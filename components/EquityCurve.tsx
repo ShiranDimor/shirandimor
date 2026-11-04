@@ -9,6 +9,7 @@ type Props = {
   prefix?: string;
   suffix?: string;
   showDelta?: boolean;
+  showPercentDelta?: boolean;
 };
 
 const W = 640;
@@ -17,7 +18,7 @@ const PAD_TOP = 14;
 const PAD_BOTTOM = 26;
 const PAD_SIDE = 4;
 
-export default function EquityCurve({ points, prefix = '$', suffix = '', showDelta = true }: Props) {
+export default function EquityCurve({ points, prefix = '$', suffix = '', showDelta = true, showPercentDelta = false }: Props) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
 
@@ -42,6 +43,7 @@ export default function EquityCurve({ points, prefix = '$', suffix = '', showDel
   const first = points[0];
   const delta = last.value - first.value;
   const deltaColor = delta >= 0 ? 'var(--profit)' : 'var(--loss)';
+  const deltaPercent = showPercentDelta && first.value !== 0 ? (delta / Math.abs(first.value)) * 100 : null;
   const gradId = 'eq-grad-' + Math.round(min) + '-' + Math.round(max);
 
   function handleMove(e: React.MouseEvent<SVGRectElement>) {
@@ -64,6 +66,7 @@ export default function EquityCurve({ points, prefix = '$', suffix = '', showDel
         {showDelta && (
           <div style={{ fontFamily: 'var(--font-mono)', fontSize: '13px', fontWeight: 600, color: deltaColor }}>
             {delta >= 0 ? '+' : '-'}{prefix}{Math.abs(delta).toLocaleString('he-IL')}{suffix}
+            {deltaPercent !== null && ` (${deltaPercent >= 0 ? '+' : '-'}${Math.abs(deltaPercent).toFixed(1)}%)`}
           </div>
         )}
       </div>

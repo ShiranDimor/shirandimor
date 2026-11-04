@@ -840,7 +840,7 @@ export default function AdminTradesPage() {
         )}
       </div>
       <div className="equity-card">
-        <EquityCurve points={equityPoints} />
+        <EquityCurve points={equityPoints} showPercentDelta />
       </div>
 
       <div className="section-label"><h2>לוח שנה</h2></div>
