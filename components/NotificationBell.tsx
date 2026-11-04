@@ -85,7 +85,7 @@ export default function NotificationBell() {
 
   return (
     <>
-      <button type="button" className="notif-bell-btn" onClick={handleToggle} aria-label="התראות">
+      <button type="button" className="notif-bell-btn" onClick={handleToggle} aria-label="עדכונים">
         🔔
         {unread > 0 && <span className="notif-bell-badge">{unread > 9 ? '9+' : unread}</span>}
       </button>
@@ -94,7 +94,7 @@ export default function NotificationBell() {
         <div className="notif-bell-backdrop" onClick={() => setOpen(false)}>
           <div className="notif-bell-panel" onClick={(e) => e.stopPropagation()}>
             <div className="notif-bell-panel-header">
-              <span>🔔 התראות</span>
+              <span>🔔 עדכונים</span>
               <button type="button" className="notif-bell-close" onClick={() => setOpen(false)}>✕</button>
             </div>
             <div className="notif-bell-list">
