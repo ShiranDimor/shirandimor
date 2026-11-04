@@ -10,5 +10,8 @@ export async function GET(request: Request) {
   }
 
   const snapshot = await getOrComputeMonthlySnapshot(true);
+  if (!snapshot.ok) {
+    return NextResponse.json({ ok: false, month: snapshot.month, error: snapshot.error }, { status: 502 });
+  }
   return NextResponse.json({ ok: true, month: snapshot.month, count: snapshot.count, totalAmount: snapshot.totalAmount });
 }

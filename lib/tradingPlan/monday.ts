@@ -295,55 +295,65 @@ export type MondaySubscriberDetail = { name: string | null; phone: string | null
 // כל הפרטים (שם, טלפון, מייל, תאריך הצטרפות אם קיימת עמודה כזו) של כל מי שנמצא בקבוצת
 // "קבוצת סוחרים" ב-Monday.com - לשימוש בסנכרון מנויים שקיימים רק במאנדיי לחשבון באתר,
 // כדי שלא יהיה תלוי בכך שהם ייכנסו בעצמם פעם אחת כדי "להיספר" כמנויים באתר
-export async function getMondaySubscriberDetails(): Promise<MondaySubscriberDetail[]> {
+//
+// גרסה שזורקת שגיאה במקום לבלוע אותה (בניגוד ל-getMondaySubscriberDetails למטה) - לשימוש
+// במקומות שבהם "0 תוצאות" חייב להיות מובחן מ"השליפה נכשלה" (כמו חישוב ההכנסה החודשית),
+// כי בלעדיה תקלה זמנית במאנדיי נראית בטעות כאילו כל המנויים עזבו
+export async function getMondaySubscriberDetailsOrThrow(): Promise<MondaySubscriberDetail[]> {
   const token = process.env.MONDAY_API_TOKEN;
   const boardId = process.env.MONDAY_BOARD_ID;
-  if (!token || !boardId) return [];
+  if (!token || !boardId) throw new Error('חסרים MONDAY_API_TOKEN/MONDAY_BOARD_ID בהגדרות הסביבה');
 
-  try {
-    const { subscriberGroupId, phoneColumnId, emailColumnId, joinDateColumnId, monthlyCostColumnId } = await getBoardSchema(token, boardId);
-    if (!subscriberGroupId) return [];
+  const { subscriberGroupId, phoneColumnId, emailColumnId, joinDateColumnId, monthlyCostColumnId } = await getBoardSchema(token, boardId);
+  if (!subscriberGroupId) throw new Error('לא נמצאה קבוצת "קבוצת סוחרים" בלוח במאנדיי');
 
-    const columnIds = [phoneColumnId, emailColumnId, joinDateColumnId, monthlyCostColumnId].filter(Boolean) as string[];
+  const columnIds = [phoneColumnId, emailColumnId, joinDateColumnId, monthlyCostColumnId].filter(Boolean) as string[];
 
-    const result: MondaySubscriberDetail[] = [];
-    let cursor: string | null = null;
+  const result: MondaySubscriberDetail[] = [];
+  let cursor: string | null = null;
 
-    do {
-      const itemsData: any = await mondayRequest(
-        token,
-        `query ($boardId: ID!, $groupId: [String!], $cursor: String, $columnIds: [String!]) {
-          boards (ids: [$boardId]) {
-            groups (ids: $groupId) {
-              items_page (limit: 100, cursor: $cursor) {
-                cursor
-                items { name column_values (ids: $columnIds) { id text } }
-              }
+  do {
+    const itemsData: any = await mondayRequest(
+      token,
+      `query ($boardId: ID!, $groupId: [String!], $cursor: String, $columnIds: [String!]) {
+        boards (ids: [$boardId]) {
+          groups (ids: $groupId) {
+            items_page (limit: 100, cursor: $cursor) {
+              cursor
+              items { name column_values (ids: $columnIds) { id text } }
             }
           }
-        }`,
-        { boardId, groupId: [subscriberGroupId], cursor, columnIds }
-      );
+        }
+      }`,
+      { boardId, groupId: [subscriberGroupId], cursor, columnIds }
+    );
 
-      const page = itemsData?.data?.boards?.[0]?.groups?.[0]?.items_page;
-      // התאמה לפי id, לא לפי מיקום במערך - ר' הערה למעלה ב-isContactInSubscribersGroupMonday
-      const items: { name: string; column_values: { id: string; text: string | null }[] }[] = page?.items || [];
-      for (const item of items) {
-        const byId = (colId: string | undefined) =>
-          colId ? item.column_values?.find((cv) => cv.id === colId)?.text || null : null;
-        result.push({
-          name: item.name || null,
-          phone: byId(phoneColumnId),
-          email: byId(emailColumnId),
-          joinDate: byId(joinDateColumnId),
-          monthlyCost: byId(monthlyCostColumnId),
-        });
-      }
+    const page = itemsData?.data?.boards?.[0]?.groups?.[0]?.items_page;
+    // התאמה לפי id, לא לפי מיקום במערך - ר' הערה למעלה ב-isContactInSubscribersGroupMonday
+    const items: { name: string; column_values: { id: string; text: string | null }[] }[] = page?.items || [];
+    for (const item of items) {
+      const byId = (colId: string | undefined) =>
+        colId ? item.column_values?.find((cv) => cv.id === colId)?.text || null : null;
+      result.push({
+        name: item.name || null,
+        phone: byId(phoneColumnId),
+        email: byId(emailColumnId),
+        joinDate: byId(joinDateColumnId),
+        monthlyCost: byId(monthlyCostColumnId),
+      });
+    }
 
-      cursor = page?.cursor || null;
-    } while (cursor);
+    cursor = page?.cursor || null;
+  } while (cursor);
 
-    return result;
+  return result;
+}
+
+// גרסה בולעת-שגיאות (כמו שהיה תמיד) - לסנכרון מנויים ולכל מקום אחר שכבר יודע להתמודד עם
+// רשימה ריקה כ"אין מה לעשות הפעם", ושיש לו רשת ביטחון משלו (כמו REMOVAL_SAFETY_LIMIT)
+export async function getMondaySubscriberDetails(): Promise<MondaySubscriberDetail[]> {
+  try {
+    return await getMondaySubscriberDetailsOrThrow();
   } catch (e) {
     console.error('שגיאה בשליפת פרטי קבוצת הסוחרים ב-Monday.com', e);
     return [];

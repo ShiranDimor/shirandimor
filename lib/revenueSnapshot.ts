@@ -1,5 +1,5 @@
 import { supabaseAdmin } from '@/lib/instantLogin';
-import { getMondaySubscriberDetails } from '@/lib/tradingPlan/monday';
+import { getMondaySubscriberDetailsOrThrow } from '@/lib/tradingPlan/monday';
 
 const DEFAULT_MONTHLY_PRICE = 400;
 
@@ -21,7 +21,9 @@ function contactKeyFor(phone: string | null, email: string | null): string | nul
 // מחשב תמונת מצב חדשה: כמות האנשים שנמצאים ממש עכשיו בקבוצת "קבוצת סוחרים" במאנדיי, וסך כל
 // "עלות חודשית ששילם" כפי שרשום שם לכל אחד - בדיוק הרגע הזה, לא ניחוש לפי תאריכים
 async function computeRevenueNow(): Promise<RevenueSnapshotData> {
-  const subscribers = await getMondaySubscriberDetails();
+  // זורקת (לא בולעת שגיאה) בכוונה - כדי שתקלה זמנית במאנדיי תוצג כשגיאה אמיתית במקום להיראות
+  // כמו "0 מנויים" (ר' getOrComputeMonthlySnapshot)
+  const subscribers = await getMondaySubscriberDetailsOrThrow();
 
   const byContact = new Map<string, typeof subscribers>();
   const noContact: typeof subscribers = [];
@@ -81,9 +83,25 @@ function firstOfCurrentMonthIsrael(): string {
 // מחזיר את הכנסת החודש הנוכחי: מחושב חי בכל קריאה (כדי שהרשמות חדשות באמצע החודש ייספרו מיד),
 // ומשויך לתווית של החודש הנוכחי - כך שברגע שמתחיל חודש חדש, החישוב "מתאפס" ומתחיל להתייחס אליו
 // (בדיוק כמו אצל גרו) בלי לנעול מספר אחד לכל החודש. גם נשמר בטבלה כתיעוד של איך נראה כל חודש.
-export async function getOrComputeMonthlySnapshot(_forceRecompute = false): Promise<RevenueSnapshotData & { month: string }> {
+//
+// אם השליפה ממאנדיי נכשלת (תקלה זמנית, rate limit וכו') - לא כותבים "0" לטבלה (זה היה מוחק
+// לצמיתות תיעוד אמיתי של החודש) ולא מציגים "0 ₪ / 0 אנשים" שנראה כמו שכולם עזבו - מחזירים
+// שגיאה מפורשת, ואם יש תמונת מצב קודמת שמורה לחודש הזה מציגים אותה בתור "הכי עדכני שיש"
+export async function getOrComputeMonthlySnapshot(_forceRecompute = false): Promise<(RevenueSnapshotData & { month: string; ok: true }) | { ok: false; error: string; month: string; stale?: RevenueSnapshotData }> {
   const month = firstOfCurrentMonthIsrael();
-  const data = await computeRevenueNow();
-  await supabaseAdmin.from('monthly_revenue_snapshots').upsert({ month, data, computed_at: new Date().toISOString() });
-  return { ...data, month };
+
+  try {
+    const data = await computeRevenueNow();
+    await supabaseAdmin.from('monthly_revenue_snapshots').upsert({ month, data, computed_at: new Date().toISOString() });
+    return { ...data, month, ok: true };
+  } catch (e) {
+    console.error('שגיאה בחישוב הכנסת החודש ממאנדיי', e);
+    const { data: previous } = await supabaseAdmin.from('monthly_revenue_snapshots').select('data').eq('month', month).maybeSingle();
+    return {
+      ok: false,
+      error: e instanceof Error ? e.message : 'שגיאה בשליפת קבוצת הסוחרים ממאנדיי',
+      month,
+      stale: previous?.data as RevenueSnapshotData | undefined,
+    };
+  }
 }

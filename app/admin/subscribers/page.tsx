@@ -64,6 +64,8 @@ export default function AdminSubscribersPage() {
   const [revenueItems, setRevenueItems] = useState<RevenueItem[]>([]);
   const [revenueMissingCost, setRevenueMissingCost] = useState<string[]>([]);
   const [revenueDuplicatesRemoved, setRevenueDuplicatesRemoved] = useState<string[]>([]);
+  const [revenueError, setRevenueError] = useState('');
+  const [revenueStale, setRevenueStale] = useState(false);
 
   function formatMonthLabel(month: string) {
     if (!month) return '';
@@ -76,12 +78,29 @@ export default function AdminSubscribersPage() {
     const res = await fetch(`/api/admin/revenue-projection${force ? '?force=1' : ''}`, { headers: { Authorization: `Bearer ${session?.access_token}` } });
     if (res.ok) {
       const data = await res.json();
-      setRevenueCount(data.count || 0);
-      setRevenueTotal(data.totalAmount || 0);
-      setRevenueMonth(data.month || '');
-      setRevenueItems(data.items || []);
-      setRevenueMissingCost(data.missingMonthlyCost || []);
-      setRevenueDuplicatesRemoved(data.duplicatesRemoved || []);
+      if (data.error) {
+        // שליפה ממאנדיי נכשלה (תקלה זמנית) - לא מציגים "0 ₪ / 0 אנשים" שנראה כמו שכולם עזבו,
+        // אלא שגיאה מפורשת, ואם יש נתוני אתמול/לפני כמה דקות שמורים מציגים אותם עם אזהרה
+        setRevenueError(data.error);
+        setRevenueStale(!!data.stale);
+        if (data.stale) {
+          setRevenueCount(data.stale.count || 0);
+          setRevenueTotal(data.stale.totalAmount || 0);
+          setRevenueItems(data.stale.items || []);
+          setRevenueMissingCost(data.stale.missingMonthlyCost || []);
+          setRevenueDuplicatesRemoved(data.stale.duplicatesRemoved || []);
+        }
+        setRevenueMonth(data.month || '');
+      } else {
+        setRevenueError('');
+        setRevenueStale(false);
+        setRevenueCount(data.count || 0);
+        setRevenueTotal(data.totalAmount || 0);
+        setRevenueMonth(data.month || '');
+        setRevenueItems(data.items || []);
+        setRevenueMissingCost(data.missingMonthlyCost || []);
+        setRevenueDuplicatesRemoved(data.duplicatesRemoved || []);
+      }
     }
     setRevenueLoading(false);
     setRevenueRecomputing(false);
@@ -414,8 +433,20 @@ export default function AdminSubscribersPage() {
       </div>
       {revenueLoading ? (
         <p style={{ fontSize: '13px', color: 'var(--text-tertiary)', marginBottom: '18px' }}>טוענים...</p>
+      ) : revenueError && !revenueStale ? (
+        <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-hairline-strong)', borderRight: '3px solid var(--loss)', borderRadius: '12px', padding: '18px', marginBottom: '20px', textAlign: 'center' }}>
+          <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--loss)' }}>⚠️ לא הצלחנו לשלוף עכשיו ממאנדיי</div>
+          <div style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginTop: '6px' }}>{revenueError}</div>
+          <div style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginTop: '4px' }}>זו תקלה בשליפה, לא אומר שהמנויים ירדו ל-0 - נסי לרענן שוב בעוד רגע</div>
+          <button className="btn-outline" style={{ width: 'auto', marginTop: '12px', fontSize: '12px', padding: '6px 14px' }} onClick={() => loadRevenue(true)} disabled={revenueRecomputing}>
+            {revenueRecomputing ? 'מרעננים...' : 'ניסיון נוסף'}
+          </button>
+        </div>
       ) : (
-        <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-hairline-strong)', borderRight: '3px solid var(--profit)', borderRadius: '12px', padding: '18px', marginBottom: '20px', textAlign: 'center' }}>
+        <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-hairline-strong)', borderRight: `3px solid ${revenueStale ? 'var(--orange)' : 'var(--profit)'}`, borderRadius: '12px', padding: '18px', marginBottom: '20px', textAlign: 'center' }}>
+          {revenueStale && (
+            <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--orange)', marginBottom: '8px' }}>⚠️ השליפה העדכנית ממאנדיי נכשלה - אלו הנתונים השמורים מהפעם האחרונה שהצליחה</div>
+          )}
           <div style={{ fontSize: '28px', fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--profit)' }}>₪{revenueTotal.toLocaleString('he-IL')}</div>
           <div style={{ fontSize: '12.5px', color: 'var(--text-tertiary)', marginTop: '2px' }}>(אחרי מע&quot;מ 18%: ₪{Math.round(revenueTotal * 0.82).toLocaleString('he-IL')})</div>
           <div style={{ fontSize: '12.5px', color: 'var(--text-tertiary)', marginTop: '6px' }}>{revenueCount} אנשים בקבוצת הסוחרים</div>
