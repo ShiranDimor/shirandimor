@@ -41,6 +41,7 @@ export default function AdminSubscribersPage() {
   const [removing, setRemoving] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState<string | null>(null);
   const [testPushing, setTestPushing] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   const [debugPhone, setDebugPhone] = useState('');
   const [debugging, setDebugging] = useState(false);
@@ -322,6 +323,12 @@ export default function AdminSubscribersPage() {
     setApprovedSubs(data.map((d) => ({ ...d, hasPushSub: withPush.has(d.id) })));
   }
 
+  async function refreshApprovedSubs() {
+    setRefreshing(true);
+    await loadApprovedSubs();
+    setRefreshing(false);
+  }
+
   async function checkAdmin() {
     const { data: { user } } = await supabase.auth.getUser();
 
@@ -465,6 +472,15 @@ export default function AdminSubscribersPage() {
             🔕 {approvedSubs.filter((s) => !s.hasPushSub).length} לא הפעילו
           </span>
         )}
+        <button
+          type="button"
+          onClick={refreshApprovedSubs}
+          disabled={refreshing}
+          title="רענון סטטוס ההתראות של כל המנויים"
+          style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px', marginRight: '8px', padding: 0, color: 'var(--text-tertiary)' }}
+        >
+          {refreshing ? '…' : '🔄'}
+        </button>
       </div>
 
       <button className="btn-outline" style={{ width: '100%', marginBottom: '14px' }} onClick={handleSyncSubscribers} disabled={syncing}>
