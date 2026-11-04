@@ -7,7 +7,6 @@ import { supabase } from '@/lib/supabase';
 type Profile = {
   full_name: string | null;
   email: string | null;
-  subscription_started_at: string | null;
   role: string;
 };
 
@@ -19,18 +18,6 @@ const QUICK_LINKS: { href: string; icon: string; title: string; accent: string }
   { href: '/lives', icon: '🎥', title: 'לייבים', accent: '--orange' },
   { href: '/announcements', icon: '📣', title: 'לוח מודעות', accent: '--teal' },
 ];
-
-// ותק בקהילה בניסוח חם - ימים בהתחלה, חודשים/שנים ככל שעובר הזמן, בלי לדרוש מהמשתמש לחשב בעצמו
-function membershipLabel(startedAt: string | null): string | null {
-  if (!startedAt) return null;
-  const days = Math.floor((Date.now() - new Date(startedAt).getTime()) / (1000 * 60 * 60 * 24));
-  if (days < 1) return 'הצטרפת היום';
-  if (days < 31) return `${days} ימים בקהילה`;
-  const months = Math.floor(days / 30);
-  if (months < 12) return `${months} ${months === 1 ? 'חודש' : 'חודשים'} בקהילה`;
-  const years = Math.floor(months / 12);
-  return `${years} ${years === 1 ? 'שנה' : 'שנים'} בקהילה`;
-}
 
 export default function AccountPage() {
   const [checking, setChecking] = useState(true);
@@ -54,11 +41,11 @@ export default function AccountPage() {
     }
 
     const [{ data: profileData }, { count }] = await Promise.all([
-      supabase.from('profiles').select('full_name, email, subscription_started_at, role').eq('id', user.id).maybeSingle(),
+      supabase.from('profiles').select('full_name, email, role').eq('id', user.id).maybeSingle(),
       supabase.from('journal_entries').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
     ]);
 
-    setProfile(profileData || { full_name: null, email: user.email || null, subscription_started_at: null, role: 'subscriber' });
+    setProfile(profileData || { full_name: null, email: user.email || null, role: 'subscriber' });
     setJournalCount(count ?? 0);
     setChecking(false);
   }
@@ -108,7 +95,6 @@ export default function AccountPage() {
   }
 
   const firstName = (profile.full_name || '').trim().split(' ')[0] || '';
-  const membership = membershipLabel(profile.subscription_started_at);
 
   return (
     <div className="wrap">
@@ -123,10 +109,9 @@ export default function AccountPage() {
       <div className="lessons-hero">
         <h1>{firstName ? `היי ${firstName} 👋` : 'היי 👋'}</h1>
         <p>האזור האישי שלך - הדברים שחשובים לך, במקום אחד.</p>
-        {(membership || journalCount !== null) && (
+        {journalCount !== null && (
           <div className="lessons-hero-stats">
-            {membership && <div className="lessons-hero-stat"><b style={{ fontSize: '13px' }}>{membership}</b><span>ותק</span></div>}
-            {journalCount !== null && <div className="lessons-hero-stat"><b>{journalCount}</b><span>רשומות ביומן</span></div>}
+            <div className="lessons-hero-stat"><b>{journalCount}</b><span>רשומות ביומן</span></div>
           </div>
         )}
       </div>
