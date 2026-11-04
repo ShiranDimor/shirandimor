@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/instantLogin';
 import { extractYoutubeId, extractGammaEmbedSrc, fetchOgImage } from '@/lib/lessonMedia';
+import { runNewLessonAnnouncementForLesson } from '@/lib/automations';
 
 async function requireAdmin(request: Request) {
   const authHeader = request.headers.get('Authorization') || '';
@@ -78,7 +79,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'שגיאה בשמירה' }, { status: 500 });
   }
 
-  // שליחת ההתראה על השיעור היא פעולה נפרדת ומכוונת (כפתור "שליחת התראה" ברשימת הניהול) - לא
-  // אוטומטית ביצירה, כדי שאפשר יהיה לערוך כותרת/תוכן בלי לשלוח התראה על כל שינוי
+  // שליחת התראת פוש מיידית על השיעור היא פעולה נפרדת ומכוונת (כפתור "שליחת התראה" ברשימת
+  // הניהול) - לא אוטומטית ביצירה, כדי שאפשר יהיה לערוך כותרת/תוכן בלי לשלוח התראה על כל שינוי.
+  // אבל כן יוצרים מיד טיוטה באוטומציית "הודעה על שיעור חדש" (לאישור בלוח המודעות) - בלי לחכות
+  // ל-cron היומי שרץ רק מחר
+  if (data.published) {
+    // ממתינים לסיום (לא "שולחים ושוכחים") - בפונקציה serverless כמו ב-Vercel, Promise שלא
+    // ממתינים לו עלול להיקטע כשהתגובה נשלחת, לפני שהטיוטה בכלל נשמרה
+    await runNewLessonAnnouncementForLesson(data.id).catch((e) => console.error('אוטומציית שיעור חדש נכשלה', e));
+  }
+
   return NextResponse.json({ lesson: data });
 }

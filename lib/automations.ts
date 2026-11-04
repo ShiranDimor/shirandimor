@@ -350,7 +350,28 @@ async function runTemplated(key: string) {
   return draftAutomatedAnnouncement(key, msg.title, msg.content);
 }
 
-export const runNewLessonAnnouncement = () => runTemplated('new-lesson-announcement');
+// גרסה מיידית - נקראת ישירות מפרסום שיעור חדש (app/api/admin/lessons), במקום לחכות ל-24-48
+// שעות דרך ה-cron. משתמשת באותו נוסח ערוך (אם יש) ובאותה פונקציית draftAutomatedAnnouncement
+// (בדיקת שבת/כבוי + טיוטה + התראה למנהלות) - רק greeting/closing לפי השעה האמיתית של הפרסום,
+// לא לפי שעה קבועה, כי זה קורה באמת עכשיו ולא לפי לוח זמנים
+export async function runNewLessonAnnouncementForLesson(lessonId: string) {
+  const { data: lesson } = await supabaseAdmin.from('lessons').select('title').eq('id', lessonId).maybeSingle();
+  if (!lesson) return { drafted: false, reason: 'lesson_not_found' };
+
+  const tpl = await getEffectiveTemplate('new-lesson-announcement');
+  if (!tpl) return { drafted: false, reason: 'unknown_automation' };
+
+  const hour = israelNow().getHours();
+  const vars = {
+    greeting: greetingForHour(hour),
+    closing: closingFor('daily', hour),
+    headline: 'שיעור חדש',
+    lessons: `*${lesson.title}*`,
+    lessons_plain: lesson.title,
+  };
+
+  return draftAutomatedAnnouncement('new-lesson-announcement', renderTemplate(tpl.title, vars), renderTemplate(tpl.content, vars));
+}
 export const runWeeklyLessonsReminder = () => runTemplated('weekly-lessons-reminder');
 export const runWeeklyLivesReminder = () => runTemplated('weekly-lives-reminder');
 export const runTradesExplanation = () => runTemplated('trades-explanation');

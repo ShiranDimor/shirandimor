@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/instantLogin';
 import { extractYoutubeId, extractGammaEmbedSrc, fetchOgImage } from '@/lib/lessonMedia';
+import { runNewLessonAnnouncementForLesson } from '@/lib/automations';
 
 async function requireAdmin(request: Request) {
   const authHeader = request.headers.get('Authorization') || '';
@@ -22,6 +23,14 @@ export async function PATCH(request: Request, { params }: { params: { id: string
 
   const body = await request.json().catch(() => ({}));
   const { title, description, category, tier, provider, videoUrl, thumbnailUrl: manualThumbnailUrl, durationMinutes, published, sortOrder } = body as Record<string, unknown>;
+
+  // צריך את מצב הפרסום הקודם לפני העדכון - כדי להריץ את אוטומציית "שיעור חדש" רק במעבר
+  // טיוטה→מפורסם בפועל, לא בכל שמירה של שיעור שכבר היה מפורסם
+  let wasPublished = false;
+  if (published === true) {
+    const { data: existing } = await supabaseAdmin.from('lessons').select('published').eq('id', params.id).maybeSingle();
+    wasPublished = Boolean(existing?.published);
+  }
 
   const fields: Record<string, unknown> = { updated_at: new Date().toISOString() };
   if (typeof title === 'string') fields.title = title;
@@ -57,6 +66,12 @@ export async function PATCH(request: Request, { params }: { params: { id: string
   const { data, error } = await supabaseAdmin.from('lessons').update(fields).eq('id', params.id).select('*').maybeSingle();
   if (error || !data) {
     return NextResponse.json({ error: 'שגיאה בעדכון' }, { status: 500 });
+  }
+
+  // מעבר טיוטה→מפורסם - יוצרים מיד טיוטה באוטומציית "הודעה על שיעור חדש" (לאישור בלוח
+  // המודעות), בלי לחכות ל-cron היומי
+  if (published === true && !wasPublished) {
+    await runNewLessonAnnouncementForLesson(params.id).catch((e) => console.error('אוטומציית שיעור חדש נכשלה', e));
   }
 
   return NextResponse.json({ lesson: data });

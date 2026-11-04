@@ -49,10 +49,6 @@
       "schedule": "0 6 * * 0-5"
     },
     {
-      "path": "/api/cron/new-lesson-announcement",
-      "schedule": "0 7 * * *"
-    },
-    {
       "path": "/api/cron/weekly-lessons-reminder",
       "schedule": "0 8 * * 1"
     },
