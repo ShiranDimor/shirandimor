@@ -151,7 +151,10 @@ export default function PortfolioPage() {
       // נתוני התיק (כולל סימבולים של עסקאות פתוחות) עוברים דרך /api/portfolio/trades ולא
       // דרך קריאה ישירה מהדפדפן לטבלת trades - כדי שהזכאות (מנוי פעיל?) תיבדק בצד השרת
       // ושהטשטוש של סימבולים למי שאינו זכאי יהיה אכיפה אמיתית, לא רק עיצוב ב-UI
-      const res = await fetch('/api/portfolio/trades', {
+      // פרמטר _t משתנה בכל קריאה (לא רק cache:'no-store') - קו הגנה נוסף נגד כל שכבת קאשינג
+      // שעלולה להתייחס לכתובת כמפתח קבוע (CDN, התקנה כאפליקציה במסך הבית וכו') ולהתעלם
+      // מכותרות Cache-Control; זה הופך כל קריאה לכתובת שונה בפועל, אז שום קאש לא יכול "להכיר" אותה
+      const res = await fetch(`/api/portfolio/trades?_t=${Date.now()}`, {
         cache: 'no-store',
         headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
       });
