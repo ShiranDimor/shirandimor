@@ -43,9 +43,6 @@ export default function AdminSubscribersPage() {
   const [testPushing, setTestPushing] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
-  const [debugPhone, setDebugPhone] = useState('');
-  const [debugging, setDebugging] = useState(false);
-  const [debugResult, setDebugResult] = useState('');
   const [fillingEmails, setFillingEmails] = useState(false);
   const [fillEmailsMessage, setFillEmailsMessage] = useState('');
   const [fillPreview, setFillPreview] = useState<{ name: string; email: string }[] | null>(null);
@@ -163,27 +160,6 @@ export default function AdminSubscribersPage() {
     } else {
       setGrantMessage('שגיאה: ' + (data?.error || 'לא הצלחנו להוסיף'));
     }
-  }
-
-  async function handleMondayDebug() {
-    setDebugging(true);
-    setDebugResult('');
-
-    const { data: { session } } = await supabase.auth.getSession();
-
-    try {
-      const res = await fetch('/api/admin/monday-debug', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
-        body: JSON.stringify({ phone: debugPhone }),
-      });
-      const data = await res.json();
-      setDebugResult(JSON.stringify(data, null, 2));
-    } catch (e) {
-      setDebugResult('שגיאה בבדיקה');
-    }
-
-    setDebugging(false);
   }
 
   // השלמת מיילים חסרים במאנדיי: קודם תצוגה מקדימה בתוך העמוד, ורק אחרי לחיצה על "אישור" כותבים בפועל
@@ -505,27 +481,6 @@ export default function AdminSubscribersPage() {
           <button className="btn-primary" onClick={handleGrantSubscriber} disabled={granting}>{granting ? 'מוסיפים...' : 'הוספה כמנוי/ה'}</button>
           {grantMessage && <p style={{ marginTop: '10px', fontSize: '13px', color: grantMessage.startsWith('שגיאה') ? 'var(--loss)' : 'var(--profit)' }}>{grantMessage}</p>}
         </div>
-      </details>
-
-      <details style={{ marginBottom: '20px' }}>
-        <summary style={{ cursor: 'pointer', fontSize: '13px', color: 'var(--text-secondary)' }}>🔍 אבחון מול מאנדיי (למה מנוי מסוים לא מזוהה)</summary>
-        <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
-          <input
-            type="tel"
-            placeholder="מספר טלפון לבדיקה, למשל 0587020306"
-            value={debugPhone}
-            onChange={(e) => setDebugPhone(e.target.value)}
-            style={{ flex: 1, padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '13px' }}
-          />
-          <button className="btn-outline" onClick={handleMondayDebug} disabled={debugging}>
-            {debugging ? 'בודקים...' : 'בדיקה'}
-          </button>
-        </div>
-        {debugResult && (
-          <pre style={{ marginTop: '10px', padding: '10px', background: 'var(--bg-secondary)', borderRadius: '8px', fontSize: '11px', overflowX: 'auto', maxHeight: '400px', direction: 'ltr', textAlign: 'left' }}>
-            {debugResult}
-          </pre>
-        )}
       </details>
 
       <button className="btn-outline" style={{ width: '100%', marginBottom: '16px' }} onClick={handlePreviewMondayEmails} disabled={fillingEmails}>
