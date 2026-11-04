@@ -1,11 +1,6 @@
-import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 import { checkStopLossBreaches } from '@/lib/stopLossAlert';
-
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+import { supabaseAdmin } from '@/lib/instantLogin';
 
 // רענון מחירים יזום מהדפדפן (בנוסף ל-cron היומי) - כדי שהמחיר יתעדכן במהלך היום כשמישהו פותח
 // את התיק הציבורי או את היומן האישי שלו. מרענן גם עסקאות פתוחות בתיק וגם ביומנים של כל המנויים,
