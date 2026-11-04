@@ -70,8 +70,8 @@ export default function EquityCurve({ points, prefix = '$', suffix = '', showDel
       <svg ref={svgRef} viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto', overflow: 'visible' }}>
         <defs>
           <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="var(--teal)" stopOpacity="0.28" />
-            <stop offset="100%" stopColor="var(--teal)" stopOpacity="0" />
+            <stop offset="0%" stopColor={deltaColor} stopOpacity="0.28" />
+            <stop offset="100%" stopColor={deltaColor} stopOpacity="0" />
           </linearGradient>
         </defs>
         <line
@@ -79,12 +79,12 @@ export default function EquityCurve({ points, prefix = '$', suffix = '', showDel
           stroke="var(--border-hairline)" strokeWidth="1" strokeDasharray="3,4"
         />
         <path d={areaD} fill={`url(#${gradId})`} stroke="none" />
-        <path d={d} fill="none" stroke="var(--teal)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-        <circle cx={x(points.length - 1)} cy={y(last.value)} r="4" fill="var(--teal)" stroke="var(--bg-surface)" strokeWidth="2" />
+        <path d={d} fill="none" stroke={deltaColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        <circle cx={x(points.length - 1)} cy={y(last.value)} r="4" fill={deltaColor} stroke="var(--bg-surface)" strokeWidth="2" />
         {hoverPoint && (
           <>
             <line x1={x(hoverIdx!)} y1={PAD_TOP} x2={x(hoverIdx!)} y2={H - PAD_BOTTOM} stroke="var(--border-hairline-strong)" strokeWidth="1" />
-            <circle cx={x(hoverIdx!)} cy={y(hoverPoint.value)} r="4" fill="var(--teal)" stroke="var(--bg-surface)" strokeWidth="2" />
+            <circle cx={x(hoverIdx!)} cy={y(hoverPoint.value)} r="4" fill={deltaColor} stroke="var(--bg-surface)" strokeWidth="2" />
           </>
         )}
         <rect
