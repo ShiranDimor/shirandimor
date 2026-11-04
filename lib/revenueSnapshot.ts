@@ -1,5 +1,4 @@
 import { supabaseAdmin } from '@/lib/instantLogin';
-import { getMondaySubscriberDetailsOrThrow } from '@/lib/tradingPlan/monday';
 
 const DEFAULT_MONTHLY_PRICE = 400;
 
@@ -7,60 +6,32 @@ export type RevenueSnapshotData = {
   count: number;
   totalAmount: number;
   items: { name: string | null; email: string | null; phone: string | null; joinDate: string | null; price: number }[];
-  duplicatesRemoved: string[];
   missingMonthlyCost: string[];
 };
 
-// מפתח קשר מנורמל - טלפון קודם (רוב המנויים בפועל לא שומרים מייל), עם נפילה חזרה למייל
-function contactKeyFor(phone: string | null, email: string | null): string | null {
-  if (phone) return `phone:${phone.replace(/\D/g, '').slice(-9)}`;
-  if (email) return `email:${email.trim().toLowerCase()}`;
-  return null;
-}
-
-// מחשב תמונת מצב חדשה: כמות האנשים שנמצאים ממש עכשיו בקבוצת "קבוצת סוחרים" במאנדיי, וסך כל
-// "עלות חודשית ששילם" כפי שרשום שם לכל אחד - בדיוק הרגע הזה, לא ניחוש לפי תאריכים
+// מחשב תמונת מצב חדשה: כל מנוי/ה פעיל/ה באתר (אותה אוכלוסייה בדיוק כמו "מנויים מאושרים",
+// פחות מנויים שהוענקו ידנית מחוץ למאנדיי - ר' excluded_from_subscriber_list) ו"עלות חודשית"
+// כפי שנשמרה על הפרופיל - מתעדכנת אוטומטית בסנכרון היומי מול מאנדיי (lib/mondaySubscriberSync.ts),
+// לא נשלפת כאן בזמן אמת ממאנדיי. ככה הצגת ההכנסה לא תלויה בזמינות מאנדיי כל פעם שהעמוד נטען
 async function computeRevenueNow(): Promise<RevenueSnapshotData> {
-  // זורקת (לא בולעת שגיאה) בכוונה - כדי שתקלה זמנית במאנדיי תוצג כשגיאה אמיתית במקום להיראות
-  // כמו "0 מנויים" (ר' getOrComputeMonthlySnapshot)
-  const subscribers = await getMondaySubscriberDetailsOrThrow();
+  const { data, error } = await supabaseAdmin
+    .from('profiles')
+    .select('full_name, email, phone, subscription_started_at, monthly_price')
+    .eq('role', 'subscriber')
+    .eq('subscription_status', 'active')
+    .eq('excluded_from_subscriber_list', false);
 
-  const byContact = new Map<string, typeof subscribers>();
-  const noContact: typeof subscribers = [];
-  for (const s of subscribers) {
-    const key = contactKeyFor(s.phone, s.email);
-    if (!key) {
-      noContact.push(s);
-      continue;
-    }
-    const bucket = byContact.get(key) || [];
-    bucket.push(s);
-    byContact.set(key, bucket);
-  }
-
-  const duplicatesRemoved: string[] = [];
-  const deduped: typeof subscribers = [...noContact];
-  for (const bucket of byContact.values()) {
-    if (bucket.length === 1) {
-      deduped.push(bucket[0]);
-      continue;
-    }
-    const sorted = [...bucket].sort((a, b) => new Date(b.joinDate || 0).getTime() - new Date(a.joinDate || 0).getTime());
-    deduped.push(sorted[0]);
-    for (const removed of sorted.slice(1)) {
-      duplicatesRemoved.push(`${removed.name || removed.phone || removed.email} (${removed.joinDate || 'ללא תאריך'})`);
-    }
-  }
+  if (error) throw new Error(error.message);
 
   const missingMonthlyCost: string[] = [];
-  const items = deduped.map((s) => {
-    // חשוב: 0 הוא ערך "falsy" ב-JS - צריך לבדוק במפורש שהערך קיים ומספר תקין, אחרת מי שרשום
-    // אצלו עלות חודשית של 0 (למשל מנוי בחינם) יתחלף בטעות בברירת המחדל של 400
-    const raw = s.monthlyCost != null && s.monthlyCost !== '' ? Number(s.monthlyCost) : NaN;
-    const hasValidCost = !isNaN(raw);
-    const price = hasValidCost ? raw : DEFAULT_MONTHLY_PRICE;
-    if (!hasValidCost) missingMonthlyCost.push(s.name || s.phone || s.email || 'ללא שם');
-    return { name: s.name, email: s.email, phone: s.phone, joinDate: s.joinDate, price };
+  const items = (data || []).map((p) => {
+    // 0 הוא ערך תקין (מנוי בחינם) - null/undefined בלבד נחשב "עדיין לא נדגם ממאנדיי"
+    const hasPrice = p.monthly_price !== null && p.monthly_price !== undefined;
+    if (!hasPrice) missingMonthlyCost.push(p.full_name || p.phone || p.email || 'ללא שם');
+    return {
+      name: p.full_name, email: p.email, phone: p.phone, joinDate: p.subscription_started_at,
+      price: hasPrice ? Number(p.monthly_price) : DEFAULT_MONTHLY_PRICE,
+    };
   });
 
   items.sort((a, b) => (b.joinDate || '').localeCompare(a.joinDate || ''));
@@ -69,7 +40,6 @@ async function computeRevenueNow(): Promise<RevenueSnapshotData> {
     count: items.length,
     totalAmount: items.reduce((sum, i) => sum + i.price, 0),
     items,
-    duplicatesRemoved,
     missingMonthlyCost,
   };
 }
@@ -83,11 +53,7 @@ function firstOfCurrentMonthIsrael(): string {
 // מחזיר את הכנסת החודש הנוכחי: מחושב חי בכל קריאה (כדי שהרשמות חדשות באמצע החודש ייספרו מיד),
 // ומשויך לתווית של החודש הנוכחי - כך שברגע שמתחיל חודש חדש, החישוב "מתאפס" ומתחיל להתייחס אליו
 // (בדיוק כמו אצל גרו) בלי לנעול מספר אחד לכל החודש. גם נשמר בטבלה כתיעוד של איך נראה כל חודש.
-//
-// אם השליפה ממאנדיי נכשלת (תקלה זמנית, rate limit וכו') - לא כותבים "0" לטבלה (זה היה מוחק
-// לצמיתות תיעוד אמיתי של החודש) ולא מציגים "0 ₪ / 0 אנשים" שנראה כמו שכולם עזבו - מחזירים
-// שגיאה מפורשת, ואם יש תמונת מצב קודמת שמורה לחודש הזה מציגים אותה בתור "הכי עדכני שיש"
-export async function getOrComputeMonthlySnapshot(_forceRecompute = false): Promise<(RevenueSnapshotData & { month: string; ok: true }) | { ok: false; error: string; month: string; stale?: RevenueSnapshotData }> {
+export async function getOrComputeMonthlySnapshot(_forceRecompute = false): Promise<(RevenueSnapshotData & { month: string; ok: true }) | { ok: false; error: string; month: string }> {
   const month = firstOfCurrentMonthIsrael();
 
   try {
@@ -95,13 +61,7 @@ export async function getOrComputeMonthlySnapshot(_forceRecompute = false): Prom
     await supabaseAdmin.from('monthly_revenue_snapshots').upsert({ month, data, computed_at: new Date().toISOString() });
     return { ...data, month, ok: true };
   } catch (e) {
-    console.error('שגיאה בחישוב הכנסת החודש ממאנדיי', e);
-    const { data: previous } = await supabaseAdmin.from('monthly_revenue_snapshots').select('data').eq('month', month).maybeSingle();
-    return {
-      ok: false,
-      error: e instanceof Error ? e.message : 'שגיאה בשליפת קבוצת הסוחרים ממאנדיי',
-      month,
-      stale: previous?.data as RevenueSnapshotData | undefined,
-    };
+    console.error('שגיאה בחישוב הכנסת החודש', e);
+    return { ok: false, error: e instanceof Error ? e.message : 'שגיאה בחישוב ההכנסה', month };
   }
 }

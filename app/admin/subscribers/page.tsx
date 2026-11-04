@@ -63,9 +63,7 @@ export default function AdminSubscribersPage() {
   const [revenueMonth, setRevenueMonth] = useState('');
   const [revenueItems, setRevenueItems] = useState<RevenueItem[]>([]);
   const [revenueMissingCost, setRevenueMissingCost] = useState<string[]>([]);
-  const [revenueDuplicatesRemoved, setRevenueDuplicatesRemoved] = useState<string[]>([]);
   const [revenueError, setRevenueError] = useState('');
-  const [revenueStale, setRevenueStale] = useState(false);
 
   function formatMonthLabel(month: string) {
     if (!month) return '';
@@ -79,27 +77,15 @@ export default function AdminSubscribersPage() {
     if (res.ok) {
       const data = await res.json();
       if (data.error) {
-        // שליפה ממאנדיי נכשלה (תקלה זמנית) - לא מציגים "0 ₪ / 0 אנשים" שנראה כמו שכולם עזבו,
-        // אלא שגיאה מפורשת, ואם יש נתוני אתמול/לפני כמה דקות שמורים מציגים אותם עם אזהרה
         setRevenueError(data.error);
-        setRevenueStale(!!data.stale);
-        if (data.stale) {
-          setRevenueCount(data.stale.count || 0);
-          setRevenueTotal(data.stale.totalAmount || 0);
-          setRevenueItems(data.stale.items || []);
-          setRevenueMissingCost(data.stale.missingMonthlyCost || []);
-          setRevenueDuplicatesRemoved(data.stale.duplicatesRemoved || []);
-        }
         setRevenueMonth(data.month || '');
       } else {
         setRevenueError('');
-        setRevenueStale(false);
         setRevenueCount(data.count || 0);
         setRevenueTotal(data.totalAmount || 0);
         setRevenueMonth(data.month || '');
         setRevenueItems(data.items || []);
         setRevenueMissingCost(data.missingMonthlyCost || []);
-        setRevenueDuplicatesRemoved(data.duplicatesRemoved || []);
       }
     }
     setRevenueLoading(false);
@@ -433,20 +419,16 @@ export default function AdminSubscribersPage() {
       </div>
       {revenueLoading ? (
         <p style={{ fontSize: '13px', color: 'var(--text-tertiary)', marginBottom: '18px' }}>טוענים...</p>
-      ) : revenueError && !revenueStale ? (
+      ) : revenueError ? (
         <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-hairline-strong)', borderRight: '3px solid var(--loss)', borderRadius: '12px', padding: '18px', marginBottom: '20px', textAlign: 'center' }}>
-          <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--loss)' }}>⚠️ לא הצלחנו לשלוף עכשיו ממאנדיי</div>
+          <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--loss)' }}>⚠️ לא הצלחנו לחשב כרגע</div>
           <div style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginTop: '6px' }}>{revenueError}</div>
-          <div style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginTop: '4px' }}>זו תקלה בשליפה, לא אומר שהמנויים ירדו ל-0 - נסי לרענן שוב בעוד רגע</div>
           <button className="btn-outline" style={{ width: 'auto', marginTop: '12px', fontSize: '12px', padding: '6px 14px' }} onClick={() => loadRevenue(true)} disabled={revenueRecomputing}>
             {revenueRecomputing ? 'מרעננים...' : 'ניסיון נוסף'}
           </button>
         </div>
       ) : (
-        <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-hairline-strong)', borderRight: `3px solid ${revenueStale ? 'var(--orange)' : 'var(--profit)'}`, borderRadius: '12px', padding: '18px', marginBottom: '20px', textAlign: 'center' }}>
-          {revenueStale && (
-            <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--orange)', marginBottom: '8px' }}>⚠️ השליפה העדכנית ממאנדיי נכשלה - אלו הנתונים השמורים מהפעם האחרונה שהצליחה</div>
-          )}
+        <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-hairline-strong)', borderRight: '3px solid var(--profit)', borderRadius: '12px', padding: '18px', marginBottom: '20px', textAlign: 'center' }}>
           <div style={{ fontSize: '28px', fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--profit)' }}>₪{revenueTotal.toLocaleString('he-IL')}</div>
           <div style={{ fontSize: '12.5px', color: 'var(--text-tertiary)', marginTop: '2px' }}>(אחרי מע&quot;מ 18%: ₪{Math.round(revenueTotal * 0.82).toLocaleString('he-IL')})</div>
           <div style={{ fontSize: '12.5px', color: 'var(--text-tertiary)', marginTop: '6px' }}>{revenueCount} אנשים בקבוצת הסוחרים</div>
@@ -456,19 +438,11 @@ export default function AdminSubscribersPage() {
         </div>
       )}
 
-      {/* הסכום הזה חישוב משלנו, לא פשוט סכימה של עמודת "עלות חודשית" במאנדיי - יכול להיות שונה
-          מהסכום שמאנדיי עצמו מציג בתחתית הקבוצה, בעיקר בגלל שני דברים: מי שאין לו מספר תקין
-          בעמודה (אצלנו מקבל ברירת מחדל 400, אצל מאנדיי נספר כ-0), ואנשי קשר כפולים (אנחנו סופרים
-          רק את הכרטיס העדכני ביותר, מאנדיי סופר את כולם) - אז מציגים כאן בדיוק מי ולמה, כדי שפער
-          בין המספרים יהיה ניתן להסבר במקום "סתם לא מסתדר" */}
-      {(revenueMissingCost.length > 0 || revenueDuplicatesRemoved.length > 0) && (
+      {/* מי שעדיין אין לו/ה "עלות חודשית" שמורה מהסנכרון היומי מול מאנדיי (חשבון חדש שעוד לא
+          עבר סנכרון, או שהעמודה ריקה במאנדיי) - נספר/ת כרגע לפי מחיר ברירת המחדל (400) */}
+      {revenueMissingCost.length > 0 && (
         <div style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginBottom: '20px', marginTop: '-10px' }}>
-          {revenueMissingCost.length > 0 && (
-            <p>⚠️ בלי "עלות חודשית" תקינה במאנדיי (נספרו כ-400 אצלנו, כנראה כ-0 אצל מאנדיי): {revenueMissingCost.join(', ')}</p>
-          )}
-          {revenueDuplicatesRemoved.length > 0 && (
-            <p>⚠️ כרטיסים כפולים באותו איש קשר במאנדיי (נספר רק החדש ביותר): {revenueDuplicatesRemoved.join(', ')}</p>
-          )}
+          <p>⚠️ בלי "עלות חודשית" שמורה עדיין (נספרו כ-400 בינתיים): {revenueMissingCost.join(', ')}</p>
         </div>
       )}
 

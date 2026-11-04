@@ -127,11 +127,20 @@ export async function syncSubscribersBidirectional(): Promise<BidirectionalSyncR
   // מקבל/ת אחד עכשיו (כולל הפעלה מחדש למי שהיה/הייתה מנוי/ה ובוטל/ה)
   const { data: activeSubscriberProfiles } = await supabaseAdmin
     .from('profiles')
-    .select('phone, email')
+    .select('id, phone, email, monthly_price')
     .eq('role', 'subscriber')
     .eq('subscription_status', 'active');
   const existingActivePhones = new Set((activeSubscriberProfiles || []).map((p) => normalizePhone(p.phone || '')).filter(Boolean));
   const existingActiveEmails = new Set((activeSubscriberProfiles || []).map((p) => normalizeEmail(p.email || '')).filter(Boolean));
+  const activeProfileByPhone = new Map((activeSubscriberProfiles || []).filter((p) => p.phone).map((p) => [normalizePhone(p.phone || ''), p]));
+  const activeProfileByEmail = new Map((activeSubscriberProfiles || []).filter((p) => p.email).map((p) => [normalizeEmail(p.email || ''), p]));
+
+  // 0 הוא ערך תקין (מנוי בחינם) - חייבים לבדוק במפורש שהטקסט קיים ומספר תקין, לא להתייחס ל-0 כ"אין ערך"
+  function parseMonthlyCost(raw: string | null): number | null {
+    if (raw == null || raw === '') return null;
+    const n = Number(raw);
+    return isNaN(n) ? null : n;
+  }
 
   const mondaySubscribers = await getMondaySubscriberDetails();
   const createdNames: string[] = [];
@@ -141,8 +150,17 @@ export async function syncSubscribersBidirectional(): Promise<BidirectionalSyncR
   for (const s of mondaySubscribers) {
     const normPhone = s.phone ? normalizePhone(s.phone) : '';
     const normEmail = s.email ? normalizeEmail(s.email) : '';
-    const alreadyActive = (normPhone && existingActivePhones.has(normPhone)) || (normEmail && existingActiveEmails.has(normEmail));
-    if (alreadyActive) continue;
+    const existing = (normPhone && activeProfileByPhone.get(normPhone)) || (normEmail && activeProfileByEmail.get(normEmail)) || null;
+    const monthlyPrice = parseMonthlyCost(s.monthlyCost);
+
+    if (existing) {
+      // כבר מנוי/ה פעיל/ה - רק מרעננים את "עלות חודשית" אם היא השתנתה במאנדיי, כדי שחישוב
+      // ההכנסה באתר (ר' lib/revenueSnapshot.ts) יהיה מדויק בלי לקרוא למאנדיי בזמן אמת
+      if (monthlyPrice !== existing.monthly_price) {
+        await supabaseAdmin.from('profiles').update({ monthly_price: monthlyPrice }).eq('id', existing.id);
+      }
+      continue;
+    }
 
     if (!s.email && !normPhone) {
       skippedNoContact.push(s.name || 'ללא שם');
@@ -153,7 +171,7 @@ export async function syncSubscribersBidirectional(): Promise<BidirectionalSyncR
     const emailToUse = s.email || `p${normPhone}@${PLACEHOLDER_EMAIL_DOMAIN}`;
 
     try {
-      await ensureActiveSubscriberAccount(emailToUse, s.phone || '', s.name || 'מנוי חדש', s.joinDate || undefined);
+      await ensureActiveSubscriberAccount(emailToUse, s.phone || '', s.name || 'מנוי חדש', s.joinDate || undefined, false, monthlyPrice);
       createdNames.push(s.name || s.email || s.phone || '');
       if (usingPlaceholder) placeholderEmailNames.push(s.name || s.phone || '');
       if (normPhone) existingActivePhones.add(normPhone);

@@ -65,7 +65,7 @@ export async function findCompletedTradingPlanIdByContact(phone: string | null |
 // isFirstMonthPrice - true כשהתשלום שהפעיל את הקריאה הזו הוא בדיוק מחיר החודש הראשון (1 ש"ח).
 // מסמן trial_price_used=true על הפרופיל לצמיתות (לא מתאפס גם אם המנוי בוטל אח"כ) - כדי
 // שאפשר יהיה בעתיד לזהות מי כבר ניצל את המחיר הסמלי ולא להציע לו אותו שוב ב-/subscribe
-export async function ensureActiveSubscriberAccount(email: string, phone: string, fullName: string, startedAt?: string, isFirstMonthPrice = false) {
+export async function ensureActiveSubscriberAccount(email: string, phone: string, fullName: string, startedAt?: string, isFirstMonthPrice = false, monthlyPrice?: number | null) {
   const subscriptionStartedAt = startedAt || new Date().toISOString();
   const normalizedPhoneForPlaceholder = normalizePhone(phone);
   // Grow לא תמיד מעביר מייל בתשלום (למשל אם טופס הסליקה אסף רק טלפון) - בלי מייל אין אפשרות
@@ -100,6 +100,9 @@ export async function ensureActiveSubscriberAccount(email: string, phone: string
       updates.subscription_cancelled_at = null;
     }
     if (isFirstMonthPrice) updates.trial_price_used = true;
+    // undefined = "לא נמסר כאן" (למשל אימות ידני/Grow שלא יודעים עליו) - לא דורסים מחיר קיים.
+    // null/מספר ממאנדיי כן נכתבים, כולל 0 (מנוי בחינם) - ר' הערה דומה ב-lib/revenueSnapshot.ts
+    if (monthlyPrice !== undefined) updates.monthly_price = monthlyPrice;
 
     // התאמה לפי טלפון יכולה למצוא פרופיל עם מייל אחר (למשל פלייסהולדר שנוצר אוטומטית מסנכרון
     // מאנדיי, או מייל ישן) - אם המייל שהתקבל עכשיו שונה, מעדכנים גם אותו, וגם את חשבון
@@ -144,6 +147,7 @@ export async function ensureActiveSubscriberAccount(email: string, phone: string
     .upsert({
       id: userId, email: effectiveEmail, full_name: fullName, role: 'subscriber', subscription_status: 'active',
       subscription_started_at: subscriptionStartedAt, phone, trial_price_used: isFirstMonthPrice,
+      monthly_price: monthlyPrice ?? null,
     });
 }
 
