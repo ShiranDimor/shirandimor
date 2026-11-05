@@ -63,7 +63,8 @@ export async function POST(request: Request) {
       title,
       description: description || null,
       category: category || null,
-      tier: tier === 'registered' || tier === 'subscriber' ? tier : 'public',
+      // ברירת מחדל: סגור למנויים בלבד - רק tier==='public' שנמסר במפורש פותח לכולם
+      tier: tier === 'public' || tier === 'registered' ? tier : 'subscriber',
       video_provider: isGamma ? 'gamma' : 'youtube',
       video_id: videoId,
       thumbnail_url: thumbnailUrl,

@@ -10,6 +10,7 @@ type Lesson = {
   title: string;
   description: string | null;
   category: string | null;
+  tier: string;
   video_provider: string;
   video_id: string;
   thumbnail_url: string | null;
@@ -20,6 +21,8 @@ type Lesson = {
   notification_sent_at: string | null;
 };
 
+// כברירת מחדל שיעור חדש סגור למנויים בלבד - שירן ביקשה מפורשות שהספרייה תהיה סגורה כברירת
+// מחדל, עם אפשרות לפתוח ידנית שיעור ספציפי (הצ'קבוקס למטה)
 const emptyForm = {
   title: '',
   description: '',
@@ -29,6 +32,7 @@ const emptyForm = {
   thumbnailUrl: '',
   durationMinutes: '',
   published: true,
+  tier: 'subscriber' as 'public' | 'subscriber',
   sortOrder: '0',
 };
 
@@ -89,6 +93,7 @@ export default function AdminLessonsPage() {
       thumbnailUrl: lesson.thumbnail_url || '',
       durationMinutes: lesson.duration_minutes ? String(lesson.duration_minutes) : '',
       published: lesson.published,
+      tier: lesson.tier === 'public' ? 'public' : 'subscriber',
       sortOrder: String(lesson.sort_order),
     });
     setFormError('');
@@ -117,6 +122,7 @@ export default function AdminLessonsPage() {
       thumbnailUrl: form.thumbnailUrl.trim() || null,
       durationMinutes: form.durationMinutes ? Number(form.durationMinutes) : null,
       published: form.published,
+      tier: form.tier,
       sortOrder: form.sortOrder ? Number(form.sortOrder) : 0,
     };
 
@@ -187,6 +193,9 @@ export default function AdminLessonsPage() {
           )}
           {!lesson.published && (
             <span style={{ position: 'absolute', top: '8px', right: '8px', fontSize: '10.5px', color: '#E8A33D', background: 'rgba(8,19,26,0.85)', border: '1px solid #E8A33D', borderRadius: '5px', padding: '2px 6px' }}>טיוטה</span>
+          )}
+          {lesson.tier === 'public' && (
+            <span style={{ position: 'absolute', top: '8px', left: '8px', fontSize: '10.5px', color: '#3DDC84', background: 'rgba(8,19,26,0.85)', border: '1px solid #3DDC84', borderRadius: '5px', padding: '2px 6px' }}>פתוח לכולם</span>
           )}
         </Link>
         <div style={{ padding: '12px' }}>
@@ -300,9 +309,13 @@ export default function AdminLessonsPage() {
 
         <input className="tp-text-input" style={{ minHeight: 'auto', marginBottom: '10px' }} type="number" placeholder="אורך בדקות" value={form.durationMinutes} onChange={(e) => setForm({ ...form, durationMinutes: e.target.value })} />
 
-        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', marginBottom: '14px', cursor: 'pointer' }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', marginBottom: '10px', cursor: 'pointer' }}>
           <input type="checkbox" checked={form.published} onChange={(e) => setForm({ ...form, published: e.target.checked })} />
           מפורסם (גלוי באתר)
+        </label>
+        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', marginBottom: '14px', cursor: 'pointer' }}>
+          <input type="checkbox" checked={form.tier === 'public'} onChange={(e) => setForm({ ...form, tier: e.target.checked ? 'public' : 'subscriber' })} />
+          פתוח לכולם (לא רק למנויים)
         </label>
 
         {formError && <p style={{ color: 'var(--loss)', fontSize: '13px', marginBottom: '10px' }}>{formError}</p>}
