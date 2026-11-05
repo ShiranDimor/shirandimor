@@ -3,7 +3,11 @@ import { supabaseAdmin } from '@/lib/instantLogin';
 import { generateMarketDigest } from '@/lib/marketDigest';
 import { draftAutomatedAnnouncement } from '@/lib/automationDraft';
 
-export const maxDuration = 60;
+// 60 שניות לא תמיד מספיקות ל-generateMarketDigest (עד 4 סבבי חיפוש אינטרנט אמיתי עם ה-AI) -
+// כשזה מתקרב לגבול הישן, הפונקציה הייתה נהרגת באמצע בדיוק ברגע השליחה של התראת הפוש
+// (השלב האחרון, אחרי שהטיוטה כבר נשמרה) - זה ההסבר לדפוס החוזר של "הטיוטה נוצרת אבל
+// ההתראה לא מגיעה"
+export const maxDuration = 300;
 
 // רץ כל בוקר (ראשון-שישי, לא שבת - ר' vercel.json) ומכין סיכום שוק יומי כטיוטה בלבד
 // (published=false) - שירן מקבלת התראת פוש, נכנסת ללוח המודעות, בודקת ורק אז לוחצת

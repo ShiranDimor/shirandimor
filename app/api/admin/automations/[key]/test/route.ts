@@ -3,7 +3,9 @@ import { supabaseAdmin } from '@/lib/instantLogin';
 import { buildAutomationMessage } from '@/lib/automations';
 import { sendPushToUser } from '@/lib/webPush';
 
-export const maxDuration = 60;
+// market-digest קורא ל-generateMarketDigest, שיכול לקחת עד כמה דקות (חיפוש אינטרנט אמיתי
+// עם ה-AI) - ר' הערה מקבילה ב-app/api/cron/daily-market-digest/route.ts
+export const maxDuration = 300;
 
 async function requireAdmin(request: Request) {
   const authHeader = request.headers.get('Authorization') || '';
