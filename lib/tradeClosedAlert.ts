@@ -116,15 +116,17 @@ export async function notifyTradesClosed(trades: ClosedTradeInfo[]) {
       const dirFactor = t.direction === 'short' ? -1 : 1;
       const pct = ((t.exit_price - t.entry_price) / t.entry_price) * 100 * dirFactor;
       const isProfit = pct >= 0;
-      const title = `${isProfit ? '✅' : '🔻'} עסקה נסגרה ${isProfit ? 'ברווח' : 'בהפסד'} - ${t.symbol}`;
+      const subscriberTitle = `${isProfit ? '✅' : '🔻'} עסקה נסגרה ${isProfit ? 'ברווח' : 'בהפסד'} - ${t.symbol}`;
       const pctLabel = `${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%`;
 
-      // המנויים מקבלים את התוצאה המלאה תמיד, כולל הפסדים - הם משלמים, מגיע להם תמונה מדויקת.
-      // מי שאינו מנוי מקבל התראה רק על עסקאות שנסגרו ברווח (ההוכחה שמביאה הצטרפות) - הפסד
-      // לא נשלח ללידים בכלל, כדי לא לפגוע בפיץ' ההצטרפות עם ראיה הפוכה
-      await sendPushToActiveSubscribers({ title, body: pctLabel, url: '/portfolio' }, 'trade');
+      // המנויים מקבלים את התוצאה המלאה תמיד, כולל הפסדים (וגם הסימבול בכותרת) - הם משלמים,
+      // מגיע להם תמונה מדויקת. מי שאינו מנוי מקבל התראה רק על עסקאות שנסגרו ברווח (ההוכחה
+      // שמביאה הצטרפות) - הפסד לא נשלח ללידים בכלל, כדי לא לפגוע בפיץ' ההצטרפות עם ראיה הפוכה.
+      // חשוב: גם הכותרת שלהם חייבת להיות כללית בלי סימבול - לא רק הגוף (body) - אחרת הסימבול
+      // "דולף" בכותרת ההתראה למרות שהגוף עצמו מטושטש
+      await sendPushToActiveSubscribers({ title: subscriberTitle, body: pctLabel, url: '/portfolio' }, 'trade');
       if (isProfit) {
-        await sendPushToNonSubscribers({ title, body: `${pctLabel} · חודש ראשון ב-₪1 ←`, url: '/subscribe' }, 'trade');
+        await sendPushToNonSubscribers({ title: '✅ עסקה נסגרה ברווח', body: `${pctLabel} · חודש ראשון ב-₪1 ←`, url: '/subscribe' }, 'trade');
       }
     }
   }
