@@ -16,12 +16,20 @@ self.addEventListener('push', (event) => {
     // תוכן לא תקין - משתמשים בברירת המחדל
   }
 
+  // התראות עסקה (kind='trade') מורגשות יותר מכל שאר הסוגים (שיעור/לייב/מודעה) - זה מה שבאמת
+  // מעניין בזמן אמת, ושירן שולחת כמה התראות אחרות ביום שלא רוצות "לטשטש" אותן. requireInteraction
+  // עובד בכל פלטפורמה (נשארת על המסך עד שסוגרים, לא נעלמת אחרי כמה שניות); רטט עובד רק באנדרואיד
+  // (ספארי/iOS לא תומכים ברטט מאתרים בכלל - מגבלת הפלטפורמה, לא ניתנת לעקיפה)
+  const isTrade = data.kind === 'trade';
+
   event.waitUntil(
     self.registration.showNotification(data.title, {
       body: data.body,
       icon: '/icons/icon-192.png',
       badge: '/icons/icon-192.png',
       data: { url: data.url },
+      requireInteraction: isTrade,
+      ...(isTrade ? { vibrate: [250, 100, 250, 100, 250] } : {}),
     })
   );
 });
