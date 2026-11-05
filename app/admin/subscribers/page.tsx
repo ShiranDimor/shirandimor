@@ -227,6 +227,24 @@ export default function AdminSubscribersPage() {
     }
   }
 
+  // קביעה ידנית של "עלות חודשית" - בדרך כלל מגיע מהסנכרון היומי מול מאנדיי, אבל מנוי/ה שלא
+  // קיימ/ת שם (חשבון בדיקה, גישה שניתנה ידנית) נשאר/ת תמיד עם ברירת מחדל (400) בלי זה
+  async function editPrice(sub: ApprovedSub, currentPrice: number | null) {
+    const input = window.prompt(`עלות חודשית ל${sub.full_name || sub.email} (בשקלים, 0 למנוי חינמי, ריק לביטול הערך הידני):`, currentPrice !== null ? String(currentPrice) : '');
+    if (input === null) return;
+    const monthlyPrice = input.trim() === '' ? null : Number(input.trim());
+    if (monthlyPrice !== null && (!Number.isFinite(monthlyPrice) || monthlyPrice < 0)) { window.alert('מחיר לא תקין'); return; }
+
+    const { data: { session } } = await supabase.auth.getSession();
+    const res = await fetch(`/api/admin/subscribers/${sub.id}/price`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
+      body: JSON.stringify({ monthlyPrice }),
+    });
+    if (!res.ok) { window.alert('העדכון נכשל'); return; }
+    loadRevenue();
+  }
+
   async function removeSubscriber(id: string, name: string) {
     if (!window.confirm(`למחוק לצמיתות את המנוי ${name}? הפעולה תסיר את הגישה שלו ואת כל נתוני היומן שלו.`)) return;
     setRemoving(id);
@@ -600,6 +618,14 @@ export default function AdminSubscribersPage() {
               title="שליחת התראת בדיקה אמיתית רק למנוי/ה הזה - לא מתפרסם בלוח המודעות"
             >
               {testPushing === sub.id ? '…' : '📤 בדיקה'}
+            </button>
+            <button
+              className="btn-outline"
+              style={{ padding: '5px 10px', fontSize: '11px', whiteSpace: 'nowrap' }}
+              onClick={() => editPrice(sub, priceFor(sub))}
+              title="קביעה ידנית של העלות החודשית - בדרך כלל מגיע אוטומטית מהסנכרון מול מאנדיי"
+            >
+              ✏️ מחיר
             </button>
             <button
               className="btn-outline"
