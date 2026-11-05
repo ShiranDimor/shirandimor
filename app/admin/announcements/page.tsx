@@ -19,6 +19,27 @@ function formatDateTime(iso: string) {
   return new Date(iso).toLocaleString('he-IL', { day: 'numeric', month: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
+function formatDateShort(d: Date) {
+  return d.toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric' });
+}
+
+// מפתח השבוע (יום ראשון שלו) של תאריך נתון - כדי לקבץ הודעות ישנות לקבוצות מתקפלות, במקום
+// גלילה ארוכה אחת שגדלה כל יום. שבוע ולא חודש - בקצב הפרסום כאן אפילו חודש בודד יכול להיות
+// ארוך מדי לקבוצה אחת
+function weekKey(iso: string): string {
+  const d = new Date(iso);
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() - d.getDay()); // יום ראשון של אותו שבוע
+  return d.toISOString().slice(0, 10);
+}
+
+function weekLabel(key: string): string {
+  const start = new Date(`${key}T12:00:00`);
+  const end = new Date(start);
+  end.setDate(end.getDate() + 6);
+  return `${formatDateShort(start)} - ${formatDateShort(end)}`;
+}
+
 export default function AdminAnnouncementsPage() {
   const [checking, setChecking] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -207,6 +228,20 @@ export default function AdminAnnouncementsPage() {
     window.location.href = '/';
   }
 
+  // טיוטות (עדיין לא פורסמו) תמיד גלויות למעלה, בלי קיפול - הן דורשות פעולה ממך. מה שכבר
+  // פורסם מקובץ לפי שבועות, מתקפל וסגור כברירת מחדל (רק השבוע הנוכחי פתוח) - אחרת הרשימה
+  // רק גדלה וגדלה עם כל פרסום
+  const drafts = announcements.filter((a) => !a.published);
+  const publishedByWeek = new Map<string, Announcement[]>();
+  for (const a of announcements) {
+    if (!a.published) continue;
+    const key = weekKey(a.created_at);
+    const bucket = publishedByWeek.get(key) || [];
+    bucket.push(a);
+    publishedByWeek.set(key, bucket);
+  }
+  const publishedWeeks = Array.from(publishedByWeek.entries()).sort((a, b) => b[0].localeCompare(a[0]));
+
   if (checking) {
     return <div className="wrap"><p style={{ padding: '40px', textAlign: 'center' }}>בודקים הרשאות...</p></div>;
   }
@@ -303,46 +338,60 @@ export default function AdminAnnouncementsPage() {
       {loading && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>טוענים...</p>}
       {!loading && announcements.length === 0 && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>אין עדיין הודעות</p>}
 
-      {announcements.map((a) => (
-        <details key={a.id} className="section-collapse" open={!a.published}>
+      {drafts.map((a) => renderAnnouncement(a))}
+
+      {publishedWeeks.map(([week, items], idx) => (
+        <details key={week} className="section-collapse" open={idx === 0}>
           <summary>
-            <div>
-              <div style={{ fontSize: '13.5px', fontWeight: 700 }}>{a.title}</div>
-              <div style={{ fontSize: '11.5px', color: 'var(--text-tertiary)', marginTop: '2px' }}>
-                {formatDateTime(a.created_at)}
-                {!a.published && <span style={{ color: 'var(--lavender)' }}> · 📝 טיוטה - ממתינה לאישור</span>}
-                {a.notification_sent_at && <span style={{ color: 'var(--profit)' }}> · ✓ התראה נשלחה</span>}
-              </div>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
-              {/* עצירת ה-click שלא יגלוש ל-summary ויפתח/יסגור בטעות כשלוחצים על כפתור פעולה */}
-              <span style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }} onClick={(e) => e.stopPropagation()}>
-                {!a.published && (
-                  <button onClick={() => handlePublishDraft(a.id)} disabled={publishingId === a.id} className="btn-primary" style={{ padding: '6px 12px', fontSize: '12.5px' }}>
-                    {publishingId === a.id ? '…' : '✅ אישור ופרסום'}
-                  </button>
-                )}
-                <button onClick={() => handleTestNotify(a.id)} disabled={testNotifyingId === a.id} className="btn-outline" style={{ padding: '6px 12px', fontSize: '12.5px' }} title="שליחת בדיקה רק אלי, לפני שליחה לכולם">
-                  {testNotifyingId === a.id ? '…' : '🔔 בדיקה לעצמי'}
-                </button>
-                {a.published && (
-                  <button onClick={() => handleNotify(a.id)} disabled={notifyingId === a.id} className="btn-outline" style={{ padding: '6px 12px', fontSize: '12.5px' }}>
-                    {notifyingId === a.id ? '…' : a.notification_sent_at ? '📣 שליחה שוב' : '📣 שליחת התראה'}
-                  </button>
-                )}
-                <button onClick={() => handleDelete(a.id)} disabled={deletingId === a.id} className="btn-outline" style={{ padding: '6px 12px', fontSize: '12.5px' }}>
-                  {deletingId === a.id ? '…' : 'מחיקה'}
-                </button>
-              </span>
-              <span className="collapse-chevron">▾</span>
-            </div>
+            <h2>שבוע {weekLabel(week)}</h2>
+            <div className="summary-right"><span className="count">{items.length}</span><span className="collapse-chevron">▾</span></div>
           </summary>
-          <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-hairline-strong)', borderTop: 'none', borderRadius: '0 0 10px 10px', padding: '14px' }}>
-            {a.image_url && <img src={a.image_url} alt="" style={{ width: '100%', borderRadius: '8px', marginBottom: '10px' }} />}
-            <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6, whiteSpace: 'pre-line' }}><FormattedText text={a.content} /></p>
-          </div>
+          <div style={{ marginTop: '10px' }}>{items.map((a) => renderAnnouncement(a))}</div>
         </details>
       ))}
     </div>
   );
+
+  function renderAnnouncement(a: Announcement) {
+    return (
+      <details key={a.id} className="section-collapse" open={!a.published}>
+        <summary>
+          <div>
+            <div style={{ fontSize: '13.5px', fontWeight: 700 }}>{a.title}</div>
+            <div style={{ fontSize: '11.5px', color: 'var(--text-tertiary)', marginTop: '2px' }}>
+              {formatDateTime(a.created_at)}
+              {!a.published && <span style={{ color: 'var(--lavender)' }}> · 📝 טיוטה - ממתינה לאישור</span>}
+              {a.notification_sent_at && <span style={{ color: 'var(--profit)' }}> · ✓ התראה נשלחה</span>}
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+            {/* עצירת ה-click שלא יגלוש ל-summary ויפתח/יסגור בטעות כשלוחצים על כפתור פעולה */}
+            <span style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }} onClick={(e) => e.stopPropagation()}>
+              {!a.published && (
+                <button onClick={() => handlePublishDraft(a.id)} disabled={publishingId === a.id} className="btn-primary" style={{ padding: '6px 12px', fontSize: '12.5px' }}>
+                  {publishingId === a.id ? '…' : '✅ אישור ופרסום'}
+                </button>
+              )}
+              <button onClick={() => handleTestNotify(a.id)} disabled={testNotifyingId === a.id} className="btn-outline" style={{ padding: '6px 12px', fontSize: '12.5px' }} title="שליחת בדיקה רק אלי, לפני שליחה לכולם">
+                {testNotifyingId === a.id ? '…' : '🔔 בדיקה לעצמי'}
+              </button>
+              {a.published && (
+                <button onClick={() => handleNotify(a.id)} disabled={notifyingId === a.id} className="btn-outline" style={{ padding: '6px 12px', fontSize: '12.5px' }}>
+                  {notifyingId === a.id ? '…' : a.notification_sent_at ? '📣 שליחה שוב' : '📣 שליחת התראה'}
+                </button>
+              )}
+              <button onClick={() => handleDelete(a.id)} disabled={deletingId === a.id} className="btn-outline" style={{ padding: '6px 12px', fontSize: '12.5px' }}>
+                {deletingId === a.id ? '…' : 'מחיקה'}
+              </button>
+            </span>
+            <span className="collapse-chevron">▾</span>
+          </div>
+        </summary>
+        <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-hairline-strong)', borderTop: 'none', borderRadius: '0 0 10px 10px', padding: '14px' }}>
+          {a.image_url && <img src={a.image_url} alt="" style={{ width: '100%', borderRadius: '8px', marginBottom: '10px' }} />}
+          <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6, whiteSpace: 'pre-line' }}><FormattedText text={a.content} /></p>
+        </div>
+      </details>
+    );
+  }
 }
