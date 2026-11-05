@@ -5,7 +5,8 @@ import { syncSalesLeadsFromMonday } from '@/lib/salesLeads/mondaySync';
 // למערכת גם בלי לחיצה ידנית על "סנכרן עכשיו". תדירות יומית - כמו שאר ה-cron jobs הקיימים
 // בפרויקט (מגבלת תוכנית Vercel) - לסנכרון מיידי יש את כפתור "סנכרן עכשיו" באדמין, ואפשר גם
 // לחבר Webhook של מאנדיי (app/api/webhooks/monday-sales-leads) לעדכון בזמן אמת
-export const maxDuration = 60;
+// ר' הערה ב-app/api/admin/sales-leads/sync/route.ts - אותה סכנת timeout בקבוצה גדולה
+export const maxDuration = 300;
 
 export async function GET(request: Request) {
   const authHeader = request.headers.get('authorization');

@@ -105,77 +105,103 @@ export type SalesLeadsSyncResult = {
   failed: { name: string | null; error: string }[];
 };
 
+// מריץ עד `limit` פריטים בו-זמנית במקום בלולאה טורית אחת-אחת - עם מאות לידים, לולאה טורית
+// (כל קריאת DB ממתינה לקודמת) חצתה את זמן הריצה המותר ל-route (ר' app/api/admin/sales-leads/sync)
+// ונכשלה ב"שגיאה בסנכרון". המקביליות מוגבלת (לא Promise.all על הכל בבת אחת) כדי לא להציף
+// את Supabase/מאנדיי במאות בקשות סימולטניות
+async function withConcurrency<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let nextIndex = 0;
+  async function worker() {
+    while (true) {
+      const i = nextIndex++;
+      if (i >= items.length) return;
+      results[i] = await fn(items[i]);
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+  return results;
+}
+
+type LeadSyncOutcome = { kind: 'created' | 'updated' | 'skipped' } | { kind: 'failed'; name: string | null; error: string };
+
+async function syncOneLead(lead: MondayUpdatesGroupLead): Promise<LeadSyncOutcome> {
+  const phoneNormalized = normalizePhoneToE164(lead.phoneRaw);
+  if (!phoneNormalized) return { kind: 'skipped' };
+
+  try {
+    let existing = await supabaseAdmin
+      .from('sales_leads')
+      .select('id, monday_item_id, name, first_name')
+      .eq('monday_item_id', lead.mondayItemId)
+      .maybeSingle();
+
+    if (!existing.data) {
+      existing = await supabaseAdmin.from('sales_leads').select('id, monday_item_id, name, first_name').eq('phone_normalized', phoneNormalized).maybeSingle();
+    }
+
+    if (existing.data) {
+      const patch: Record<string, unknown> = { phone_normalized: phoneNormalized };
+      if (existing.data.monday_item_id !== lead.mondayItemId) patch.monday_item_id = lead.mondayItemId;
+      if (lead.name && lead.name !== existing.data.name) patch.name = lead.name;
+      if (lead.phoneRaw) patch.phone_original = lead.phoneRaw;
+      if (lead.sourceInfo) patch.source_info = lead.sourceInfo;
+      // אף פעם לא דורסים first_name קיים - גם אם השם המלא השתנה במאנדיי. עדיף שם פרטי ישן
+      // שכבר עובד מאשר לקחת סיכון על ערך חדש שאולי פחות טוב
+      if (!existing.data.first_name) {
+        const computed = extractFirstName(lead.name);
+        if (computed) patch.first_name = computed;
+      }
+
+      const { error } = await supabaseAdmin.from('sales_leads').update(patch).eq('id', existing.data.id);
+      if (error) throw error;
+      return { kind: 'updated' };
+    }
+
+    const { data: inserted, error } = await supabaseAdmin
+      .from('sales_leads')
+      .insert({
+        monday_item_id: lead.mondayItemId,
+        name: lead.name,
+        first_name: extractFirstName(lead.name),
+        phone_original: lead.phoneRaw,
+        phone_normalized: phoneNormalized,
+        lead_date: lead.createdAt || new Date().toISOString(),
+        source_info: lead.sourceInfo,
+      })
+      .select('id')
+      .single();
+
+    if (error) throw error;
+
+    if (inserted) {
+      await supabaseAdmin.from('sales_lead_activities').insert({ lead_id: inserted.id, activity_type: 'LEAD_CREATED', note: null, metadata: null });
+    }
+    return { kind: 'created' };
+  } catch (e) {
+    return { kind: 'failed', name: lead.name, error: e instanceof Error ? e.message : 'שגיאה לא ידועה' };
+  }
+}
+
 // מסנכרן את קבוצת העדכונים ממאנדיי לתוך sales_leads. אף פעם לא נוגע בסטטוס/עדיפות/היסטוריה/
 // Follow-up של ליד קיים - רק מוודא שהוא קיים ומעדכן שם/טלפון/מקור אם השתנו במאנדיי. אף פעם
 // לא מוחק שורות (מי שיצא מהקבוצה במאנדיי נשאר במערכת עם כל הטיפול שכבר נעשה בו)
 export async function syncSalesLeadsFromMonday(): Promise<SalesLeadsSyncResult> {
   const mondayLeads = await getUpdatesGroupLeadsFromMonday();
 
+  const noPhone = mondayLeads.filter((l) => !normalizePhoneToE164(l.phoneRaw));
+  const withPhone = mondayLeads.filter((l) => normalizePhoneToE164(l.phoneRaw));
+
+  const outcomes = await withConcurrency(withPhone, 20, syncOneLead);
+
   let created = 0;
   let updated = 0;
-  const skippedNoPhone: string[] = [];
   const failed: { name: string | null; error: string }[] = [];
-
-  for (const lead of mondayLeads) {
-    const phoneNormalized = normalizePhoneToE164(lead.phoneRaw);
-    if (!phoneNormalized) {
-      skippedNoPhone.push(lead.name);
-      continue;
-    }
-
-    try {
-      let existing = await supabaseAdmin
-        .from('sales_leads')
-        .select('id, monday_item_id, name, first_name')
-        .eq('monday_item_id', lead.mondayItemId)
-        .maybeSingle();
-
-      if (!existing.data) {
-        existing = await supabaseAdmin.from('sales_leads').select('id, monday_item_id, name, first_name').eq('phone_normalized', phoneNormalized).maybeSingle();
-      }
-
-      if (existing.data) {
-        const patch: Record<string, unknown> = { phone_normalized: phoneNormalized };
-        if (existing.data.monday_item_id !== lead.mondayItemId) patch.monday_item_id = lead.mondayItemId;
-        if (lead.name && lead.name !== existing.data.name) patch.name = lead.name;
-        if (lead.phoneRaw) patch.phone_original = lead.phoneRaw;
-        if (lead.sourceInfo) patch.source_info = lead.sourceInfo;
-        // אף פעם לא דורסים first_name קיים - גם אם השם המלא השתנה במאנדיי. עדיף שם פרטי ישן
-        // שכבר עובד מאשר לקחת סיכון על ערך חדש שאולי פחות טוב
-        if (!existing.data.first_name) {
-          const computed = extractFirstName(lead.name);
-          if (computed) patch.first_name = computed;
-        }
-
-        const { error } = await supabaseAdmin.from('sales_leads').update(patch).eq('id', existing.data.id);
-        if (error) throw error;
-        updated++;
-      } else {
-        const { data: inserted, error } = await supabaseAdmin
-          .from('sales_leads')
-          .insert({
-            monday_item_id: lead.mondayItemId,
-            name: lead.name,
-            first_name: extractFirstName(lead.name),
-            phone_original: lead.phoneRaw,
-            phone_normalized: phoneNormalized,
-            lead_date: lead.createdAt || new Date().toISOString(),
-            source_info: lead.sourceInfo,
-          })
-          .select('id')
-          .single();
-
-        if (error) throw error;
-
-        if (inserted) {
-          await supabaseAdmin.from('sales_lead_activities').insert({ lead_id: inserted.id, activity_type: 'LEAD_CREATED', note: null, metadata: null });
-        }
-        created++;
-      }
-    } catch (e) {
-      failed.push({ name: lead.name, error: e instanceof Error ? e.message : 'שגיאה לא ידועה' });
-    }
+  for (const o of outcomes) {
+    if (o.kind === 'created') created++;
+    else if (o.kind === 'updated') updated++;
+    else if (o.kind === 'failed') failed.push({ name: o.name, error: o.error });
   }
 
-  return { totalInMondayGroup: mondayLeads.length, created, updated, skippedNoPhone, failed };
+  return { totalInMondayGroup: mondayLeads.length, created, updated, skippedNoPhone: noPhone.map((l) => l.name), failed };
 }

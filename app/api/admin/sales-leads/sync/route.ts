@@ -2,9 +2,10 @@ import { NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/salesLeads/auth';
 import { syncSalesLeadsFromMonday } from '@/lib/salesLeads/mondaySync';
 
-// סנכרון עובר על כל הפריטים בקבוצת העדכונים בבקשות עוקבות למאנדיי - בקבוצה גדולה זה יכול
-// לחרוג מברירת המחדל של Vercel (10 שניות) ולגרום ל-"Failed to fetch" בצד הלקוח
-export const maxDuration = 60;
+// סנכרון עובר על כל הפריטים בקבוצת העדכונים - בקבוצה גדולה (מאות לידים) זה יכול לחרוג גם
+// מ-60 שניות ולהיכשל ב"שגיאה בסנכרון" (ר' תיקון מקביל ב-lib/salesLeads/mondaySync.ts שגם
+// מקביל את העבודה לכל ליד, לא רק מגדיל את הזמן המותר)
+export const maxDuration = 300;
 
 // POST - כפתור "סנכרן עכשיו" באדמין - סנכרון ידני מיידי מול קבוצת העדכונים במאנדיי
 export async function POST(request: Request) {
