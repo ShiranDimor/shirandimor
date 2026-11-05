@@ -1,6 +1,7 @@
 import { classifyProfile } from './profile';
 import { getProfileContent } from './profileContent';
 import { findOptions } from './questions';
+import { isActiveSubscriber } from '@/lib/subscriberStatus';
 
 const LEAD_GROUP_NAME = 'לידים חדשים';
 const SUBSCRIBER_GROUP_NAME = 'קבוצת סוחרים';
@@ -158,9 +159,17 @@ export async function classifyContactMonday(
   phone: string | null | undefined,
   email: string | null | undefined
 ): Promise<MondayContactUserType> {
+  if (!phone && !email) return 'unknown';
+
+  // קודם בודקים מול טבלת המנויים שלנו, לא רק מול מאנדיי - אחרת מי שהוענקה לו/ה גישת מנוי/ה
+  // ידנית מחוץ למאנדיי (כמו סיוון דימור וטל דיצי - ר' MANUAL_EXEMPT_EMAILS למטה) תמיד תיחשב
+  // "ליד חדש" כשהיא משוחחת עם הבוט, כי היא בכוונה לא נמצאת באף קבוצה במאנדיי. זה בדיוק מה
+  // שגרם ליצירת ליד כפול בטעות למישהי שכבר מנויה בפועל ולא "שלחה פרטים" בשום מקום
+  if (await isActiveSubscriber(phone, email).catch(() => false)) return 'member_active';
+
   const token = process.env.MONDAY_API_TOKEN;
   const boardId = process.env.MONDAY_BOARD_ID;
-  if (!token || !boardId || (!phone && !email)) return 'unknown';
+  if (!token || !boardId) return 'unknown';
 
   try {
     const { subscriberGroupId, updatesGroupId, trialGroupId, phoneColumnId, emailColumnId } = await getBoardSchema(token, boardId);
