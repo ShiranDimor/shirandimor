@@ -1,4 +1,5 @@
 import { supabaseAdmin } from '@/lib/instantLogin';
+import { entitlementOrFilter } from '@/lib/entitlement';
 
 function normalizePhone(raw: string | null | undefined): string {
   if (!raw) return '';
@@ -35,6 +36,30 @@ export async function isActiveSubscriber(phone: string | null | undefined, email
   if (!targetPhone && !targetEmail) return false;
 
   const { phones, emails } = await getActiveSubscriberContacts();
+  return (!!targetPhone && phones.has(targetPhone)) || (!!targetEmail && emails.has(targetEmail));
+}
+
+// כמו getActiveSubscriberContacts, אבל כולל גם אדמין/ות - לא רק role='subscriber'. לשימוש
+// במקומות שצריכים לדעת "האם לאדם הזה כבר יש גישה מלאה לאתר בכל צורה שהיא" (כדי לא ליצור לו/ה
+// ליד בטעות), לא רק "האם הוא/היא מנוי/ה משלם/ת" - למשל שירן עצמה (שני המיילים שלה) או מישהו/י
+// שקיבל/ה גישת מנוי/ה ידנית. entitlementOrFilter זהה ל-hasActiveEntitlement אבל ברמת שאילתה
+async function getFullAccessContacts(): Promise<SubscriberContact> {
+  const { data } = await supabaseAdmin.from('profiles').select('phone, email').or(entitlementOrFilter());
+  return {
+    phones: new Set((data || []).map((p) => normalizePhone(p.phone)).filter(Boolean)),
+    emails: new Set((data || []).map((p) => normalizeEmail(p.email)).filter(Boolean)),
+  };
+}
+
+// בודק אם טלפון/מייל שייכים למי שכבר יש לו/ה גישה מלאה לאתר (מנוי/ה פעיל/ה או אדמין) - לא רק
+// מנוי/ה. השתמש/י בזה (לא ב-isActiveSubscriber) בכל מקום שמחליט אם ליצור "ליד" חדש למישהו/י,
+// כדי שבני משפחה/אדמין לא ייחשבו בטעות לידים חדשים
+export async function hasFullAccessContact(phone: string | null | undefined, email: string | null | undefined): Promise<boolean> {
+  const targetPhone = normalizePhone(phone);
+  const targetEmail = normalizeEmail(email);
+  if (!targetPhone && !targetEmail) return false;
+
+  const { phones, emails } = await getFullAccessContacts();
   return (!!targetPhone && phones.has(targetPhone)) || (!!targetEmail && emails.has(targetEmail));
 }
 
