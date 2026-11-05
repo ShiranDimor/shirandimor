@@ -146,6 +146,28 @@ export default function AdminAutomationsPage() {
     }
   }
 
+  // יצירה + פרסום + שליחת התראה לכולם, הכל בלחיצה אחת - בלי לעבור דרך לוח המודעות. את הנוסח
+  // כבר רואים כאן בתצוגה המקדימה לפני הלחיצה, אז זה עדיין אישור מודע - רק בלי שני מסכים נפרדים
+  async function runNowAndSend(key: string) {
+    if (!window.confirm('ליצור את ההודעה, לפרסם אותה בלוח המודעות ולשלוח התראה לכולם - עכשיו, סופית?')) return;
+    setBusy(`${key}:runsend`);
+    const headers = await authHeader();
+
+    const runRes = await fetch(`/api/admin/automations/${key}/run`, { method: 'POST', headers });
+    const runData = await runRes.json().catch(() => ({}));
+    if (!runRes.ok) { setBusy(''); window.alert(runData.error || 'שגיאה ביצירת הטיוטה'); return; }
+
+    const publishRes = await fetch(`/api/admin/announcements/${runData.id}`, { method: 'PATCH', headers, body: JSON.stringify({ published: true }) });
+    if (!publishRes.ok) { setBusy(''); window.alert('הטיוטה נוצרה אבל הפרסום נכשל - אפשר לאשר ידנית בלוח המודעות'); return; }
+
+    const notifyRes = await fetch(`/api/admin/announcements/${runData.id}/notify`, { method: 'POST', headers });
+    const notifyData = await notifyRes.json().catch(() => ({}));
+    setBusy('');
+    if (!notifyRes.ok) { window.alert('ההודעה פורסמה אבל שליחת ההתראה נכשלה - אפשר לשלוח ידנית בלוח המודעות'); return; }
+
+    window.alert(`פורסם ונשלח ✅\nנשלח בפועל ל-${notifyData.sent} מכשירים${notifyData.failed ? ` (${notifyData.failed} נכשלו)` : ''}`);
+  }
+
   async function handleLogout() {
     await supabase.auth.signOut();
     window.location.href = '/';
@@ -245,8 +267,11 @@ export default function AdminAutomationsPage() {
                       <button className="btn-outline" style={{ padding: '6px 12px', fontSize: '12.5px' }} onClick={() => testToSelf(rule.key)} disabled={busy === `${rule.key}:test`} title="שליחת התראת בדיקה רק אלי">
                         {busy === `${rule.key}:test` ? '…' : '🔔 בדיקה לעצמי'}
                       </button>
-                      <button className="btn-outline" style={{ padding: '6px 12px', fontSize: '12.5px' }} onClick={() => runNow(rule.key)} disabled={busy === `${rule.key}:run`} title="מכין את הסיכום עכשיו ויוצר טיוטה בלוח המודעות, בלי לחכות לשעה הקבועה">
+                      <button className="btn-outline" style={{ padding: '6px 12px', fontSize: '12.5px' }} onClick={() => runNow(rule.key)} disabled={busy === `${rule.key}:run` || busy === `${rule.key}:runsend`} title="מכין את הסיכום עכשיו ויוצר טיוטה בלוח המודעות, בלי לחכות לשעה הקבועה">
                         {busy === `${rule.key}:run` ? 'מכין...' : '📝 יצירת טיוטה עכשיו'}
+                      </button>
+                      <button className="btn-primary" style={{ padding: '6px 12px', fontSize: '12.5px' }} onClick={() => runNowAndSend(rule.key)} disabled={busy === `${rule.key}:run` || busy === `${rule.key}:runsend`} title="יוצר, מפרסם ושולח התראה לכולם - בלחיצה אחת, בלי לעבור דרך לוח המודעות">
+                        {busy === `${rule.key}:runsend` ? 'שולח...' : '🚀 יצירה ושליחה לכולם'}
                       </button>
                     </div>
                   )}
@@ -269,8 +294,11 @@ export default function AdminAutomationsPage() {
                     <button className="btn-outline" style={{ padding: '6px 12px', fontSize: '12.5px' }} onClick={() => testToSelf(rule.key)} disabled={busy === `${rule.key}:test`} title="שליחת התראת בדיקה רק אלי">
                       {busy === `${rule.key}:test` ? '…' : '🔔 בדיקה לעצמי'}
                     </button>
-                    <button className="btn-outline" style={{ padding: '6px 12px', fontSize: '12.5px' }} onClick={() => runNow(rule.key)} disabled={busy === `${rule.key}:run`} title="יוצר טיוטה בלוח המודעות עכשיו, בלי לחכות לתזמון">
+                    <button className="btn-outline" style={{ padding: '6px 12px', fontSize: '12.5px' }} onClick={() => runNow(rule.key)} disabled={busy === `${rule.key}:run` || busy === `${rule.key}:runsend`} title="יוצר טיוטה בלוח המודעות עכשיו, בלי לחכות לתזמון">
                       {busy === `${rule.key}:run` ? '…' : '📝 יצירת טיוטה עכשיו'}
+                    </button>
+                    <button className="btn-primary" style={{ padding: '6px 12px', fontSize: '12.5px' }} onClick={() => runNowAndSend(rule.key)} disabled={busy === `${rule.key}:run` || busy === `${rule.key}:runsend`} title="יוצר, מפרסם ושולח התראה לכולם - בלחיצה אחת, בלי לעבור דרך לוח המודעות">
+                      {busy === `${rule.key}:runsend` ? 'שולח...' : '🚀 יצירה ושליחה לכולם'}
                     </button>
                     {d.customized && (
                       <button className="btn-outline" style={{ padding: '6px 12px', fontSize: '12.5px' }} onClick={() => saveTemplate(rule.key, true)} disabled={busy === `${rule.key}:save`}>
