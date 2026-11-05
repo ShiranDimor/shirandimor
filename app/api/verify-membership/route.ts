@@ -35,10 +35,20 @@ export async function POST(request: Request) {
       // ידנית מחוץ למאנדיי לגמרי)
       const alreadySubscriber = await hasFullAccessContact(phone, email);
 
+      // מי שיש לו/ה כבר גישה מלאה באתר עצמו (מנוי/ה פעיל/ה או אדמין/ית בטבלת הפרופילים) לא
+      // אמור/ה להידחות רק כי מאנדיי לא תואם - האתר עצמו הוא מקור האמת על זכאות, מאנדיי הוא
+      // רק בדיקה ראשונה/מהירה. בלי זה, חשבון שנוצר/עודכן ידנית (למשל חשבון בדיקה, או מנוי
+      // שהטלפון שלו במאנדיי לא מעודכן) היה נתקע במסך "לא זוהה" לצמיתות
+      if (alreadySubscriber) {
+        await ensureActiveSubscriberAccount(email, phone, fullName);
+        const { otpIncluded } = await sendLoginEmail(email);
+        return NextResponse.json({ verified: true, configured: true, otp: otpIncluded });
+      }
+
       // מישהו/י שניסה/תה להתחבר כמנוי/ה אבל הפרטים לא נמצאו במאנדיי - זה עלול להיות אי-התאמת
       // נתונים אמיתית (למשל טלפון שונה ממה שרשום) או מישהו/י שחושב/ת בטעות שהוא/היא מנוי/ה.
       // בלי הסנכרון הזה הפרטים היו פשוט נעלמים בלי שום תיעוד
-      if (!alreadySubscriber) await syncGenericLead({
+      await syncGenericLead({
         phone,
         email,
         name: fullName,
