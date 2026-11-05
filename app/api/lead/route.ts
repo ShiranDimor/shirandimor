@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { isActiveSubscriber } from '@/lib/subscriberStatus';
+import { hasFullAccessContact } from '@/lib/subscriberStatus';
 import { classifyContactMonday } from '@/lib/tradingPlan/monday';
 import { isPhoneBlocked } from '@/lib/blockedContacts';
 
@@ -105,7 +105,7 @@ export async function POST(request: Request) {
   // לא צריך ליד חדש, רק לפתוח לו גישה. בלי הבדיקה הזו כל כניסה כזו יוצרת ליד מיותר ב-Monday
   // שצריך לזהות ולמחוק ידנית. classifyContactMonday בודק את שתי הקבוצות במעבר יחיד על הלוח
   const [isSiteSubscriber, mondayClass] = await Promise.all([
-    isActiveSubscriber(phone, email),
+    hasFullAccessContact(phone, email),
     classifyContactMonday(phone, email).catch(() => 'unknown' as const),
   ]);
   const isSubscriber = isSiteSubscriber || mondayClass === 'member_active';
