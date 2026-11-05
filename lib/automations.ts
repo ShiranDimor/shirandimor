@@ -1,5 +1,6 @@
 import { supabaseAdmin } from '@/lib/instantLogin';
 import { draftAutomatedAnnouncement } from '@/lib/automationDraft';
+import { sendPushToUsers } from '@/lib/webPush';
 
 function israelDateLabel(d: Date): string {
   return d.toLocaleDateString('he-IL', { weekday: 'long', day: 'numeric', month: 'numeric', timeZone: 'Asia/Jerusalem' });
@@ -54,6 +55,10 @@ type AutomationTemplate = {
   getVars: () => Promise<VarsResult>;
   scheduledHour: number; // השעה (שעון ישראל) שבה ה-cron של האוטומציה הזו באמת רץ, לפי vercel.json
   closingPlan: ClosingPlan;
+  // ימי השבוע (0=ראשון...6=שבת, שעון ישראל) שבהם ה-cron הזה אמור לרוץ לפי vercel.json, או
+  // 'daily' לכל יום, או 'none' לאוטומציה שלא רצה לפי cron בכלל (מופעלת ישירות מאירוע, כמו
+  // new-lesson-announcement שרצה מיד בפרסום שיעור) - ר' lib/automationHealthCheck.ts
+  cronDays: number[] | 'daily' | 'none';
 };
 
 export function renderTemplate(template: string, vars: Vars): string {
@@ -154,6 +159,7 @@ export const AUTOMATION_TEMPLATES: Record<string, AutomationTemplate> = {
     getVars: newLessonVars,
     scheduledHour: 9,
     closingPlan: 'daily',
+    cronDays: 'none',
   },
 
   'weekly-lessons-reminder': {
@@ -176,6 +182,7 @@ https://www.shirandimor.com/lessons
     getVars: NO_VARS,
     scheduledHour: 10,
     closingPlan: 'generic',
+    cronDays: [1], // "0 8 * * 1" ב-vercel.json - יום שני
   },
 
   'weekly-lives-reminder': {
@@ -195,6 +202,7 @@ https://www.shirandimor.com/lives
     getVars: weeklyLivesVars,
     scheduledHour: 12,
     closingPlan: 'sunday',
+    cronDays: [0], // "0 10 * * 0" ב-vercel.json - יום ראשון
   },
 
   // שחזור מדויק של ההודעה האמיתית ששירן כבר שלחה
@@ -224,6 +232,7 @@ https://www.shirandimor.com/lives
     getVars: NO_VARS,
     scheduledHour: 13,
     closingPlan: 'generic',
+    cronDays: [1, 3], // "0 11 * * 1,3" ב-vercel.json - שני ורביעי
   },
 
   'live-tomorrow-reminder': {
@@ -246,6 +255,7 @@ https://www.shirandimor.com/lives
     },
     scheduledHour: 20,
     closingPlan: 'daily',
+    cronDays: 'daily', // "30 18 * * *" ב-vercel.json
   },
 
   'live-today-reminder': {
@@ -268,6 +278,7 @@ https://www.shirandimor.com/lives
     },
     scheduledHour: 13,
     closingPlan: 'daily',
+    cronDays: 'daily', // "0 11 * * *" ב-vercel.json
   },
 
   // רץ ב-16:00 שעון ישראל - בודק אם יש לייב שמתחיל בשעה הקרובה (מגבלת cron יומי ב-Vercel)
@@ -292,6 +303,7 @@ https://www.shirandimor.com/lives
     },
     scheduledHour: 16,
     closingPlan: 'daily',
+    cronDays: 'daily', // "0 14 * * *" ב-vercel.json
   },
 
   'weekly-trading-plan-reminder': {
@@ -311,6 +323,7 @@ https://www.shirandimor.com/trading-plan
     getVars: NO_VARS,
     scheduledHour: 11,
     closingPlan: 'friday',
+    cronDays: [5], // "0 9 * * 5" ב-vercel.json - יום שישי
   },
 };
 
@@ -384,3 +397,73 @@ export const runLiveTomorrowReminder = () => runTemplated('live-tomorrow-reminde
 export const runLiveTodayReminder = () => runTemplated('live-today-reminder');
 export const runLiveStartingSoonReminder = () => runTemplated('live-starting-soon-reminder');
 export const runWeeklyTradingPlanReminder = () => runTemplated('weekly-trading-plan-reminder');
+
+// --- בדיקת תקינות יומית לכל האוטומציות -----------------------------------------------------
+// מריצה רק פעם ביום (ר' app/api/cron/automation-health-check), כדי שלא תצטרכי לפתוח את
+// /admin/automations ולבדוק ידנית אם הכל עובד. לכל אוטומציה עם לוח זמנים קבוע (cronDays,
+// לא 'none') שהיום שלה (שעון ישראל) ויש לה בפועל על מה לכתוב (getVars לא מחזיר reason - למשל
+// באמת יש לייב היום), בודקים שהיא גם באמת רצה היום (last_run_at מהיום). מה שלא רץ למרות
+// שהיה אמור - מתריעים עלייך בפוש אחד מרוכז. market-digest לא בתוך AUTOMATION_TEMPLATES (היא
+// נכתבת ע"י AI, לא תבנית) אז מטופלת בנפרד עם אותו עקרון, בלי בדיקת getVars (אין לה "תנאי",
+// רק שבת/כבוי שכבר נבדקים בתוך draftAutomatedAnnouncement עצמה)
+const MARKET_DIGEST_CRON_DAYS = [0, 1, 2, 3, 4, 5]; // "0 6 * * 0-5" ב-vercel.json - לא שבת
+
+function israelDateKey(d: Date): string {
+  return d.toLocaleDateString('en-CA', { timeZone: 'Asia/Jerusalem' }); // YYYY-MM-DD יציב להשוואה
+}
+
+export async function runAutomationHealthCheck(): Promise<{ checked: number; missed: string[] }> {
+  const now = israelNow();
+  const todayKey = israelDateKey(new Date());
+  const todayWeekday = now.getDay();
+
+  const keysToCheck = Object.keys(AUTOMATION_TEMPLATES).filter((k) => AUTOMATION_TEMPLATES[k].cronDays !== 'none');
+  const { data: rules } = await supabaseAdmin
+    .from('automation_rules')
+    .select('key, name, enabled, last_run_at')
+    .in('key', [...keysToCheck, 'market-digest']);
+  const ruleByKey = new Map((rules || []).map((r) => [r.key, r]));
+
+  const missed: string[] = [];
+  let checked = 0;
+
+  for (const key of keysToCheck) {
+    const def = AUTOMATION_TEMPLATES[key];
+    const scheduledToday = def.cronDays === 'daily' || (def.cronDays as number[]).includes(todayWeekday);
+    if (!scheduledToday) continue;
+
+    const rule = ruleByKey.get(key);
+    if (!rule || rule.enabled === false) continue; // כבוי בכוונה - לא תקלה
+
+    const built = await buildAutomationMessage(key, false);
+    if ('error' in built) continue; // אין על מה לכתוב היום (למשל אין לייב) - לא תקלה
+
+    checked++;
+    const ranToday = rule.last_run_at && israelDateKey(new Date(rule.last_run_at)) === todayKey;
+    if (!ranToday) missed.push(rule.name || key);
+  }
+
+  // market-digest בנפרד - אין לה getVars, רק תלויה ביום ובדגל enabled
+  if (MARKET_DIGEST_CRON_DAYS.includes(todayWeekday)) {
+    const rule = ruleByKey.get('market-digest');
+    if (rule && rule.enabled !== false) {
+      checked++;
+      const ranToday = rule.last_run_at && israelDateKey(new Date(rule.last_run_at)) === todayKey;
+      if (!ranToday) missed.push(rule.name || 'market-digest');
+    }
+  }
+
+  if (missed.length > 0) {
+    const { data: admins } = await supabaseAdmin.from('profiles').select('id').eq('role', 'admin');
+    await sendPushToUsers(
+      (admins || []).map((a) => a.id),
+      {
+        title: '⚠️ בדיקת אוטומציות - משהו תקוע',
+        body: `${missed.length === 1 ? 'האוטומציה' : 'האוטומציות'} הבאות היו אמורות לרוץ היום ולא רצו: ${missed.join(', ')}`,
+        url: '/admin/automations',
+      }
+    );
+  }
+
+  return { checked, missed };
+}

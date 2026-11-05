@@ -3,7 +3,7 @@ import { sendPushToUsers } from '@/lib/webPush';
 
 // שבת (כל היום) ויום שישי אחרי 15:00 - אף פעם לא יוצרים טיוטה ולא שולחים התראת פוש (גם לא
 // אליה), בלי קשר לשעון קיץ/חורף של השרת - תמיד לפי שעון ישראל
-function isShabbatWindow(): boolean {
+export function isShabbatWindow(): boolean {
   // טריק מוכר בקוד הזה (ר' lib/revenueSnapshot.ts) - בונים תאריך "מוזז" לשעון ישראל, כדי
   // שגם getDay() וגם getHours() יחזירו את היום/השעה הנכונים בישראל, לא בשרת (UTC)
   const israelNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Jerusalem' }));
