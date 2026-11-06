@@ -16,6 +16,8 @@ export default function SiteDisclaimer() {
       <Link href="/terms" style={{ color: 'var(--text-tertiary)', textDecoration: 'underline' }}>תקנון</Link>
       {' · '}
       <Link href="/privacy" style={{ color: 'var(--text-tertiary)', textDecoration: 'underline' }}>מדיניות פרטיות</Link>
+      {' · '}
+      <Link href="/accessibility" style={{ color: 'var(--text-tertiary)', textDecoration: 'underline' }}>הצהרת נגישות</Link>
     </p>
   );
 }

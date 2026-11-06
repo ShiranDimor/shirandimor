@@ -1228,3 +1228,64 @@
 }
 .sl-toast .sl-toast-actions .sl-act-call { background: var(--teal); color: var(--bg-void); border-color: var(--teal); }
 .sl-toast .sl-toast-actions .sl-act-whatsapp { background: #25D366; color: #fff; border-color: #25D366; }
+
+/* ===== ווידג'ט נגישות ===== */
+.a11y-float-btn {
+  position: fixed; bottom: 84px; left: 20px; z-index: 100;
+  width: 48px; height: 48px; border-radius: 50%;
+  background: var(--bg-surface-raised); color: var(--text-primary); border: 1px solid var(--border-hairline-strong);
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 4px 16px rgba(0, 0, 0,0.35); font-size: 22px; cursor: pointer; font-family: inherit;
+}
+.a11y-panel-body { display: flex; flex-direction: column; gap: 12px; padding: 14px; }
+.a11y-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 13px; color: var(--text-primary); }
+.a11y-font-steps { display: flex; gap: 4px; }
+.a11y-font-steps button {
+  border: 1px solid var(--border-hairline-strong); background: transparent; color: var(--text-secondary);
+  border-radius: 7px; padding: 5px 9px; font-size: 11.5px; font-weight: 600; cursor: pointer; font-family: var(--font-body);
+}
+.a11y-font-steps button.active { background: var(--teal); color: var(--bg-void); border-color: var(--teal); }
+.a11y-toggle input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--teal); cursor: pointer; }
+.a11y-statement-link { display: block; text-align: center; font-size: 12px; color: var(--lavender); text-decoration: underline; margin-top: 4px; }
+
+/* גודל טקסט - zoom (לא transform/filter) כדי שלא "ישבור" את ה-containing block של אלמנטים
+   עם position:fixed בעמוד (כמו .sticky-cta/.qa-popover) - בניגוד ל-transform/filter, zoom לא
+   יוצר containing block חדש, אז אלמנטים קבועים נשארים מעוגנים לנקודת העיגון האמיתית שלהם */
+html.a11y-font-lg body { zoom: 1.12; }
+html.a11y-font-xl body { zoom: 1.25; }
+
+/* ניגודיות גבוהה - דריסת משתני הצבע עצמם (לא פילטר חזותי) - כך זה חל נכון בכל מקום
+   שמשתמש במשתנים האלה, כולל אלמנטים קבועים, בלי תופעות לוואי על מיקום */
+:root.a11y-high-contrast {
+  --bg-void: #000000;
+  --bg-surface: #0a0a0a;
+  --bg-surface-raised: #141414;
+  --border-hairline: #ffffff;
+  --border-hairline-strong: #ffffff;
+  --teal: #ffeb3b;
+  --lavender: #ffeb3b;
+  --lavender-bg: rgba(255, 235, 59,0.18);
+  --text-primary: #ffffff;
+  --text-secondary: #ffffff;
+  --text-tertiary: #e6e6e6;
+  --profit: #00ff66;
+  --loss: #ff5252;
+}
+
+html.a11y-no-motion *, html.a11y-no-motion *::before, html.a11y-no-motion *::after {
+  animation: none !important; transition: none !important;
+}
+
+html.a11y-underline-links a { text-decoration: underline !important; }
+
+/* ===== באנר הסכמה לעוגיות ===== */
+.cookie-banner {
+  position: fixed; bottom: 0; right: 0; left: 0; z-index: 110;
+  background: var(--bg-surface-raised); border-top: 1px solid var(--border-hairline-strong);
+  padding: 14px 16px calc(14px + env(safe-area-inset-bottom));
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 12px;
+  box-shadow: 0 -4px 16px rgba(0, 0, 0,0.3);
+}
+.cookie-banner p { max-width: 560px; font-size: 12px; color: var(--text-secondary); line-height: 1.6; margin: 0; }
+.cookie-banner p a { color: var(--lavender); text-decoration: underline; margin: 0 2px; }
+.cookie-banner button { flex-shrink: 0; width: auto; padding: 9px 20px; font-size: 13px; }

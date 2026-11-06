@@ -5,6 +5,8 @@ import WhatsAppFloatButton from '@/components/WhatsAppFloatButton';
 import DorChatWidget from '@/components/DorChatWidget';
 import NotificationBell from '@/components/NotificationBell';
 import SiteDisclaimer from '@/components/SiteDisclaimer';
+import AccessibilityWidget from '@/components/AccessibilityWidget';
+import CookieConsent from '@/components/CookieConsent';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -28,6 +30,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <WhatsAppFloatButton />
         <DorChatWidget />
         <NotificationBell />
+        <AccessibilityWidget />
+        <CookieConsent />
         <Analytics />
         <MetaPixel />
       </body>
