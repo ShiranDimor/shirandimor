@@ -125,7 +125,7 @@ export default function SubscribePage() {
           <strong style={{ color: 'var(--text-primary)' }}>למה ₪1, ולא ₪0 או ₪400 ישר?</strong> כי בחינם (₪0) נרשמים גם בוטים, גם מי שסוגר טאב אחרי חמש שניות, וגם אותו בחור מאיראן שבטוח רוצה ללמוד ניהול סיכונים. ₪1 מוכיח שיש בן אדם אמיתי מהצד השני, עם כרטיס אשראי אמיתי - ובתמורה מקבלים גישה מלאה וזהה לכל מנוי אחר, לחודש שלם, לא גרסה מצומצמת. בסוף החודש, אם לא בוטל - ממשיכים אוטומטית ב-₪400, בדיוק כמו כל מנוי חודשי רגיל. ביטול בלחיצה אחת, בכל רגע לפני החיוב הבא - בלי שיחת מכירות, בלי שאלות, בלי דרמה.
         </p>
 
-        <a href={GROW_LINK} target="_blank" className="btn-primary" style={{ display: 'block', textAlign: 'center', textDecoration: 'none' }} onClick={() => trackFunnelEvent('payment_link_click')}>
+        <a href={GROW_LINK} className="btn-primary" style={{ display: 'block', textAlign: 'center', textDecoration: 'none' }} onClick={() => trackFunnelEvent('payment_link_click')}>
           התחלה - חודש ראשון ב-₪1 ←
         </a>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', marginTop: '10px' }}>

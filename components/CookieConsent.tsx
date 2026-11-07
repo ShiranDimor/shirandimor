@@ -34,11 +34,9 @@ export default function CookieConsent() {
   return (
     <div className="cookie-banner">
       <p>
-        האתר משתמש בעוגיות ואמצעים דומים לצורך תפעולו ושיפור החוויה. המשך הגלישה מהווה הסכמה, כמפורט ב
-        <a href="/privacy">מדיניות הפרטיות</a> ו
-        <a href="/terms">תקנון השימוש</a>.
+        האתר משתמש בעוגיות. פרטים ב<a href="/privacy">מדיניות הפרטיות</a>.
       </p>
-      <button type="button" className="btn-primary" onClick={accept}>הבנתי</button>
+      <button type="button" onClick={accept}>הבנתי</button>
     </div>
   );
 }

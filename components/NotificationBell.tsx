@@ -93,7 +93,9 @@ export default function NotificationBell() {
     }
   }
 
-  if (pathname?.startsWith('/admin') || pathname?.startsWith('/dor-english') || pathname?.startsWith('/business')) return null;
+  // /ad - דף נחיתה ייעודי למודעות, מטרה אחת בכוונה (ר' app/ad/page.tsx) - הפעמון (שיכול להראות
+  // "9+" להודעות ישנות שלא קשורות לליד החדש) הוא בדיוק סוג ההסחה שהעמוד הזה בנוי להימנע ממנה
+  if (pathname?.startsWith('/admin') || pathname?.startsWith('/dor-english') || pathname?.startsWith('/business') || pathname?.startsWith('/ad')) return null;
   if (!ready) return null;
 
   return (

@@ -115,14 +115,13 @@ export default function HomePage() {
         <h1>שוק ההון הרבה יותר <em>פשוט</em><br />ממה שעושים ממנו.</h1>
         <p>אני שירן, ואני כאן כדי להראות לך שלא צריך לדעת הכול כדי להתחיל - <strong>צריך רק לדעת מה לעשות</strong>. עקרונות בסיסיים, ניהול סיכון ותוכנית עבודה מסודרת - בלי הבטחות תשואה, בלי "שיטת פלא", ובלי שזה יהפוך למשרה שנייה (יש לך כבר אחת, ואני לא רוצה את השנייה).</p>
 
+        <Link href="/subscribe" className="quick-link-accent">מדברים עסקאות - חודש ראשון ב-₪1 ←</Link>
+        <p style={{ fontSize: '11px', color: 'var(--text-tertiary)', textAlign: 'center', margin: '-4px 0 16px' }}>לאחר מכן ₪400/חודש · ביטול בכל עת</p>
+
         <div id="hero-notify">
           <PushNotificationButton variant="hero" autoOpenLeadForm={autoOpenNotifications} />
         </div>
       </div>
-
-      <Reveal>
-        <Link href="/subscribe" className="quick-link-accent">מדברים עסקאות - חודש ראשון ב-₪1 ←</Link>
-      </Reveal>
 
       <Reveal className="trust-strip">
         <div className="trust-item"><div className="num"><CountUp value={0} suffix="%" /></div><div className="lbl">הבטחות תשואה</div></div>

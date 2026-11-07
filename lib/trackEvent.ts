@@ -9,6 +9,9 @@ export type FunnelEvent =
   | 'payment_link_click'
   | 'live_registered'
   | 'live_registration_lead'
+  // דף הנחיתה הייעודי למודעות פייסבוק/אינסטגרם (/ad)
+  | 'ad_landing_page_view'
+  | 'ad_landing_cta_click'
   // עמוד הליווי האישי (/mentoring)
   | 'mentoring_page_view'
   | 'mentoring_cta_click'
@@ -28,6 +31,7 @@ const META_PIXEL_EVENT: Partial<Record<FunnelEvent, string>> = {
   payment_link_click: 'AddPaymentInfo',
   live_registered: 'CompleteRegistration',
   live_registration_lead: 'Lead',
+  ad_landing_page_view: 'ViewContent',
   mentoring_page_view: 'ViewContent',
   mentoring_form_completed: 'Lead',
   mentoring_call_booked: 'Schedule',

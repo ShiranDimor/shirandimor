@@ -12,6 +12,8 @@ const ALLOWED_EVENTS = [
   'payment_link_click',
   'live_registered',
   'live_registration_lead',
+  'ad_landing_page_view',
+  'ad_landing_cta_click',
   'mentoring_page_view',
   'mentoring_cta_click',
   'mentoring_form_started',
