@@ -21,7 +21,11 @@ const FOLLOWUP_COLUMN_TITLE = 'תאריך פולואפ';
 const JOIN_DATE_COLUMN_TITLE = 'תאריך הרשמה';
 // שם העמודה חייב להתאים בדיוק לזה שב-lib/grow.ts (MONTHLY_COST_COLUMN_TITLE)
 const MONTHLY_COST_COLUMN_TITLE = 'עלות חודשית ששילם';
-const DUPLICATE_LEAD_STATUS_LABEL = 'ליד כפול';
+// תווית שהוגדרה ידנית על ידי שירן בעמודת "סטטוס טיפול" עצמה במאנדיי - לא רק בעמודה הייעודית
+// "הוריד את האתר" - כדי שזה יהיה גלוי בתצוגה הראשית שהיא כבר משתמשת בה לטיפול בלידים, לא רק
+// בעמודה נפרדת שפחות נבדקת. זה בטוח רק כי תמיד מדובר בכרטיס חדש שנוצר כרגע (לא דורס סטטוס
+// קיים על כרטיס ישן) - ר' markAppDownloadOnMonday/Bulk
+const PUSH_ACTIVATED_NO_SUB_STATUS_LABEL = 'הפעיל התראות ללא מנוי';
 const TRADING_PLAN_STATUS_LABEL = 'בנה תוכנית מסחר';
 export const TRADING_PLAN_ABANDONED_STATUS_LABEL = 'יצא באמצע התוכנית מסחר';
 const CAMPAIGN_VALUE = 'תוכנית מסחר 30 יום';
@@ -719,7 +723,9 @@ export async function markAppDownloadOnMonday(params: { name?: string | null; ph
     if (emailColumnId && params.email) columnValues[emailColumnId] = { email: params.email, text: params.email };
     if (campaignColumnId) columnValues[campaignColumnId] = APP_DOWNLOAD_SOURCE_VALUE;
     if (pushActivatedColumnId) columnValues[pushActivatedColumnId] = { label: APP_DOWNLOAD_SOURCE_VALUE };
-    if (isDuplicate && statusColumnId) columnValues[statusColumnId] = { label: DUPLICATE_LEAD_STATUS_LABEL };
+    // תמיד הסטטוס הזה על הכרטיס החדש - בלי קשר אם יש כפילות, כי זה תמיד כרטיס חדש שרק עכשיו
+    // נוצר (לא דורס סטטוס קיים על כרטיס אחר)
+    if (statusColumnId) columnValues[statusColumnId] = { label: PUSH_ACTIVATED_NO_SUB_STATUS_LABEL };
 
     const createData: any = await mondayRequest(
       token,
@@ -737,7 +743,7 @@ export async function markAppDownloadOnMonday(params: { name?: string | null; ph
       `mutation ($itemId: ID!, $body: String!) { create_update (item_id: $itemId, body: $body) { id } }`,
       {
         itemId,
-        body: `${params.phone ? `נייד: ${params.phone}\n` : ''}${params.email ? `אימייל: ${params.email}\n` : ''}מקור: הפעלת התראות באתר${isDuplicate ? '\n⚠ כבר קיים כרטיס אחר באותו נייד/מייל במקום כלשהו בלוח - סומן כ"ליד כפול"' : ''}`,
+        body: `${params.phone ? `נייד: ${params.phone}\n` : ''}${params.email ? `אימייל: ${params.email}\n` : ''}מקור: הפעלת התראות באתר${isDuplicate ? '\n⚠ כבר קיים כרטיס אחר באותו נייד/מייל במקום כלשהו בלוח' : ''}`,
       }
     ).catch((e) => console.error('Monday.com: נכשל הוספת הערה (הורדת האתר)', e));
 
@@ -813,9 +819,8 @@ export async function markAppDownloadOnMondayBulk(
       if (emailColumnId && params.email) columnValues[emailColumnId] = { email: params.email, text: params.email };
       if (campaignColumnId) columnValues[campaignColumnId] = APP_DOWNLOAD_SOURCE_VALUE;
       if (pushActivatedColumnId) columnValues[pushActivatedColumnId] = { label: APP_DOWNLOAD_SOURCE_VALUE };
-      // ליד שכבר קיים לו/ה כרטיס במקום אחר בלוח (למשל קבוצת עדכונים) - עדיין פותחים כרטיס
-      // חדש בקבוצת "לידים חדשים", רק מסומן "ליד כפול" - ר' הסבר מקביל ב-markAppDownloadOnMonday
-      if (isDuplicate && statusColumnId) columnValues[statusColumnId] = { label: DUPLICATE_LEAD_STATUS_LABEL };
+      // תמיד הסטטוס הזה על הכרטיס החדש - ר' הסבר מקביל ב-markAppDownloadOnMonday
+      if (statusColumnId) columnValues[statusColumnId] = { label: PUSH_ACTIVATED_NO_SUB_STATUS_LABEL };
 
       const createData: any = await mondayRequest(
         token,
