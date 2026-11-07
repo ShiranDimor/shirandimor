@@ -688,15 +688,22 @@ async function findItemIdByContactAnywhere(
   return null;
 }
 
-// מסמן שאיש קשר הפעיל התראות פוש באתר. אם כבר יש לו כרטיס קיים במקום כלשהו בלוח (מנוי, קבוצת
-// עדכונים, ניסיון, או כל קבוצה אחרת) - מעדכן על הכרטיס הקיים שלו רק את עמודת "הוריד את האתר"
-// הייעודית (לא נוגע בעמודת "סטטוס טיפול" הרגילה, כדי לא לדרוס סטטוסים חשובים אחרים). רק אם
-// אין לו שום כרטיס קיים בכלל - פותח ליד חדש, עם העמודה הזו מוגדרת מראש
+// מסמן שאיש קשר הפעיל התראות פוש באתר. מי שכבר יש לו/ה גישה מלאה בפועל (מנוי/ה פעיל/ה או
+// אדמין/ית, לפי hasFullAccessContact - למשל שירן עצמה, סיוון וטל) לא נחשב/ת ליד לעולם, בלי
+// קשר למה שקיים/לא קיים במאנדיי - לא נוגעים לו/ה בכלל. מי שאינו בעל/ת גישה מלאה תמיד נחשב/ת
+// ליד חדש לטיפול: אם יש לו/ה כבר כרטיס קיים במקום כלשהו בלוח (למשל בקבוצת עדכונים מאינטראקציה
+// קודמת) - לא פותחים כרטיס כפול, אבל כן מוסיפים הערה בולטת על הכרטיס הקיים + מסמנים את עמודת
+// "הוריד את האתר", כדי שזה לא "ייעלם" בשקט על כרטיס ישן שכבר לא עוקבים אחריו. רק אם אין לו/ה
+// שום כרטיס קיים בכלל - פותח ליד חדש, עם העמודה הזו מוגדרת מראש
 export async function markAppDownloadOnMonday(params: { name?: string | null; phone?: string | null; email?: string | null }): Promise<{ ok: boolean; matched: boolean; error?: string }> {
   const token = process.env.MONDAY_API_TOKEN;
   const boardId = process.env.MONDAY_BOARD_ID;
   if (!token || !boardId) return { ok: false, matched: false, error: 'missing_monday_config' };
   if (!params.phone && !params.email) return { ok: false, matched: false, error: 'missing_contact' };
+
+  if (await hasFullAccessContact(params.phone, params.email).catch(() => false)) {
+    return { ok: true, matched: false };
+  }
 
   try {
     const { groupId, phoneColumnId, emailColumnId, campaignColumnId, pushActivatedColumnId } = await getBoardSchema(token, boardId);
@@ -725,6 +732,14 @@ export async function markAppDownloadOnMonday(params: { name?: string | null; ph
           return { ok: false, matched: true, error: e instanceof Error ? e.message : 'update_failed' };
         }
       }
+      // הערה בולטת על הכרטיס הקיים - בלי זה זה "נעלם" בשקט על כרטיס ישן שכבר לא בודקים,
+      // בדיוק מה שגרם לליד אמיתי (לא מנוי) להיראות כאילו לא קרה כלום
+      await mondayRequest(
+        token,
+        `mutation ($itemId: ID!, $body: String!) { create_update (item_id: $itemId, body: $body) { id } }`,
+        { itemId: existingItemId, body: `🔔 הפעיל/ה התראות בחינם מהאתר - ליד לטיפול (יש כבר כרטיס קיים, לא נפתח כרטיס כפול)${params.phone ? `\nנייד: ${params.phone}` : ''}${params.email ? `\nאימייל: ${params.email}` : ''}` }
+      ).catch((e) => console.error('Monday.com: נכשל הוספת הערה על כרטיס קיים', e));
+
       return { ok: true, matched: true };
     }
 
@@ -802,6 +817,16 @@ export async function markAppDownloadOnMondayBulk(
   const results: { ok: boolean; matched: boolean; error?: string }[] = [];
   for (const params of contacts) {
     if (!params.phone && !params.email) { results.push({ ok: false, matched: false, error: 'missing_contact' }); continue; }
+
+    // מי שיש לו/ה כבר גישה מלאה (מנוי/ה פעיל/ה או אדמין/ית) - לא ליד, בלי קשר למה שיש/אין
+    // במאנדיי. בלי הבדיקה הזו, מי שאין לו/ה בפועל כרטיס תואם במאנדיי (למשל כי הוחרג/ה בכוונה,
+    // כמו שירן עצמה/סיוון/טל) מקבל/ת כרטיס ליד חדש בכל ריצה - ועם כמה מכשירים רשומים, כמה
+    // כרטיסים כפולים בבת אחת
+    if (await hasFullAccessContact(params.phone, params.email).catch(() => false)) {
+      results.push({ ok: true, matched: false });
+      continue;
+    }
+
     const targetPhone = params.phone ? normalizePhone(params.phone) : null;
     const targetEmail = params.email ? params.email.trim().toLowerCase() : null;
     const found = allItems.find((it) => (targetPhone && it.phone === targetPhone) || (targetEmail && it.email === targetEmail));
@@ -817,6 +842,12 @@ export async function markAppDownloadOnMondayBulk(
             { boardId, itemId: found.id, columnId: pushActivatedColumnId, value: JSON.stringify({ label: APP_DOWNLOAD_SOURCE_VALUE }) }
           );
         }
+        // הערה בולטת - ר' הסבר מקביל ב-markAppDownloadOnMonday (הגרסה הבודדת)
+        await mondayRequest(
+          token,
+          `mutation ($itemId: ID!, $body: String!) { create_update (item_id: $itemId, body: $body) { id } }`,
+          { itemId: found.id, body: `🔔 הפעיל/ה התראות בחינם מהאתר - ליד לטיפול (יש כבר כרטיס קיים, לא נפתח כרטיס כפול)${params.phone ? `\nנייד: ${params.phone}` : ''}${params.email ? `\nאימייל: ${params.email}` : ''}` }
+        ).catch((e) => console.error('markAppDownloadOnMondayBulk: נכשל הוספת הערה על כרטיס קיים', e));
         results.push({ ok: true, matched: true });
         continue;
       }
