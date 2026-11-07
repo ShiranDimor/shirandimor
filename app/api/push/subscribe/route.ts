@@ -17,6 +17,17 @@ async function recordMondaySyncResult(endpoint: string, result: { ok: boolean; e
   }
 }
 
+// האם יש כבר תוקף ל-endpoint הזה (לא פג) - אם כן, אין טעם לסנכרן שוב מול מאנדיי: markAppDownloadOnMonday
+// עצמה סורקת את כל הלוח בעמוד-אחר-עמוד (findItemIdByContactAnywhere) בכל קריאה, וזה נקרא בעבר
+// בכל טעינת עמוד אצל כל מי שכבר יש לו מינוי פעיל (checkStatus -> resyncSubscriptionToServer),
+// לא רק בהרשמה חדשה - מה שהציף את מאנדיי בבקשות וגרם לקצב-הגבלה (rate limit) שחוזר כ-HTML
+// במקום JSON ("<!doctype html...") - בדיוק השגיאה שראינו בפועל על רוב השורות. עכשיו מסנכרנים
+// מול מאנדיי רק כשזה באמת חדש (endpoint לא קיים) או חוזר מ"לא תקף" ל"תקף"
+async function isNewOrReactivatedEndpoint(endpoint: string): Promise<boolean> {
+  const { data } = await supabaseAdmin.from('push_subscriptions').select('invalid_at').eq('endpoint', endpoint).maybeSingle();
+  return !data || data.invalid_at !== null;
+}
+
 // POST - שומר מינוי להתראות פוש. שלושה מסלולים, ובכל אחד מהם מסמנים גם במאנדיי (עמודת "סטטוס
 // טיפול") שאיש הקשר הפעיל התראות - על הכרטיס הקיים שלו אם יש לו אחד במקום כלשהו בלוח, או בכרטיס
 // חדש אם אין לו שום כרטיס קיים (ר' markAppDownloadOnMonday):
@@ -49,6 +60,10 @@ export async function POST(request: Request) {
   }
 
   if (userId) {
+    // בודקים *לפני* ה-upsert אם זה endpoint חדש/לא-תקף - אחרי ה-upsert invalid_at תמיד יהיה
+    // null (זה בדיוק מה שה-upsert עושה) ולא נדע עוד להבדיל "היה כבר תקף" מ"הפך עכשיו לתקף"
+    const shouldSyncMonday = await isNewOrReactivatedEndpoint(endpoint);
+
     // מנקים invalid_at/invalid_reason - אם זה היה endpoint שסומן כלא-תקף (ר' lib/webPush.ts),
     // ה-upsert הזה עצמו הוא ההוכחה הכי טובה שההרשמה חזרה להיות תקפה
     const { error } = await supabaseAdmin
@@ -57,9 +72,11 @@ export async function POST(request: Request) {
 
     if (error) return NextResponse.json({ error: 'שגיאה בשמירת המינוי' }, { status: 500 });
 
-    const { data: profile } = await supabaseAdmin.from('profiles').select('full_name, phone, email').eq('id', userId).maybeSingle();
-    const mondayResult = await markAppDownloadOnMonday({ name: profile?.full_name, phone: profile?.phone, email: profile?.email }).catch((e) => ({ ok: false, matched: false, error: e instanceof Error ? e.message : 'threw' }));
-    await recordMondaySyncResult(endpoint, mondayResult);
+    if (shouldSyncMonday) {
+      const { data: profile } = await supabaseAdmin.from('profiles').select('full_name, phone, email').eq('id', userId).maybeSingle();
+      const mondayResult = await markAppDownloadOnMonday({ name: profile?.full_name, phone: profile?.phone, email: profile?.email }).catch((e) => ({ ok: false, matched: false, error: e instanceof Error ? e.message : 'threw' }));
+      await recordMondaySyncResult(endpoint, mondayResult);
+    }
 
     return NextResponse.json({ ok: true });
   }
@@ -89,6 +106,8 @@ export async function POST(request: Request) {
 
   const isKnownSubscriber = !!matchedProfile || (await isContactInSubscribersGroupMonday(phone, email || null));
 
+  const shouldSyncMonday = await isNewOrReactivatedEndpoint(endpoint);
+
   if (isKnownSubscriber) {
     const subscriberUserId = matchedProfile?.id || null;
     const { error } = await supabaseAdmin
@@ -99,12 +118,17 @@ export async function POST(request: Request) {
       );
     if (error) return NextResponse.json({ error: 'שגיאה בשמירת המינוי' }, { status: 500 });
 
-    const mondayResult = await markAppDownloadOnMonday({ name, phone, email: email || null }).catch((e) => ({ ok: false, matched: false, error: e instanceof Error ? e.message : 'threw' }));
-    await recordMondaySyncResult(endpoint, mondayResult);
+    if (shouldSyncMonday) {
+      const mondayResult = await markAppDownloadOnMonday({ name, phone, email: email || null }).catch((e) => ({ ok: false, matched: false, error: e instanceof Error ? e.message : 'threw' }));
+      await recordMondaySyncResult(endpoint, mondayResult);
+    }
 
     return NextResponse.json({ ok: true });
   }
 
+  // ליד חדש (לא מנוי, לא מחובר) - זו בדיוק נקודת הכניסה שצריכה תמיד לפתוח/לעדכן כרטיס במאנדיי,
+  // בלי קשר ל-shouldSyncMonday (ליד אמיתי חדש הוא כמעט תמיד גם endpoint חדש, אבל גם אם לא -
+  // עדיף לסנכרן יתר על המידה כאן מאשר לפספס ליד אמיתי)
   const mondayResultLead = await markAppDownloadOnMonday({ name, phone, email: email || null }).catch((e) => ({ ok: false, matched: false, error: e instanceof Error ? e.message : 'threw' }));
 
   const { error } = await supabaseAdmin
