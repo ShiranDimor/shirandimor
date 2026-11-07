@@ -21,6 +21,7 @@ const FOLLOWUP_COLUMN_TITLE = 'תאריך פולואפ';
 const JOIN_DATE_COLUMN_TITLE = 'תאריך הרשמה';
 // שם העמודה חייב להתאים בדיוק לזה שב-lib/grow.ts (MONTHLY_COST_COLUMN_TITLE)
 const MONTHLY_COST_COLUMN_TITLE = 'עלות חודשית ששילם';
+const DUPLICATE_LEAD_STATUS_LABEL = 'ליד כפול';
 const TRADING_PLAN_STATUS_LABEL = 'בנה תוכנית מסחר';
 export const TRADING_PLAN_ABANDONED_STATUS_LABEL = 'יצא באמצע התוכנית מסחר';
 const CAMPAIGN_VALUE = 'תוכנית מסחר 30 יום';
@@ -690,11 +691,11 @@ async function findItemIdByContactAnywhere(
 
 // מסמן שאיש קשר הפעיל התראות פוש באתר. מי שכבר יש לו/ה גישה מלאה בפועל (מנוי/ה פעיל/ה או
 // אדמין/ית, לפי hasFullAccessContact - למשל שירן עצמה, סיוון וטל) לא נחשב/ת ליד לעולם, בלי
-// קשר למה שקיים/לא קיים במאנדיי - לא נוגעים לו/ה בכלל. מי שאינו בעל/ת גישה מלאה תמיד נחשב/ת
-// ליד חדש לטיפול: אם יש לו/ה כבר כרטיס קיים במקום כלשהו בלוח (למשל בקבוצת עדכונים מאינטראקציה
-// קודמת) - לא פותחים כרטיס כפול, אבל כן מוסיפים הערה בולטת על הכרטיס הקיים + מסמנים את עמודת
-// "הוריד את האתר", כדי שזה לא "ייעלם" בשקט על כרטיס ישן שכבר לא עוקבים אחריו. רק אם אין לו/ה
-// שום כרטיס קיים בכלל - פותח ליד חדש, עם העמודה הזו מוגדרת מראש
+// קשר למה שקיים/לא קיים במאנדיי - לא נוגעים לו/ה בכלל. מי שאינו בעל/ת גישה מלאה תמיד מקבל/ת
+// כרטיס ליד חדש בקבוצת "לידים חדשים" - גם אם יש לו/ה כבר כרטיס קיים במקום אחר בלוח (למשל
+// בקבוצת עדכונים מאינטראקציה קודמת): אז הכרטיס החדש מסומן "ליד כפול" (בדיוק כמו ב-/api/lead),
+// כדי שתהיה רואה בבירור שמישהו/י שכבר מוכר/ת הפעיל/ה התראות בלי להיות מנוי/ה, ותוכלי לנסות
+// להמיר אותו/ה לתשלום - לא רק עדכון שקט על כרטיס ישן שאף אחד לא בודק יותר
 export async function markAppDownloadOnMonday(params: { name?: string | null; phone?: string | null; email?: string | null }): Promise<{ ok: boolean; matched: boolean; error?: string }> {
   const token = process.env.MONDAY_API_TOKEN;
   const boardId = process.env.MONDAY_BOARD_ID;
@@ -706,48 +707,19 @@ export async function markAppDownloadOnMonday(params: { name?: string | null; ph
   }
 
   try {
-    const { groupId, phoneColumnId, emailColumnId, campaignColumnId, pushActivatedColumnId } = await getBoardSchema(token, boardId);
+    const { groupId, phoneColumnId, emailColumnId, campaignColumnId, statusColumnId, pushActivatedColumnId } = await getBoardSchema(token, boardId);
     const targetPhone = params.phone ? normalizePhone(params.phone) : null;
     const targetEmail = params.email ? params.email.trim().toLowerCase() : null;
 
     const existingItemId = await findItemIdByContactAnywhere(token, boardId, phoneColumnId, emailColumnId, targetPhone, targetEmail);
-
-    if (existingItemId) {
-      if (pushActivatedColumnId) {
-        // change_simple_column_value (ערך מחרוזת רגילה) לא עובד באופן אמין על עמודת status -
-        // זה עבד על create_item (פורמט {label:...} ב-column_values) אבל לא כאן, וזו הסיבה
-        // שהעמודה התעדכנה רק אצל ליד חדש שנוצר, לא אצל מנוי קיים עם כרטיס כבר קיים בלוח.
-        // change_column_value עם JSON {label:...} הוא הפורמט הנכון לעמודת status, תואם למה
-        // שכבר עובד ב-create_item למטה
-        try {
-          await mondayRequest(
-            token,
-            `mutation ($boardId: ID!, $itemId: ID!, $columnId: String!, $value: JSON!) {
-              change_column_value (board_id: $boardId, item_id: $itemId, column_id: $columnId, value: $value) { id }
-            }`,
-            { boardId, itemId: existingItemId, columnId: pushActivatedColumnId, value: JSON.stringify({ label: APP_DOWNLOAD_SOURCE_VALUE }) }
-          );
-        } catch (e) {
-          console.error('Monday.com: נכשל עדכון עמודת "הוריד את האתר" על כרטיס קיים', e);
-          return { ok: false, matched: true, error: e instanceof Error ? e.message : 'update_failed' };
-        }
-      }
-      // הערה בולטת על הכרטיס הקיים - בלי זה זה "נעלם" בשקט על כרטיס ישן שכבר לא בודקים,
-      // בדיוק מה שגרם לליד אמיתי (לא מנוי) להיראות כאילו לא קרה כלום
-      await mondayRequest(
-        token,
-        `mutation ($itemId: ID!, $body: String!) { create_update (item_id: $itemId, body: $body) { id } }`,
-        { itemId: existingItemId, body: `🔔 הפעיל/ה התראות בחינם מהאתר - ליד לטיפול (יש כבר כרטיס קיים, לא נפתח כרטיס כפול)${params.phone ? `\nנייד: ${params.phone}` : ''}${params.email ? `\nאימייל: ${params.email}` : ''}` }
-      ).catch((e) => console.error('Monday.com: נכשל הוספת הערה על כרטיס קיים', e));
-
-      return { ok: true, matched: true };
-    }
+    const isDuplicate = Boolean(existingItemId);
 
     const columnValues: Record<string, unknown> = {};
     if (phoneColumnId && params.phone) columnValues[phoneColumnId] = { phone: params.phone.startsWith('0') ? `972${params.phone.slice(1)}` : params.phone, countryShortName: 'IL' };
     if (emailColumnId && params.email) columnValues[emailColumnId] = { email: params.email, text: params.email };
     if (campaignColumnId) columnValues[campaignColumnId] = APP_DOWNLOAD_SOURCE_VALUE;
     if (pushActivatedColumnId) columnValues[pushActivatedColumnId] = { label: APP_DOWNLOAD_SOURCE_VALUE };
+    if (isDuplicate && statusColumnId) columnValues[statusColumnId] = { label: DUPLICATE_LEAD_STATUS_LABEL };
 
     const createData: any = await mondayRequest(
       token,
@@ -758,15 +730,18 @@ export async function markAppDownloadOnMonday(params: { name?: string | null; ph
     );
 
     const itemId = createData?.data?.create_item?.id;
-    if (!itemId) return { ok: false, matched: false };
+    if (!itemId) return { ok: false, matched: isDuplicate };
 
     await mondayRequest(
       token,
       `mutation ($itemId: ID!, $body: String!) { create_update (item_id: $itemId, body: $body) { id } }`,
-      { itemId, body: `${params.phone ? `נייד: ${params.phone}\n` : ''}${params.email ? `אימייל: ${params.email}\n` : ''}מקור: הפעלת התראות באתר` }
+      {
+        itemId,
+        body: `${params.phone ? `נייד: ${params.phone}\n` : ''}${params.email ? `אימייל: ${params.email}\n` : ''}מקור: הפעלת התראות באתר${isDuplicate ? '\n⚠ כבר קיים כרטיס אחר באותו נייד/מייל במקום כלשהו בלוח - סומן כ"ליד כפול"' : ''}`,
+      }
     ).catch((e) => console.error('Monday.com: נכשל הוספת הערה (הורדת האתר)', e));
 
-    return { ok: true, matched: false };
+    return { ok: true, matched: isDuplicate };
   } catch (e) {
     console.error('שגיאה בסימון הורדת האתר ב-Monday.com', e);
     return { ok: false, matched: false, error: e instanceof Error ? e.message : 'unknown_error' };
@@ -784,7 +759,7 @@ export async function markAppDownloadOnMondayBulk(
   const boardId = process.env.MONDAY_BOARD_ID;
   if (!token || !boardId) return contacts.map(() => ({ ok: false, matched: false, error: 'missing_monday_config' }));
 
-  const { groupId, phoneColumnId, emailColumnId, campaignColumnId, pushActivatedColumnId } = await getBoardSchema(token, boardId);
+  const { groupId, phoneColumnId, emailColumnId, campaignColumnId, statusColumnId, pushActivatedColumnId } = await getBoardSchema(token, boardId);
 
   const columnIds = [phoneColumnId, emailColumnId].filter(Boolean) as string[];
   const allItems: { id: string; phone: string | null; email: string | null }[] = [];
@@ -830,33 +805,17 @@ export async function markAppDownloadOnMondayBulk(
     const targetPhone = params.phone ? normalizePhone(params.phone) : null;
     const targetEmail = params.email ? params.email.trim().toLowerCase() : null;
     const found = allItems.find((it) => (targetPhone && it.phone === targetPhone) || (targetEmail && it.email === targetEmail));
+    const isDuplicate = Boolean(found);
 
     try {
-      if (found) {
-        if (pushActivatedColumnId) {
-          await mondayRequest(
-            token,
-            `mutation ($boardId: ID!, $itemId: ID!, $columnId: String!, $value: JSON!) {
-              change_column_value (board_id: $boardId, item_id: $itemId, column_id: $columnId, value: $value) { id }
-            }`,
-            { boardId, itemId: found.id, columnId: pushActivatedColumnId, value: JSON.stringify({ label: APP_DOWNLOAD_SOURCE_VALUE }) }
-          );
-        }
-        // הערה בולטת - ר' הסבר מקביל ב-markAppDownloadOnMonday (הגרסה הבודדת)
-        await mondayRequest(
-          token,
-          `mutation ($itemId: ID!, $body: String!) { create_update (item_id: $itemId, body: $body) { id } }`,
-          { itemId: found.id, body: `🔔 הפעיל/ה התראות בחינם מהאתר - ליד לטיפול (יש כבר כרטיס קיים, לא נפתח כרטיס כפול)${params.phone ? `\nנייד: ${params.phone}` : ''}${params.email ? `\nאימייל: ${params.email}` : ''}` }
-        ).catch((e) => console.error('markAppDownloadOnMondayBulk: נכשל הוספת הערה על כרטיס קיים', e));
-        results.push({ ok: true, matched: true });
-        continue;
-      }
-
       const columnValues: Record<string, unknown> = {};
       if (phoneColumnId && params.phone) columnValues[phoneColumnId] = { phone: params.phone.startsWith('0') ? `972${params.phone.slice(1)}` : params.phone, countryShortName: 'IL' };
       if (emailColumnId && params.email) columnValues[emailColumnId] = { email: params.email, text: params.email };
       if (campaignColumnId) columnValues[campaignColumnId] = APP_DOWNLOAD_SOURCE_VALUE;
       if (pushActivatedColumnId) columnValues[pushActivatedColumnId] = { label: APP_DOWNLOAD_SOURCE_VALUE };
+      // ליד שכבר קיים לו/ה כרטיס במקום אחר בלוח (למשל קבוצת עדכונים) - עדיין פותחים כרטיס
+      // חדש בקבוצת "לידים חדשים", רק מסומן "ליד כפול" - ר' הסבר מקביל ב-markAppDownloadOnMonday
+      if (isDuplicate && statusColumnId) columnValues[statusColumnId] = { label: DUPLICATE_LEAD_STATUS_LABEL };
 
       const createData: any = await mondayRequest(
         token,
@@ -866,10 +825,10 @@ export async function markAppDownloadOnMondayBulk(
         { boardId, groupId: groupId || null, itemName: params.name || params.phone || params.email || 'ללא שם', columnValues: JSON.stringify(columnValues) }
       );
       const itemId = createData?.data?.create_item?.id;
-      results.push(itemId ? { ok: true, matched: false } : { ok: false, matched: false, error: 'create_failed' });
+      results.push(itemId ? { ok: true, matched: isDuplicate } : { ok: false, matched: isDuplicate, error: 'create_failed' });
     } catch (e) {
       console.error('markAppDownloadOnMondayBulk: שגיאה באיש קשר', e);
-      results.push({ ok: false, matched: false, error: e instanceof Error ? e.message : 'unknown_error' });
+      results.push({ ok: false, matched: isDuplicate, error: e instanceof Error ? e.message : 'unknown_error' });
     }
   }
 
