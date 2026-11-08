@@ -7,7 +7,7 @@ import { supabase, getResilientUser } from '@/lib/supabase';
 // הכותרת העליונה של האתר (מותג + כניסה לסוחרים + שורת הקישורים המהירים) - אותה כותרת בדף הבית
 // ובעמודי השיווק, כדי שקישור חדש בניווט יתווסף במקום אחד בלבד
 const QUICK_LINKS = [
-  { href: '/trading-plan', label: 'תוכנית מסחר' },
+  { href: '/trading-plan', label: 'בניית תוכנית מסחר אישית' },
   { href: '/lives', label: 'מפגשים קרובים' },
   { href: '/portfolio', label: 'תיק מסחר של שירן' },
   { href: '/lessons', label: 'ספריית שיעורים' },

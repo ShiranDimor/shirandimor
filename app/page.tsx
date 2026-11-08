@@ -112,8 +112,8 @@ export default function HomePage() {
 
       <div className="hero-v2">
         <div className="eyebrow">שירן דימור</div>
-        <h1>שוק ההון הרבה יותר <em>פשוט</em><br />ממה שעושים ממנו.</h1>
-        <p>אני שירן, ואני כאן כדי להראות לך שלא צריך לדעת הכול כדי להתחיל - <strong>צריך רק לדעת מה לעשות</strong>. עקרונות בסיסיים, ניהול סיכון ותוכנית עבודה מסודרת - בלי הבטחות תשואה, בלי "שיטת פלא", ובלי שזה יהפוך למשרה שנייה (יש לך כבר אחת, ואני לא רוצה את השנייה).</p>
+        <h1>קהילה שסוחרת ולומדת <em>ביחד</em><br />מהיום הראשון, ועד שירידות בשוק מפסיקות להפחיד.</h1>
+        <p>לייבים פעמיים בשבוע (שלישי 16:30, חמישי 20:00) שבהם אני סוחרת תוך-יומי בזמן אמת ומלמדת תוך כדי, ועוד עסקאות סווינג שאני משתפת לאורך השבוע ישר דרך האתר. כל אחד בקצב ובטווח שמתאים לו - בלי הבטחות תשואה, ובלי שזה יהפוך למשרה שנייה (יש לך כבר אחת, ואני לא רוצה את השנייה).</p>
 
         <Link href="/subscribe" className="quick-link-accent">מדברים עסקאות - חודש ראשון ב-₪1 ←</Link>
         <p style={{ fontSize: '11px', color: 'var(--text-tertiary)', textAlign: 'center', margin: '-4px 0 16px' }}>לאחר מכן ₪400/חודש · ביטול בכל עת</p>
@@ -216,8 +216,8 @@ export default function HomePage() {
                 <div className="gc-perks">
                   <div><strong>בלי רעש</strong> - רק מה שבאמת קורה בשוק</div>
                   <div>הצצה לעולם שוק ההון, בלי לשלם עליה <strong>אלפי שקלים</strong></div>
-                  <div><strong>עדכון בזמן אמת</strong> לנייד כשמשהו קורה בשוק, כולל תזכורת לפני כל מפגש</div>
-                  <div><strong>ספרייה מלאה</strong> של וובינרים ומצגות, בלי עלות נוספת</div>
+                  <div><strong>עדכון בזמן אמת</strong> לנייד כשמשהו קורה בשוק, כולל תזכורת לפני כל לייב</div>
+                  <div><strong>טעימה מספריית השיעורים</strong> - שאר השיעורים נפתחים בשלב הבא</div>
                   <div>הפעלה בלחיצה אחת - <strong>ללא התחייבות</strong> וללא עלות</div>
                   <div>אפשר לשדרג ל"מדברים עסקאות" בכל שלב, <strong>בקצב האישי</strong></div>
                 </div>
@@ -227,17 +227,18 @@ export default function HomePage() {
                 <div className="gc-tag">צעד 2 · גישה מלאה</div>
                 <h3>מדברים עסקאות</h3>
                 <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', lineHeight: 1.55, marginBottom: '10px' }}>
-                  <strong style={{ color: 'var(--lavender)' }}>סוחרים ביחד איתי, בלי ידע מוקדם</strong>.
+                  <strong style={{ color: 'var(--lavender)' }}>לומדים לסחור לצדי, בלי ידע מוקדם</strong>.
                 </p>
                 <div className="gc-price">₪400 לחודש <span style={{ color: 'var(--profit)', fontWeight: 600 }}>· חודש ראשון ב-₪1</span></div>
                 <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '-10px', marginBottom: '14px' }}>מנוי חודשי · ללא התחייבות</div>
                 <div className="gc-perks">
                   <div>כל מה שיש בעדכונים החינמיים - <strong>ועוד</strong>:</div>
-                  <div>בניית <strong>תיק השקעות</strong> - תוך יומי, סווינג, טווח ארוך</div>
-                  <div><strong>מסחר בזמן אמת עם שירן</strong> - שאלות, ניתוחים ולמידה חיה</div>
+                  <div><strong>לייבים פעמיים בשבוע</strong> (שלישי 16:30, חמישי 20:00) - מסחר תוך-יומי בזמן אמת, ולומדים תוך כדי</div>
+                  <div><strong>עסקאות סווינג</strong> שאני משתפת לאורך השבוע, ישר דרך האתר</div>
+                  <div><strong>ספריית השיעורים המלאה פתוחה</strong> - מתוך-יומי ועד השקעה לטווח ארוך</div>
                   <div><strong>ליווי אישי</strong> - לצד קהילת סוחרים סגורה לדיון מעמיק</div>
                   <div><strong>יומן מסחר שקוף</strong> - כולל עסקאות מפסידות</div>
-                  <div><strong>תיק מסחר</strong> אישי וניתוח העסקאות ע"י שירן</div>
+                  <div><strong>כלי תוכנית מסחר אישית</strong> - לבנות את השיטה שלך</div>
                 </div>
                 <Link className="gc-cta" href="/subscribe">לפרטים על מדברים עסקאות</Link>
               </div>
@@ -253,8 +254,14 @@ export default function HomePage() {
         <Reveal delay={0}>
           <details className="faq-item" style={{ borderRightColor: 'var(--profit)' }}>
             <summary>מי את בעצם, ומה עושים כאן?</summary>
-            <p>אני שירן, סוחרת פעילה 14 שנה. בניתי כאן מקום שמלמד לנהל תיק השקעות אחראי - בלי הבטחות עושר ובלי שיטות פלא, רק עבודה שיטתית וליווי אמיתי. בונים תיק מסחר ביחד, רואים גם את ההפסדים ולא רק את ההצלחות, ומדברים תכלס על השוק בלי רעש מיותר. הכי פשוט להתחיל עם עדכונים בזמן אמת בחינם, ולהחליט משם אם רוצים להתקדם.</p>
+            <p>אני שירן, סוחרת פעילה 14 שנה. בניתי כאן קהילה שלומדת וסוחרת את השוק ביחד - בלי הבטחות עושר ובלי שיטות פלא, רק עבודה שיטתית וליווי אמיתי. כל אחד בחשבון שלו, רואה מה אני עושה בזמן אמת ומחליט בעצמו - כולל את ההפסדים, לא רק את ההצלחות. הכי פשוט להתחיל עם עדכונים בזמן אמת בחינם, ולהחליט משם אם רוצים להתקדם.</p>
             <a href="#hero-notify" className="faq-cta" onClick={(e) => { e.preventDefault(); scrollToHeroNotify(); }}>🔔 הפעלת עדכונים בזמן אמת - ללא עלות ←</a>
+          </details>
+        </Reveal>
+        <Reveal delay={15}>
+          <details className="faq-item" style={{ borderRightColor: 'var(--orange)' }}>
+            <summary>מתי הלייבים, ואיך זה עובד בפועל?</summary>
+            <p>לייבים קבועים בימי <strong>שלישי 16:30</strong> ו<strong>חמישי 20:00</strong> - אני סוחרת תוך-יומי בזמן אמת, ומלמדת תוך כדי. באמצע השבוע אני משתפת גם עסקאות סווינג שאני נכנסת אליהן, ישר דרך האתר - כך שגם בימים בלי לייב יש מה לעקוב אחריו.</p>
           </details>
         </Reveal>
         <Reveal delay={30}>
