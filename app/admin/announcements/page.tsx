@@ -63,6 +63,12 @@ export default function AdminAnnouncementsPage() {
   const [testNotifyingId, setTestNotifyingId] = useState('');
   const [publishingId, setPublishingId] = useState('');
 
+  const [editingId, setEditingId] = useState('');
+  const [editTitle, setEditTitle] = useState('');
+  const [editContent, setEditContent] = useState('');
+  const [editSaving, setEditSaving] = useState(false);
+  const [editError, setEditError] = useState('');
+
   useEffect(() => {
     checkAdmin();
   }, []);
@@ -179,6 +185,35 @@ export default function AdminAnnouncementsPage() {
       const data = await res.json();
       setAnnouncements((prev) => prev.map((a) => (a.id === id ? data.announcement : a)));
     }
+  }
+
+  function startEditAnnouncement(a: Announcement) {
+    setEditingId(a.id);
+    setEditTitle(a.title);
+    setEditContent(a.content);
+    setEditError('');
+  }
+
+  // עריכת תוכן הודעה קיימת (טיוטה או כבר מפורסמת) - בעיקר בשביל לתקן בעצמך שארית "מחשבה" של
+  // ה-AI בסיכום השוק היומי לפני ששולחים התראה, בלי לצטרך למחוק ולהתחיל מחדש
+  async function saveAnnouncementEdit(id: string) {
+    if (!editTitle.trim() || !editContent.trim()) { setEditError('חסרים כותרת או תוכן'); return; }
+    setEditSaving(true);
+    setEditError('');
+    const res = await fetch(`/api/admin/announcements/${id}`, {
+      method: 'PATCH',
+      headers: await authHeader(),
+      body: JSON.stringify({ title: editTitle.trim(), content: editContent.trim() }),
+    });
+    setEditSaving(false);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setEditError(data.error || 'שגיאה בשמירה');
+      return;
+    }
+    const data = await res.json();
+    setAnnouncements((prev) => prev.map((a) => (a.id === id ? data.announcement : a)));
+    setEditingId('');
   }
 
   async function handleDelete(id: string) {
@@ -380,6 +415,11 @@ export default function AdminAnnouncementsPage() {
                   {notifyingId === a.id ? '…' : a.notification_sent_at ? '📣 שליחה שוב' : '📣 שליחת התראה'}
                 </button>
               )}
+              {editingId !== a.id && (
+                <button onClick={() => startEditAnnouncement(a)} className="btn-outline" style={{ padding: '6px 12px', fontSize: '12.5px' }}>
+                  ✏️ עריכה
+                </button>
+              )}
               <button onClick={() => handleDelete(a.id)} disabled={deletingId === a.id} className="btn-outline" style={{ padding: '6px 12px', fontSize: '12.5px' }}>
                 {deletingId === a.id ? '…' : 'מחיקה'}
               </button>
@@ -389,7 +429,21 @@ export default function AdminAnnouncementsPage() {
         </summary>
         <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-hairline-strong)', borderTop: 'none', borderRadius: '0 0 10px 10px', padding: '14px' }}>
           {a.image_url && <img src={a.image_url} alt="" style={{ width: '100%', borderRadius: '8px', marginBottom: '10px' }} />}
-          <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6, whiteSpace: 'pre-line' }}><FormattedText text={a.content} /></p>
+          {editingId === a.id ? (
+            <>
+              <input className="tp-text-input" style={{ minHeight: 'auto', marginBottom: '8px' }} placeholder="כותרת" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} />
+              <textarea className="tp-text-input" style={{ marginBottom: '8px' }} placeholder="תוכן ההודעה" rows={12} value={editContent} onChange={(e) => setEditContent(e.target.value)} />
+              {editError && <p style={{ color: 'var(--loss)', fontSize: '12.5px', marginBottom: '8px' }}>{editError}</p>}
+              <div style={{ display: 'flex', gap: '6px' }}>
+                <button className="btn-primary" style={{ padding: '8px 14px', fontSize: '12.5px' }} onClick={() => saveAnnouncementEdit(a.id)} disabled={editSaving}>
+                  {editSaving ? 'שומר/ת...' : '💾 שמירה'}
+                </button>
+                <button className="btn-outline" style={{ padding: '8px 14px', fontSize: '12.5px' }} onClick={() => setEditingId('')}>ביטול</button>
+              </div>
+            </>
+          ) : (
+            <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6, whiteSpace: 'pre-line' }}><FormattedText text={a.content} /></p>
+          )}
         </div>
       </details>
     );

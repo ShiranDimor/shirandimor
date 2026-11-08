@@ -14,16 +14,33 @@ async function requireAdmin(request: Request) {
   return user;
 }
 
-// PATCH - אישור ופרסום טיוטה (כרגע רק סיכום השוק היומי האוטומטי נוצר כטיוטה, published=false -
-// ממתין שתבדקי ותאשרי לפני שהוא מופיע בלוח הציבורי)
+// PATCH - אישור ופרסום טיוטה (published), ועריכת כותרת/תוכן - שימושי בעיקר לסיכום השוק היומי
+// שנכתב ע"י AI: לפעמים נשארת בטעות שארית "מחשבה" של המודל עצמו בתוך הטקסט (למשל "לא הצלחתי
+// לאמת X") שלא אמורה לצאת למנויים - בלי יכולת עריכה כאן, הדרך היחידה הייתה למחוק את ההודעה
+// ולהתחיל מאפס. אפשר לשלוח published ו/או title+content יחד או בנפרד
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
   const admin = await requireAdmin(request);
   if (!admin) return NextResponse.json({ error: 'אין הרשאת ניהול' }, { status: 403 });
 
-  const { published } = await request.json().catch(() => ({}));
-  if (typeof published !== 'boolean') return NextResponse.json({ error: 'חסר published' }, { status: 400 });
+  const body = await request.json().catch(() => ({}));
+  const { published, title, content } = body as { published?: unknown; title?: unknown; content?: unknown };
 
-  const { data, error } = await supabaseAdmin.from('announcements').update({ published }).eq('id', params.id).select('*').single();
+  const updates: Record<string, unknown> = {};
+  if (published !== undefined) {
+    if (typeof published !== 'boolean') return NextResponse.json({ error: 'published לא תקין' }, { status: 400 });
+    updates.published = published;
+  }
+  if (title !== undefined) {
+    if (typeof title !== 'string' || !title.trim()) return NextResponse.json({ error: 'חסרה כותרת' }, { status: 400 });
+    updates.title = title.trim();
+  }
+  if (content !== undefined) {
+    if (typeof content !== 'string' || !content.trim()) return NextResponse.json({ error: 'חסר תוכן' }, { status: 400 });
+    updates.content = content.trim();
+  }
+  if (Object.keys(updates).length === 0) return NextResponse.json({ error: 'אין מה לעדכן' }, { status: 400 });
+
+  const { data, error } = await supabaseAdmin.from('announcements').update(updates).eq('id', params.id).select('*').single();
   if (error) return NextResponse.json({ error: 'שגיאה בעדכון' }, { status: 500 });
 
   return NextResponse.json({ announcement: data });
