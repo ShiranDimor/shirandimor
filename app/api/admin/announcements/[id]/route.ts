@@ -23,7 +23,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
   if (!admin) return NextResponse.json({ error: 'אין הרשאת ניהול' }, { status: 403 });
 
   const body = await request.json().catch(() => ({}));
-  const { published, title, content } = body as { published?: unknown; title?: unknown; content?: unknown };
+  const { published, title, content, image_url } = body as { published?: unknown; title?: unknown; content?: unknown; image_url?: unknown };
 
   const updates: Record<string, unknown> = {};
   if (published !== undefined) {
@@ -37,6 +37,10 @@ export async function PATCH(request: Request, { params }: { params: { id: string
   if (content !== undefined) {
     if (typeof content !== 'string' || !content.trim()) return NextResponse.json({ error: 'חסר תוכן' }, { status: 400 });
     updates.content = content.trim();
+  }
+  if (image_url !== undefined) {
+    if (image_url !== null && typeof image_url !== 'string') return NextResponse.json({ error: 'image_url לא תקין' }, { status: 400 });
+    updates.image_url = image_url || null;
   }
   if (Object.keys(updates).length === 0) return NextResponse.json({ error: 'אין מה לעדכן' }, { status: 400 });
 

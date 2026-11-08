@@ -66,6 +66,9 @@ export default function AdminAnnouncementsPage() {
   const [editingId, setEditingId] = useState('');
   const [editTitle, setEditTitle] = useState('');
   const [editContent, setEditContent] = useState('');
+  const [editImageUrl, setEditImageUrl] = useState('');
+  const [editUploadingImage, setEditUploadingImage] = useState(false);
+  const [editImageError, setEditImageError] = useState('');
   const [editSaving, setEditSaving] = useState(false);
   const [editError, setEditError] = useState('');
 
@@ -125,6 +128,34 @@ export default function AdminAnnouncementsPage() {
       setImageError('משהו השתבש בהעלאה - כדאי לנסות שוב');
     }
     setUploadingImage(false);
+  }
+
+  async function handleEditImageSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+
+    setEditUploadingImage(true);
+    setEditImageError('');
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const form = new FormData();
+      form.append('file', file);
+      const res = await fetch('/api/admin/announcements/upload-image', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session?.access_token}` },
+        body: form,
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setEditImageError(data.error || 'שגיאה בהעלאת התמונה');
+        return;
+      }
+      setEditImageUrl(data.url);
+    } catch (e) {
+      setEditImageError('משהו השתבש בהעלאה - כדאי לנסות שוב');
+    }
+    setEditUploadingImage(false);
   }
 
   async function handleDraft() {
@@ -191,11 +222,14 @@ export default function AdminAnnouncementsPage() {
     setEditingId(a.id);
     setEditTitle(a.title);
     setEditContent(a.content);
+    setEditImageUrl(a.image_url || '');
+    setEditImageError('');
     setEditError('');
   }
 
   // עריכת תוכן הודעה קיימת (טיוטה או כבר מפורסמת) - בעיקר בשביל לתקן בעצמך שארית "מחשבה" של
-  // ה-AI בסיכום השוק היומי לפני ששולחים התראה, בלי לצטרך למחוק ולהתחיל מחדש
+  // ה-AI בסיכום השוק היומי לפני ששולחים התראה, בלי לצטרך למחוק ולהתחיל מחדש. כולל גם צירוף/
+  // החלפה/הסרה של תמונה - לא רק בהודעה חדשה
   async function saveAnnouncementEdit(id: string) {
     if (!editTitle.trim() || !editContent.trim()) { setEditError('חסרים כותרת או תוכן'); return; }
     setEditSaving(true);
@@ -203,7 +237,7 @@ export default function AdminAnnouncementsPage() {
     const res = await fetch(`/api/admin/announcements/${id}`, {
       method: 'PATCH',
       headers: await authHeader(),
-      body: JSON.stringify({ title: editTitle.trim(), content: editContent.trim() }),
+      body: JSON.stringify({ title: editTitle.trim(), content: editContent.trim(), image_url: editImageUrl || null }),
     });
     setEditSaving(false);
     if (!res.ok) {
@@ -428,17 +462,33 @@ export default function AdminAnnouncementsPage() {
           </div>
         </summary>
         <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-hairline-strong)', borderTop: 'none', borderRadius: '0 0 10px 10px', padding: '14px' }}>
-          {a.image_url && <img src={a.image_url} alt="" style={{ width: '100%', borderRadius: '8px', marginBottom: '10px' }} />}
+          {editingId !== a.id && a.image_url && <img src={a.image_url} alt="" style={{ width: '100%', borderRadius: '8px', marginBottom: '10px' }} />}
           {editingId === a.id ? (
             <>
               <input className="tp-text-input" style={{ minHeight: 'auto', marginBottom: '8px' }} placeholder="כותרת" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} />
               <textarea className="tp-text-input" style={{ marginBottom: '8px' }} placeholder="תוכן ההודעה" rows={12} value={editContent} onChange={(e) => setEditContent(e.target.value)} />
+
+              <div style={{ marginBottom: '10px' }}>
+                {editImageUrl ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <img src={editImageUrl} alt="" style={{ width: '70px', height: '70px', objectFit: 'cover', borderRadius: '8px', border: '1px solid var(--border-hairline-strong)' }} />
+                    <button className="btn-outline" style={{ padding: '6px 12px', fontSize: '12px' }} onClick={() => setEditImageUrl('')}>הסרת תמונה</button>
+                  </div>
+                ) : (
+                  <label className="btn-outline" style={{ padding: '6px 12px', fontSize: '12px', display: 'inline-block', cursor: 'pointer' }}>
+                    {editUploadingImage ? 'מעלה תמונה...' : '📷 צירוף תמונה'}
+                    <input type="file" accept="image/*" onChange={handleEditImageSelect} disabled={editUploadingImage} style={{ display: 'none' }} />
+                  </label>
+                )}
+                {editImageError && <p style={{ color: 'var(--loss)', fontSize: '12px', marginTop: '6px' }}>{editImageError}</p>}
+              </div>
+
               {editError && <p style={{ color: 'var(--loss)', fontSize: '12.5px', marginBottom: '8px' }}>{editError}</p>}
               <div style={{ display: 'flex', gap: '6px' }}>
                 <button className="btn-primary" style={{ padding: '8px 14px', fontSize: '12.5px' }} onClick={() => saveAnnouncementEdit(a.id)} disabled={editSaving}>
                   {editSaving ? 'שומר/ת...' : '💾 שמירה'}
                 </button>
-                <button className="btn-outline" style={{ padding: '8px 14px', fontSize: '12.5px' }} onClick={() => setEditingId('')}>ביטול</button>
+                <button className="btn-outline" style={{ padding: '8px 14px', fontSize: '12.5px' }} onClick={() => { setEditingId(''); setEditImageUrl(''); setEditImageError(''); }}>ביטול</button>
               </div>
             </>
           ) : (
