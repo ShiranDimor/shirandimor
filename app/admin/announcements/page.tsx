@@ -367,7 +367,7 @@ export default function AdminAnnouncementsPage() {
           טיפ: *מילה או משפט בין כוכביות* יוצג <strong>מודגש</strong> (כמו בוואטסאפ) · קישור (https://...) הופך ללחיץ אוטומטית · אימוג׳ים - מהמקלדת של הטלפון/המחשב כרגיל
         </p>
         {error && <p style={{ color: 'var(--loss)', fontSize: '13px', marginBottom: '10px' }}>{error}</p>}
-        <button className="btn-primary" onClick={handlePublish} disabled={saving}>{saving ? 'שומר...' : '📌 שמירת הודעה'}</button>
+        <button className="btn-primary" style={{ width: 'auto', padding: '10px 20px', fontSize: '13.5px' }} onClick={handlePublish} disabled={saving}>{saving ? 'שומר...' : '📌 שמירת הודעה'}</button>
       </div>
 
       {loading && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>טוענים...</p>}
