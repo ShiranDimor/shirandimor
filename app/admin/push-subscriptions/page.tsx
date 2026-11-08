@@ -134,7 +134,7 @@ export default function AdminPushSubscriptionsPage() {
         <div>
           <div style={{ fontSize: '13.5px', fontWeight: 700 }}>
             {r.name || 'ללא שם'}
-            {r.isFormerSubscriber && <span style={{ fontWeight: 400, color: 'var(--text-tertiary)' }}> (מנוי שביטל)</span>}
+            {r.isFormerSubscriber && <span style={{ fontWeight: 400, color: 'var(--text-tertiary)' }}> (מנוי וביטל)</span>}
           </div>
           <div style={{ fontSize: '11.5px', color: 'var(--text-tertiary)', marginTop: '2px' }}>
             {[r.phone, r.email].filter(Boolean).join(' · ') || '—'} · הופעל ב-{formatDate(r.createdAt)}

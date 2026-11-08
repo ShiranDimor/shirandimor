@@ -22,6 +22,7 @@ export default function LessonDetailPage() {
   const id = typeof params.id === 'string' ? params.id : Array.isArray(params.id) ? params.id[0] : '';
 
   const [lesson, setLesson] = useState<LessonDetail | null>(null);
+  const [viewerTier, setViewerTier] = useState<'public' | 'registered' | 'subscriber'>('public');
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
@@ -47,6 +48,7 @@ export default function LessonDetailPage() {
     if (res.ok) {
       const data = await res.json();
       setLesson(data.lesson);
+      setViewerTier(data.viewerTier || 'public');
     } else {
       setNotFound(true);
     }
@@ -149,7 +151,20 @@ export default function LessonDetailPage() {
             </div>
           )}
 
-          {lesson.locked && !enterResult && gateStep === 'phone' && (
+          {lesson.locked && viewerTier !== 'public' && (
+            <div className="lock-banner">
+              <div className="lb-icon">🔒</div>
+              <div className="lb-text">
+                <p className="lb-title">השיעור הזה שמור למנויים</p>
+                <p className="lb-sub">חודש ניסיון ב&quot;מדברים עסקאות&quot; פותח גישה לשיעור הזה ולכל שאר הספרייה.</p>
+              </div>
+              <div className="lb-cta-row">
+                <Link href="/subscribe" className="lb-cta">לחודש ניסיון ←</Link>
+              </div>
+            </div>
+          )}
+
+          {lesson.locked && viewerTier === 'public' && !enterResult && gateStep === 'phone' && (
             <div className="tp-question-card">
               <div className="tp-question-title">רק נייד, וזה שלך</div>
               <div className="tp-step-intro" style={{ marginBottom: '14px' }}>
@@ -166,7 +181,7 @@ export default function LessonDetailPage() {
             </div>
           )}
 
-          {lesson.locked && !enterResult && gateStep === 'name' && (
+          {lesson.locked && viewerTier === 'public' && !enterResult && gateStep === 'name' && (
             <div className="tp-question-card">
               <div className="tp-question-title">עוד רגע - איך קוראים לך?</div>
               <div className="tp-step-intro" style={{ marginBottom: '14px' }}>

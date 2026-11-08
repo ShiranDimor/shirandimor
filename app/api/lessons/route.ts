@@ -1,29 +1,33 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/instantLogin';
 import { LESSONS_LIBRARY_PUBLIC } from '@/lib/lessonsConfig';
+import { hasActiveEntitlement } from '@/lib/entitlement';
 
 const TIER_RANK = { public: 0, registered: 1, subscriber: 2 } as const;
 
-// GET - רשימת השיעורים המפורסמים, מסוננת לפי הרשאת הצופה (אורח/מחובר/מנוי).
+// GET - רשימת השיעורים המפורסמים, מסוננת לפי הרשאת הצופה (אורח/ליד ידוע/מנוי אמיתי).
 // שיעורים שהצופה לא מורשה לצפות בהם עדיין מוחזרים (עם thumbnail/כותרת/תיאור) כדי לפתות להצטרפות,
 // אבל בלי video_id - כדי שאי אפשר יהיה לצפות בהם בלי ההרשאה המתאימה.
+//
+// 'subscriber' tier נקבע לפי זכאות אמיתית (hasActiveEntitlement) ולא לפי עצם ההרשמה/זיהוי כליד -
+// קודם כל ליד שהשאיר פרטים בשער הכניסה (sd_registered cookie) קיבל לצמיתות גישה לכל השיעורים,
+// כולל שיעורים שמתויגים tier='subscriber', בלי קשר אם יש לו בפועל מנוי בתשלום. עכשיו ליד כזה
+// נשאר ברמת 'registered' (רואה תוכן ציבורי, אבל שיעורי מנויים מוצגים נעולים עם קריאה להצטרפות)
 export async function GET(request: Request) {
   const authHeader = request.headers.get('Authorization') || '';
   const token = authHeader.replace('Bearer ', '');
   const cookieHeader = request.headers.get('cookie') || '';
   const hasRegisteredCookie = /(?:^|;\s*)sd_registered=1(?:;|$)/.test(cookieHeader);
 
-  // אין יותר נעילה לפי שיעור בודד - מי שעבר את שער הכניסה של הספרייה (עזב פרטים, כבר מנוי,
-  // או כבר בקבוצת העדכונים) רואה את כל השיעורים, בלי תלות ב-tier שנקבע לשיעור עצמו
-  let viewerTier: 'public' | 'registered' | 'subscriber' = hasRegisteredCookie ? 'subscriber' : 'public';
+  let viewerTier: 'public' | 'registered' | 'subscriber' = hasRegisteredCookie ? 'registered' : 'public';
   let isAdmin = false;
 
   if (token) {
     const { data: { user } } = await supabaseAdmin.auth.getUser(token);
     if (user) {
       viewerTier = 'registered';
-      const { data: profile } = await supabaseAdmin.from('profiles').select('role').eq('id', user.id).maybeSingle();
-      if (profile?.role === 'subscriber' || profile?.role === 'admin') {
+      const { data: profile } = await supabaseAdmin.from('profiles').select('role, subscription_status, subscription_paid_until').eq('id', user.id).maybeSingle();
+      if (hasActiveEntitlement(profile)) {
         viewerTier = 'subscriber';
       }
       isAdmin = profile?.role === 'admin';

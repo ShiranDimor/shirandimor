@@ -18,6 +18,7 @@ type LessonSummary = {
   videoProvider: string;
   durationMinutes: number | null;
   thumbnailUrl: string | null;
+  locked: boolean;
 };
 
 export default function LessonsLibraryPage() {
@@ -27,6 +28,9 @@ export default function LessonsLibraryPage() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [checkingAccess, setCheckingAccess] = useState(true);
   const [gateNeeded, setGateNeeded] = useState(false);
+  // 'registered' - ליד ידוע (עבר את שער הכניסה) אבל בלי מנוי בתשלום בפועל - חלק מהשיעורים
+  // (tier='subscriber') מוצגים לו נעולים עם קריאה להצטרפות, במקום פתוחים לגמרי כמו קודם
+  const [viewerTier, setViewerTier] = useState<'public' | 'registered' | 'subscriber'>('public');
 
   // שער דו-שלבי: קודם רק נייד (מספיק כדי לזהות מנוי/קבוצת עדכונים קיימים - בלי לבקש שם סתם
   // בשביל "לוודא מי זה"), ורק אם התברר שזה ליד חדש שבאמת נרשם ל-Monday מבקשים גם שם.
@@ -69,6 +73,7 @@ export default function LessonsLibraryPage() {
     if (res.ok) {
       const data = await res.json();
       const admin = adminOverride ?? isAdmin;
+      setViewerTier(data.viewerTier || 'public');
       if (!admin && data.viewerTier === 'public') {
         setGateNeeded(true);
         setLessons([]);
@@ -156,15 +161,16 @@ export default function LessonsLibraryPage() {
       <div className="lesson-grid">
         {list.map((lesson) => (
           <Link key={lesson.id} href={`/lessons/${lesson.id}`} className="lesson-card" style={{ textDecoration: 'none', color: 'inherit' }}>
-            <div className="lesson-card-thumb">
+            <div className={`lesson-card-thumb${lesson.locked ? ' locked' : ''}`}>
               {lesson.thumbnailUrl ? (
                 <>
                   <img src={lesson.thumbnailUrl} alt={lesson.title} />
-                  <div className="lesson-card-play"><span>▶</span></div>
+                  <div className="lesson-card-play"><span>{lesson.locked ? '🔒' : '▶'}</span></div>
                 </>
               ) : (
                 <div className="lesson-card-presentation"><span>📊</span>מצגת</div>
               )}
+              {lesson.locked && <div className="lesson-card-locked-badge">🔒 למנויים</div>}
               {lesson.durationMinutes && <div className="lesson-card-duration">{lesson.durationMinutes} דק'</div>}
             </div>
             <div className="lesson-card-body">
@@ -298,6 +304,19 @@ export default function LessonsLibraryPage() {
             </div>
           )}
 
+          {!loading && !nothingToShow && !activeCategory && viewerTier === 'registered' && lessons.some((l) => l.locked) && (
+            <div className="lock-banner">
+              <div className="lb-icon">🔒</div>
+              <div className="lb-text">
+                <p className="lb-title">חלק מהשיעורים כאן שמורים למנויים</p>
+                <p className="lb-sub">חודש ניסיון ב&quot;מדברים עסקאות&quot; פותח גישה לכל הספרייה - כולל השיעורים הנעולים שתראו למטה.</p>
+              </div>
+              <div className="lb-cta-row">
+                <Link href="/subscribe" className="lb-cta">לחודש ניסיון ←</Link>
+              </div>
+            </div>
+          )}
+
           {!loading && !nothingToShow && !activeCategory && (
             <div className="lesson-folder-grid">
               {presentationLessons.length > 0 && (
@@ -309,11 +328,15 @@ export default function LessonsLibraryPage() {
                 >
                   <div className="lesson-folder-icon">📊</div>
                   <div className="lesson-folder-title">מצגות</div>
-                  <div className="lesson-folder-count">{presentationLessons.length}</div>
+                  <div className="lesson-folder-count">
+                    {presentationLessons.length}
+                    {presentationLessons.some((l) => l.locked) && <span className="locked-tag">🔒 למנויים</span>}
+                  </div>
                 </button>
               )}
               {presentCategories.map((c) => {
                 const isStartHere = c === START_HERE_CATEGORY;
+                const categoryLessons = videoLessons.filter((l) => l.category === c);
                 return (
                   <button
                     key={c}
@@ -325,7 +348,10 @@ export default function LessonsLibraryPage() {
                     {isStartHere && <span className="lesson-folder-tile--start-badge">התחילו כאן 👇</span>}
                     <div className="lesson-folder-icon">{LESSON_CATEGORY_ICONS[c] || '📁'}</div>
                     <div className="lesson-folder-title">{c}</div>
-                    <div className="lesson-folder-count">{videoLessons.filter((l) => l.category === c).length}</div>
+                    <div className="lesson-folder-count">
+                      {categoryLessons.length}
+                      {categoryLessons.some((l) => l.locked) && <span className="locked-tag">🔒 למנויים</span>}
+                    </div>
                   </button>
                 );
               })}
