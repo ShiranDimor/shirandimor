@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { supabase, getResilientUser } from '@/lib/supabase';
 import { hasActiveEntitlement } from '@/lib/entitlement';
-import ClearableInput from '@/components/ClearableInput';
 import StatsRing from '@/components/StatsRing';
 import EquityCurve from '@/components/EquityCurve';
 import CalendarHeatmap from '@/components/CalendarHeatmap';
@@ -67,9 +66,6 @@ export default function PortfolioPage() {
   const [calYear, setCalYear] = useState(() => new Date().getFullYear());
   const [calMonthIdx, setCalMonthIdx] = useState(() => new Date().getMonth());
 
-  const [risk, setRisk] = useState('');
-  const [entry, setEntry] = useState('');
-  const [stop, setStop] = useState('');
   const [showStickyCta, setShowStickyCta] = useState(false);
   const [tradingPlanHref, setTradingPlanHref] = useState('/trading-plan');
 
@@ -330,10 +326,6 @@ export default function PortfolioPage() {
     else setCalMonthIdx((m) => m + 1);
   }
 
-  const shares = risk && entry && stop
-    ? Math.floor(parseFloat(risk) / Math.abs(parseFloat(entry) - parseFloat(stop)))
-    : null;
-
   async function handleLogout() {
     await supabase.auth.signOut();
     window.location.href = '/';
@@ -398,23 +390,6 @@ export default function PortfolioPage() {
             <Link href="/?join=1" className="lb-cta-secondary">הצטרפות חינם לעדכונים ←</Link>
           </div>
         </div>
-      )}
-
-      {isAdmin && (
-        <>
-          <div className="section-label"><h2>מחשבון גודל פוזיציה</h2></div>
-          <div className="calc-panel" style={{ padding: '18px 16px', marginBottom: '28px' }}>
-            <div className="form-row" style={{ marginBottom: '10px' }}>
-              <div className="field" style={{ marginBottom: 0 }}><label>סיכון כספי ($)</label><ClearableInput type="number" value={risk} onChange={(e) => setRisk(e.target.value)} onClear={() => setRisk('')} placeholder="500" /></div>
-              <div className="field" style={{ marginBottom: 0 }}><label>מחיר כניסה ($)</label><ClearableInput type="number" value={entry} onChange={(e) => setEntry(e.target.value)} onClear={() => setEntry('')} placeholder="127.32" /></div>
-            </div>
-            <div className="field"><label>מחיר סטופ לוס ($)</label><ClearableInput type="number" value={stop} onChange={(e) => setStop(e.target.value)} onClear={() => setStop('')} placeholder="121.00" /></div>
-            <div className="calc-result">
-              <span className="rlabel">כמות מניות מקסימלית</span>
-              <span className="rvalue">{shares !== null && !isNaN(shares) ? shares : '—'}</span>
-            </div>
-          </div>
-        </>
       )}
 
       <Reveal>
