@@ -562,11 +562,11 @@ export default function PortfolioPage() {
                   </div>
 
                   <div className="tpc-foot3">
-                    <div className="tpc-foot3-item target"><div className="lbl">יעד</div><div className="val">{trade.target_price !== null ? `$${trade.target_price}` : '—'}</div></div>
+                    <div className="tpc-foot3-item stop"><div className="lbl">🛡 סטופ</div><div className="val">${trade.stop_loss}</div></div>
                     <div className="tpc-foot3-div"></div>
                     <div className="tpc-foot3-item"><div className="lbl">כניסה</div><div className="val">${trade.entry_price}</div></div>
                     <div className="tpc-foot3-div"></div>
-                    <div className="tpc-foot3-item stop"><div className="lbl">סטופ</div><div className="val">${trade.stop_loss}</div></div>
+                    <div className="tpc-foot3-item target"><div className="lbl">🕐 יעד</div><div className="val">{trade.target_price !== null ? `$${trade.target_price}` : '—'}</div></div>
                   </div>
                 </div>
               </div>
