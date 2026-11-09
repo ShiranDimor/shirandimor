@@ -400,7 +400,7 @@ export default function PortfolioPage() {
         </div>
       )}
 
-      {hasFullAccess && (
+      {isAdmin && (
         <>
           <div className="section-label"><h2>מחשבון גודל פוזיציה</h2></div>
           <div className="calc-panel" style={{ padding: '18px 16px', marginBottom: '28px' }}>
