@@ -706,7 +706,7 @@
 
 .dor-float-btn {
   position: fixed;
-  bottom: 20px;
+  bottom: calc(var(--bottom-nav-h) + 20px);
   right: 20px;
   z-index: 100;
   width: 56px;
@@ -867,7 +867,7 @@
   .dor-chat-panel {
     left: auto;
     top: auto;
-    bottom: 88px;
+    bottom: calc(var(--bottom-nav-h) + 88px);
     right: 20px;
     width: 360px;
     height: 520px;

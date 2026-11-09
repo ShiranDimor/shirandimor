@@ -567,13 +567,13 @@ export default function PortfolioPage() {
                     <div className="tpc-pct-wrap">
                       <div className={`tpc-pct ${displayPct >= 0 ? 'pos' : 'neg'}`}>{displayPct < 0 ? '-' : ''}{Math.abs(displayPct).toFixed(0)}%</div>
                       <div className="tpc-pct-label">{tp ? (tp.inProfitZone ? 'מהרווח המתוכנן כבר הושג' : 'מתחת לכניסה') : 'רווח/הפסד נוכחי'}</div>
-                      <div className="tpc-live" style={{ justifyContent: 'flex-end', marginTop: '4px' }}>
-                        <span className="tpc-live-dot" style={{ background: isPositive ? 'var(--profit)' : 'var(--loss)', boxShadow: `0 0 5px ${isPositive ? 'var(--profit)' : 'var(--loss)'}` }}></span>
-                        ${trade.current_price ?? trade.entry_price}
-                      </div>
                     </div>
                   </div>
 
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>
+                    <span className="tpc-live-dot" style={{ background: isPositive ? 'var(--profit)' : 'var(--loss)', boxShadow: `0 0 5px ${isPositive ? 'var(--profit)' : 'var(--loss)'}` }}></span>
+                    מחיר נוכחי: ${trade.current_price ?? trade.entry_price}
+                  </div>
                   <div className="tpc-chart">
                     <svg viewBox="0 0 300 42" preserveAspectRatio="none">
                       <polyline points={sparkPoints} fill="none" stroke={isPositive ? 'var(--profit)' : 'var(--loss)'} strokeWidth="2" />
@@ -587,11 +587,11 @@ export default function PortfolioPage() {
                   </div>
 
                   <div className="tpc-foot3">
-                    <div className="tpc-foot3-item stop"><div className="lbl">🛡 סטופ</div><div className="val">${trade.stop_loss}</div></div>
+                    <div className="tpc-foot3-item target"><div className="lbl">יעד</div><div className="val">{trade.target_price !== null ? `$${trade.target_price}` : '—'}</div></div>
                     <div className="tpc-foot3-div"></div>
                     <div className="tpc-foot3-item"><div className="lbl">כניסה</div><div className="val">${trade.entry_price}</div></div>
                     <div className="tpc-foot3-div"></div>
-                    <div className="tpc-foot3-item target"><div className="lbl">🕐 יעד</div><div className="val">{trade.target_price !== null ? `$${trade.target_price}` : '—'}</div></div>
+                    <div className="tpc-foot3-item stop"><div className="lbl">סטופ</div><div className="val">${trade.stop_loss}</div></div>
                   </div>
                 </div>
               </div>
