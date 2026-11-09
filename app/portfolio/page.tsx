@@ -371,8 +371,7 @@ export default function PortfolioPage() {
       </header>
 
       <div className="lessons-hero" style={{ marginBottom: '14px' }}>
-        <div className="lessons-hero-icon">📈</div>
-        <h1>תיק העסקאות שלי</h1>
+        <h1>תיק העסקאות של שירן</h1>
         <p>מעקב בזמן אמת</p>
       </div>
 
@@ -563,9 +562,7 @@ export default function PortfolioPage() {
 
                   <div className="tpc-foot3">
                     <div className="tpc-foot3-item stop"><div className="lbl">🛡 סטופ</div><div className="val">${trade.stop_loss}</div></div>
-                    <div className="tpc-foot3-div"></div>
-                    <div className="tpc-foot3-item"><div className="lbl">כניסה</div><div className="val">${trade.entry_price}</div></div>
-                    <div className="tpc-foot3-div"></div>
+                    <div className="tpc-foot3-item entry"><div className="lbl">כניסה</div><div className="val">${trade.entry_price}</div></div>
                     <div className="tpc-foot3-item target"><div className="lbl">🕐 יעד</div><div className="val">{trade.target_price !== null ? `$${trade.target_price}` : '—'}</div></div>
                   </div>
                 </div>

@@ -198,13 +198,17 @@
   .tpc-card.lose .tpc-glow { right: -70px; background: radial-gradient(circle, rgba(255,92,92,0.4), transparent 70%); }
   .tpc-chart { height: 42px; margin: 2px 0 10px; }
   .tpc-chart svg { width: 100%; height: 100%; display: block; }
-  .tpc-foot3 { display: flex; justify-content: space-between; text-align: center; }
-  .tpc-foot3-item { flex: 1; }
+  /* מיקום פיזי מוחלט (right/left ממשיים) ולא flex לפי סדר-מקור - כדי שהסדר לא יהיה תלוי
+     בפרשנות כיווניות (rtl) שונה בין הדפדפנים; בדיוק כמו שכבר עובד באופן עקבי בפס ההתקדמות */
+  .tpc-foot3 { position: relative; height: 34px; }
+  .tpc-foot3-item { position: absolute; top: 0; text-align: center; width: 80px; }
+  .tpc-foot3-item.stop { right: 0; }
+  .tpc-foot3-item.entry { right: 50%; transform: translateX(50%); }
+  .tpc-foot3-item.target { left: 0; }
   .tpc-foot3-item .lbl { font-size: 9.5px; color: var(--text-tertiary); display: flex; align-items: center; gap: 3px; justify-content: center; margin-bottom: 2px; }
   .tpc-foot3-item .val { font-size: 12.5px; font-weight: 700; }
   .tpc-foot3-item.target .val { color: var(--lavender); }
   .tpc-foot3-item.stop .val { color: var(--loss); }
-  .tpc-foot3-div { width: 1px; background: var(--border-hairline); }
   .tpc-summary { background: linear-gradient(155deg, var(--bg-surface-raised), var(--bg-surface)); border: 1px solid var(--border-hairline-strong); border-radius: 18px; padding: 16px; display: flex; align-items: center; gap: 14px; margin-bottom: 16px; }
   .tpc-ring-wrap { position: relative; width: 78px; height: 78px; flex-shrink: 0; }
   .tpc-ring-wrap svg { transform: rotate(-90deg); }
@@ -257,14 +261,16 @@
     max-width: 480px; margin: 0 auto;
   }
   .bottom-nav-item {
-    position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center;
-    gap: 2px; flex: 1; height: 100%; text-decoration: none; color: var(--text-tertiary);
+    position: relative; display: flex; align-items: center; justify-content: center;
+    flex: 1; height: 100%; text-decoration: none; color: var(--text-tertiary);
   }
-  .bottom-nav-ic { font-size: 17px; line-height: 1; filter: grayscale(1) opacity(0.65); }
+  .bottom-nav-pill {
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+    padding: 6px 14px; border-radius: 14px; transition: background 0.15s ease, color 0.15s ease;
+  }
   .bottom-nav-lbl { font-size: 9.5px; font-weight: 600; }
   .bottom-nav-item.active { color: var(--text-primary); }
-  .bottom-nav-item.active .bottom-nav-ic { filter: none; }
-  .bottom-nav-pill { position: absolute; top: 2px; width: 26px; height: 3px; border-radius: 3px; background: var(--teal); box-shadow: 0 0 8px rgba(255,45,120,0.7); }
+  .bottom-nav-item.active .bottom-nav-pill { background: var(--profit); color: var(--text-primary); }
 
   .trade-table-wrap { overflow-x: auto; margin-bottom: 32px; border: 1px solid var(--border-hairline); border-radius: 12px; -webkit-overflow-scrolling: touch; }
   .trade-table { width: 100%; border-collapse: collapse; }
