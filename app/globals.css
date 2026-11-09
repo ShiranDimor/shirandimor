@@ -25,6 +25,10 @@
     --sky: #7FA8D4;
     --sky-bg: rgba(127, 168, 212, 0.12);
     --grad-brand: linear-gradient(90deg, var(--teal), var(--lavender));
+    /* גובה תפריט הניווט התחתון הקבוע (BottomNav) - משתנה משותף כדי שכל שאר האלמנטים הצפים
+       בתחתית המסך (וואטסאפ, נגישות, צ'אט דור, sticky-cta, באנר עוגיות) יזיזו את עצמם מעליו
+       באופן עקבי, במקום שכל אחד יתאם בנפרד מספר קסם משלו */
+    --bottom-nav-h: 58px;
     --font-display: 'Rubik', sans-serif;
     --font-body: 'Rubik', sans-serif;
     --font-mono: 'JetBrains Mono', monospace;
@@ -188,8 +192,38 @@
     box-shadow: 0 16px 32px -14px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.05);
   }
   .tpc-glow { position: absolute; width: 170px; height: 170px; border-radius: 50%; filter: blur(26px); opacity: 0.5; pointer-events: none; top: -70px; }
+  .tpc-card.win { border-color: rgba(61,220,132,0.4); }
+  .tpc-card.lose { border-color: rgba(255,92,92,0.4); }
   .tpc-card.win .tpc-glow { left: -70px; background: radial-gradient(circle, rgba(61,220,132,0.5), transparent 70%); }
   .tpc-card.lose .tpc-glow { right: -70px; background: radial-gradient(circle, rgba(255,92,92,0.4), transparent 70%); }
+  .tpc-chart { height: 42px; margin: 2px 0 10px; }
+  .tpc-chart svg { width: 100%; height: 100%; display: block; }
+  .tpc-foot3 { display: flex; justify-content: space-between; text-align: center; }
+  .tpc-foot3-item { flex: 1; }
+  .tpc-foot3-item .lbl { font-size: 9.5px; color: var(--text-tertiary); display: flex; align-items: center; gap: 3px; justify-content: center; margin-bottom: 2px; }
+  .tpc-foot3-item .val { font-size: 12.5px; font-weight: 700; }
+  .tpc-foot3-item.target .val { color: var(--lavender); }
+  .tpc-foot3-item.stop .val { color: var(--loss); }
+  .tpc-foot3-div { width: 1px; background: var(--border-hairline); }
+  .tpc-summary { background: linear-gradient(155deg, var(--bg-surface-raised), var(--bg-surface)); border: 1px solid var(--border-hairline-strong); border-radius: 18px; padding: 16px; display: flex; align-items: center; gap: 14px; margin-bottom: 16px; }
+  .tpc-ring-wrap { position: relative; width: 78px; height: 78px; flex-shrink: 0; }
+  .tpc-ring-wrap svg { transform: rotate(-90deg); }
+  .tpc-ring-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .tpc-ring-center b { font-size: 19px; font-weight: 800; }
+  .tpc-ring-center span { font-size: 8px; color: var(--text-tertiary); text-align: center; line-height: 1.2; }
+  .tpc-legend { display: flex; flex-direction: column; gap: 5px; font-size: 10.5px; }
+  .tpc-legend-row { display: flex; align-items: center; gap: 6px; }
+  .tpc-legend-dot { width: 6px; height: 6px; border-radius: 50%; }
+  .tpc-legend-row b { font-size: 12px; }
+  .tpc-legend-sub { font-size: 9px; color: var(--text-tertiary); margin-right: 12px; }
+  .tpc-summary-div { width: 1px; align-self: stretch; background: var(--border-hairline-strong); }
+  .tpc-summary-right { text-align: center; flex: 1; min-width: 0; }
+  .tpc-summary-right .lbl { font-size: 9px; color: var(--text-tertiary); margin-bottom: 3px; }
+  .tpc-summary-right .pct { font-size: 18px; font-weight: 800; }
+  .tpc-filter-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+  .tpc-toggle-pair { display: flex; background: var(--bg-surface); border: 1px solid var(--border-hairline-strong); border-radius: 20px; padding: 3px; }
+  .tpc-toggle-pair button { font-size: 11px; font-weight: 700; padding: 6px 14px; border-radius: 16px; color: var(--text-tertiary); background: none; border: none; cursor: pointer; font-family: inherit; }
+  .tpc-toggle-pair button.active { background: var(--teal); color: #fff; }
   .tpc-inner { position: relative; z-index: 1; }
   .tpc-head { display: flex; justify-content: space-between; align-items: flex-start; }
   .tpc-sym-wrap { display: flex; flex-direction: column; gap: 4px; }
@@ -212,6 +246,25 @@
   .tpc-foot { display: flex; justify-content: space-between; margin-top: 6px; font-size: 10px; }
   .tpc-foot span { color: var(--text-tertiary); }
   .tpc-foot b { color: var(--text-secondary); font-weight: 700; }
+
+  /* ===== תפריט ניווט תחתון קבוע (BottomNav) - בכל עמוד באתר ===== */
+  .bottom-nav {
+    position: fixed; bottom: 0; right: 0; left: 0; z-index: 95; height: var(--bottom-nav-h);
+    display: flex; justify-content: space-around; align-items: center;
+    background: rgba(36,33,38,0.95); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    border-top: 1px solid var(--border-hairline-strong);
+    padding: 0 6px calc(env(safe-area-inset-bottom));
+    max-width: 480px; margin: 0 auto;
+  }
+  .bottom-nav-item {
+    position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 2px; flex: 1; height: 100%; text-decoration: none; color: var(--text-tertiary);
+  }
+  .bottom-nav-ic { font-size: 17px; line-height: 1; filter: grayscale(1) opacity(0.65); }
+  .bottom-nav-lbl { font-size: 9.5px; font-weight: 600; }
+  .bottom-nav-item.active { color: var(--text-primary); }
+  .bottom-nav-item.active .bottom-nav-ic { filter: none; }
+  .bottom-nav-pill { position: absolute; top: 2px; width: 26px; height: 3px; border-radius: 3px; background: var(--teal); box-shadow: 0 0 8px rgba(255,45,120,0.7); }
 
   .trade-table-wrap { overflow-x: auto; margin-bottom: 32px; border: 1px solid var(--border-hairline); border-radius: 12px; -webkit-overflow-scrolling: touch; }
   .trade-table { width: 100%; border-collapse: collapse; }
@@ -612,7 +665,7 @@
   .group-card.free .gc-cta { background: transparent; border: 1px solid var(--border-hairline-strong); color: var(--text-primary); }
   .group-card.paid .gc-cta { background: var(--profit); color: var(--bg-void); }
   .wa-float {
-    position: fixed; bottom: 84px; left: 20px; z-index: 100;
+    position: fixed; bottom: calc(var(--bottom-nav-h) + 84px); left: 20px; z-index: 100;
     width: 52px; height: 52px; border-radius: 50%;
     background: #25D366; display: flex; align-items: center; justify-content: center;
     box-shadow: 0 4px 16px rgba(0, 0, 0,0.35); text-decoration: none;
@@ -621,7 +674,7 @@
   .wa-float:hover { transform: scale(1.06); }
 
   .sticky-cta {
-    position: fixed; bottom: 0; right: 0; left: 0; z-index: 90;
+    position: fixed; bottom: var(--bottom-nav-h); right: 0; left: 0; z-index: 90;
     background: var(--bg-void); border-top: 1px solid var(--border-hairline-strong);
     padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
     box-shadow: 0 -4px 16px rgba(0, 0, 0,0.25);
@@ -633,10 +686,10 @@
     text-align: center; text-decoration: none; box-sizing: border-box;
   }
   /* מרווח תחתון לתוכן כדי שהסרגל הדביק לא יסתיר את הכפתורים/פוטר */
-  .wrap { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
+  .wrap { padding-bottom: calc(96px + var(--bottom-nav-h) + env(safe-area-inset-bottom)); }
 .wa-float-btn {
   position: fixed;
-  bottom: 20px;
+  bottom: calc(var(--bottom-nav-h) + 20px);
   left: 20px;
   z-index: 100;
   width: 52px;
@@ -825,7 +878,7 @@
 
 .dor-callout {
   position: fixed;
-  bottom: 88px;
+  bottom: calc(var(--bottom-nav-h) + 88px);
   right: 20px;
   z-index: 102;
   max-width: 220px;
@@ -1254,7 +1307,7 @@
 .sl-timeline-item .sl-t-note { font-size: 12.5px; color: var(--text-secondary); margin-top: 3px; white-space: pre-wrap; line-height: 1.5; }
 
 .sl-badge-float {
-  position: fixed; bottom: 20px; right: 20px; z-index: 100;
+  position: fixed; bottom: calc(var(--bottom-nav-h) + 20px); right: 20px; z-index: 100;
   background: var(--loss); color: #fff; border-radius: 24px; padding: 10px 16px; font-size: 12.5px; font-weight: 700;
   box-shadow: 0 4px 16px rgba(0, 0, 0,0.35); text-decoration: none; display: flex; align-items: center; gap: 6px;
 }
@@ -1277,7 +1330,7 @@
 
 /* ===== ווידג'ט נגישות ===== */
 .a11y-float-btn {
-  position: fixed; bottom: 84px; left: 20px; z-index: 100;
+  position: fixed; bottom: calc(var(--bottom-nav-h) + 84px); left: 20px; z-index: 100;
   width: 48px; height: 48px; border-radius: 50%;
   background: var(--bg-surface-raised); color: var(--text-primary); border: 1px solid var(--border-hairline-strong);
   display: flex; align-items: center; justify-content: center;
@@ -1329,7 +1382,7 @@ html.a11y-underline-links a { text-decoration: underline !important; }
    לכסות בפועל כפתורי CTA קריטיים בעמודים כמו /subscribe, בלי קשר לריווח התחתון של .wrap
    (שעוזר רק כשמגיעים לסוף הדף, לא כשה-viewport באמצע עמוד ארוך) */
 .cookie-banner {
-  position: fixed; bottom: 0; right: 0; left: 0; z-index: 110;
+  position: fixed; bottom: var(--bottom-nav-h); right: 0; left: 0; z-index: 110;
   background: var(--bg-surface-raised); border-top: 1px solid var(--border-hairline-strong);
   padding: 8px 12px calc(8px + env(safe-area-inset-bottom));
   display: flex; align-items: center; justify-content: center; gap: 10px;

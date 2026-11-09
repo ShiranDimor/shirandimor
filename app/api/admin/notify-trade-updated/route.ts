@@ -15,28 +15,28 @@ async function requireAdmin(request: Request) {
   return user;
 }
 
-// POST - שולח התראת פוש שהסטופ לוס של עסקה פתוחה עודכן - גם למנויים (עם הסימבול) וגם ללא-
-// מנויים (מטושטש), בדיוק כמו כל עדכון אחר בעסקה פתוחה - אין יותר הבדל בין סוגי ההתראות עצמן,
-// רק בחשיפת הסימבול בעסקאות פתוחות
+// POST - שולח התראת פוש שעסקה פתוחה עודכנה (סטופ, יעד רווח, מחיר כניסה, עד-איזה-מחיר-להיכנס
+// - כל שינוי בפרמטרים של עסקה פתוחה, לא רק סטופ לוס כמו שהיה פעם) - גם למנויים (עם הסימבול
+// והפירוט המלא) וגם ללא-מנויים (מטושטש), בדיוק כמו כל עדכון אחר
 export async function POST(request: Request) {
   const admin = await requireAdmin(request);
   if (!admin) return NextResponse.json({ error: 'אין הרשאת ניהול' }, { status: 403 });
 
   const body = await request.json().catch(() => ({}));
-  const { symbol, newStopLoss } = body as { symbol?: string; newStopLoss?: number };
-  if (!symbol || typeof newStopLoss !== 'number') {
+  const { symbol, changes } = body as { symbol?: string; changes?: string[] };
+  if (!symbol || !Array.isArray(changes) || changes.length === 0) {
     return NextResponse.json({ error: 'חסרים פרטים' }, { status: 400 });
   }
 
   await sendPushToActiveSubscribers({
-    title: `🔁 סטופ לוס עודכן - ${symbol}`,
-    body: `הסטופ החדש: $${newStopLoss}`,
+    title: `🔁 עדכון בעסקה פתוחה - ${symbol}`,
+    body: changes.join(' · '),
     url: '/portfolio',
   }, 'trade');
 
   await sendPushToNonSubscribers({
-    title: '🔁 סטופ לוס עודכן בעסקה פתוחה',
-    body: 'הסימבול גלוי למנויים - חודש ראשון ב-₪1 ←',
+    title: '🔁 עדכון בעסקה פתוחה',
+    body: 'הסימבול והפרטים גלויים למנויים - חודש ראשון ב-₪1 ←',
     url: '/subscribe',
   }, 'trade');
 

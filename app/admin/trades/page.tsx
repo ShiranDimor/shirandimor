@@ -343,13 +343,24 @@ export default function AdminTradesPage() {
     setSavingEdit(false);
 
     if (!error) {
-      if (!isClosed && stop !== trade.stop_loss) {
-        const { data: { session } } = await supabase.auth.getSession();
-        fetch('/api/admin/notify-trade-updated', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
-          body: JSON.stringify({ symbol: editSymbol.toUpperCase(), newStopLoss: stop }),
-        }).catch(() => {});
+      if (!isClosed) {
+        // כל שינוי בפרמטרים של עסקה פתוחה שולח התראה - לא רק סטופ לוס כמו שהיה פעם
+        const newTarget = editTarget ? parseFloat(editTarget) : null;
+        const newMaxEntry = editMaxEntry ? parseFloat(editMaxEntry) : null;
+        const changes: string[] = [];
+        if (entry !== trade.entry_price) changes.push(`מחיר כניסה: $${entry}`);
+        if (stop !== trade.stop_loss) changes.push(`סטופ לוס: $${stop}`);
+        if (newTarget !== trade.target_price) changes.push(newTarget !== null ? `יעד רווח: $${newTarget}` : 'יעד רווח הוסר');
+        if (newMaxEntry !== trade.max_entry_price) changes.push(newMaxEntry !== null ? `עד כניסה: $${newMaxEntry}` : 'הגבלת כניסה הוסרה');
+
+        if (changes.length > 0) {
+          const { data: { session } } = await supabase.auth.getSession();
+          fetch('/api/admin/notify-trade-updated', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
+            body: JSON.stringify({ symbol: editSymbol.toUpperCase(), changes }),
+          }).catch(() => {});
+        }
       }
       setEditingId(null);
       loadTrades();

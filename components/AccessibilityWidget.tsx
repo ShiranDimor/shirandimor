@@ -79,7 +79,7 @@ export default function AccessibilityWidget() {
 
       {open && (
         <div className="notif-bell-backdrop" onClick={() => setOpen(false)}>
-          <div className="notif-bell-panel" style={{ top: 'auto', bottom: '84px', left: '16px' }} onClick={(e) => e.stopPropagation()}>
+          <div className="notif-bell-panel" style={{ top: 'auto', bottom: 'calc(var(--bottom-nav-h) + 84px)', left: '16px' }} onClick={(e) => e.stopPropagation()}>
             <div className="notif-bell-panel-header">
               <span>♿ נגישות</span>
               <button type="button" className="notif-bell-close" onClick={() => setOpen(false)}>✕</button>
