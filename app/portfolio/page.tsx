@@ -20,6 +20,7 @@ type Trade = {
   entry_price: number;
   stop_loss: number;
   max_entry_price: number | null;
+  target_price: number | null;
   current_price: number | null;
   exit_price: number | null;
   status: string;
@@ -474,6 +475,7 @@ export default function PortfolioPage() {
                   <th>נוכחי</th>
                   <th>סטופ</th>
                   <th style={{ whiteSpace: 'normal', maxWidth: '80px', lineHeight: 1.3 }}>עד איזה מחיר אפשר להיכנס לעסקה</th>
+                  <th>יעד רווח</th>
                   <th>רווח/הפסד</th>
                 </tr>
               </thead>
@@ -494,6 +496,7 @@ export default function PortfolioPage() {
                       <td>${trade.current_price ?? trade.entry_price}</td>
                       <td>${trade.stop_loss}</td>
                       <td>{trade.max_entry_price !== null ? `עד $${trade.max_entry_price}` : '—'}</td>
+                      <td>{trade.target_price !== null ? `$${trade.target_price}` : '—'}</td>
                       <td className="pnl-cell" style={{ color: p >= 0 ? 'var(--profit)' : 'var(--loss)' }}>
                         {p >= 0 ? '+' : ''}{p.toFixed(2)}%
                       </td>

@@ -17,6 +17,7 @@ type Trade = {
   entry_price: number;
   stop_loss: number;
   max_entry_price: number | null;
+  target_price: number | null;
   shares_calculated: number;
   exit_price: number | null;
   current_price: number | null;
@@ -112,6 +113,7 @@ export default function AdminTradesPage() {
   const [editEntry, setEditEntry] = useState('');
   const [editStop, setEditStop] = useState('');
   const [editMaxEntry, setEditMaxEntry] = useState('');
+  const [editTarget, setEditTarget] = useState('');
   const [editShares, setEditShares] = useState('');
   const [editExitPrice, setEditExitPrice] = useState('');
   const [editOpenDate, setEditOpenDate] = useState('');
@@ -138,6 +140,7 @@ export default function AdminTradesPage() {
   const [entryPrice, setEntryPrice] = useState('');
   const [stopLoss, setStopLoss] = useState('');
   const [maxEntryPrice, setMaxEntryPrice] = useState('');
+  const [targetPrice, setTargetPrice] = useState('');
   const [riskAmount, setRiskAmount] = useState('3000');
   const [openDate, setOpenDate] = useState('');
   const [saving, setSaving] = useState(false);
@@ -189,14 +192,14 @@ export default function AdminTradesPage() {
   async function loadTrades() {
     const { data: open } = await supabase
       .from('trades')
-      .select('id, direction, symbol, entry_price, stop_loss, max_entry_price, shares_calculated, exit_price, current_price, realized_pnl_usd, notes, opened_at, closed_at, parent_trade_id')
+      .select('id, direction, symbol, entry_price, stop_loss, max_entry_price, target_price, shares_calculated, exit_price, current_price, realized_pnl_usd, notes, opened_at, closed_at, parent_trade_id')
       .eq('status', 'open')
       .order('opened_at', { ascending: false });
     if (open) setOpenTrades(open);
 
     const { data: closed } = await supabase
       .from('trades')
-      .select('id, direction, symbol, entry_price, stop_loss, max_entry_price, shares_calculated, exit_price, current_price, realized_pnl_usd, notes, opened_at, closed_at, parent_trade_id')
+      .select('id, direction, symbol, entry_price, stop_loss, max_entry_price, target_price, shares_calculated, exit_price, current_price, realized_pnl_usd, notes, opened_at, closed_at, parent_trade_id')
       .eq('status', 'closed')
       .order('closed_at', { ascending: false });
     if (closed) setClosedTrades(closed);
@@ -292,6 +295,7 @@ export default function AdminTradesPage() {
     setEditEntry(String(trade.entry_price));
     setEditStop(String(trade.stop_loss));
     setEditMaxEntry(trade.max_entry_price !== null ? String(trade.max_entry_price) : '');
+    setEditTarget(trade.target_price !== null ? String(trade.target_price) : '');
     setEditShares(String(trade.shares_calculated));
     setEditExitPrice(trade.exit_price !== null ? String(trade.exit_price) : '');
     setEditOpenDate(trade.opened_at.slice(0, 10));
@@ -315,6 +319,7 @@ export default function AdminTradesPage() {
       entry_price: entry,
       stop_loss: stop,
       max_entry_price: editMaxEntry ? parseFloat(editMaxEntry) : null,
+      target_price: editTarget ? parseFloat(editTarget) : null,
       shares_calculated: shares,
     };
 
@@ -464,6 +469,7 @@ export default function AdminTradesPage() {
       entry_price: entry,
       stop_loss: stop,
       max_entry_price: maxEntryPrice ? parseFloat(maxEntryPrice) : null,
+      target_price: targetPrice ? parseFloat(targetPrice) : null,
       risk_amount_usd: risk,
       shares_calculated: shares,
       current_price: entry,
@@ -481,6 +487,7 @@ export default function AdminTradesPage() {
       setEntryPrice('');
       setStopLoss('');
       setMaxEntryPrice('');
+      setTargetPrice('');
       setOpenDate('');
       setShowAddForm(false);
       loadTrades();
@@ -667,7 +674,10 @@ export default function AdminTradesPage() {
             <div className="field" style={{ marginBottom: 0 }}><label>סטופ לוס</label><ClearableInput type="number" value={editStop} onChange={(e) => setEditStop(e.target.value)} onClear={() => setEditStop('')} /></div>
           </div>
           {!isClosed && (
-            <div className="field" style={{ marginBottom: 0 }}><label>עד איזה מחיר אפשר להיכנס</label><ClearableInput type="number" value={editMaxEntry} onChange={(e) => setEditMaxEntry(e.target.value)} onClear={() => setEditMaxEntry('')} placeholder="לא חובה" /></div>
+            <div className="form-row" style={{ marginBottom: 0 }}>
+              <div className="field" style={{ marginBottom: 0 }}><label>עד איזה מחיר אפשר להיכנס</label><ClearableInput type="number" value={editMaxEntry} onChange={(e) => setEditMaxEntry(e.target.value)} onClear={() => setEditMaxEntry('')} placeholder="לא חובה" /></div>
+              <div className="field" style={{ marginBottom: 0 }}><label>יעד רווח</label><ClearableInput type="number" value={editTarget} onChange={(e) => setEditTarget(e.target.value)} onClear={() => setEditTarget('')} placeholder="לא חובה" /></div>
+            </div>
           )}
           {isClosed && (
             <>
@@ -746,6 +756,7 @@ export default function AdminTradesPage() {
               <th>כניסה</th>
               <th>סטופ/יציאה</th>
               {!isClosed && <th>עד כניסה</th>}
+              {!isClosed && <th>יעד רווח</th>}
               {!isClosed && <th>נוכחי</th>}
               <th>אחוז</th>
               <th>דולר</th>
@@ -778,6 +789,7 @@ export default function AdminTradesPage() {
                   <td>${trade.entry_price.toFixed(2)}</td>
                   <td>{isClosed ? `$${trade.exit_price?.toFixed(2)}` : `$${trade.stop_loss}`}</td>
                   {!isClosed && <td>{trade.max_entry_price !== null ? `עד $${trade.max_entry_price}` : '—'}</td>}
+                  {!isClosed && <td>{trade.target_price !== null ? `$${trade.target_price}` : '—'}</td>}
                   {!isClosed && <td>${trade.current_price ?? trade.entry_price}</td>}
                   <td style={{ color: pct === null ? undefined : pct >= 0 ? 'var(--profit)' : 'var(--loss)' }}>
                     {pct === null ? '—' : `${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%`}
@@ -839,6 +851,7 @@ export default function AdminTradesPage() {
             <div className="field"><label>סטופ לוס</label><ClearableInput type="number" value={stopLoss} onChange={(e) => setStopLoss(e.target.value)} onClear={() => setStopLoss('')} placeholder="398.00" /></div>
           </div>
           <div className="field"><label>עד איזה מחיר אפשר להיכנס (לא חובה)</label><ClearableInput type="number" value={maxEntryPrice} onChange={(e) => setMaxEntryPrice(e.target.value)} onClear={() => setMaxEntryPrice('')} placeholder="415.00" /></div>
+          <div className="field"><label>יעד רווח (לא חובה)</label><ClearableInput type="number" value={targetPrice} onChange={(e) => setTargetPrice(e.target.value)} onClear={() => setTargetPrice('')} placeholder="450.00" /></div>
           <div className="field"><label>סיכון כספי ($)</label><ClearableInput type="number" value={riskAmount} onChange={(e) => setRiskAmount(e.target.value)} onClear={() => setRiskAmount('')} placeholder="3000" /></div>
           <div className="field"><label>תאריך פתיחה (לא חובה - ברירת מחדל: היום)</label><input type="date" value={openDate} onChange={(e) => setOpenDate(e.target.value)} /></div>
           <button className="btn-primary" onClick={handleAddTrade} disabled={saving}>{saving ? 'שומרים...' : 'פרסום לתיק'}</button>
