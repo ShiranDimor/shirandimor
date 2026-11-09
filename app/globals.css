@@ -202,9 +202,9 @@
      בפרשנות כיווניות (rtl) שונה בין הדפדפנים; בדיוק כמו שכבר עובד באופן עקבי בפס ההתקדמות */
   .tpc-foot3 { position: relative; height: 34px; }
   .tpc-foot3-item { position: absolute; top: 0; text-align: center; width: 80px; }
-  .tpc-foot3-item.stop { right: 0; }
+  .tpc-foot3-item.target { right: 0; }
   .tpc-foot3-item.entry { right: 50%; transform: translateX(50%); }
-  .tpc-foot3-item.target { left: 0; }
+  .tpc-foot3-item.stop { left: 0; }
   .tpc-foot3-item .lbl { font-size: 9.5px; color: var(--text-tertiary); display: flex; align-items: center; gap: 3px; justify-content: center; margin-bottom: 2px; }
   .tpc-foot3-item .val { font-size: 12.5px; font-weight: 700; }
   .tpc-foot3-item.target .val { color: var(--lavender); }
