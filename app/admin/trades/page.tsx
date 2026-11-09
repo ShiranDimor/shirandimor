@@ -142,6 +142,7 @@ export default function AdminTradesPage() {
   const [openDate, setOpenDate] = useState('');
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
+  const [resendingId, setResendingId] = useState('');
 
   const [editingBalance, setEditingBalance] = useState(false);
   const [balanceInput, setBalanceInput] = useState('');
@@ -489,8 +490,30 @@ export default function AdminTradesPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
         body: JSON.stringify({ symbol: symbol.toUpperCase(), direction, entryPrice: entry, stopLoss: stop }),
-      }).catch(() => {});
+      }).then((res) => {
+        if (!res.ok) window.alert('העסקה נשמרה, אבל שליחת ההתראה נכשלה - אפשר לשלוח שוב מהרשימה (🔔 שליחת התראה)');
+      }).catch(() => {
+        window.alert('העסקה נשמרה, אבל שליחת ההתראה נכשלה - אפשר לשלוח שוב מהרשימה (🔔 שליחת התראה)');
+      });
     }
+  }
+
+  // שליחה/שליחה-מחדש ידנית של התראת "עסקה חדשה" על עסקה פתוחה קיימת - בעיקר לתיקון מקרה
+  // שבו השליחה האוטומטית בהוספה נכשלה בשקט (ר' handleAddTrade) ואף אחד לא קיבל התראה בפועל
+  async function handleResendNotify(trade: Trade) {
+    setResendingId(trade.id);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch('/api/admin/notify-trade-opened', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
+        body: JSON.stringify({ symbol: trade.symbol, direction: trade.direction, entryPrice: trade.entry_price, stopLoss: trade.stop_loss }),
+      });
+      window.alert(res.ok ? `ההתראה על ${trade.symbol} נשלחה` : 'שליחת ההתראה נכשלה - נסי שוב בעוד רגע');
+    } catch (e) {
+      window.alert('שליחת ההתראה נכשלה - נסי שוב בעוד רגע');
+    }
+    setResendingId('');
   }
 
   async function handleLogout() {
@@ -763,8 +786,13 @@ export default function AdminTradesPage() {
                     {usd === null ? '—' : `${usd >= 0 ? '+' : '-'}$${Math.abs(usd).toFixed(0)}`}
                   </td>
                   <td>{trade.shares_calculated}</td>
-                  <td>
+                  <td style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
                     <button className="qa-btn edit" onClick={(e) => openEditPopover(trade, e)}>✎ עריכה</button>
+                    {!isClosed && (
+                      <button className="qa-btn edit" disabled={resendingId === trade.id} onClick={() => handleResendNotify(trade)}>
+                        {resendingId === trade.id ? '…' : '🔔 שליחת התראה'}
+                      </button>
+                    )}
                   </td>
                 </tr>
               );
