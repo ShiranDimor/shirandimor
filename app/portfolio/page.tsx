@@ -181,6 +181,32 @@ export default function PortfolioPage() {
     return ((current - trade.entry_price) / trade.entry_price) * 100 * (trade.direction === 'short' ? -1 : 1);
   }
 
+  // ממפה כל מחיר למיקום באחוזים על פס שמייצג את הטווח המלא בין הסטופ ליעד (0% = סטופ, 100% =
+  // יעד) - בלונג stop<entry<target, בשורט target<entry<stop, אז הכיוון של החישוב הפוך בין השניים.
+  // clamp ל-[0,100] כדי שסמנים לא "יברחו" חזותית מחוץ לפס גם כשהמחיר חרג מעבר לסטופ/ליעד בפועל
+  function targetProgress(trade: Trade) {
+    const current = trade.current_price ?? trade.entry_price;
+    const { entry_price: entry, stop_loss: stop, target_price: target, direction } = trade;
+    if (target === null) return null;
+
+    const isShort = direction === 'short';
+    const span = isShort ? stop - target : target - stop;
+    if (!span) return null;
+
+    const posPct = (price: number) => {
+      const raw = isShort ? ((stop - price) / span) * 100 : ((price - stop) / span) * 100;
+      return Math.min(100, Math.max(0, raw));
+    };
+
+    const entryPos = posPct(entry);
+    const currentPos = posPct(current);
+    const rewardSpan = isShort ? entry - target : target - entry;
+    const pctToTarget = rewardSpan ? ((isShort ? entry - current : current - entry) / rewardSpan) * 100 : 0;
+    const inProfitZone = isShort ? current <= entry : current >= entry;
+
+    return { entryPos, currentPos, pctToTarget, inProfitZone };
+  }
+
   const availableOpenMonths = Array.from(
     new Set(openTrades.map((t) => monthKey(t.opened_at)))
   ).sort().reverse();
@@ -465,46 +491,60 @@ export default function PortfolioPage() {
         {filteredOpenTrades.length === 0 ? (
           <p className="trade-table-empty">אין עסקאות פתוחות בטווח הזה</p>
         ) : (
-          <div className="trade-table-wrap">
-            <table className="trade-table">
-              <thead>
-                <tr>
-                  <th>סימבול</th>
-                  <th>נכנסה ב-</th>
-                  <th>כניסה</th>
-                  <th>נוכחי</th>
-                  <th>סטופ</th>
-                  <th style={{ whiteSpace: 'normal', maxWidth: '80px', lineHeight: 1.3 }}>עד איזה מחיר אפשר להיכנס לעסקה</th>
-                  <th>יעד רווח</th>
-                  <th>רווח/הפסד</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredOpenTrades.map((trade) => {
-                  const p = pct(trade);
-                  return (
-                    <tr key={trade.id}>
-                      <td className="sym-cell">
-                        <span className="sym-cell-inner">
+          <div className="tpc-list">
+            {filteredOpenTrades.map((trade) => {
+              const p = pct(trade);
+              const tp = targetProgress(trade);
+              const displayPct = tp ? tp.pctToTarget : p;
+              const isPositive = tp ? tp.inProfitZone : p >= 0;
+              const glowColor = isPositive ? 'rgba(61,220,132,0.8)' : 'rgba(255,92,92,0.8)';
+              const dotBg = isPositive ? 'rgba(61,220,132,0.35)' : 'rgba(255,92,92,0.35)';
+
+              return (
+                <div key={trade.id} className={`tpc-card ${isPositive ? 'win' : 'lose'}`}>
+                  <div className="tpc-glow"></div>
+                  <div className="tpc-inner">
+                    <div className="tpc-head">
+                      <div className="tpc-sym-wrap">
+                        <div className="tpc-sym">
                           <span className={`direction-mark ${trade.direction}`}>{trade.direction === 'long' ? 'L' : 'S'}</span>
-                          <span className={!hasFullAccess ? 'trade-symbol blurred' : ''}>{trade.symbol}</span>
+                          <b className={!hasFullAccess ? 'trade-symbol blurred' : ''}>{trade.symbol}</b>
                           {!hasFullAccess && <span className="locked-tag">למנויים</span>}
-                        </span>
-                      </td>
-                      <td>{formatDate(trade.opened_at)}</td>
-                      <td>${trade.entry_price}</td>
-                      <td>${trade.current_price ?? trade.entry_price}</td>
-                      <td>${trade.stop_loss}</td>
-                      <td>{trade.max_entry_price !== null ? `עד $${trade.max_entry_price}` : '—'}</td>
-                      <td>{trade.target_price !== null ? `$${trade.target_price}` : '—'}</td>
-                      <td className="pnl-cell" style={{ color: p >= 0 ? 'var(--profit)' : 'var(--loss)' }}>
-                        {p >= 0 ? '+' : ''}{p.toFixed(2)}%
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                        </div>
+                        <div className="tpc-live">
+                          <span className="tpc-live-dot" style={{ background: isPositive ? 'var(--profit)' : 'var(--loss)', boxShadow: `0 0 5px ${isPositive ? 'var(--profit)' : 'var(--loss)'}` }}></span>
+                          ${trade.current_price ?? trade.entry_price}
+                        </div>
+                      </div>
+                      <div className="tpc-pct-wrap">
+                        <div className={`tpc-pct ${displayPct >= 0 ? 'pos' : 'neg'}`}>{displayPct < 0 ? '-' : ''}{Math.abs(displayPct).toFixed(0)}%</div>
+                        <div className="tpc-pct-label">{tp ? (tp.inProfitZone ? 'מהרווח המתוכנן כבר הושג' : 'מתחת לכניסה') : 'רווח/הפסד נוכחי'}</div>
+                      </div>
+                    </div>
+
+                    {tp && (
+                      <div className="tpc-bar">
+                        <div className="tpc-risk" style={{ width: `${tp.entryPos}%` }}></div>
+                        {tp.inProfitZone && <div className="tpc-fill" style={{ right: `${tp.entryPos}%`, width: `${Math.max(0, tp.currentPos - tp.entryPos)}%` }}></div>}
+                        <div className="tpc-flag">🏁</div>
+                        <div className="tpc-stopcap"></div>
+                        <div className="tpc-now-outer" style={{ right: `${tp.currentPos}%`, background: `radial-gradient(circle, ${dotBg}, transparent 70%)` }}></div>
+                        <div className="tpc-now" style={{ right: `${tp.currentPos}%`, boxShadow: `0 0 0 2px var(--teal), 0 0 10px ${glowColor}` }}></div>
+                      </div>
+                    )}
+
+                    <div className="tpc-foot">
+                      <span>כניסה <b>${trade.entry_price}</b></span>
+                      <span>
+                        סטופ <b>${trade.stop_loss}</b>
+                        {tp && <> · יעד <b>${trade.target_price}</b></>}
+                        {!tp && trade.max_entry_price !== null && <> · עד כניסה <b>${trade.max_entry_price}</b></>}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
       </details>

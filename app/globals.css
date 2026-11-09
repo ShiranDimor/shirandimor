@@ -178,6 +178,41 @@
 
   .trades-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 32px; }
 
+  /* ===== כרטיסי "התקדמות ליעד רווח" - עסקאות פתוחות ב-/portfolio ===== */
+  .tpc-list { margin-bottom: 20px; }
+  .tpc-card {
+    position: relative; overflow: hidden;
+    background: linear-gradient(155deg, var(--bg-surface-raised) 0%, var(--bg-void) 65%);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 18px; padding: 16px 16px 14px; margin-bottom: 12px;
+    box-shadow: 0 16px 32px -14px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.05);
+  }
+  .tpc-glow { position: absolute; width: 170px; height: 170px; border-radius: 50%; filter: blur(26px); opacity: 0.5; pointer-events: none; top: -70px; }
+  .tpc-card.win .tpc-glow { left: -70px; background: radial-gradient(circle, rgba(61,220,132,0.5), transparent 70%); }
+  .tpc-card.lose .tpc-glow { right: -70px; background: radial-gradient(circle, rgba(255,92,92,0.4), transparent 70%); }
+  .tpc-inner { position: relative; z-index: 1; }
+  .tpc-head { display: flex; justify-content: space-between; align-items: flex-start; }
+  .tpc-sym-wrap { display: flex; flex-direction: column; gap: 4px; }
+  .tpc-sym { display: flex; align-items: center; gap: 6px; }
+  .tpc-sym b { font-size: 16px; font-weight: 800; }
+  .tpc-live { display: inline-flex; align-items: center; gap: 4px; font-size: 8.5px; color: var(--text-tertiary); font-weight: 600; font-family: var(--font-mono); }
+  .tpc-live-dot { width: 4.5px; height: 4.5px; border-radius: 50%; }
+  .tpc-pct-wrap { text-align: left; }
+  .tpc-pct { font-size: 23px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+  .tpc-pct.pos { color: var(--profit); text-shadow: 0 0 16px rgba(61,220,132,0.5); }
+  .tpc-pct.neg { color: var(--loss); text-shadow: 0 0 16px rgba(255,92,92,0.45); }
+  .tpc-pct-label { font-size: 8.5px; color: var(--text-tertiary); font-weight: 600; margin-top: 1px; }
+  .tpc-bar { position: relative; height: 8px; border-radius: 5px; background: rgba(255,255,255,0.05); margin: 26px 12px 10px; box-shadow: inset 0 1px 3px rgba(0,0,0,0.5); }
+  .tpc-risk { position: absolute; top: 0; bottom: 0; right: 0; background: linear-gradient(90deg, rgba(255,92,92,0.1), rgba(255,92,92,0.35)); border-radius: 5px 0 0 5px; }
+  .tpc-fill { position: absolute; top: 0; bottom: 0; border-radius: 5px; background: linear-gradient(90deg, rgba(61,220,132,0.65), #4FFFA0); box-shadow: 0 0 12px rgba(79,255,160,0.55); }
+  .tpc-flag { position: absolute; top: -18px; left: 0; font-size: 12px; filter: drop-shadow(0 0 4px rgba(255,182,72,0.6)); }
+  .tpc-stopcap { position: absolute; top: 50%; right: 0; width: 3px; height: 13px; border-radius: 3px; background: var(--loss); opacity: 0.7; transform: translate(50%, -50%); box-shadow: 0 0 6px rgba(255,92,92,0.5); }
+  .tpc-now-outer { position: absolute; top: 50%; width: 19px; height: 19px; border-radius: 50%; transform: translate(50%, -50%); }
+  .tpc-now { position: absolute; top: 50%; width: 12px; height: 12px; border-radius: 50%; background: #fff; border: 2.5px solid var(--bg-void); transform: translate(50%, -50%); }
+  .tpc-foot { display: flex; justify-content: space-between; margin-top: 6px; font-size: 10px; }
+  .tpc-foot span { color: var(--text-tertiary); }
+  .tpc-foot b { color: var(--text-secondary); font-weight: 700; }
+
   .trade-table-wrap { overflow-x: auto; margin-bottom: 32px; border: 1px solid var(--border-hairline); border-radius: 12px; -webkit-overflow-scrolling: touch; }
   .trade-table { width: 100%; border-collapse: collapse; }
   .trade-table th, .trade-table td { padding: 10px 12px; white-space: nowrap; font-size: 12.5px; }
