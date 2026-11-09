@@ -6,6 +6,13 @@ import { hasFullAccessContact } from '@/lib/subscriberStatus';
 const LEAD_GROUP_NAME = 'לידים חדשים';
 const SUBSCRIBER_GROUP_NAME = 'קבוצת סוחרים';
 const UPDATES_GROUP_NAME = 'קבוצת עדכונים';
+// קבוצה ייעודית למי שהפעיל/ה התראות פוש באתר בלי להיות מנוי/ה בתשלום - כל איש קשר כזה אמור
+// תמיד להיות ממוקם כאן בדיוק, לא משוכפל ולא נשאר במקום הישן שלו (ר' markAppDownloadOnMonday)
+const PUSH_ACTIVATED_NO_SUB_GROUP_NAME = 'הפעיל עדכונים באתר ללא מנוי';
+// קבוצת "נרשם וביטל" - מי שמגיע/ה לכאן מהקבוצה הזו (לשעבר הייתה לו/ה מנוי) מסומן/ת בשם הפריט
+// עצמו (לא רק בסטטוס) כדי שיהיה ברור בבירור בתצוגה הראשית שזה לא ליד "טרי" לגמרי
+const CANCELLED_SUBSCRIBER_GROUP_NAME = 'נרשם וביטל';
+const CANCELLED_SUBSCRIBER_NAME_SUFFIX = '(מנוי וביטל)';
 // מי שנמצא/ת בקבוצה הזו (ימי ניסיון) מקבל/ת יחס של מנוי/ה מלא/ה לכל דבר - כל עוד היא/הוא
 // עדיין בקבוצה הזו במאנדיי. בלי זה, מי שבתקופת ניסיון נתקל/ת בשערים שפתוחים רק למנויים
 // (למשל הרשמה ללייב) כאילו היא/הוא ליד חדש
@@ -23,8 +30,8 @@ const JOIN_DATE_COLUMN_TITLE = 'תאריך הרשמה';
 const MONTHLY_COST_COLUMN_TITLE = 'עלות חודשית ששילם';
 // תווית שהוגדרה ידנית על ידי שירן בעמודת "סטטוס טיפול" עצמה במאנדיי - לא רק בעמודה הייעודית
 // "הוריד את האתר" - כדי שזה יהיה גלוי בתצוגה הראשית שהיא כבר משתמשת בה לטיפול בלידים, לא רק
-// בעמודה נפרדת שפחות נבדקת. זה בטוח רק כי תמיד מדובר בכרטיס חדש שנוצר כרגע (לא דורס סטטוס
-// קיים על כרטיס ישן) - ר' markAppDownloadOnMonday/Bulk
+// בעמודה נפרדת שפחות נבדקת. נכתבת תמיד על הכרטיס בקבוצת PUSH_ACTIVATED_NO_SUB_GROUP_NAME,
+// בין אם זה כרטיס חדש ובין אם זה כרטיס קיים שהועבר לשם - ר' markAppDownloadOnMonday/Bulk
 const PUSH_ACTIVATED_NO_SUB_STATUS_LABEL = 'הפעיל התראות ללא מנוי';
 const TRADING_PLAN_STATUS_LABEL = 'בנה תוכנית מסחר';
 export const TRADING_PLAN_ABANDONED_STATUS_LABEL = 'יצא באמצע התוכנית מסחר';
@@ -71,6 +78,8 @@ async function getBoardSchema(token: string, boardId: string) {
     subscriberGroupId: groups.find((g) => g.title === SUBSCRIBER_GROUP_NAME)?.id,
     updatesGroupId: groups.find((g) => g.title === UPDATES_GROUP_NAME)?.id,
     trialGroupId: groups.find((g) => g.title === TRIAL_GROUP_NAME)?.id,
+    pushActivatedNoSubGroupId: groups.find((g) => g.title === PUSH_ACTIVATED_NO_SUB_GROUP_NAME)?.id,
+    cancelledSubscriberGroupId: groups.find((g) => g.title === CANCELLED_SUBSCRIBER_GROUP_NAME)?.id,
     phoneColumnId: columns.find((c) => c.type === 'phone')?.id,
     emailColumnId: columns.find((c) => c.type === 'email')?.id,
     campaignColumnId: columns.find((c) => c.title === CAMPAIGN_COLUMN_TITLE)?.id,
@@ -645,14 +654,16 @@ const APP_DOWNLOAD_SOURCE_VALUE = 'הוריד את האתר';
 // מחפש איש קשר לפי טלפון/מייל בכל הלוח - לא מוגבל לקבוצה ספציפית, בניגוד ל-classifyContactMonday
 // שבודק רק 3 קבוצות ידועות (סוחרים/ניסיון/עדכונים). משמש כדי לדעת אם איש קשר קיים בכלל באיזשהו
 // מקום בלוח (כולל קבוצות כמו "לידים לא רלוונטיים"/"ביטלו" וכו') לפני שמחליטים אם לפתוח כרטיס חדש
-async function findItemIdByContactAnywhere(
+type MondayContactMatch = { id: string; name: string; groupId: string | null };
+
+async function findItemByContactAnywhere(
   token: string,
   boardId: string,
   phoneColumnId: string | undefined,
   emailColumnId: string | undefined,
   targetPhone: string | null,
   targetEmail: string | null
-): Promise<string | null> {
+): Promise<MondayContactMatch | null> {
   const columnIds = [phoneColumnId, emailColumnId].filter(Boolean) as string[];
   if (columnIds.length === 0 || (!targetPhone && !targetEmail)) return null;
 
@@ -664,7 +675,7 @@ async function findItemIdByContactAnywhere(
         boards (ids: [$boardId]) {
           items_page (limit: 100, cursor: $cursor) {
             cursor
-            items { id column_values (ids: $columnIds) { id text } }
+            items { id name group { id } column_values (ids: $columnIds) { id text } }
           }
         }
       }`,
@@ -672,7 +683,7 @@ async function findItemIdByContactAnywhere(
     );
 
     const page = itemsData?.data?.boards?.[0]?.items_page;
-    const items: { id: string; column_values: { id: string; text: string | null }[] }[] = page?.items || [];
+    const items: { id: string; name: string; group: { id: string } | null; column_values: { id: string; text: string | null }[] }[] = page?.items || [];
 
     const found = items.find((item) => {
       if (targetPhone && phoneColumnId) {
@@ -685,7 +696,7 @@ async function findItemIdByContactAnywhere(
       }
       return false;
     });
-    if (found) return found.id;
+    if (found) return { id: found.id, name: found.name, groupId: found.group?.id || null };
 
     cursor = page?.cursor || null;
   } while (cursor);
@@ -693,13 +704,25 @@ async function findItemIdByContactAnywhere(
   return null;
 }
 
+// מנסה לשנות את שם הפריט (לא עמודה רגילה - "name" הוא column_id שמור במאנדיי) - משמש רק
+// להוספת הסיומת "(מנוי וביטל)" למי שמגיע/ה מקבוצת "נרשם וביטל". עטוף ב-catch משלו בכתובת
+// הקריאה כדי שכישלון כאן (אם מאנדיי ישנה את ההתנהגות) לא יפיל את ההעברה/עדכון הסטטוס שכבר הצליחו
+async function renameMondayItem(token: string, boardId: string, itemId: string, newName: string) {
+  await mondayRequest(
+    token,
+    `mutation ($boardId: ID!, $itemId: ID!, $value: String!) {
+      change_simple_column_value (board_id: $boardId, item_id: $itemId, column_id: "name", value: $value) { id }
+    }`,
+    { boardId, itemId, value: newName }
+  );
+}
+
 // מסמן שאיש קשר הפעיל התראות פוש באתר. מי שכבר יש לו/ה גישה מלאה בפועל (מנוי/ה פעיל/ה או
 // אדמין/ית, לפי hasFullAccessContact - למשל שירן עצמה, סיוון וטל) לא נחשב/ת ליד לעולם, בלי
-// קשר למה שקיים/לא קיים במאנדיי - לא נוגעים לו/ה בכלל. מי שאינו בעל/ת גישה מלאה תמיד מקבל/ת
-// כרטיס ליד חדש בקבוצת "לידים חדשים" - גם אם יש לו/ה כבר כרטיס קיים במקום אחר בלוח (למשל
-// בקבוצת עדכונים מאינטראקציה קודמת): אז הכרטיס החדש מסומן "ליד כפול" (בדיוק כמו ב-/api/lead),
-// כדי שתהיה רואה בבירור שמישהו/י שכבר מוכר/ת הפעיל/ה התראות בלי להיות מנוי/ה, ותוכלי לנסות
-// להמיר אותו/ה לתשלום - לא רק עדכון שקט על כרטיס ישן שאף אחד לא בודק יותר
+// קשר למה שקיים/לא קיים במאנדיי - לא נוגעים לו/ה בכלל. מי שאינו בעל/ת גישה מלאה תמיד מגיע/ה
+// לקבוצה הייעודית "הפעיל עדכונים באתר ללא מנוי" - בלי כפילויות: אם כבר יש לו/ה כרטיס במקום
+// אחר בלוח, הכרטיס הקיים *מועבר* לקבוצה הזו (לא נוצר כרטיס נוסף), ואם הגיע מקבוצת "נרשם וביטל"
+// מסומן גם בשם הפריט עצמו "(מנוי וביטל)" כדי שיהיה ברור שזה לא ליד טרי לגמרי
 export async function markAppDownloadOnMonday(params: { name?: string | null; phone?: string | null; email?: string | null }): Promise<{ ok: boolean; matched: boolean; error?: string }> {
   const token = process.env.MONDAY_API_TOKEN;
   const boardId = process.env.MONDAY_BOARD_ID;
@@ -711,43 +734,68 @@ export async function markAppDownloadOnMonday(params: { name?: string | null; ph
   }
 
   try {
-    const { groupId, phoneColumnId, emailColumnId, campaignColumnId, statusColumnId, pushActivatedColumnId } = await getBoardSchema(token, boardId);
+    const { phoneColumnId, emailColumnId, campaignColumnId, statusColumnId, pushActivatedColumnId, pushActivatedNoSubGroupId, cancelledSubscriberGroupId } = await getBoardSchema(token, boardId);
+    if (!pushActivatedNoSubGroupId) return { ok: false, matched: false, error: 'missing_target_group' };
+
     const targetPhone = params.phone ? normalizePhone(params.phone) : null;
     const targetEmail = params.email ? params.email.trim().toLowerCase() : null;
 
-    const existingItemId = await findItemIdByContactAnywhere(token, boardId, phoneColumnId, emailColumnId, targetPhone, targetEmail);
-    const isDuplicate = Boolean(existingItemId);
+    const existing = await findItemByContactAnywhere(token, boardId, phoneColumnId, emailColumnId, targetPhone, targetEmail);
+    const matched = Boolean(existing);
 
     const columnValues: Record<string, unknown> = {};
     if (phoneColumnId && params.phone) columnValues[phoneColumnId] = { phone: params.phone.startsWith('0') ? `972${params.phone.slice(1)}` : params.phone, countryShortName: 'IL' };
     if (emailColumnId && params.email) columnValues[emailColumnId] = { email: params.email, text: params.email };
     if (campaignColumnId) columnValues[campaignColumnId] = APP_DOWNLOAD_SOURCE_VALUE;
     if (pushActivatedColumnId) columnValues[pushActivatedColumnId] = { label: APP_DOWNLOAD_SOURCE_VALUE };
-    // תמיד הסטטוס הזה על הכרטיס החדש - בלי קשר אם יש כפילות, כי זה תמיד כרטיס חדש שרק עכשיו
-    // נוצר (לא דורס סטטוס קיים על כרטיס אחר)
     if (statusColumnId) columnValues[statusColumnId] = { label: PUSH_ACTIVATED_NO_SUB_STATUS_LABEL };
 
-    const createData: any = await mondayRequest(
-      token,
-      `mutation ($boardId: ID!, $groupId: String, $itemName: String!, $columnValues: JSON) {
-        create_item (board_id: $boardId, group_id: $groupId, item_name: $itemName, column_values: $columnValues) { id }
-      }`,
-      { boardId, groupId: groupId || null, itemName: params.name || params.phone || params.email || 'ללא שם', columnValues: JSON.stringify(columnValues) }
-    );
+    let itemId: string | undefined;
 
-    const itemId = createData?.data?.create_item?.id;
-    if (!itemId) return { ok: false, matched: isDuplicate };
+    if (existing) {
+      itemId = existing.id;
+
+      await mondayRequest(
+        token,
+        `mutation ($itemId: ID!, $groupId: String!) { move_item_to_group (item_id: $itemId, group_id: $groupId) { id } }`,
+        { itemId, groupId: pushActivatedNoSubGroupId }
+      );
+
+      await mondayRequest(
+        token,
+        `mutation ($boardId: ID!, $itemId: ID!, $columnValues: JSON!) {
+          change_multiple_column_values (board_id: $boardId, item_id: $itemId, column_values: $columnValues) { id }
+        }`,
+        { boardId, itemId, columnValues: JSON.stringify(columnValues) }
+      );
+
+      if (cancelledSubscriberGroupId && existing.groupId === cancelledSubscriberGroupId && !existing.name.includes(CANCELLED_SUBSCRIBER_NAME_SUFFIX)) {
+        await renameMondayItem(token, boardId, itemId, `${existing.name} ${CANCELLED_SUBSCRIBER_NAME_SUFFIX}`)
+          .catch((e) => console.error('Monday.com: נכשל שינוי שם לסיומת (מנוי וביטל)', e));
+      }
+    } else {
+      const createData: any = await mondayRequest(
+        token,
+        `mutation ($boardId: ID!, $groupId: String, $itemName: String!, $columnValues: JSON) {
+          create_item (board_id: $boardId, group_id: $groupId, item_name: $itemName, column_values: $columnValues) { id }
+        }`,
+        { boardId, groupId: pushActivatedNoSubGroupId, itemName: params.name || params.phone || params.email || 'ללא שם', columnValues: JSON.stringify(columnValues) }
+      );
+      itemId = createData?.data?.create_item?.id;
+    }
+
+    if (!itemId) return { ok: false, matched };
 
     await mondayRequest(
       token,
       `mutation ($itemId: ID!, $body: String!) { create_update (item_id: $itemId, body: $body) { id } }`,
       {
         itemId,
-        body: `${params.phone ? `נייד: ${params.phone}\n` : ''}${params.email ? `אימייל: ${params.email}\n` : ''}מקור: הפעלת התראות באתר${isDuplicate ? '\n⚠ כבר קיים כרטיס אחר באותו נייד/מייל במקום כלשהו בלוח' : ''}`,
+        body: `${params.phone ? `נייד: ${params.phone}\n` : ''}${params.email ? `אימייל: ${params.email}\n` : ''}מקור: הפעלת התראות באתר${matched ? '\n(הכרטיס הקיים הועבר לכאן)' : ''}`,
       }
     ).catch((e) => console.error('Monday.com: נכשל הוספת הערה (הורדת האתר)', e));
 
-    return { ok: true, matched: isDuplicate };
+    return { ok: true, matched };
   } catch (e) {
     console.error('שגיאה בסימון הורדת האתר ב-Monday.com', e);
     return { ok: false, matched: false, error: e instanceof Error ? e.message : 'unknown_error' };
@@ -765,10 +813,11 @@ export async function markAppDownloadOnMondayBulk(
   const boardId = process.env.MONDAY_BOARD_ID;
   if (!token || !boardId) return contacts.map(() => ({ ok: false, matched: false, error: 'missing_monday_config' }));
 
-  const { groupId, phoneColumnId, emailColumnId, campaignColumnId, statusColumnId, pushActivatedColumnId } = await getBoardSchema(token, boardId);
+  const { phoneColumnId, emailColumnId, campaignColumnId, statusColumnId, pushActivatedColumnId, pushActivatedNoSubGroupId, cancelledSubscriberGroupId } = await getBoardSchema(token, boardId);
+  if (!pushActivatedNoSubGroupId) return contacts.map(() => ({ ok: false, matched: false, error: 'missing_target_group' }));
 
   const columnIds = [phoneColumnId, emailColumnId].filter(Boolean) as string[];
-  const allItems: { id: string; phone: string | null; email: string | null }[] = [];
+  const allItems: { id: string; name: string; groupId: string | null; phone: string | null; email: string | null }[] = [];
   if (columnIds.length > 0) {
     let cursor: string | null = null;
     do {
@@ -778,18 +827,18 @@ export async function markAppDownloadOnMondayBulk(
           boards (ids: [$boardId]) {
             items_page (limit: 100, cursor: $cursor) {
               cursor
-              items { id column_values (ids: $columnIds) { id text } }
+              items { id name group { id } column_values (ids: $columnIds) { id text } }
             }
           }
         }`,
         { boardId, cursor, columnIds }
       );
       const page = itemsData?.data?.boards?.[0]?.items_page;
-      const items: { id: string; column_values: { id: string; text: string | null }[] }[] = page?.items || [];
+      const items: { id: string; name: string; group: { id: string } | null; column_values: { id: string; text: string | null }[] }[] = page?.items || [];
       for (const item of items) {
         const phoneText = phoneColumnId ? item.column_values?.find((cv) => cv.id === phoneColumnId)?.text ?? null : null;
         const emailText = emailColumnId ? item.column_values?.find((cv) => cv.id === emailColumnId)?.text ?? null : null;
-        allItems.push({ id: item.id, phone: phoneText ? normalizePhone(phoneText) : null, email: emailText ? emailText.trim().toLowerCase() : null });
+        allItems.push({ id: item.id, name: item.name, groupId: item.group?.id || null, phone: phoneText ? normalizePhone(phoneText) : null, email: emailText ? emailText.trim().toLowerCase() : null });
       }
       cursor = page?.cursor || null;
     } while (cursor);
@@ -801,8 +850,7 @@ export async function markAppDownloadOnMondayBulk(
 
     // מי שיש לו/ה כבר גישה מלאה (מנוי/ה פעיל/ה או אדמין/ית) - לא ליד, בלי קשר למה שיש/אין
     // במאנדיי. בלי הבדיקה הזו, מי שאין לו/ה בפועל כרטיס תואם במאנדיי (למשל כי הוחרג/ה בכוונה,
-    // כמו שירן עצמה/סיוון/טל) מקבל/ת כרטיס ליד חדש בכל ריצה - ועם כמה מכשירים רשומים, כמה
-    // כרטיסים כפולים בבת אחת
+    // כמו שירן עצמה/סיוון/טל) מקבל/ת כרטיס ליד חדש בכל ריצה
     if (await hasFullAccessContact(params.phone, params.email).catch(() => false)) {
       results.push({ ok: true, matched: false });
       continue;
@@ -811,7 +859,7 @@ export async function markAppDownloadOnMondayBulk(
     const targetPhone = params.phone ? normalizePhone(params.phone) : null;
     const targetEmail = params.email ? params.email.trim().toLowerCase() : null;
     const found = allItems.find((it) => (targetPhone && it.phone === targetPhone) || (targetEmail && it.email === targetEmail));
-    const isDuplicate = Boolean(found);
+    const matched = Boolean(found);
 
     try {
       const columnValues: Record<string, unknown> = {};
@@ -819,21 +867,46 @@ export async function markAppDownloadOnMondayBulk(
       if (emailColumnId && params.email) columnValues[emailColumnId] = { email: params.email, text: params.email };
       if (campaignColumnId) columnValues[campaignColumnId] = APP_DOWNLOAD_SOURCE_VALUE;
       if (pushActivatedColumnId) columnValues[pushActivatedColumnId] = { label: APP_DOWNLOAD_SOURCE_VALUE };
-      // תמיד הסטטוס הזה על הכרטיס החדש - ר' הסבר מקביל ב-markAppDownloadOnMonday
       if (statusColumnId) columnValues[statusColumnId] = { label: PUSH_ACTIVATED_NO_SUB_STATUS_LABEL };
 
-      const createData: any = await mondayRequest(
-        token,
-        `mutation ($boardId: ID!, $groupId: String, $itemName: String!, $columnValues: JSON) {
-          create_item (board_id: $boardId, group_id: $groupId, item_name: $itemName, column_values: $columnValues) { id }
-        }`,
-        { boardId, groupId: groupId || null, itemName: params.name || params.phone || params.email || 'ללא שם', columnValues: JSON.stringify(columnValues) }
-      );
-      const itemId = createData?.data?.create_item?.id;
-      results.push(itemId ? { ok: true, matched: isDuplicate } : { ok: false, matched: isDuplicate, error: 'create_failed' });
+      let itemId: string | undefined;
+
+      if (found) {
+        itemId = found.id;
+
+        await mondayRequest(
+          token,
+          `mutation ($itemId: ID!, $groupId: String!) { move_item_to_group (item_id: $itemId, group_id: $groupId) { id } }`,
+          { itemId, groupId: pushActivatedNoSubGroupId }
+        );
+
+        await mondayRequest(
+          token,
+          `mutation ($boardId: ID!, $itemId: ID!, $columnValues: JSON!) {
+            change_multiple_column_values (board_id: $boardId, item_id: $itemId, column_values: $columnValues) { id }
+          }`,
+          { boardId, itemId, columnValues: JSON.stringify(columnValues) }
+        );
+
+        if (cancelledSubscriberGroupId && found.groupId === cancelledSubscriberGroupId && !found.name.includes(CANCELLED_SUBSCRIBER_NAME_SUFFIX)) {
+          await renameMondayItem(token, boardId, itemId, `${found.name} ${CANCELLED_SUBSCRIBER_NAME_SUFFIX}`)
+            .catch((e) => console.error('markAppDownloadOnMondayBulk: נכשל שינוי שם לסיומת (מנוי וביטל)', e));
+        }
+      } else {
+        const createData: any = await mondayRequest(
+          token,
+          `mutation ($boardId: ID!, $groupId: String, $itemName: String!, $columnValues: JSON) {
+            create_item (board_id: $boardId, group_id: $groupId, item_name: $itemName, column_values: $columnValues) { id }
+          }`,
+          { boardId, groupId: pushActivatedNoSubGroupId, itemName: params.name || params.phone || params.email || 'ללא שם', columnValues: JSON.stringify(columnValues) }
+        );
+        itemId = createData?.data?.create_item?.id;
+      }
+
+      results.push(itemId ? { ok: true, matched } : { ok: false, matched, error: 'create_failed' });
     } catch (e) {
       console.error('markAppDownloadOnMondayBulk: שגיאה באיש קשר', e);
-      results.push({ ok: false, matched: isDuplicate, error: e instanceof Error ? e.message : 'unknown_error' });
+      results.push({ ok: false, matched, error: e instanceof Error ? e.message : 'unknown_error' });
     }
   }
 
