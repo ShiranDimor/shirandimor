@@ -124,7 +124,7 @@ export default function SummaryScreen({ answers, onCtaClick, responseId }: Props
       </div>
 
       <p className="tp-cta-transition">
-        אם אחד הדברים שעלו כאן הוא משהו שלא היית רוצה לעבוד עליו לבד - זה בדיוק המקום שבו <strong style={{ color: 'var(--lavender)' }}>&quot;מדברים עסקאות&quot;</strong> נכנס: <strong style={{ color: 'var(--lavender)' }}>סוחרים ביחד איתי</strong>, בלי ידע מוקדם, ומנהלים עסקאות עם מסגרת ולא מתוך ניחוש.
+        אם אחד הדברים שעלו כאן הוא משהו שלא היית רוצה לעבוד עליו לבד - זה בדיוק המקום שבו <strong style={{ color: 'var(--lavender)' }}>&quot;מדברים עסקאות&quot;</strong> נכנס: <strong style={{ color: 'var(--lavender)' }}>לומדים לסחור לצדי</strong>, בלי ידע מוקדם, ומנהלים עסקאות עם מסגרת ולא מתוך ניחוש.
       </p>
 
       <a href="/subscribe" onClick={onCtaClick} className="cta-btn" style={{ textDecoration: 'none' }}>

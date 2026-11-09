@@ -332,7 +332,7 @@ export default function TradingPlanPage() {
       {phase === 'intro' && (
         <div id="trading-plan-intro">
           <div className="tp-intro-badge">10 דקות · תוכנית אישית</div>
-          <div className="form-title">תוכנית המסחר שלי ל-30 הימים הקרובים</div>
+          <div className="form-title">תוכנית המסחר שלך ל-30 הימים הקרובים</div>
           <div className="tp-intro-text">
             רובנו משקיעים המון זמן בלחפש עוד אינדיקטור, עוד אסטרטגיה ועוד סרטון על מסחר.
             {'\n\n'}

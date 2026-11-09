@@ -58,7 +58,7 @@ export default function AdLandingPage() {
           מתחילים - חודש ראשון ב-1₪
         </a>
         <p style={{ fontSize: '11px', color: 'var(--text-tertiary)', textAlign: 'center', margin: '4px 0 0' }}>
-          לאחר מכן ₪400/חודש · ביטול בלחיצה אחת, בכל עת
+          לאחר מכן ₪400/חודש · בלי התחייבות, ביטול בלחיצה אחת
         </p>
       </div>
 
@@ -72,9 +72,9 @@ export default function AdLandingPage() {
       <div className="price-card" style={{ textAlign: 'right' }}>
         <div className="perk-list">
           <div>כניסה מלאה ל<strong>תיק המסחר החי שלי</strong> - איך ולמה אני נכנסת ויוצאת מכל עסקה</div>
-          <div><strong>שידורי מסחר בזמן אמת</strong> שאפשר להצטרף אליהם ולשאול</div>
+          <div><strong>לייבים פעמיים בשבוע</strong> שאפשר להצטרף אליהם ולשאול, ועוד עסקאות סווינג שמשותפות לאורך השבוע</div>
           <div><strong>קהילת סוחרים</strong> לדיון מעמיק, לא רק אני מדברת</div>
-          <div>אפשרות לבנות <strong>תוכנית מסחר אישית</strong>, איתי</div>
+          <div>אפשרות <strong>לבניית תוכנית מסחר אישית</strong>, לצדי</div>
         </div>
         <p style={{ fontSize: '11.5px', color: 'var(--text-tertiary)', lineHeight: 1.6, textAlign: 'center', marginTop: '14px' }}>
           גישה מלאה וזהה לכל מנוי אחר - לא גרסה מצומצמת. ₪1 זה אימות שיש בן אדם אמיתי מהצד השני, לא הנחה.

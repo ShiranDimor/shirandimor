@@ -113,10 +113,10 @@ export default function HomePage() {
       <div className="hero-v2">
         <div className="eyebrow">שירן דימור</div>
         <h1>קהילה שסוחרת ולומדת <em>ביחד</em><br />מהיום הראשון, ועד שירידות בשוק מפסיקות להפחיד.</h1>
-        <p>לייבים פעמיים בשבוע (שלישי 16:30, חמישי 20:00) שבהם אני סוחרת תוך-יומי בזמן אמת ומלמדת תוך כדי, ועוד עסקאות סווינג שאני משתפת לאורך השבוע ישר דרך האתר. כל אחד בקצב ובטווח שמתאים לו - בלי הבטחות תשואה, ובלי שזה יהפוך למשרה שנייה (יש לך כבר אחת, ואני לא רוצה את השנייה).</p>
+        <p>לייבים פעמיים בשבוע שבהם אני סוחרת תוך-יומי בזמן אמת ומלמדת תוך כדי, ועוד עסקאות סווינג שאני משתפת לאורך השבוע ישר דרך האתר. כל אחד בקצב ובטווח שמתאים לו - בלי הבטחות תשואה, ובלי שזה יהפוך למשרה שנייה.</p>
 
         <Link href="/subscribe" className="quick-link-accent">מדברים עסקאות - חודש ראשון ב-₪1 ←</Link>
-        <p style={{ fontSize: '11px', color: 'var(--text-tertiary)', textAlign: 'center', margin: '-4px 0 16px' }}>לאחר מכן ₪400/חודש · ביטול בכל עת</p>
+        <p style={{ fontSize: '11px', color: 'var(--text-tertiary)', textAlign: 'center', margin: '-4px 0 16px' }}>לאחר מכן ₪400/חודש · בלי התחייבות, ביטול קל בכל רגע</p>
 
         <div id="hero-notify">
           <PushNotificationButton variant="hero" autoOpenLeadForm={autoOpenNotifications} />
@@ -233,7 +233,7 @@ export default function HomePage() {
                 <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '-10px', marginBottom: '14px' }}>מנוי חודשי · ללא התחייבות</div>
                 <div className="gc-perks">
                   <div>כל מה שיש בעדכונים החינמיים - <strong>ועוד</strong>:</div>
-                  <div><strong>לייבים פעמיים בשבוע</strong> (שלישי 16:30, חמישי 20:00) - מסחר תוך-יומי בזמן אמת, ולומדים תוך כדי</div>
+                  <div><strong>לייבים פעמיים בשבוע</strong> - מסחר תוך-יומי בזמן אמת, ולומדים תוך כדי</div>
                   <div><strong>עסקאות סווינג</strong> שאני משתפת לאורך השבוע, ישר דרך האתר</div>
                   <div><strong>ספריית השיעורים המלאה פתוחה</strong> - מתוך-יומי ועד השקעה לטווח ארוך</div>
                   <div><strong>ליווי אישי</strong> - לצד קהילת סוחרים סגורה לדיון מעמיק</div>
@@ -260,8 +260,8 @@ export default function HomePage() {
         </Reveal>
         <Reveal delay={15}>
           <details className="faq-item" style={{ borderRightColor: 'var(--orange)' }}>
-            <summary>מתי הלייבים, ואיך זה עובד בפועל?</summary>
-            <p>לייבים קבועים בימי <strong>שלישי 16:30</strong> ו<strong>חמישי 20:00</strong> - אני סוחרת תוך-יומי בזמן אמת, ומלמדת תוך כדי. באמצע השבוע אני משתפת גם עסקאות סווינג שאני נכנסת אליהן, ישר דרך האתר - כך שגם בימים בלי לייב יש מה לעקוב אחריו.</p>
+            <summary>איך הלייבים עובדים בפועל?</summary>
+            <p>פעמיים בשבוע, בזמנים קבועים שמתפרסמים מראש בעמוד הלייבים - אני סוחרת תוך-יומי בזמן אמת, ומלמדת תוך כדי. באמצע השבוע אני משתפת גם עסקאות סווינג שאני נכנסת אליהן, ישר דרך האתר - כך שגם בימים בלי לייב יש מה לעקוב אחריו.</p>
           </details>
         </Reveal>
         <Reveal delay={30}>

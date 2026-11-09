@@ -279,7 +279,7 @@ export default function LessonsLibraryPage() {
         <div className="tp-question-card">
           <div className="tp-question-title">כבר מכירים אותך 👋</div>
           <div className="tp-step-intro" style={{ marginBottom: '14px' }}>
-            הספרייה פתוחה לך. רוצה גם <strong style={{ color: 'var(--lavender)' }}>לסחור ביחד איתי</strong>? זה &quot;מדברים עסקאות&quot;.
+            הספרייה פתוחה לך. רוצה גם <strong style={{ color: 'var(--lavender)' }}>ללמוד לסחור לצדי</strong>? זה &quot;מדברים עסקאות&quot;.
           </div>
           <a
             href="https://pay.grow.link/ODUwNDc~e1145301cbce2cc9d1e0395611428e83-NDIxNTkxMw"

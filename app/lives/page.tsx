@@ -185,7 +185,7 @@ export default function LivesPage() {
       </header>
 
       <div className="form-title">מסחר בזמן אמת</div>
-      <div className="form-sub">סוחרים ביחד איתי בזמן אמת - לא רק לומדים או צופים מהצד</div>
+      <div className="form-sub">נמצאים איתי בלייב בזמן אמת - לא רק לומדים או צופים מהצד</div>
 
       <PushNotificationButton />
 
@@ -219,7 +219,7 @@ export default function LivesPage() {
           )}
           {confirmedLeadIds.has(live.id) && (
             <div style={{ background: 'var(--profit-bg)', border: '1px solid var(--profit)', borderRadius: '8px', padding: '12px 14px', marginBottom: '10px', fontSize: '13px', lineHeight: 1.6 }}>
-              <p style={{ marginBottom: '10px' }}>✓ הפרטים נקלטו! המפגשים האלה פתוחים למנויי &quot;מדברים עסקאות&quot; - <strong style={{ color: 'var(--lavender)' }}>סוחרים ביחד איתי, בלי ידע מוקדם</strong>. אפשר להתחיל בחודש ראשון מלא ב-₪1 ולקבל גישה מיידית:</p>
+              <p style={{ marginBottom: '10px' }}>✓ הפרטים נקלטו! המפגשים האלה פתוחים למנויי &quot;מדברים עסקאות&quot; - <strong style={{ color: 'var(--lavender)' }}>לומדים לסחור לצדי, בלי ידע מוקדם</strong>. אפשר להתחיל בחודש ראשון מלא ב-₪1 ולקבל גישה מיידית:</p>
               <Link href="/subscribe" className="btn-primary" style={{ display: 'block', textAlign: 'center', textDecoration: 'none', marginBottom: '10px', background: accentColor }}>
                 חודש ראשון ב-₪1 ←
               </Link>

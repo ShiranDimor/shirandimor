@@ -77,8 +77,8 @@ export default function MentoringPage() {
           <p className="mt-lead">אפשר ללמוד המון גם לבד. אפשר ללמוד דרך שיעורים, להצטרף לקבוצה או לצפות בלייבים - ולא צריך להוציא על זה אלפי שקלים.</p>
           <div className="mt-alt-links">
             <Link href="/lessons" className="link-card"><div><div className="t">ספריית שיעורים</div><div className="s">וובינרים ומצגות, ללמוד בקצב שלך</div></div><span className="arrow">←</span></Link>
-            <Link href="/lives" className="link-card"><div><div className="t">מפגשים בזמן אמת</div><div className="s">לייבים ומסחר ביחד</div></div><span className="arrow">←</span></Link>
-            <Link href="/subscribe" className="link-card"><div><div className="t">קבוצת מדברים עסקאות</div><div className="s">סוחרים ביחד, ₪{GROUP_MONTHLY_PRICE} לחודש</div></div><span className="arrow">←</span></Link>
+            <Link href="/lives" className="link-card"><div><div className="t">מפגשים בזמן אמת</div><div className="s">לייבים ומסחר בזמן אמת</div></div><span className="arrow">←</span></Link>
+            <Link href="/subscribe" className="link-card"><div><div className="t">קבוצת מדברים עסקאות</div><div className="s">לומדים לסחור לצדי, ₪{GROUP_MONTHLY_PRICE} לחודש</div></div><span className="arrow">←</span></Link>
           </div>
 
           <div className="mt-story">

@@ -101,7 +101,7 @@ export default function SubscribePage() {
       <div className="form-title">הצטרפות ל&quot;מדברים עסקאות&quot;</div>
       <div className="form-sub">מנוי חודשי · ללא התחייבות</div>
       <p style={{ fontSize: '13px', color: 'var(--text-secondary)', textAlign: 'center', lineHeight: 1.6, marginBottom: '20px' }}>
-        <strong style={{ color: 'var(--lavender)' }}>סוחרים ביחד איתי, בונים תיק השקעות, בלי ידע מוקדם</strong> - בקצב שלך.
+        <strong style={{ color: 'var(--lavender)' }}>לומדים לסחור לצדי, בונים תיק השקעות משלכם, בלי ידע מוקדם</strong> - בקצב שלך.
       </p>
 
       <div className="price-card">
@@ -118,7 +118,7 @@ export default function SubscribePage() {
           <div><strong>השקעות לטווח ארוך</strong> - בניית תיק שיטתית, לא "טיפים"</div>
           <div><strong>ליווי אישי ממני</strong> - לצד קהילה סגורה לדיון מעמיק</div>
           <div><strong>יומן מסחר שקוף</strong> - כולל עסקאות מפסידות</div>
-          <div><strong>תיק מסחר אישי</strong> וניתוח העסקאות שלך איתי</div>
+          <div><strong>כלי תוכנית מסחר אישית</strong> - לבנות את השיטה שלך</div>
         </div>
 
         <p style={{ fontSize: '11.5px', color: 'var(--text-tertiary)', lineHeight: 1.6, textAlign: 'center', marginBottom: '14px' }}>
