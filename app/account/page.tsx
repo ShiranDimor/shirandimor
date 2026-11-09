@@ -13,7 +13,7 @@ type Profile = {
 
 const QUICK_LINKS: { href: string; icon: string; title: string; accent: string }[] = [
   { href: '/portfolio', icon: '📈', title: 'תיק המסחר', accent: '--teal' },
-  { href: '/journal', icon: '📓', title: 'היומן שלי', accent: '--lavender' },
+  { href: '/journal', icon: '📓', title: 'התיק האישי שלי', accent: '--lavender' },
   { href: '/lessons', icon: '🎬', title: 'ספריית שיעורים', accent: '--profit' },
   { href: '/trading-plan', icon: '🧭', title: 'תוכנית המסחר שלי', accent: '--loss' },
   { href: '/lives', icon: '🎥', title: 'לייבים', accent: '--orange' },

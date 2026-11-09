@@ -358,7 +358,7 @@ export default function PortfolioPage() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
             <Link href="/" className="nav-link">בית</Link>
             {hasFullAccess && !isAdmin && <Link href="/account" className="nav-link">האזור האישי שלי</Link>}
-            {hasFullAccess && !isAdmin && <Link href="/journal" className="nav-link">היומן שלי</Link>}
+            {hasFullAccess && !isAdmin && <Link href="/journal" className="nav-link">התיק האישי שלי</Link>}
             {hasFullAccess && !isAdmin && <Link href={tradingPlanHref} className="nav-link" style={{ color: '#E8A33D' }}>תוכנית המסחר שלי</Link>}
             <button onClick={handleLogout} className="nav-link" style={{ background: 'none', border: 'none', cursor: 'pointer', font: 'inherit', padding: 0 }}>התנתקות</button>
           </div>
