@@ -515,8 +515,8 @@ export default function PortfolioPage() {
           {filteredOpenTrades.map((trade) => {
             const p = pct(trade);
             const tp = targetProgress(trade);
-            const displayPct = tp ? tp.pctToTarget : p;
-            const isPositive = tp ? tp.inProfitZone : p >= 0;
+            const displayPct = p;
+            const isPositive = p >= 0;
             const barPos = tp ? tp.currentPos : Math.min(100, Math.max(0, 50 + p));
             // גרף מגמה דקורטיבי - לא היסטוריית מחירים אמיתית (האתר לא שומר כזו), רק כיוון
             // העסקה: עולה וירוק אם ברווח, יורד ואדום אם לא - בלי שום ערך מספרי על הגרף עצמו
@@ -540,7 +540,7 @@ export default function PortfolioPage() {
                     </div>
                     <div className="tpc-pct-wrap">
                       <div className={`tpc-pct ${displayPct >= 0 ? 'pos' : 'neg'}`}>{displayPct < 0 ? '-' : ''}{Math.abs(displayPct).toFixed(0)}%</div>
-                      <div className="tpc-pct-label">{tp ? (tp.inProfitZone ? 'מהרווח המתוכנן כבר הושג' : 'מתחת לכניסה') : 'רווח/הפסד נוכחי'}</div>
+                      <div className="tpc-pct-label">רווח/הפסד נוכחי</div>
                     </div>
                   </div>
 
