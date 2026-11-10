@@ -488,7 +488,7 @@ export default function PortfolioPage() {
         <div className="tpc-summary-div"></div>
         <div className="tpc-summary-right">
           <div className="lbl">סיכום תיק</div>
-          <div className="pct" style={{ color: openWeightedPct >= 0 ? 'var(--profit)' : 'var(--loss)' }}>{openWeightedPct >= 0 ? '+' : ''}{openWeightedPct.toFixed(1)}%</div>
+          <div className="pct" style={{ color: openWeightedPct >= 0 ? 'var(--profit)' : 'var(--loss)' }}>{openWeightedPct >= 0 ? '+' : ''}{openWeightedPct.toFixed(2)}%</div>
           <div className="lbl" style={{ marginTop: '6px' }}>תשואה משוקללת</div>
         </div>
       </div>
@@ -539,7 +539,7 @@ export default function PortfolioPage() {
                       </span>
                     </div>
                     <div className="tpc-pct-wrap">
-                      <div className={`tpc-pct ${displayPct >= 0 ? 'pos' : 'neg'}`}>{displayPct < 0 ? '-' : ''}{Math.abs(displayPct).toFixed(0)}%</div>
+                      <div className={`tpc-pct ${displayPct >= 0 ? 'pos' : 'neg'}`}>{displayPct >= 0 ? '+' : '-'}{Math.abs(displayPct).toFixed(2)}%</div>
                       <div className="tpc-pct-label">רווח/הפסד נוכחי</div>
                     </div>
                   </div>
