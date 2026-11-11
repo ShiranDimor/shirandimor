@@ -450,6 +450,7 @@
   .toggle-opt { flex: 1; text-align: center; padding: 9px; border-radius: 8px; border: 1px solid var(--border-hairline-strong); font-size: 13px; font-weight: 600; color: var(--text-secondary); }
   .toggle-opt.long-active { background: var(--profit-bg); border-color: var(--profit); color: var(--profit); }
   .toggle-opt.short-active { background: var(--loss-bg); border-color: var(--loss); color: var(--loss); }
+  .toggle-opt.size-active { background: var(--lavender-bg); border-color: var(--lavender); color: var(--lavender); }
 
   /* ===== Admin ===== */
   .admin-tiles { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 20px; }

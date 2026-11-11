@@ -24,11 +24,12 @@ export async function POST(request: Request) {
   if (!admin) return NextResponse.json({ error: 'אין הרשאת ניהול' }, { status: 403 });
 
   const body = await request.json().catch(() => ({}));
-  const { symbol, direction, entryPrice, stopLoss } = body as {
+  const { symbol, direction, entryPrice, stopLoss, halfSize } = body as {
     symbol?: string;
     direction?: string;
     entryPrice?: number;
     stopLoss?: number;
+    halfSize?: boolean;
   };
   if (!symbol) return NextResponse.json({ error: 'חסר סימבול' }, { status: 400 });
 
@@ -36,7 +37,7 @@ export async function POST(request: Request) {
 
   await sendPushToActiveSubscribers({
     title: `🆕 עסקה חדשה בתיק - ${symbol}`,
-    body: `${dirLabel}${entryPrice ? ` · כניסה: $${entryPrice}` : ''}${stopLoss ? ` · סטופ: $${stopLoss}` : ''}`,
+    body: `${dirLabel}${entryPrice ? ` · כניסה: $${entryPrice}` : ''}${stopLoss ? ` · סטופ: $${stopLoss}` : ''}${halfSize ? ' · חצי כמות' : ''}`,
     url: '/portfolio',
   }, 'trade');
 

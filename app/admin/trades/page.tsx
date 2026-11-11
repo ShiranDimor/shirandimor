@@ -136,6 +136,7 @@ export default function AdminTradesPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [refreshMessage, setRefreshMessage] = useState('');
   const [direction, setDirection] = useState<'long' | 'short'>('long');
+  const [sizeMode, setSizeMode] = useState<'full' | 'half'>('full');
   const [symbol, setSymbol] = useState('');
   const [entryPrice, setEntryPrice] = useState('');
   const [stopLoss, setStopLoss] = useState('');
@@ -483,7 +484,8 @@ export default function AdminTradesPage() {
 
     const entry = parseFloat(entryPrice);
     const stop = parseFloat(stopLoss);
-    const risk = parseFloat(riskAmount);
+    const fullRisk = parseFloat(riskAmount);
+    const risk = sizeMode === 'half' ? fullRisk / 2 : fullRisk;
     const shares = Math.floor(risk / Math.abs(entry - stop));
 
     const { error } = await supabase.from('trades').insert({
@@ -513,6 +515,7 @@ export default function AdminTradesPage() {
       setMaxEntryPrice('');
       setTargetPrice('');
       setOpenDate('');
+      setSizeMode('full');
       setShowAddForm(false);
       loadTrades();
 
@@ -520,7 +523,7 @@ export default function AdminTradesPage() {
       fetch('/api/admin/notify-trade-opened', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
-        body: JSON.stringify({ symbol: symbol.toUpperCase(), direction, entryPrice: entry, stopLoss: stop }),
+        body: JSON.stringify({ symbol: symbol.toUpperCase(), direction, entryPrice: entry, stopLoss: stop, halfSize: sizeMode === 'half' }),
       }).then((res) => {
         if (!res.ok) window.alert('העסקה נשמרה, אבל שליחת ההתראה נכשלה - אפשר לשלוח שוב מהרשימה (🔔 שליחת התראה)');
       }).catch(() => {
@@ -877,6 +880,10 @@ export default function AdminTradesPage() {
             <div className={`toggle-opt ${direction === 'long' ? 'long-active' : ''}`} onClick={() => setDirection('long')} style={{ cursor: 'pointer' }}>לונג</div>
             <div className={`toggle-opt ${direction === 'short' ? 'short-active' : ''}`} onClick={() => setDirection('short')} style={{ cursor: 'pointer' }}>שורט</div>
           </div>
+          <div className="toggle-row">
+            <div className={`toggle-opt ${sizeMode === 'full' ? 'size-active' : ''}`} onClick={() => setSizeMode('full')} style={{ cursor: 'pointer' }}>כמות מלאה</div>
+            <div className={`toggle-opt ${sizeMode === 'half' ? 'size-active' : ''}`} onClick={() => setSizeMode('half')} style={{ cursor: 'pointer' }}>חצי כמות</div>
+          </div>
           <div className="field"><label>סימבול</label><ClearableInput type="text" value={symbol} onChange={(e) => setSymbol(e.target.value)} onClear={() => setSymbol('')} placeholder="MSFT" /></div>
           <div className="form-row">
             <div className="field"><label>מחיר כניסה</label><ClearableInput type="number" value={entryPrice} onChange={(e) => setEntryPrice(e.target.value)} onClear={() => setEntryPrice('')} placeholder="410.00" /></div>
@@ -885,6 +892,19 @@ export default function AdminTradesPage() {
           <div className="field"><label>עד איזה מחיר אפשר להיכנס (לא חובה)</label><ClearableInput type="number" value={maxEntryPrice} onChange={(e) => setMaxEntryPrice(e.target.value)} onClear={() => setMaxEntryPrice('')} placeholder="415.00" /></div>
           <div className="field"><label>יעד רווח (לא חובה)</label><ClearableInput type="number" value={targetPrice} onChange={(e) => setTargetPrice(e.target.value)} onClear={() => setTargetPrice('')} placeholder="450.00" /></div>
           <div className="field"><label>סיכון כספי ($)</label><ClearableInput type="number" value={riskAmount} onChange={(e) => setRiskAmount(e.target.value)} onClear={() => setRiskAmount('')} placeholder="3000" /></div>
+          {entryPrice && stopLoss && riskAmount && (() => {
+            const entryNum = parseFloat(entryPrice);
+            const stopNum = parseFloat(stopLoss);
+            const riskNum = parseFloat(riskAmount) * (sizeMode === 'half' ? 0.5 : 1);
+            const span = Math.abs(entryNum - stopNum);
+            if (!span) return null;
+            const previewShares = Math.floor(riskNum / span);
+            return (
+              <p style={{ fontSize: '11.5px', color: 'var(--text-tertiary)', margin: '-6px 0 14px' }}>
+                {sizeMode === 'half' ? 'חצי כמות - ' : ''}יחושבו {previewShares} מניות (סיכון בפועל: ${riskNum.toLocaleString()})
+              </p>
+            );
+          })()}
           <div className="field"><label>תאריך פתיחה (לא חובה - ברירת מחדל: היום)</label><input type="date" value={openDate} onChange={(e) => setOpenDate(e.target.value)} /></div>
           <button className="btn-primary" onClick={handleAddTrade} disabled={saving}>{saving ? 'שומרים...' : 'פרסום לתיק'}</button>
           {message && <p style={{ marginTop: '10px', fontSize: '13px', color: message.includes('שגיאה') ? 'var(--loss)' : 'var(--profit)' }}>{message}</p>}
