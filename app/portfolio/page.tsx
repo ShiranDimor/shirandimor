@@ -11,6 +11,7 @@ import PushNotificationButton from '@/components/PushNotificationButton';
 import Reveal from '@/components/Reveal';
 import MonthlyReturnBubbles from '@/components/MonthlyReturnBubbles';
 import { buildMonthlyPortfolioReturns } from '@/lib/portfolioStats';
+import TradeDisclaimer from '@/components/TradeDisclaimer';
 
 type Trade = {
   id: string;
@@ -375,6 +376,8 @@ export default function PortfolioPage() {
         <h1>תיק העסקאות של שירן</h1>
         <p>מעקב בזמן אמת</p>
       </div>
+
+      <div style={{ marginBottom: '14px' }}><TradeDisclaimer /></div>
 
       <PushNotificationButton />
 

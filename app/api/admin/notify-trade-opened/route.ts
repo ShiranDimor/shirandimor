@@ -39,7 +39,7 @@ export async function POST(request: Request) {
   // ארוך, ושירן ביקשה מפורשות שזה לא יפספס כי זה משנה את הסיכון בפועל של המנוי שמעתיק את העסקה
   await sendPushToActiveSubscribers({
     title: halfSize ? `🆕 עסקה חדשה (חצי כמות ⚠️) - ${symbol}` : `🆕 עסקה חדשה בתיק - ${symbol}`,
-    body: `${dirLabel}${entryPrice ? ` · כניסה: $${entryPrice}` : ''}${stopLoss ? ` · סטופ: $${stopLoss}` : ''}`,
+    body: `${dirLabel}${entryPrice ? ` · כניסה: $${entryPrice}` : ''}${stopLoss ? ` · סטופ: $${stopLoss}` : ''} · ⚠️ לא ייעוץ/המלצה`,
     url: '/portfolio',
   }, 'trade');
 

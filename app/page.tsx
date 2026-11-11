@@ -10,6 +10,7 @@ import Reveal from '@/components/Reveal';
 import SiteHeader from '@/components/SiteHeader';
 import CountUp from '@/components/CountUp';
 import MonthlyReturnBubbles from '@/components/MonthlyReturnBubbles';
+import TradeDisclaimer from '@/components/TradeDisclaimer';
 import { buildMonthlyPortfolioReturns, type MonthlyReturn } from '@/lib/portfolioStats';
 
 type Trade = {
@@ -196,6 +197,7 @@ export default function HomePage() {
           )}
 
           <Link className="teaser-cta" href="/portfolio">צפייה בתיק המסחר המלא, לפי חודש ותאריך ←</Link>
+          <div style={{ marginTop: '10px' }}><TradeDisclaimer /></div>
         </div>
       </Reveal>
 

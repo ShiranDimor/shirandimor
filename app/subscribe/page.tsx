@@ -6,6 +6,7 @@ import { trackFunnelEvent } from '@/lib/trackEvent';
 import { captureSourceFromUrl } from '@/lib/attribution';
 import { supabase } from '@/lib/supabase';
 import { hasActiveEntitlement } from '@/lib/entitlement';
+import TradeDisclaimer from '@/components/TradeDisclaimer';
 
 const GROW_LINK = 'https://pay.grow.link/ODUwNDc~e1145301cbce2cc9d1e0395611428e83-NDIxNTkxMw';
 
@@ -137,6 +138,8 @@ export default function SubscribePage() {
       <p style={{ fontSize: '11px', color: 'var(--text-tertiary)', textAlign: 'center' }}>
         אפשר לבטל בכל רגע נתון, בלי קנס ובלי שאלות - החיוב החודשי חוזר בתאריך ההרשמה שלך, וביטול לפני מועד החיוב הבא מונע את החיוב. הגישה המלאה נפתחת מיד אחרי אימות הכרטיס.
       </p>
+
+      <div style={{ textAlign: 'center', marginTop: '10px' }}><TradeDisclaimer /></div>
 
     </div>
   );

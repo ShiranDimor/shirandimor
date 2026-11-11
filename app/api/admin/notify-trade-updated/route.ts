@@ -30,7 +30,7 @@ export async function POST(request: Request) {
 
   await sendPushToActiveSubscribers({
     title: `🔁 עדכון בעסקה פתוחה - ${symbol}`,
-    body: changes.join(' · '),
+    body: `${changes.join(' · ')} · ⚠️ לא ייעוץ/המלצה`,
     url: '/portfolio',
   }, 'trade');
 
