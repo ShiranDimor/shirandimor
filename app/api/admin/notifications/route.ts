@@ -26,7 +26,7 @@ export async function GET(request: Request) {
     .from('notification_log')
     .select('id, kind, audience, title, body, created_at, sent_count, failed_count, removed_stale_count, configured')
     .order('created_at', { ascending: false })
-    .limit(50);
+    .limit(500);
 
   if (error) return NextResponse.json({ error: 'שגיאה בטעינת ההיסטוריה' }, { status: 500 });
 

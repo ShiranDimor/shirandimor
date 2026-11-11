@@ -25,6 +25,38 @@ function formatDateTime(iso: string) {
   return new Date(iso).toLocaleString('he-IL', { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
+// מקבצת לפי שבוע קלנדרי (ראשון-שבת) כדי שההיסטוריה תהיה ניתנת לסריקה - בלי זה רשימה שמצטברת
+// עם כל התראה חדשה הופכת לגלילה ארוכה ובלתי-ניתנת לשימוש אחרי כמה שבועות
+function weekStart(d: Date): Date {
+  const start = new Date(d);
+  start.setHours(0, 0, 0, 0);
+  start.setDate(start.getDate() - start.getDay());
+  return start;
+}
+
+function weekKey(d: Date): string {
+  return weekStart(d).toISOString().slice(0, 10);
+}
+
+function weekLabel(key: string): string {
+  const start = new Date(key);
+  const end = new Date(start);
+  end.setDate(end.getDate() + 6);
+  const fmt = (x: Date) => x.toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric' });
+  return `${fmt(start)} - ${fmt(end)}`;
+}
+
+function groupByWeek(rows: Row[]): [string, Row[]][] {
+  const groups = new Map<string, Row[]>();
+  for (const r of rows) {
+    const key = weekKey(new Date(r.created_at));
+    const list = groups.get(key) || [];
+    list.push(r);
+    groups.set(key, list);
+  }
+  return Array.from(groups.entries()).sort((a, b) => (a[0] < b[0] ? 1 : -1));
+}
+
 export default function AdminNotificationsPage() {
   const [checking, setChecking] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -115,34 +147,47 @@ export default function AdminNotificationsPage() {
 
       {!loading && rows.length === 0 && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>עדיין אין היסטוריית התראות</p>}
 
-      {!loading && rows.map((r) => {
-        const sent = r.sent_count ?? 0;
-        const confirmed = r.confirmedCount;
-        const gap = sent - confirmed;
-        return (
-          <div key={r.id} style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-hairline)', borderRadius: '10px', padding: '12px 14px', marginBottom: '8px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px' }}>
-              <div style={{ minWidth: 0 }}>
-                <div style={{ fontSize: '13.5px', fontWeight: 700 }}>{KIND_ICON[r.kind] || '🔔'} {r.title}</div>
-                <div style={{ fontSize: '11.5px', color: 'var(--text-tertiary)', marginTop: '2px' }}>
-                  {AUDIENCE_LABEL[r.audience] || r.audience} · {formatDateTime(r.created_at)}
-                </div>
-              </div>
-              <div style={{ textAlign: 'left', flexShrink: 0, fontSize: '12px' }}>
-                {r.configured === false ? (
-                  <span style={{ color: 'var(--loss)', fontWeight: 700 }}>לא הוגדר</span>
-                ) : (
-                  <>
-                    <div>נשלח: <b>{sent}</b></div>
-                    <div style={{ color: gap > 0 && sent > 0 ? 'var(--orange)' : 'var(--profit)' }}>אושר: <b>{confirmed}</b></div>
-                    {(r.failed_count ?? 0) > 0 && <div style={{ color: 'var(--loss)' }}>נכשל: {r.failed_count}</div>}
-                  </>
-                )}
-              </div>
+      {!loading && groupByWeek(rows).map(([key, weekRows], i) => (
+        <details key={key} className="section-collapse" open={i === 0}>
+          <summary>
+            <div><h2>{weekLabel(key)}</h2></div>
+            <div className="summary-right">
+              <span className="count">{weekRows.length}</span>
+              <span className="collapse-chevron">▾</span>
             </div>
+          </summary>
+          <div style={{ marginTop: '10px' }}>
+            {weekRows.map((r) => {
+              const sent = r.sent_count ?? 0;
+              const confirmed = r.confirmedCount;
+              const gap = sent - confirmed;
+              return (
+                <div key={r.id} style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-hairline)', borderRadius: '10px', padding: '12px 14px', marginBottom: '8px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px' }}>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: '13.5px', fontWeight: 700 }}>{KIND_ICON[r.kind] || '🔔'} {r.title}</div>
+                      <div style={{ fontSize: '11.5px', color: 'var(--text-tertiary)', marginTop: '2px' }}>
+                        {AUDIENCE_LABEL[r.audience] || r.audience} · {formatDateTime(r.created_at)}
+                      </div>
+                    </div>
+                    <div style={{ textAlign: 'left', flexShrink: 0, fontSize: '12px' }}>
+                      {r.configured === false ? (
+                        <span style={{ color: 'var(--loss)', fontWeight: 700 }}>לא הוגדר</span>
+                      ) : (
+                        <>
+                          <div>נשלח: <b>{sent}</b></div>
+                          <div style={{ color: gap > 0 && sent > 0 ? 'var(--orange)' : 'var(--profit)' }}>אושר: <b>{confirmed}</b></div>
+                          {(r.failed_count ?? 0) > 0 && <div style={{ color: 'var(--loss)' }}>נכשל: {r.failed_count}</div>}
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
-        );
-      })}
+        </details>
+      ))}
     </div>
   );
 }
