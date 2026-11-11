@@ -239,7 +239,7 @@ export default function AdminTradesPage() {
 
   function startAddQty(trade: Trade) {
     setAddQtyId(trade.id);
-    setAddQtyPrice('');
+    setAddQtyPrice(trade.current_price !== null ? String(trade.current_price) : '');
     setAddQtyShares('');
   }
 
@@ -262,6 +262,19 @@ export default function AdminTradesPage() {
     if (!error) {
       setAddQtyId(null);
       loadTrades();
+
+      // הוספת כמות שולחת התראה בדיוק כמו פתיחת עסקה חדשה - שירן ביקשה מפורשות שכל הוספה
+      // לעסקה פתוחה תעודכן למנויים, לא רק סטופ/יעד/מחיר כניסה ידני (ר' saveEdit)
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch('/api/admin/notify-trade-updated', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
+        body: JSON.stringify({
+          symbol: trade.symbol,
+          changes: [`הוספת כמות: +${shares} ב-$${price} (סה"כ ${newShares} מניות, כניסה ממוצעת $${newEntryPrice.toFixed(2)})`],
+        }),
+      });
+      if (!res.ok) window.alert('העסקה עודכנה, אבל שליחת ההתראה על ההוספה נכשלה - כדאי לשלוח ידנית');
     }
   }
 
@@ -719,7 +732,15 @@ export default function AdminTradesPage() {
           <div className="qp-title">+ הוספת כמות · {trade.symbol}</div>
           <div className="qp-field"><label>מחיר כניסה נוסף</label><ClearableInput type="number" value={addQtyPrice} onChange={(e) => setAddQtyPrice(e.target.value)} onClear={() => setAddQtyPrice('')} placeholder="132.00" /></div>
           <div className="qp-field"><label>כמות נוספת</label><ClearableInput type="number" value={addQtyShares} onChange={(e) => setAddQtyShares(e.target.value)} onClear={() => setAddQtyShares('')} placeholder="20" /></div>
-          <p style={{ fontSize: '11.5px', color: 'var(--text-tertiary)', margin: '4px 0 10px' }}>מחיר הכניסה יתעדכן לממוצע המשוקלל, והכמות תתווסף לעסקה הקיימת</p>
+          <div style={{ display: 'flex', gap: '6px', margin: '-4px 0 8px' }}>
+            <button type="button" className="qp-cancel" style={{ flex: 1, fontSize: '11.5px', padding: '5px 8px' }} onClick={() => setAddQtyShares(String(Math.round(trade.shares_calculated / 2)))}>
+              חצי כמות (+{Math.round(trade.shares_calculated / 2)})
+            </button>
+            <button type="button" className="qp-cancel" style={{ flex: 1, fontSize: '11.5px', padding: '5px 8px' }} onClick={() => setAddQtyShares(String(trade.shares_calculated))}>
+              כמות מלאה (+{trade.shares_calculated})
+            </button>
+          </div>
+          <p style={{ fontSize: '11.5px', color: 'var(--text-tertiary)', margin: '4px 0 10px' }}>מחיר הכניסה יתעדכן לממוצע המשוקלל, והכמות תתווסף לעסקה הקיימת. נשלחת התראה למנויים כמו בעסקה חדשה.</p>
           <div className="qp-row">
             <button className="qp-confirm" onClick={() => handleAddQuantity(trade)} disabled={addingQty || !addQtyPrice || !addQtyShares}>{addingQty ? 'מוסיפים...' : 'אישור הוספה'}</button>
             <button className="qp-cancel" onClick={() => startEdit(trade)}>← חזרה</button>
