@@ -37,19 +37,38 @@ export async function GET(request: Request) {
 
   const brokenNames = Array.from(new Set((brokenRows || []).map((r) => nameById.get(r.user_id as string)).filter(Boolean))) as string[];
 
-  if (brokenNames.length === 0) {
+  // לידים (user_id ריק) שההתראות שלהם נשברו - בלי הבדיקה הזו ליד שהפעיל עדכונים בלי להיות
+  // מנוי/ה פשוט "נעלם" בלי שום סימן, כי הם לא מכוסים ע"י entitlementOrFilter למעלה בכלל
+  const { data: brokenLeadRows, error: leadError } = await supabaseAdmin
+    .from('push_subscriptions')
+    .select('name, phone')
+    .is('user_id', null)
+    .not('invalid_at', 'is', null)
+    .gte('invalid_at', sinceIso);
+
+  if (leadError) console.error('push-health-check: שגיאה באיתור לידים שנשברו', leadError);
+
+  const brokenLeadNames = Array.from(
+    new Set((brokenLeadRows || []).map((r) => r.name || r.phone || 'ליד ללא שם'))
+  );
+
+  if (brokenNames.length === 0 && brokenLeadNames.length === 0) {
     return NextResponse.json({ ok: true, broken: 0 });
   }
+
+  const bodyParts: string[] = [];
+  if (brokenNames.length > 0) bodyParts.push(`מנויים: ${brokenNames.join(', ')}`);
+  if (brokenLeadNames.length > 0) bodyParts.push(`לידים: ${brokenLeadNames.join(', ')}`);
 
   const { data: admins } = await supabaseAdmin.from('profiles').select('id').eq('role', 'admin');
   await sendPushToUsers(
     (admins || []).map((a) => a.id),
     {
-      title: '🔕 התראות נשברו אצל מנויים',
-      body: `${brokenNames.length === 1 ? 'ההתראות הפסיקו לעבוד אצל' : `ההתראות הפסיקו לעבוד אצל ${brokenNames.length} מנויים:`} ${brokenNames.join(', ')}`,
+      title: '🔕 התראות נשברו',
+      body: bodyParts.join(' · '),
       url: '/admin/subscribers',
     }
   );
 
-  return NextResponse.json({ ok: true, broken: brokenNames.length, names: brokenNames });
+  return NextResponse.json({ ok: true, broken: brokenNames.length, names: brokenNames, brokenLeads: brokenLeadNames.length, leadNames: brokenLeadNames });
 }

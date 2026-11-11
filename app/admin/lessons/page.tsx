@@ -165,10 +165,14 @@ export default function AdminLessonsPage() {
     setNotifyingId(id);
     const res = await fetch(`/api/admin/lessons/${id}/notify`, { method: 'POST', headers: await authHeader() });
     setNotifyingId(null);
-    if (res.ok) {
-      const data = await res.json();
-      setLessons((prev) => prev.map((l) => (l.id === id ? data.lesson : l)));
+    if (!res.ok) {
+      window.alert('שליחת ההתראה נכשלה');
+      return;
     }
+    const data = await res.json();
+    setLessons((prev) => prev.map((l) => (l.id === id ? data.lesson : l)));
+    if (data.configured === false) { window.alert('התראות פוש לא מוגדרות בשרת'); return; }
+    window.alert(`נשלח בפועל ל-${data.sent} מתוך ${data.attempted} מכשירים${data.failed ? ` (${data.failed} נכשלו)` : ''}`);
   }
 
   // מצגות מקבלות תיקייה נפרדת משלהן, בלי חלוקה לפי נושא - אותה חלוקה שיש בעמוד הציבורי

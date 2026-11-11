@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { supabase, getResilientUser } from '@/lib/supabase';
+import { hasActiveEntitlement } from '@/lib/entitlement';
 import ClearableInput from '@/components/ClearableInput';
 import StatsRing from '@/components/StatsRing';
 import EquityCurve from '@/components/EquityCurve';
@@ -44,6 +45,7 @@ function formatDate(iso: string | null) {
 export default function JournalPage() {
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
+  const [hasAccess, setHasAccess] = useState(false);
   const [entries, setEntries] = useState<JournalEntry[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [calYear, setCalYear] = useState(() => new Date().getFullYear());
@@ -110,6 +112,14 @@ export default function JournalPage() {
       const user = await getResilientUser();
       if (!user) { setLoading(false); return; }
       setUserId(user.id);
+
+      // "התיק האישי שלי" הוא פיצ'ר למנויים בלבד - בלי הבדיקה הזו כל מי שמחובר/ת (כולל ליד
+      // שלא שילם/מנוי שפג) יכול/ה להשתמש בו במלואו רק בגלל שה-URL לא מוגן, גם אם הקישור
+      // מוסתר מהניווט למי שאינו מנוי (ר' lib/entitlement.ts - נקודת האמת היחידה לזכאות)
+      const { data: accessProfile } = await supabase.from('profiles').select('role, subscription_status, subscription_paid_until').eq('id', user.id).maybeSingle();
+      const entitled = hasActiveEntitlement(accessProfile);
+      setHasAccess(entitled);
+      if (!entitled) { setLoading(false); return; }
 
       const { data } = await supabase
         .from('journal_entries')
@@ -414,6 +424,18 @@ export default function JournalPage() {
           <Link href="/" className="nav-link">בית</Link>
         </header>
         <p style={{ padding: '40px 0', textAlign: 'center' }}>צריך להתחבר קודם. <Link href="/login?returnTo=/journal" style={{ color: 'var(--teal)' }}>כניסה</Link></p>
+      </div>
+    );
+  }
+
+  if (!hasAccess) {
+    return (
+      <div className="wrap">
+        <header>
+          <Link href="/" className="brand">מסחר <span>אחראי</span> במניות</Link>
+          <Link href="/" className="nav-link">בית</Link>
+        </header>
+        <p style={{ padding: '40px 0', textAlign: 'center' }}>התיק האישי פתוח למנויים בלבד. <Link href="/subscribe" style={{ color: 'var(--teal)' }}>הצטרפות</Link></p>
       </div>
     );
   }

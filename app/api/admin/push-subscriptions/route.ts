@@ -24,7 +24,7 @@ export async function GET(request: Request) {
 
   const { data: subs } = await supabaseAdmin
     .from('push_subscriptions')
-    .select('id, user_id, name, phone, email, created_at')
+    .select('id, user_id, name, phone, email, created_at, monday_sync_error')
     .is('invalid_at', null)
     .order('created_at', { ascending: false });
 
@@ -49,6 +49,7 @@ export async function GET(request: Request) {
       name: profile?.full_name || s.name || null,
       email: profile?.email || s.email || null,
       phone: s.phone || null,
+      mondaySyncError: s.monday_sync_error || null,
       // מפתח קיבוץ - מנוי לפי user_id, ליד לפי טלפון/מייל מנורמלים (אותו איש קשר ממכשירים
       // שונים צריך להופיע כשורה אחת, לא שורה לכל מכשיר)
       groupKey: s.user_id ? `u:${s.user_id}` : `c:${normalizePhone(s.phone)}|${normalizeEmail(s.email)}`,
@@ -75,6 +76,9 @@ export async function GET(request: Request) {
       name: members.find((m) => m.name)?.name || null,
       email: members.find((m) => m.email)?.email || null,
       phone: members.find((m) => m.phone)?.phone || null,
+      // לא חייב שתהיה באותה שורה שהוחזרה כ-"latest" - מראים כל שגיאת סנכרון מאנדיי שלא
+      // נפתרה, מכל מכשיר של איש הקשר הזה, כדי שליד שה"מהלך" שלו למאנדיי נכשל לא יהיה בלתי-נראה
+      mondaySyncError: members.find((m) => m.mondaySyncError)?.mondaySyncError || null,
     };
   }).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 

@@ -27,11 +27,22 @@ export async function POST(request: Request, { params }: { params: { id: string 
   if (error || !lesson) return NextResponse.json({ error: 'השיעור לא נמצא' }, { status: 404 });
 
   const lessonUrl = `/lessons/${params.id}`;
+  // מחזירים sent/attempted/failed אמיתיים (לא רק {lesson}) - בלי זה כפתור "📣 התראה" בעמוד
+  // הניהול לא יכול להבדיל "נשלח בהצלחה ל-40" מ"נשלח בפועל ל-0" (ר' handleAddTrade/saveEdit
+  // באדמין עסקאות, אותה תקלה בדיוק שכבר תוקנה שם)
+  let result;
   if (lesson.tier === 'subscriber') {
-    await sendPushToActiveSubscribers({ title: `📚 שיעור חדש - ${lesson.title}`, body: 'נוסף לספריית השיעורים', url: lessonUrl }, 'lesson', params.id);
-    await sendPushToNonSubscribers({ title: '📚 שיעור חדש בספרייה', body: 'שיעור חדש למנויים - חודש ראשון ב-₪1 ←', url: '/subscribe' }, 'lesson', params.id);
+    const subsResult = await sendPushToActiveSubscribers({ title: `📚 שיעור חדש - ${lesson.title}`, body: 'נוסף לספריית השיעורים', url: lessonUrl }, 'lesson', params.id);
+    const nonSubsResult = await sendPushToNonSubscribers({ title: '📚 שיעור חדש בספרייה', body: 'שיעור חדש למנויים - חודש ראשון ב-₪1 ←', url: '/subscribe' }, 'lesson', params.id);
+    result = {
+      configured: subsResult.configured && nonSubsResult.configured,
+      attempted: subsResult.attempted + nonSubsResult.attempted,
+      sent: subsResult.sent + nonSubsResult.sent,
+      failed: subsResult.failed + nonSubsResult.failed,
+      removedStale: subsResult.removedStale + nonSubsResult.removedStale,
+    };
   } else {
-    await sendPushToEveryone({ title: `📚 שיעור חדש - ${lesson.title}`, body: 'נוסף לספריית השיעורים', url: lessonUrl }, 'lesson', params.id);
+    result = await sendPushToEveryone({ title: `📚 שיעור חדש - ${lesson.title}`, body: 'נוסף לספריית השיעורים', url: lessonUrl }, 'lesson', params.id);
   }
 
   const { data: updated } = await supabaseAdmin
@@ -41,5 +52,5 @@ export async function POST(request: Request, { params }: { params: { id: string 
     .select('*')
     .single();
 
-  return NextResponse.json({ lesson: updated || lesson });
+  return NextResponse.json({ lesson: updated || lesson, ...result });
 }

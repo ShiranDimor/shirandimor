@@ -1,7 +1,19 @@
 import { NextResponse } from 'next/server';
 import { parseGrowPayload, syncGrowPaymentToMonday, FIRST_MONTH_PRICE } from '@/lib/grow';
 import { ensureActiveSubscriberAccount } from '@/lib/subscriberStatus';
-import { sendLoginEmail } from '@/lib/instantLogin';
+import { sendLoginEmail, supabaseAdmin } from '@/lib/instantLogin';
+import { sendPushToUsers } from '@/lib/webPush';
+
+// מתריע לשירן בפוש אם משהו בטיפול בתשלום נכשל בשקט - בלי זה מישהו יכול לשלם, להופיע במאנדיי,
+// ולא לקבל חשבון עובד באתר (או מייל כניסה) בלי שום סימן לבעיה עד שמישהו יפתח פניה בעצמו
+async function alertAdmins(title: string, bodyText: string) {
+  try {
+    const { data: admins } = await supabaseAdmin.from('profiles').select('id').eq('role', 'admin');
+    await sendPushToUsers((admins || []).map((a) => a.id), { title, body: bodyText, url: '/admin/subscribers' });
+  } catch (e) {
+    console.error('Grow webhook: נכשלה גם ההתראה על הכישלון', e);
+  }
+}
 
 // מקבל התראת תשלום מ-Grow (server-to-server callback) בכל פעם שלקוח נרשם וחויב, מעדכן את הפריט
 // שלו במאנדיי (עלות חודשית, תאריך הרשמה, הטבת חודש ראשון אם רלוונטי) ומעביר אותו לקבוצת
@@ -58,6 +70,7 @@ export async function POST(request: Request) {
   const mondayResult = await syncGrowPaymentToMonday(payment);
   if (!mondayResult.ok) {
     console.error('Grow webhook: סנכרון מאנדיי נכשל', mondayResult.reason);
+    await alertAdmins('⚠️ תשלום התקבל, סנכרון מאנדיי נכשל', `${payment.fullName || payment.phone || payment.email || 'מנוי/ה'} - ${mondayResult.reason}`);
   }
 
   // תמיד מפעילים את החשבון, גם אם Grow לא העביר מייל בתשלום הזה (קרה בפועל - תשלום שהתקבל
@@ -77,6 +90,7 @@ export async function POST(request: Request) {
   } catch (e) {
     console.error('Grow webhook: נכשל אישור המנוי באתר', e);
     siteAccount = 'error';
+    await alertAdmins('⚠️ תשלום התקבל, החשבון באתר נכשל', `${payment.fullName || payment.phone || payment.email || 'מנוי/ה'} שילם/ה אבל לא קיבל/ה גישה פעילה באתר - צריך לטפל ידנית`);
   }
 
   return NextResponse.json({ ok: true, monday: mondayResult.ok, siteAccount });

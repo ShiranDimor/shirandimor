@@ -2,6 +2,23 @@ import { NextResponse } from 'next/server';
 import { hasFullAccessContact } from '@/lib/subscriberStatus';
 import { classifyContactMonday } from '@/lib/tradingPlan/monday';
 import { isPhoneBlocked } from '@/lib/blockedContacts';
+import { supabaseAdmin } from '@/lib/instantLogin';
+import { sendPushToUsers } from '@/lib/webPush';
+
+// אם כל ניסיון היצירה במאנדיי נכשל (לא רק סימון כפילות/עדכון, אלא כל הבלוק) - הליד לא נשמר
+// בשום מקום אחר (אין טבלה מקומית ל"לידים טהורים", רק במאנדיי). בלי ההתראה הזו הוא היה נעלם
+// לגמרי בלי שום עקבה - עם ההתראה, לפחות השם/נייד/מייל מגיעים לשירן והיא יכולה לפנות ידנית
+async function alertLeadLost(name: string, phone: string, email: string) {
+  try {
+    const { data: admins } = await supabaseAdmin.from('profiles').select('id').eq('role', 'admin');
+    await sendPushToUsers((admins || []).map((a) => a.id), {
+      title: '⚠️ ליד לא נשמר במאנדיי',
+      body: `${name} · ${phone}${email ? ` · ${email}` : ''} - נכשל סנכרון מאנדיי, אין לו תיעוד בשום מקום אחר`,
+    });
+  } catch (e) {
+    console.error('שגיאה בשליחת התראה על ליד שאבד', e);
+  }
+}
 
 const LEAD_GROUP_NAME = 'לידים חדשים';
 const CAMPAIGN_COLUMN_TITLE = 'campaign_name';
@@ -196,6 +213,7 @@ export async function POST(request: Request) {
     return response;
   } catch (e) {
     console.error('שגיאה בשליחת הליד ל-Monday.com', e);
+    await alertLeadLost(name, phone, email || '');
     const response = NextResponse.json({ ok: true, monday: false });
     response.cookies.set('sd_registered', '1', { maxAge: 60 * 60 * 24 * 365, path: '/', sameSite: 'lax' });
     return response;

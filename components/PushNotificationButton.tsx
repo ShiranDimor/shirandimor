@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import ClearableInput from '@/components/ClearableInput';
+import { hasActiveEntitlement } from '@/lib/entitlement';
 
 // ממיר את מפתח ה-VAPID הציבורי (מחרוזת base64) לפורמט הבינארי ש-pushManager.subscribe דורש
 function urlBase64ToUint8Array(base64String: string) {
@@ -51,8 +52,11 @@ export default function PushNotificationButton({ variant = 'default', autoOpenLe
     const { data: { user } } = await supabase.auth.getUser();
     let subscriberNow = false;
     if (user) {
-      const { data: profile } = await supabase.from('profiles').select('role, subscription_status').eq('id', user.id).maybeSingle();
-      subscriberNow = profile?.role === 'admin' || (profile?.role === 'subscriber' && profile?.subscription_status === 'active');
+      // hasActiveEntitlement (לא בדיקה ידנית כאן) - כולל גם תקופת חסד אחרי ביטול
+      // (subscription_status='cancelling' עם subscription_paid_until עדיין בעתיד), בלי זה מנוי
+      // שביטל אבל עדיין בתוך התקופה ששילם עליה נופל בטעות לשער ההרשמה של ליד
+      const { data: profile } = await supabase.from('profiles').select('role, subscription_status, subscription_paid_until').eq('id', user.id).maybeSingle();
+      subscriberNow = hasActiveEntitlement(profile);
       setIsSubscriber(subscriberNow);
     }
 

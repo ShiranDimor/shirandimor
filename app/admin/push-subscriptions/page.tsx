@@ -14,6 +14,7 @@ type Row = {
   name: string | null;
   email: string | null;
   phone: string | null;
+  mondaySyncError: string | null;
 };
 
 function formatDate(iso: string) {
@@ -164,6 +165,11 @@ export default function AdminPushSubscriptionsPage() {
             {[r.phone, r.email].filter(Boolean).join(' · ') || '—'} · הופעל ב-{formatDate(r.createdAt)}
             {r.deviceCount > 1 && ` · ${r.deviceCount} מכשירים`}
           </div>
+          {r.mondaySyncError && (
+            <div style={{ fontSize: '11.5px', color: 'var(--loss)', marginTop: '4px' }} title={r.mondaySyncError}>
+              ⚠️ לא סונכרן למאנדיי - {r.mondaySyncError}
+            </div>
+          )}
         </div>
         <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
           {!r.isSubscriber && (
@@ -190,9 +196,17 @@ export default function AdminPushSubscriptionsPage() {
         </div>
       </header>
 
-      <div className="section-label"><h2>ניהול התראות פוש</h2><span className="count">{rows.length}</span></div>
+      <div className="section-label">
+        <h2>ניהול התראות פוש</h2>
+        <span className="count">{rows.length}</span>
+        {rows.filter((r) => r.mondaySyncError).length > 0 && (
+          <span style={{ fontSize: '11.5px', color: 'var(--loss)', fontWeight: 700, marginRight: '8px' }}>
+            ⚠️ {rows.filter((r) => r.mondaySyncError).length} לא סונכרנו למאנדיי
+          </span>
+        )}
+      </div>
       <p style={{ fontSize: '12.5px', color: 'var(--text-tertiary)', marginBottom: '18px', lineHeight: 1.6 }}>
-        כל מי שהפעיל התראות באתר - מנויים (מקבלים פרטים מלאים) ולידים שהגיעו דרך שער ההרשמה (מקבלים גרסה מטושטשת, גם נוצר להם ליד במאנדיי). מחיקה כאן מפסיקה לשלוח להם התראות, אבל לא מוחקת אותם ממאנדיי.
+        כל מי שהפעיל התראות באתר - מנויים (מקבלים פרטים מלאים) ולידים שהגיעו דרך שער ההרשמה (מקבלים גרסה מטושטשת, גם נוצר להם ליד במאנדיי). מחיקה כאן מפסיקה לשלוח להם התראות, אבל לא מוחקת אותם ממאנדיי. ⚠️ ליד/מנוי עם שגיאת סנכרון מאנדיי כן מקבל/ת התראות כרגיל, אבל הכרטיס שלו/ה במאנדיי לא התעדכן - אפשר לנסות "🔄 סנכרון מחדש למאנדיי" למטה.
       </p>
 
       <button onClick={handleResyncMonday} disabled={resyncing} className="btn-outline" style={{ marginBottom: '8px' }}>
