@@ -1062,14 +1062,15 @@ export async function fillMissingEmailsInMonday(emailByPhone: Map<string, string
 // במאנדיי (מכל קבוצה, למשל "הפעיל עדכונים באתר ללא מנוי") לקבוצת "קבוצת סוחרים", או יוצר
 // כרטיס חדש שם אם אין. חובה: הסנכרון הדו-כיווני היומי (lib/mondaySubscriberSync.ts) מוריד
 // גישה לכל מי שלא נמצא/ת ב"קבוצת סוחרים" - בלי ההעברה הזו האישור באתר היה מתבטל למחרת
-export async function moveContactToSubscribersGroupOnMonday(params: { name?: string | null; phone?: string | null; email?: string | null }): Promise<{ ok: boolean; matched: boolean; error?: string }> {
+// joinDate - תאריך ההרשמה בפועל (YYYY-MM-DD), monthlyCost - נכתב לעמודת "עלות חודשית ששילם"
+export async function moveContactToSubscribersGroupOnMonday(params: { name?: string | null; phone?: string | null; email?: string | null; joinDate: string; monthlyCost: number }): Promise<{ ok: boolean; matched: boolean; error?: string }> {
   const token = process.env.MONDAY_API_TOKEN;
   const boardId = process.env.MONDAY_BOARD_ID;
   if (!token || !boardId) return { ok: false, matched: false, error: 'missing_monday_config' };
   if (!params.phone && !params.email) return { ok: false, matched: false, error: 'missing_contact' };
 
   try {
-    const { phoneColumnId, emailColumnId, subscriberGroupId, joinDateColumnId } = await getBoardSchema(token, boardId);
+    const { phoneColumnId, emailColumnId, subscriberGroupId, joinDateColumnId, monthlyCostColumnId } = await getBoardSchema(token, boardId);
     if (!subscriberGroupId) return { ok: false, matched: false, error: 'missing_subscriber_group' };
 
     const targetPhone = params.phone ? normalizePhone(params.phone) : null;
@@ -1079,7 +1080,8 @@ export async function moveContactToSubscribersGroupOnMonday(params: { name?: str
     const columnValues: Record<string, unknown> = {};
     if (phoneColumnId && params.phone) columnValues[phoneColumnId] = { phone: params.phone.startsWith('0') ? `972${params.phone.slice(1)}` : params.phone, countryShortName: 'IL' };
     if (emailColumnId && params.email) columnValues[emailColumnId] = { email: params.email, text: params.email };
-    if (joinDateColumnId) columnValues[joinDateColumnId] = { date: new Date().toISOString().slice(0, 10) };
+    if (joinDateColumnId) columnValues[joinDateColumnId] = { date: params.joinDate };
+    if (monthlyCostColumnId) columnValues[monthlyCostColumnId] = String(params.monthlyCost);
 
     let itemId: string | undefined;
     if (existing) {

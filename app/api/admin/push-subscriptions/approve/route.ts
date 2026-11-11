@@ -3,6 +3,9 @@ import { supabaseAdmin } from '@/lib/instantLogin';
 import { ensureActiveSubscriberAccount, normalizePhone, normalizeEmail } from '@/lib/subscriberStatus';
 import { moveContactToSubscribersGroupOnMonday } from '@/lib/tradingPlan/monday';
 
+// מחיר החודש הראשון (₪1) - מי שמאושר/ת מכאן שילם/ה את מחיר הכניסה הסמלי
+const APPROVED_MONTHLY_PRICE = 1;
+
 async function requireAdmin(request: Request) {
   const authHeader = request.headers.get('Authorization') || '';
   const token = authHeader.replace('Bearer ', '');
@@ -30,7 +33,7 @@ export async function POST(request: Request) {
 
   const { data: subs } = await supabaseAdmin
     .from('push_subscriptions')
-    .select('id, user_id, name, phone, email')
+    .select('id, user_id, name, phone, email, created_at')
     .in('id', ids);
   if (!subs || !subs.length) return NextResponse.json({ error: 'לא נמצא' }, { status: 404 });
 
@@ -40,8 +43,13 @@ export async function POST(request: Request) {
 
   if (!email && !phone) return NextResponse.json({ error: 'אין טלפון או מייל לאיש הקשר הזה' }, { status: 400 });
 
+  // תאריך ההרשמה = היום שבו הפעיל/ה לראשונה התראות באתר (המכשיר הראשון), לא יום האישור.
+  // התאריך קובע את יום החיוב החודשי, לכן נשמר גם בפרופיל וגם במאנדיי. תאריך מאנדיי לפי שעון ישראל
+  const registeredAt = subs.map((s) => s.created_at).sort()[0] || new Date().toISOString();
+  const joinDate = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jerusalem' }).format(new Date(registeredAt));
+
   try {
-    await ensureActiveSubscriberAccount(email, phone, name || email || phone);
+    await ensureActiveSubscriberAccount(email, phone, name || email || phone, registeredAt, true, APPROVED_MONTHLY_PRICE);
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : 'שגיאה ביצירת החשבון' }, { status: 500 });
   }
@@ -62,7 +70,7 @@ export async function POST(request: Request) {
     await supabaseAdmin.from('push_subscriptions').update({ user_id: profileId }).in('id', subs.map((s) => s.id));
   }
 
-  const monday = await moveContactToSubscribersGroupOnMonday({ name, phone, email });
+  const monday = await moveContactToSubscribersGroupOnMonday({ name, phone, email, joinDate, monthlyCost: APPROVED_MONTHLY_PRICE });
 
   return NextResponse.json({ ok: true, userId: profileId, mondayOk: monday.ok, mondayError: monday.error || null });
 }
