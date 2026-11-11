@@ -555,12 +555,8 @@ export default function PortfolioPage() {
                     </div>
                   </div>
 
-                  {(trade.opened_at || trade.shares_calculated) && (
-                    <div className="tpc-meta-line">
-                      {trade.opened_at && <>נפתחה <b>{formatDate(trade.opened_at)}</b></>}
-                      {trade.opened_at && trade.shares_calculated ? ' · ' : ''}
-                      {trade.shares_calculated && <>כמות <b>{trade.shares_calculated} מניות</b></>}
-                    </div>
+                  {trade.opened_at && (
+                    <div className="tpc-meta-line">נפתחה <b>{formatDate(trade.opened_at)}</b></div>
                   )}
                   <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>
                     <span className="tpc-live-dot" style={{ background: isPositive ? 'var(--profit)' : 'var(--loss)', boxShadow: `0 0 5px ${isPositive ? 'var(--profit)' : 'var(--loss)'}` }}></span>
