@@ -555,6 +555,13 @@ export default function PortfolioPage() {
                     </div>
                   </div>
 
+                  {(trade.opened_at || trade.shares_calculated) && (
+                    <div className="tpc-meta-line">
+                      {trade.opened_at && <>נפתחה <b>{formatDate(trade.opened_at)}</b></>}
+                      {trade.opened_at && trade.shares_calculated ? ' · ' : ''}
+                      {trade.shares_calculated && <>כמות <b>{trade.shares_calculated} מניות</b></>}
+                    </div>
+                  )}
                   <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>
                     <span className="tpc-live-dot" style={{ background: isPositive ? 'var(--profit)' : 'var(--loss)', boxShadow: `0 0 5px ${isPositive ? 'var(--profit)' : 'var(--loss)'}` }}></span>
                     מחיר נוכחי: ${trade.current_price ?? trade.entry_price}
@@ -571,11 +578,25 @@ export default function PortfolioPage() {
                     <div className="tpc-now" style={{ right: `${barPos}%`, boxShadow: '0 0 0 2px var(--teal)' }}></div>
                   </div>
 
-                  <div className="tpc-foot3">
-                    <div className="tpc-foot3-item stop"><div className="lbl">🛡 סטופ</div><div className="val">${trade.stop_loss}</div></div>
-                    <div className="tpc-foot3-item entry"><div className="lbl">כניסה</div><div className="val">${trade.entry_price}</div></div>
-                    <div className="tpc-foot3-item target"><div className="lbl">🕐 יעד</div><div className="val">{trade.target_price !== null ? `$${trade.target_price}` : '—'}</div></div>
-                  </div>
+                  {trade.max_entry_price !== null ? (
+                    <div className="tpc-foot4">
+                      <div className="tpc-foot4-item stop"><div className="lbl">🛡 סטופ</div><div className="val">${trade.stop_loss}</div></div>
+                      <div className="tpc-foot4-item"><div className="lbl">כניסה</div><div className="val">${trade.entry_price}</div></div>
+                      <div className="tpc-foot4-item"><div className="lbl">כניסה עד מחיר</div><div className="val">${trade.max_entry_price}</div></div>
+                      <div className="tpc-foot4-item target"><div className="lbl">🕐 יעד</div><div className="val">{trade.target_price !== null ? `$${trade.target_price}` : '—'}</div></div>
+                    </div>
+                  ) : (
+                    <div className="tpc-foot3">
+                      <div className="tpc-foot3-item stop"><div className="lbl">🛡 סטופ</div><div className="val">${trade.stop_loss}</div></div>
+                      <div className="tpc-foot3-item entry"><div className="lbl">כניסה</div><div className="val">${trade.entry_price}</div></div>
+                      <div className="tpc-foot3-item target"><div className="lbl">🕐 יעד</div><div className="val">{trade.target_price !== null ? `$${trade.target_price}` : '—'}</div></div>
+                    </div>
+                  )}
+                  {trade.max_entry_price !== null && (
+                    (trade.direction === 'long' ? (trade.current_price ?? trade.entry_price) > trade.max_entry_price : (trade.current_price ?? trade.entry_price) < trade.max_entry_price)
+                  ) && (
+                    <div className="tpc-maxentry-warn">⚠ המחיר עבר את טווח הכניסה - רק למעקב</div>
+                  )}
                 </div>
               </div>
             );

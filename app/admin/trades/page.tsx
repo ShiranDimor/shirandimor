@@ -367,7 +367,7 @@ export default function AdminTradesPage() {
         if (entry !== trade.entry_price) changes.push(`מחיר כניסה: $${entry}`);
         if (stop !== trade.stop_loss) changes.push(`סטופ לוס: $${stop}`);
         if (newTarget !== trade.target_price) changes.push(newTarget !== null ? `יעד רווח: $${newTarget}` : 'יעד רווח הוסר');
-        if (newMaxEntry !== trade.max_entry_price) changes.push(newMaxEntry !== null ? `עד כניסה: $${newMaxEntry}` : 'הגבלת כניסה הוסרה');
+        if (newMaxEntry !== trade.max_entry_price) changes.push(newMaxEntry !== null ? `כניסה עד מחיר: $${newMaxEntry}` : 'הגבלת כניסה הוסרה');
 
         if (changes.length > 0) {
           const { data: { session } } = await supabase.auth.getSession();
@@ -793,7 +793,7 @@ export default function AdminTradesPage() {
               {isClosed && <th>נסגרה ב-</th>}
               <th>כניסה</th>
               <th>סטופ/יציאה</th>
-              {!isClosed && <th>עד כניסה</th>}
+              {!isClosed && <th>כניסה עד מחיר</th>}
               {!isClosed && <th>יעד רווח</th>}
               {!isClosed && <th>נוכחי</th>}
               <th>אחוז</th>
@@ -831,7 +831,7 @@ export default function AdminTradesPage() {
                   {isClosed && <td>{formatDate(trade.closed_at)}</td>}
                   <td>${trade.entry_price.toFixed(2)}</td>
                   <td>{isClosed ? `$${trade.exit_price?.toFixed(2)}` : `$${trade.stop_loss}`}</td>
-                  {!isClosed && <td>{trade.max_entry_price !== null ? `עד $${trade.max_entry_price}` : '—'}</td>}
+                  {!isClosed && <td>{trade.max_entry_price !== null ? `$${trade.max_entry_price}` : '—'}</td>}
                   {!isClosed && <td>{trade.target_price !== null ? `$${trade.target_price}` : '—'}</td>}
                   {!isClosed && <td>${trade.current_price ?? trade.entry_price}</td>}
                   <td style={{ color: pct === null ? undefined : pct >= 0 ? 'var(--profit)' : 'var(--loss)' }}>
