@@ -35,9 +35,25 @@ export type PushPayload = {
   logId?: string;
 };
 
-type SubscriptionRow = { id: string; endpoint: string; p256dh: string; auth: string };
+type SubscriptionRow = { id: string; endpoint: string; p256dh: string; auth: string; user_id?: string | null; phone?: string | null; email?: string | null };
 
 export type SendResult = { configured: boolean; attempted: number; sent: number; failed: number; removedStale: number };
+
+function normalizePhone(raw: string | null | undefined): string {
+  return (raw || '').replace(/\D/g, '').slice(-9);
+}
+
+function normalizeEmail(raw: string | null | undefined): string {
+  return (raw || '').trim().toLowerCase();
+}
+
+// מזהה "איש קשר" אחד - לא מכשיר אחד. מנוי/ה עם כמה מכשירים (טלפון + לפטופ) הוא עדיין אדם
+// אחד; שירן ביקשה מפורשות שהמספרים יספרו אנשים ("נשלח ל-47" כשיש 47 מנויים), לא שורות
+// מכשיר שעלולות לספור את אותו אדם פעמיים
+function recipientKey(row: SubscriptionRow): string {
+  if (row.user_id) return `u:${row.user_id}`;
+  return `c:${normalizePhone(row.phone)}|${normalizeEmail(row.email)}`;
+}
 
 // רישום לטבלת "יומן התראות" - מקור האמת היחיד למרכז ההתראות (הפעמון) באתר, כדי שההיסטוריה
 // שמוצגת שם תהיה תמיד בדיוק מה שבאמת נשלח כהתראת פוש, כולל הניסוח המדויק לכל קהל (למנויים
@@ -70,13 +86,38 @@ async function recordSendResult(logId: string | null, result: SendResult) {
 // קרה במקום שהרשומה פשוט "תיעלם" בלי עקבות. resubscribe אמיתי (POST ל-/api/push/subscribe)
 // מנקה את הסימון חזרה. מחזיר סיכום אמיתי של מה שקרה בפועל (configured/attempted/sent/failed/
 // removedStale) - כדי שבדיקה-לעצמי תוכל לדווח משהו אמיתי במקום "ok" גורף גם כשבפועל לא נשלח כלום
-async function sendToRows(rows: SubscriptionRow[], payload: PushPayload): Promise<SendResult> {
-  if (!ensureConfigured()) return { configured: false, attempted: rows.length, sent: 0, failed: 0, removedStale: 0 };
-  if (rows.length === 0) return { configured: true, attempted: 0, sent: 0, failed: 0, removedStale: 0 };
+// ספירה לפי אדם, לא לפי מכשיר - אם יש לאיש קשר כמה מכשירים, הוא "נשלח" אם לפחות אחד הצליח
+// (קיבל בפועל), "נכשל" רק אם אף אחד מהמכשירים שלו לא הצליח אבל לפחות אחד נכשל עם שגיאה
+// אמיתית (לא 404/410), ו"הוסר" רק אם כל המכשירים שלו כבר לא תקפים - כלומר אין לו שום דרך
+// לקבל פוש יותר, לא רק שמכשיר ישן אחד מתוך כמה נפל
+function summarizeByRecipient(rows: SubscriptionRow[], outcomes: Map<string, 'sent' | 'failed' | 'stale'>): SendResult {
+  const byRecipient = new Map<string, ('sent' | 'failed' | 'stale')[]>();
+  for (const row of rows) {
+    const key = recipientKey(row);
+    const outcome = outcomes.get(row.id);
+    if (!outcome) continue;
+    const list = byRecipient.get(key) || [];
+    list.push(outcome);
+    byRecipient.set(key, list);
+  }
 
   let sent = 0;
   let failed = 0;
   let removedStale = 0;
+  for (const deviceOutcomes of byRecipient.values()) {
+    if (deviceOutcomes.includes('sent')) sent++;
+    else if (deviceOutcomes.includes('failed')) failed++;
+    else removedStale++;
+  }
+
+  return { configured: true, attempted: byRecipient.size, sent, failed, removedStale };
+}
+
+async function sendToRows(rows: SubscriptionRow[], payload: PushPayload): Promise<SendResult> {
+  if (!ensureConfigured()) return { configured: false, attempted: rows.length, sent: 0, failed: 0, removedStale: 0 };
+  if (rows.length === 0) return { configured: true, attempted: 0, sent: 0, failed: 0, removedStale: 0 };
+
+  const outcomes = new Map<string, 'sent' | 'failed' | 'stale'>();
 
   await Promise.all(
     rows.map(async (sub) => {
@@ -85,25 +126,25 @@ async function sendToRows(rows: SubscriptionRow[], payload: PushPayload): Promis
           { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
           JSON.stringify(payload)
         );
-        sent++;
+        outcomes.set(sub.id, 'sent');
       } catch (e: unknown) {
         const statusCode = (e as { statusCode?: number })?.statusCode;
         if (statusCode === 404 || statusCode === 410) {
           await supabaseAdmin.from('push_subscriptions').update({ invalid_at: new Date().toISOString(), invalid_reason: `http_${statusCode}` }).eq('id', sub.id);
-          removedStale++;
+          outcomes.set(sub.id, 'stale');
         } else {
           console.error('שגיאה בשליחת התראת פוש', e);
-          failed++;
+          outcomes.set(sub.id, 'failed');
         }
       }
     })
   );
 
-  return { configured: true, attempted: rows.length, sent, failed, removedStale };
+  return summarizeByRecipient(rows, outcomes);
 }
 
 export async function sendPushToUser(userId: string, payload: PushPayload): Promise<SendResult> {
-  const { data: subs } = await supabaseAdmin.from('push_subscriptions').select('id, endpoint, p256dh, auth').eq('user_id', userId).is('invalid_at', null);
+  const { data: subs } = await supabaseAdmin.from('push_subscriptions').select('id, endpoint, p256dh, auth, user_id').eq('user_id', userId).is('invalid_at', null);
   return sendToRows(subs || [], payload);
 }
 
@@ -125,7 +166,7 @@ export async function sendPushToActiveSubscribers(payload: PushPayload, kind: No
     await recordSendResult(logId, result);
     return result;
   }
-  const { data: subs } = await supabaseAdmin.from('push_subscriptions').select('id, endpoint, p256dh, auth').in('user_id', ids).is('invalid_at', null);
+  const { data: subs } = await supabaseAdmin.from('push_subscriptions').select('id, endpoint, p256dh, auth, user_id').in('user_id', ids).is('invalid_at', null);
   const result = await sendToRows(subs || [], { ...payload, kind, logId: logId || undefined });
   await recordSendResult(logId, result);
   return result;
@@ -136,7 +177,7 @@ export async function sendPushToActiveSubscribers(payload: PushPayload, kind: No
 export async function sendPushToNonSubscribers(payload: PushPayload, kind: NotificationKind, sourceId?: string): Promise<SendResult> {
   const logId = await logNotification(kind, 'non_subscribers', payload, sourceId);
   const subscriberIds = await getActiveSubscriberUserIds();
-  const query = supabaseAdmin.from('push_subscriptions').select('id, endpoint, p256dh, auth, user_id').is('invalid_at', null);
+  const query = supabaseAdmin.from('push_subscriptions').select('id, endpoint, p256dh, auth, user_id, phone, email').is('invalid_at', null);
   const { data: allSubs } = await query;
   const rows = (allSubs || []).filter((s) => !s.user_id || !subscriberIds.includes(s.user_id));
   const result = await sendToRows(rows, { ...payload, kind, logId: logId || undefined });
@@ -148,7 +189,7 @@ export async function sendPushToNonSubscribers(payload: PushPayload, kind: Notif
 // עסקה שנסגרה)
 export async function sendPushToEveryone(payload: PushPayload, kind: NotificationKind, sourceId?: string): Promise<SendResult> {
   const logId = await logNotification(kind, 'everyone', payload, sourceId);
-  const { data: rows } = await supabaseAdmin.from('push_subscriptions').select('id, endpoint, p256dh, auth').is('invalid_at', null);
+  const { data: rows } = await supabaseAdmin.from('push_subscriptions').select('id, endpoint, p256dh, auth, user_id, phone, email').is('invalid_at', null);
   const result = await sendToRows(rows || [], { ...payload, kind, logId: logId || undefined });
   await recordSendResult(logId, result);
   return result;
