@@ -37,6 +37,12 @@ lonColor = input.color(#E040FB, "צבע", inline = "l", group = G_LON)
 lonWidth = input.int(2, "עובי", minval = 1, maxval = 10, inline = "l", group = G_LON)
 lonStyle = input.string("Solid", "סגנון", options = ["Solid", "Dashed", "Dotted"], inline = "l", group = G_LON)
 
+G_TDHL = "Today High / Low - מתעדכן"
+showTdHL = input.bool(true, "הצג", tooltip = "הגבוה והנמוך של יום המסחר הנוכחי (מ-18:00 ניו יורק), כולל פתילים. זזים בזמן אמת בכל פעם שנקבע שיא או שפל חדש. ה-50% Daily Range הוא בדיוק האמצע ביניהם", group = G_TDHL)
+tdHLCol  = input.color(#2962FF, "צבע", inline = "th", group = G_TDHL)
+tdHLW    = input.int(1, "עובי", minval = 1, maxval = 10, inline = "th", group = G_TDHL)
+tdHLSt   = input.string("Solid", "סגנון", options = ["Solid", "Dashed", "Dotted"], inline = "th", group = G_TDHL)
+
 G_PD = "Previous Day High / Low"
 showPD  = input.bool(true, "הצג", group = G_PD)
 pdColor = input.color(#FF9800, "צבע", inline = "p", group = G_PD)
@@ -516,6 +522,9 @@ if barstate.islast
     lt = array.new<string>()
     lc = array.new<color>()
 
+    if showTdHL
+        f_draw(lns, lbs, lp, lt, lc, dT, dHi, tdHLCol, tdHLW, tdHLSt, "Today High", dFull)
+        f_draw(lns, lbs, lp, lt, lc, dT, dLo, tdHLCol, tdHLW, tdHLSt, "Today Low", dFull)
     if showPD
         f_draw(lns, lbs, lp, lt, lc, dT, pdHi, pdColor, pdWidth, pdStyle, "Previous Day High", pdFull)
         f_draw(lns, lbs, lp, lt, lc, dT, pdLo, pdColor, pdWidth, pdStyle, "Previous Day Low", pdFull)
@@ -559,6 +568,8 @@ plot(showLon  and barstate.islast ? lHi : na, "London High",     lonColor,  disp
 plot(showLon  and barstate.islast ? lLo : na, "London Low",      lonColor,  display = showScale ? display.price_scale : display.none)
 plot(showPD   and barstate.islast ? pdHi : na, "Previous Day High", pdColor, display = showScale ? display.price_scale : display.none)
 plot(showPD   and barstate.islast ? pdLo : na, "Previous Day Low",  pdColor, display = showScale ? display.price_scale : display.none)
+plot(showTdHL and barstate.islast ? dHi : na, "Today High", tdHLCol, display = showScale ? display.price_scale : display.none)
+plot(showTdHL and barstate.islast ? dLo : na, "Today Low",  tdHLCol, display = showScale ? display.price_scale : display.none)
 plot(showVP   and barstate.islast ? pPoc : na, "PD POC", pocColor, display = showScale ? display.price_scale : display.none)
 plot(showPdVa and barstate.islast ? pVah : na, "PD VAH", vaColor,  display = showScale ? display.price_scale : display.none)
 plot(showPdVa and barstate.islast ? pVal : na, "PD VAL", vaColor,  display = showScale ? display.price_scale : display.none)
