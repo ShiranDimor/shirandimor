@@ -22,15 +22,33 @@ self.addEventListener('push', (event) => {
   // (ספארי/iOS לא תומכים ברטט מאתרים בכלל - מגבלת הפלטפורמה, לא ניתנת לעקיפה)
   const isTrade = data.kind === 'trade';
 
+  // אישור קבלה אמיתי לשרת - לא רק ששירות הפוש (גוגל/אפל) הסכים לקבל את הבקשה לשליחה (שזה
+  // כל מה ש-sent_count ב-webPush.ts מדד עד עכשיו), אלא שההתראה באמת הוצגה כאן, במכשיר הזה.
+  // רק כשיש logId (מגיע רק מ-sendPushToActiveSubscribers/NonSubscribers/Everyone, לא מבדיקה-
+  // לעצמי/תזכורת ישירה) - שגיאה כאן לא אמורה למנוע מההתראה עצמה להישאר מוצגת למשתמש/ת
+  const confirmReceipt = data.logId
+    ? self.registration.pushManager
+        .getSubscription()
+        .then((sub) => sub && fetch('/api/push/receipt', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ logId: data.logId, endpoint: sub.endpoint }),
+        }))
+        .catch(() => {})
+    : Promise.resolve();
+
   event.waitUntil(
-    self.registration.showNotification(data.title, {
-      body: data.body,
-      icon: '/icons/icon-192.png',
-      badge: '/icons/icon-192.png',
-      data: { url: data.url },
-      requireInteraction: isTrade,
-      ...(isTrade ? { vibrate: [250, 100, 250, 100, 250] } : {}),
-    })
+    Promise.all([
+      self.registration.showNotification(data.title, {
+        body: data.body,
+        icon: '/icons/icon-192.png',
+        badge: '/icons/icon-192.png',
+        data: { url: data.url },
+        requireInteraction: isTrade,
+        ...(isTrade ? { vibrate: [250, 100, 250, 100, 250] } : {}),
+      }),
+      confirmReceipt,
+    ])
   );
 });
 

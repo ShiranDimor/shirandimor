@@ -260,6 +260,12 @@ export default function AdminDashboard() {
           <div className="at-title">הפעילו התראות פוש</div>
           <div className="at-count">מנויים ולידים שהפעילו</div>
         </Link>
+
+        <Link href="/admin/notifications" className="admin-tile">
+          <div className="at-icon">📜</div>
+          <div className="at-title">היסטוריית התראות</div>
+          <div className="at-count">מי באמת קיבל, לא רק נשלח</div>
+        </Link>
       </div>
 
       <div className="section-label"><h2>שאר האתר</h2></div>

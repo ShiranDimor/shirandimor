@@ -28,6 +28,11 @@ export type PushPayload = {
   // לא מוגדר כשקוראים ל-sendPushToUser/sendPushToUsers הישירים (בדיקה-לעצמי, אדמין) - רק
   // sendPushToActiveSubscribers/NonSubscribers/Everyone ממלאים אותו אוטומטית מה-kind שהן מקבלות
   kind?: NotificationKind;
+  // מזהה רשומת notification_log - מועבר בפועל בתוך גוף ה-push כדי שה-Service Worker יוכל
+  // "לאשר קבלה" בחזרה (POST ל-/api/push/receipt) ברגע שההתראה באמת הוצגה במכשיר, לא רק
+  // שהשירות של גוגל/אפל הסכים לקבל אותה לשליחה. ר' sendPushToActiveSubscribers/NonSubscribers/
+  // Everyone - הן היחידות שממלאות את זה (יש להן logId אמיתי מ-logNotification)
+  logId?: string;
 };
 
 type SubscriptionRow = { id: string; endpoint: string; p256dh: string; auth: string };
@@ -121,7 +126,7 @@ export async function sendPushToActiveSubscribers(payload: PushPayload, kind: No
     return result;
   }
   const { data: subs } = await supabaseAdmin.from('push_subscriptions').select('id, endpoint, p256dh, auth').in('user_id', ids).is('invalid_at', null);
-  const result = await sendToRows(subs || [], { ...payload, kind });
+  const result = await sendToRows(subs || [], { ...payload, kind, logId: logId || undefined });
   await recordSendResult(logId, result);
   return result;
 }
@@ -134,7 +139,7 @@ export async function sendPushToNonSubscribers(payload: PushPayload, kind: Notif
   const query = supabaseAdmin.from('push_subscriptions').select('id, endpoint, p256dh, auth, user_id').is('invalid_at', null);
   const { data: allSubs } = await query;
   const rows = (allSubs || []).filter((s) => !s.user_id || !subscriberIds.includes(s.user_id));
-  const result = await sendToRows(rows, { ...payload, kind });
+  const result = await sendToRows(rows, { ...payload, kind, logId: logId || undefined });
   await recordSendResult(logId, result);
   return result;
 }
@@ -144,7 +149,7 @@ export async function sendPushToNonSubscribers(payload: PushPayload, kind: Notif
 export async function sendPushToEveryone(payload: PushPayload, kind: NotificationKind, sourceId?: string): Promise<SendResult> {
   const logId = await logNotification(kind, 'everyone', payload, sourceId);
   const { data: rows } = await supabaseAdmin.from('push_subscriptions').select('id, endpoint, p256dh, auth').is('invalid_at', null);
-  const result = await sendToRows(rows || [], { ...payload, kind });
+  const result = await sendToRows(rows || [], { ...payload, kind, logId: logId || undefined });
   await recordSendResult(logId, result);
   return result;
 }
