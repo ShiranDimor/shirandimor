@@ -23,6 +23,7 @@ type JournalEntry = {
   opened_at: string;
   closed_at: string | null;
   parent_entry_id: string | null;
+  half_size: boolean;
 };
 
 function unrealizedUsd(e: JournalEntry) {
@@ -59,6 +60,7 @@ export default function JournalPage() {
   }
 
   const [direction, setDirection] = useState<'long' | 'short'>('long');
+  const [sizeMode, setSizeMode] = useState<'full' | 'half'>('full');
   const [symbol, setSymbol] = useState('');
   const [entryPrice, setEntryPrice] = useState('');
   const [stopLoss, setStopLoss] = useState('');
@@ -147,7 +149,7 @@ export default function JournalPage() {
   }
 
   const calcShares = entryPrice && stopLoss && riskAmount
-    ? Math.floor(parseFloat(riskAmount) / Math.abs(parseFloat(entryPrice) - parseFloat(stopLoss)))
+    ? Math.floor((parseFloat(riskAmount) * (sizeMode === 'half' ? 0.5 : 1)) / Math.abs(parseFloat(entryPrice) - parseFloat(stopLoss)))
     : 0;
 
   async function handleLogout() {
@@ -282,7 +284,7 @@ export default function JournalPage() {
 
     const { error } = await supabase
       .from('journal_entries')
-      .update({ entry_price: newEntryPrice, shares: newShares })
+      .update({ entry_price: newEntryPrice, shares: newShares, half_size: false })
       .eq('id', entry.id);
 
     setAddingQty(false);
@@ -384,16 +386,17 @@ export default function JournalPage() {
       symbol: symbol.toUpperCase(),
       entry_price: parseFloat(entryPrice),
       stop_loss: parseFloat(stopLoss),
-      risk_amount_usd: parseFloat(riskAmount),
+      risk_amount_usd: parseFloat(riskAmount) * (sizeMode === 'half' ? 0.5 : 1),
       shares: calcShares,
       status: 'open',
+      half_size: sizeMode === 'half',
       ...(openDate ? { opened_at: new Date(openDate).toISOString() } : {}),
     });
 
     setSaving(false);
 
     if (!error) {
-      setSymbol(''); setEntryPrice(''); setStopLoss(''); setRiskAmount(''); setOpenDate('');
+      setSymbol(''); setEntryPrice(''); setStopLoss(''); setRiskAmount(''); setOpenDate(''); setSizeMode('full');
       setShowForm(false);
       load();
     }
@@ -443,6 +446,10 @@ export default function JournalPage() {
             <div className={`toggle-opt ${direction === 'long' ? 'long-active' : ''}`} onClick={() => setDirection('long')} style={{ cursor: 'pointer' }}>לונג</div>
             <div className={`toggle-opt ${direction === 'short' ? 'short-active' : ''}`} onClick={() => setDirection('short')} style={{ cursor: 'pointer' }}>שורט</div>
           </div>
+          <div className="toggle-row">
+            <div className={`toggle-opt ${sizeMode === 'full' ? 'size-active' : ''}`} onClick={() => setSizeMode('full')} style={{ cursor: 'pointer' }}>כמות מלאה</div>
+            <div className={`toggle-opt ${sizeMode === 'half' ? 'size-active' : ''}`} onClick={() => setSizeMode('half')} style={{ cursor: 'pointer' }}>חצי כמות</div>
+          </div>
           <div className="field"><label>סימבול</label><ClearableInput type="text" value={symbol} onChange={(e) => setSymbol(e.target.value)} onClear={() => setSymbol('')} placeholder="AAPL" /></div>
           <div className="form-row">
             <div className="field"><label>מחיר כניסה</label><ClearableInput type="number" value={entryPrice} onChange={(e) => setEntryPrice(e.target.value)} onClear={() => setEntryPrice('')} placeholder="127.32" /></div>
@@ -451,7 +458,7 @@ export default function JournalPage() {
           <div className="field"><label>סיכון כספי ($)</label><ClearableInput type="number" value={riskAmount} onChange={(e) => setRiskAmount(e.target.value)} onClear={() => setRiskAmount('')} placeholder="500" /></div>
           <div className="field"><label>תאריך פתיחה (לא חובה - ברירת מחדל: היום)</label><input type="date" value={openDate} onChange={(e) => setOpenDate(e.target.value)} /></div>
           <div style={{ background: 'var(--bg-void)', border: '1px solid var(--border-hairline)', borderRadius: '8px', padding: '10px 12px', marginBottom: '14px', display: 'flex', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: '12.5px', color: 'var(--text-secondary)' }}>כמות מניות מחושבת</span>
+            <span style={{ fontSize: '12.5px', color: 'var(--text-secondary)' }}>{sizeMode === 'half' ? 'כמות מניות מחושבת (חצי כמות)' : 'כמות מניות מחושבת'}</span>
             <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, color: 'var(--teal)' }}>{calcShares || '—'}</span>
           </div>
           <button className="btn-primary" onClick={handleAdd} disabled={saving}>{saving ? 'שומרים...' : 'שמירת עסקה'}</button>
@@ -573,6 +580,14 @@ export default function JournalPage() {
                 <div className="qp-title">+ הוספת כמות · {entry.symbol}</div>
                 <div className="qp-field"><label>מחיר כניסה נוסף</label><ClearableInput type="number" value={addQtyPrice} onChange={(ev) => setAddQtyPrice(ev.target.value)} onClear={() => setAddQtyPrice('')} placeholder="132.00" /></div>
                 <div className="qp-field"><label>כמות נוספת</label><ClearableInput type="number" value={addQtyShares} onChange={(ev) => setAddQtyShares(ev.target.value)} onClear={() => setAddQtyShares('')} placeholder="20" /></div>
+                <div style={{ display: 'flex', gap: '6px', margin: '-4px 0 8px' }}>
+                  <button type="button" className="qp-cancel" style={{ flex: 1, fontSize: '11.5px', padding: '5px 8px' }} onClick={() => setAddQtyShares(String(Math.round(entry.shares / 2)))}>
+                    חצי כמות (+{Math.round(entry.shares / 2)})
+                  </button>
+                  <button type="button" className="qp-cancel" style={{ flex: 1, fontSize: '11.5px', padding: '5px 8px' }} onClick={() => setAddQtyShares(String(entry.shares))}>
+                    כמות מלאה (+{entry.shares})
+                  </button>
+                </div>
                 <p style={{ fontSize: '11.5px', color: 'var(--text-tertiary)', margin: '4px 0 10px' }}>מחיר הכניסה יתעדכן לממוצע המשוקלל, והכמות תתווסף לעסקה הקיימת</p>
                 <div className="qp-row">
                   <button className="qp-confirm" onClick={() => handleAddQuantity(entry)} disabled={addingQty || !addQtyPrice || !addQtyShares}>{addingQty ? 'מוסיפים...' : 'אישור הוספה'}</button>
@@ -624,6 +639,11 @@ export default function JournalPage() {
                         <span className="sym-cell-inner">
                           <span className={`direction-mark ${e.direction}`}>{e.direction === 'long' ? 'L' : 'S'}</span>
                           <span>{e.symbol}</span>
+                          {e.half_size && (
+                            <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--lavender)', background: 'var(--lavender-bg)', border: '1px solid var(--lavender)', borderRadius: '6px', padding: '1px 6px' }}>
+                              ½ חצי כמות
+                            </span>
+                          )}
                         </span>
                       </td>
                       <td>{formatDate(e.opened_at)}</td>
