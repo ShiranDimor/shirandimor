@@ -26,6 +26,7 @@ type Trade = {
   opened_at: string;
   closed_at: string | null;
   parent_trade_id: string | null;
+  half_size: boolean;
 };
 
 function pctPnl(trade: Trade, isClosed: boolean) {
@@ -193,14 +194,14 @@ export default function AdminTradesPage() {
   async function loadTrades() {
     const { data: open } = await supabase
       .from('trades')
-      .select('id, direction, symbol, entry_price, stop_loss, max_entry_price, target_price, shares_calculated, exit_price, current_price, realized_pnl_usd, notes, opened_at, closed_at, parent_trade_id')
+      .select('id, direction, symbol, entry_price, stop_loss, max_entry_price, target_price, shares_calculated, exit_price, current_price, realized_pnl_usd, notes, opened_at, closed_at, parent_trade_id, half_size')
       .eq('status', 'open')
       .order('opened_at', { ascending: false });
     if (open) setOpenTrades(open);
 
     const { data: closed } = await supabase
       .from('trades')
-      .select('id, direction, symbol, entry_price, stop_loss, max_entry_price, target_price, shares_calculated, exit_price, current_price, realized_pnl_usd, notes, opened_at, closed_at, parent_trade_id')
+      .select('id, direction, symbol, entry_price, stop_loss, max_entry_price, target_price, shares_calculated, exit_price, current_price, realized_pnl_usd, notes, opened_at, closed_at, parent_trade_id, half_size')
       .eq('status', 'closed')
       .order('closed_at', { ascending: false });
     if (closed) setClosedTrades(closed);
@@ -255,7 +256,8 @@ export default function AdminTradesPage() {
 
     const { error } = await supabase
       .from('trades')
-      .update({ entry_price: newEntryPrice, shares_calculated: newShares })
+      // half_size מתאפס - אחרי הוספה הכמות כבר לא "חצי" מהתוכנית המקורית, התג היה מטעה אם היה נשאר
+      .update({ entry_price: newEntryPrice, shares_calculated: newShares, half_size: false })
       .eq('id', trade.id);
 
     setAddingQty(false);
@@ -500,6 +502,7 @@ export default function AdminTradesPage() {
       shares_calculated: shares,
       current_price: entry,
       status: 'open',
+      half_size: sizeMode === 'half',
       ...(openDate ? { opened_at: new Date(openDate).toISOString() } : {}),
     });
 
@@ -817,6 +820,11 @@ export default function AdminTradesPage() {
                     <span className="sym-cell-inner">
                       <span className={`direction-mark ${trade.direction}`}>{trade.direction === 'long' ? 'L' : 'S'}</span>
                       <span>{trade.symbol}</span>
+                      {trade.half_size && (
+                        <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--lavender)', background: 'var(--lavender-bg)', border: '1px solid var(--lavender)', borderRadius: '6px', padding: '1px 6px' }}>
+                          ½ חצי כמות
+                        </span>
+                      )}
                     </span>
                   </td>
                   <td>{formatDate(trade.opened_at)}</td>

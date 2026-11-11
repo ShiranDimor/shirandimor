@@ -27,6 +27,7 @@ type Trade = {
   closed_at: string | null;
   shares_calculated: number | null;
   realized_pnl_usd: number | null;
+  half_size: boolean;
 };
 
 const MONTH_LABELS = ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני', 'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר'];
@@ -534,9 +535,16 @@ export default function PortfolioPage() {
                         <b className={!hasFullAccess ? 'trade-symbol blurred' : ''}>{trade.symbol}</b>
                         {!hasFullAccess && <span className="locked-tag">למנויים</span>}
                       </div>
-                      <span className={`direction-mark ${trade.direction}`} style={{ border: `1px solid ${isPositive ? 'rgba(61,220,132,0.4)' : 'rgba(255,92,92,0.4)'}`, borderRadius: '5px', padding: '2px 7px', fontSize: '9.5px' }}>
-                        {trade.direction === 'long' ? 'LONG' : 'SHORT'}
-                      </span>
+                      <div style={{ display: 'flex', gap: '6px' }}>
+                        <span className={`direction-mark ${trade.direction}`} style={{ border: `1px solid ${isPositive ? 'rgba(61,220,132,0.4)' : 'rgba(255,92,92,0.4)'}`, borderRadius: '5px', padding: '2px 7px', fontSize: '9.5px' }}>
+                          {trade.direction === 'long' ? 'LONG' : 'SHORT'}
+                        </span>
+                        {trade.half_size && (
+                          <span style={{ border: '1px solid var(--lavender)', background: 'var(--lavender-bg)', color: 'var(--lavender)', borderRadius: '5px', padding: '2px 7px', fontSize: '9.5px', fontWeight: 700 }}>
+                            ½ חצי כמות
+                          </span>
+                        )}
+                      </div>
                     </div>
                     <div className="tpc-pct-wrap">
                       <div className={`tpc-pct ${displayPct >= 0 ? 'pos' : 'neg'}`}>{displayPct >= 0 ? '+' : '-'}{Math.abs(displayPct).toFixed(2)}%</div>

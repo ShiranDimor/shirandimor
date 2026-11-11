@@ -35,9 +35,11 @@ export async function POST(request: Request) {
 
   const dirLabel = direction === 'short' ? 'שורט' : 'לונג';
 
+  // חצי כמות מופיע בכותרת עצמה (לא רק בגוף ההודעה) - הכותרת תמיד מודגשת ולא נחתכת כמו גוף
+  // ארוך, ושירן ביקשה מפורשות שזה לא יפספס כי זה משנה את הסיכון בפועל של המנוי שמעתיק את העסקה
   await sendPushToActiveSubscribers({
-    title: `🆕 עסקה חדשה בתיק - ${symbol}`,
-    body: `${dirLabel}${entryPrice ? ` · כניסה: $${entryPrice}` : ''}${stopLoss ? ` · סטופ: $${stopLoss}` : ''}${halfSize ? ' · חצי כמות' : ''}`,
+    title: halfSize ? `🆕 עסקה חדשה (חצי כמות ⚠️) - ${symbol}` : `🆕 עסקה חדשה בתיק - ${symbol}`,
+    body: `${dirLabel}${entryPrice ? ` · כניסה: $${entryPrice}` : ''}${stopLoss ? ` · סטופ: $${stopLoss}` : ''}`,
     url: '/portfolio',
   }, 'trade');
 
