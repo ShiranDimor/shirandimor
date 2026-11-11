@@ -30,6 +30,8 @@ export default function AdminPushSubscriptionsPage() {
   const [leadCount, setLeadCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const [deletingId, setDeletingId] = useState('');
+  const [approvingId, setApprovingId] = useState('');
+  const [approveMessage, setApproveMessage] = useState('');
   const [resyncing, setResyncing] = useState(false);
   const [resyncMessage, setResyncMessage] = useState('');
 
@@ -89,6 +91,28 @@ export default function AdminPushSubscriptionsPage() {
     }
   }
 
+  async function handleApprove(row: Row) {
+    const label = row.name || row.email || row.phone || 'איש הקשר הזה';
+    if (!window.confirm(`לאשר את ${label} כמנוי? ייווצר לו חשבון מנוי פעיל באתר, הכרטיס במאנדיי יעבור ל"קבוצת סוחרים" ויישלח לו מייל אישור.`)) return;
+    setApprovingId(row.id);
+    setApproveMessage('');
+    const headers = await authHeader();
+    const res = await fetch('/api/admin/push-subscriptions/approve', { method: 'POST', headers, body: JSON.stringify({ ids: row.deviceIds }) });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok) {
+      if (data.userId) {
+        await fetch('/api/admin/notify-approved', { method: 'POST', headers, body: JSON.stringify({ userId: data.userId }) }).catch(() => {});
+      }
+      setApproveMessage(data.mondayOk
+        ? `✔ ${label} אושר כמנוי ועבר ל"קבוצת סוחרים" במאנדיי.`
+        : `✔ ${label} אושר כמנוי באתר, אבל ההעברה במאנדיי נכשלה (${data.mondayError || 'שגיאה'}) - צריך להעביר אותו ידנית ל"קבוצת סוחרים", אחרת הסנכרון היומי יבטל את האישור.`);
+      await loadRows();
+    } else {
+      setApproveMessage(`שגיאה באישור: ${data.error || res.status}`);
+    }
+    setApprovingId('');
+  }
+
   async function handleLogout() {
     await supabase.auth.signOut();
     window.location.href = '/';
@@ -141,9 +165,16 @@ export default function AdminPushSubscriptionsPage() {
             {r.deviceCount > 1 && ` · ${r.deviceCount} מכשירים`}
           </div>
         </div>
-        <button onClick={() => handleDelete(r)} disabled={deletingId === r.id} className="btn-outline" style={{ padding: '6px 12px', fontSize: '12.5px' }}>
-          {deletingId === r.id ? '…' : 'הסרה'}
-        </button>
+        <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
+          {!r.isSubscriber && (
+            <button onClick={() => handleApprove(r)} disabled={approvingId === r.id || !(r.email || r.phone)} className="btn-outline" style={{ padding: '6px 12px', fontSize: '12.5px', borderColor: 'var(--teal)', color: 'var(--teal)' }}>
+              {approvingId === r.id ? 'מאשר…' : '✔ אישור כמנוי'}
+            </button>
+          )}
+          <button onClick={() => handleDelete(r)} disabled={deletingId === r.id} className="btn-outline" style={{ padding: '6px 12px', fontSize: '12.5px' }}>
+            {deletingId === r.id ? '…' : 'הסרה'}
+          </button>
+        </div>
       </div>
     );
   }
@@ -168,6 +199,8 @@ export default function AdminPushSubscriptionsPage() {
         {resyncing ? 'מסנכרן...' : '🔄 סנכרון מחדש למאנדיי (תיקון חד-פעמי למי שהתעדכן קודם)'}
       </button>
       {resyncMessage && <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', marginBottom: '18px' }}>{resyncMessage}</p>}
+
+      {approveMessage && <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', marginBottom: '18px' }}>{approveMessage}</p>}
 
       {loading && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>טוענים...</p>}
 

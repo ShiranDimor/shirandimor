@@ -1057,3 +1057,69 @@ export async function fillMissingEmailsInMonday(emailByPhone: Map<string, string
 
   return result;
 }
+
+// אישור ידני של מנוי/ה מעמוד ניהול ההתראות (כפתור "אישור כמנוי") - מעביר את הכרטיס הקיים
+// במאנדיי (מכל קבוצה, למשל "הפעיל עדכונים באתר ללא מנוי") לקבוצת "קבוצת סוחרים", או יוצר
+// כרטיס חדש שם אם אין. חובה: הסנכרון הדו-כיווני היומי (lib/mondaySubscriberSync.ts) מוריד
+// גישה לכל מי שלא נמצא/ת ב"קבוצת סוחרים" - בלי ההעברה הזו האישור באתר היה מתבטל למחרת
+export async function moveContactToSubscribersGroupOnMonday(params: { name?: string | null; phone?: string | null; email?: string | null }): Promise<{ ok: boolean; matched: boolean; error?: string }> {
+  const token = process.env.MONDAY_API_TOKEN;
+  const boardId = process.env.MONDAY_BOARD_ID;
+  if (!token || !boardId) return { ok: false, matched: false, error: 'missing_monday_config' };
+  if (!params.phone && !params.email) return { ok: false, matched: false, error: 'missing_contact' };
+
+  try {
+    const { phoneColumnId, emailColumnId, subscriberGroupId, joinDateColumnId } = await getBoardSchema(token, boardId);
+    if (!subscriberGroupId) return { ok: false, matched: false, error: 'missing_subscriber_group' };
+
+    const targetPhone = params.phone ? normalizePhone(params.phone) : null;
+    const targetEmail = params.email ? params.email.trim().toLowerCase() : null;
+    const existing = await findItemByContactAnywhere(token, boardId, phoneColumnId, emailColumnId, targetPhone, targetEmail);
+
+    const columnValues: Record<string, unknown> = {};
+    if (phoneColumnId && params.phone) columnValues[phoneColumnId] = { phone: params.phone.startsWith('0') ? `972${params.phone.slice(1)}` : params.phone, countryShortName: 'IL' };
+    if (emailColumnId && params.email) columnValues[emailColumnId] = { email: params.email, text: params.email };
+    if (joinDateColumnId) columnValues[joinDateColumnId] = { date: new Date().toISOString().slice(0, 10) };
+
+    let itemId: string | undefined;
+    if (existing) {
+      itemId = existing.id;
+      if (existing.groupId !== subscriberGroupId) {
+        await mondayRequest(
+          token,
+          `mutation ($itemId: ID!, $groupId: String!) { move_item_to_group (item_id: $itemId, group_id: $groupId) { id } }`,
+          { itemId, groupId: subscriberGroupId }
+        );
+      }
+      await mondayRequest(
+        token,
+        `mutation ($boardId: ID!, $itemId: ID!, $columnValues: JSON!) {
+          change_multiple_column_values (board_id: $boardId, item_id: $itemId, column_values: $columnValues) { id }
+        }`,
+        { boardId, itemId, columnValues: JSON.stringify(columnValues) }
+      );
+    } else {
+      const createData: any = await mondayRequest(
+        token,
+        `mutation ($boardId: ID!, $groupId: String, $itemName: String!, $columnValues: JSON) {
+          create_item (board_id: $boardId, group_id: $groupId, item_name: $itemName, column_values: $columnValues) { id }
+        }`,
+        { boardId, groupId: subscriberGroupId, itemName: params.name || params.phone || params.email || 'ללא שם', columnValues: JSON.stringify(columnValues) }
+      );
+      itemId = createData?.data?.create_item?.id;
+    }
+
+    if (!itemId) return { ok: false, matched: Boolean(existing), error: 'no_item_id' };
+
+    await mondayRequest(
+      token,
+      `mutation ($itemId: ID!, $body: String!) { create_update (item_id: $itemId, body: $body) { id } }`,
+      { itemId, body: 'אושר/ה כמנוי/ה ידנית מעמוד ניהול ההתראות באתר' }
+    ).catch((e) => console.error('Monday.com: נכשל הוספת הערה (אישור מנוי)', e));
+
+    return { ok: true, matched: Boolean(existing) };
+  } catch (e) {
+    console.error('שגיאה בהעברה לקבוצת סוחרים ב-Monday.com', e);
+    return { ok: false, matched: false, error: e instanceof Error ? e.message : 'unknown_error' };
+  }
+}
