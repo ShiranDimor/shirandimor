@@ -211,7 +211,9 @@
   .tpc-foot3-item.stop .val { color: var(--loss); }
   /* כש-max_entry_price מוגדר יש 4 פריטים (סטופ/כניסה/כניסה עד מחיר/יעד) - לא נכנסים בנוחות
      במיקום האבסולוטי הקבוע של tpc-foot3, אז flex עם רוחב שווה במקום מיקום קבוע */
-  .tpc-foot4 { display: flex; justify-content: space-between; gap: 4px; }
+  /* row-reverse ולא row - כדי שהסדר הפיזי (סטופ בצד שמאל, יעד בצד ימין, כמו ב-tpc-foot3)
+     יהיה קבוע ולא תלוי בפרשנות כיווניות (rtl) של flex בדפדפנים שונים */
+  .tpc-foot4 { display: flex; flex-direction: row-reverse; justify-content: space-between; gap: 4px; }
   .tpc-foot4-item { flex: 1; text-align: center; }
   .tpc-foot4-item .lbl { font-size: 9px; color: var(--text-tertiary); display: flex; align-items: center; gap: 3px; justify-content: center; margin-bottom: 2px; white-space: nowrap; }
   .tpc-foot4-item .val { font-size: 11.5px; font-weight: 700; }
