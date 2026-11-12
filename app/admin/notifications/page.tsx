@@ -19,7 +19,7 @@ type Row = {
 };
 
 const KIND_ICON: Record<string, string> = { trade: '📈', lesson: '📚', live: '🎥', announcement: '📣' };
-const AUDIENCE_LABEL: Record<string, string> = { subscribers: 'מנויים', non_subscribers: 'לא-מנויים', everyone: 'כולם' };
+const AUDIENCE_LABEL: Record<string, string> = { subscribers: 'מנויים', non_subscribers: 'לא-מנויים', everyone: 'כולם', admin: 'התראת מערכת (אלייך)' };
 
 function formatDateTime(iso: string) {
   return new Date(iso).toLocaleString('he-IL', { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' });

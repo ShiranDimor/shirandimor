@@ -39,11 +39,13 @@ type SubscriptionRow = { id: string; endpoint: string; p256dh: string; auth: str
 
 export type SendResult = { configured: boolean; attempted: number; sent: number; failed: number; removedStale: number };
 
-function normalizePhone(raw: string | null | undefined): string {
+// מיוצא - גם push-health-check (app/api/cron/push-health-check) צריך לזהות "אותו איש קשר"
+// בין כמה שורות מינוי, כדי לא להתריע על מישהו ששורה אחת שלו נשברה אבל יש לו מכשיר אחר שעדיין תקף
+export function normalizePhone(raw: string | null | undefined): string {
   return (raw || '').replace(/\D/g, '').slice(-9);
 }
 
-function normalizeEmail(raw: string | null | undefined): string {
+export function normalizeEmail(raw: string | null | undefined): string {
   return (raw || '').trim().toLowerCase();
 }
 
@@ -60,7 +62,9 @@ function recipientKey(row: SubscriptionRow): string {
 // עם הסימבול, ללא-מנויים בגרסה מטושטשת) - בלי לשחזר את זה בדיעבד מכמה טבלאות שונות.
 // sourceId (כשיש) הוא ה-id של השורה המקורית (שיעור/לייב/מודעה) - כדי שמחיקת הפריט המקורי
 // תוכל למחוק גם את רשומת היומן המתאימה, ולא תישאר "רפאים" בפעמון אחרי שהתוכן כבר לא קיים
-async function logNotification(kind: NotificationKind, audience: 'subscribers' | 'non_subscribers' | 'everyone', payload: PushPayload, sourceId?: string): Promise<string | null> {
+export type NotificationAudience = 'subscribers' | 'non_subscribers' | 'everyone' | 'admin';
+
+async function logNotification(kind: NotificationKind, audience: NotificationAudience, payload: PushPayload, sourceId?: string): Promise<string | null> {
   const { data } = await supabaseAdmin
     .from('notification_log')
     .insert({ kind, audience, title: payload.title, body: payload.body, url: payload.url || null, source_id: sourceId || null })
@@ -190,6 +194,21 @@ export async function sendPushToNonSubscribers(payload: PushPayload, kind: Notif
 export async function sendPushToEveryone(payload: PushPayload, kind: NotificationKind, sourceId?: string): Promise<SendResult> {
   const logId = await logNotification(kind, 'everyone', payload, sourceId);
   const { data: rows } = await supabaseAdmin.from('push_subscriptions').select('id, endpoint, p256dh, auth, user_id, phone, email').is('invalid_at', null);
+  const result = await sendToRows(rows || [], { ...payload, kind, logId: logId || undefined });
+  await recordSendResult(logId, result);
+  return result;
+}
+
+// שולח התראות מערכת פנימיות (כמו בדיקת-תקינות-פוש) לשירן/אדמינים אחרים - עם רישום ביומן
+// ההתראות (notification_log), כדי שזה יופיע ב-/admin/notifications ולא רק כפוש חולף בטלפון
+// שאפשר לפספס/למחוק ולאבד לצמיתות
+export async function sendPushToAdmins(payload: PushPayload, kind: NotificationKind, sourceId?: string): Promise<SendResult> {
+  const logId = await logNotification(kind, 'admin', payload, sourceId);
+  const { data: admins } = await supabaseAdmin.from('profiles').select('id').eq('role', 'admin');
+  const adminIds = (admins || []).map((a) => a.id);
+  const { data: rows } = adminIds.length
+    ? await supabaseAdmin.from('push_subscriptions').select('id, endpoint, p256dh, auth, user_id').in('user_id', adminIds).is('invalid_at', null)
+    : { data: [] as SubscriptionRow[] };
   const result = await sendToRows(rows || [], { ...payload, kind, logId: logId || undefined });
   await recordSendResult(logId, result);
   return result;
