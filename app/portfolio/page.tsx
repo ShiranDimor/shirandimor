@@ -568,10 +568,13 @@ export default function PortfolioPage() {
                     </svg>
                   </div>
 
+                  {/* left ולא right - 0%=סטופ (שמאל, כמו בשורת סטופ/כניסה/יעד למטה), 100%=יעד (ימין),
+                      כך שהנקודה באמת זזה ימינה כשהמחיר עולה לכיוון היעד ושמאלה כשהוא יורד לכיוון הסטופ */}
                   <div className="tpc-bar">
                     <div className="tpc-risk" style={{ width: '100%', background: isPositive ? 'rgba(61,220,132,0.12)' : 'rgba(255,92,92,0.12)' }}></div>
-                    <div className="tpc-fill" style={{ right: '0%', width: `${barPos}%`, background: isPositive ? 'var(--profit)' : 'var(--loss)', boxShadow: 'none' }}></div>
-                    <div className="tpc-now" style={{ right: `${barPos}%`, boxShadow: '0 0 0 2px var(--teal)' }}></div>
+                    <div className="tpc-fill" style={{ left: '0%', width: `${barPos}%`, background: isPositive ? 'var(--profit)' : 'var(--loss)', boxShadow: 'none' }}></div>
+                    <div className="tpc-now" style={{ left: `${barPos}%`, boxShadow: '0 0 0 2px var(--teal)' }}></div>
+                    <div className="tpc-now-label" style={{ left: `${barPos}%` }}>${trade.current_price ?? trade.entry_price}</div>
                   </div>
 
                   {trade.max_entry_price !== null ? (

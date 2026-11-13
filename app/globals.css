@@ -253,13 +253,26 @@
   .tpc-pct.pos { color: var(--profit); text-shadow: 0 0 16px rgba(61,220,132,0.5); }
   .tpc-pct.neg { color: var(--loss); text-shadow: 0 0 16px rgba(255,92,92,0.45); }
   .tpc-pct-label { font-size: 8.5px; color: var(--text-tertiary); font-weight: 600; margin-top: 1px; }
-  .tpc-bar { position: relative; height: 8px; border-radius: 5px; background: rgba(255,255,255,0.05); margin: 26px 12px 10px; box-shadow: inset 0 1px 3px rgba(0,0,0,0.5); }
+  /* bottom 24px ולא 10px - משאיר מרווח נשימה אל מול שורת סטופ/כניסה/יעד למטה, כדי שתווית
+     המחיר שצפה מעל הנקודה (tpc-now-label) לא תיראה כאילו היא מתארת את הערך שמתחתיה */
+  .tpc-bar { position: relative; height: 8px; border-radius: 5px; background: rgba(255,255,255,0.05); margin: 26px 12px 24px; box-shadow: inset 0 1px 3px rgba(0,0,0,0.5); }
   .tpc-risk { position: absolute; top: 0; bottom: 0; right: 0; background: linear-gradient(90deg, rgba(255,92,92,0.1), rgba(255,92,92,0.35)); border-radius: 5px 0 0 5px; }
   .tpc-fill { position: absolute; top: 0; bottom: 0; border-radius: 5px; background: linear-gradient(90deg, rgba(61,220,132,0.65), #4FFFA0); box-shadow: 0 0 12px rgba(79,255,160,0.55); }
   .tpc-flag { position: absolute; top: -18px; left: 0; font-size: 12px; filter: drop-shadow(0 0 4px rgba(255,182,72,0.6)); }
   .tpc-stopcap { position: absolute; top: 50%; right: 0; width: 3px; height: 13px; border-radius: 3px; background: var(--loss); opacity: 0.7; transform: translate(50%, -50%); box-shadow: 0 0 6px rgba(255,92,92,0.5); }
   .tpc-now-outer { position: absolute; top: 50%; width: 19px; height: 19px; border-radius: 50%; transform: translate(50%, -50%); }
-  .tpc-now { position: absolute; top: 50%; width: 12px; height: 12px; border-radius: 50%; background: #fff; border: 2.5px solid var(--bg-void); transform: translate(50%, -50%); }
+  /* left ולא right, ו-translateX שלילי ולא חיובי - הנקודה עוגנת עכשיו מצד שמאל (עמדת הסטופ,
+     ר' tpc-fill) כדי שתתקדם ימינה כשהמחיר עולה לכיוון היעד, בדיוק כמו עמודות סטופ/יעד למטה */
+  .tpc-now { position: absolute; top: 50%; width: 12px; height: 12px; border-radius: 50%; background: #fff; border: 2.5px solid var(--bg-void); transform: translate(-50%, -50%); }
+  .tpc-now-label {
+    position: absolute; bottom: calc(100% + 11px); transform: translateX(-50%);
+    background: var(--teal); color: #fff; font-size: 10.5px; font-weight: 800; white-space: nowrap;
+    padding: 2px 7px; border-radius: 6px; box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+  }
+  .tpc-now-label::after {
+    content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
+    border: 4px solid transparent; border-top-color: var(--teal);
+  }
   .tpc-foot { display: flex; justify-content: space-between; margin-top: 6px; font-size: 10px; }
   .tpc-foot span { color: var(--text-tertiary); }
   .tpc-foot b { color: var(--text-secondary); font-weight: 700; }
