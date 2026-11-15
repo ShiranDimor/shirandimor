@@ -259,3 +259,31 @@ export async function publishVideoToFacebookPage(params: { videoUrl: string; des
   if (!res.ok || !data.id) throw new Error(`שגיאה מפייסבוק בהעלאת הסרטון: ${data?.error?.error_user_msg || data?.error?.message || 'שגיאה לא ידועה'}`);
   return { postId: data.id as string };
 }
+
+// בדיקת מוכנות לפרסום (בלי לפרסם כלום): האם העמוד נגיש, האם מקושר אליו חשבון אינסטגרם מקצועי,
+// ואילו הרשאות יש לטוקן. לא מחזיר את הטוקן עצמו בשום מקרה.
+export async function checkMetaPublishingSetup(): Promise<Record<string, unknown>> {
+  const report: Record<string, unknown> = {};
+  try {
+    const { pageId, accessToken: rawToken } = requireCredentials();
+    const debugRes = await fetch(`https://graph.facebook.com/${GRAPH_API_VERSION}/debug_token?input_token=${encodeURIComponent(rawToken)}&access_token=${encodeURIComponent(rawToken)}`);
+    const debug = await debugRes.json();
+    report.tokenType = debug?.data?.type ?? null;
+    report.tokenValid = debug?.data?.is_valid ?? null;
+    report.tokenExpiresAt = debug?.data?.expires_at ? new Date(debug.data.expires_at * 1000).toISOString() : 'never';
+    report.scopes = debug?.data?.scopes ?? debug?.error?.message ?? null;
+
+    const pageToken = await resolvePageAccessToken(pageId, rawToken);
+    const pageRes = await fetch(`https://graph.facebook.com/${GRAPH_API_VERSION}/${pageId}?fields=name,instagram_business_account{id,username,followers_count}&access_token=${encodeURIComponent(pageToken)}`);
+    const page = await pageRes.json();
+    report.pageName = page?.name ?? null;
+    report.instagram = page?.instagram_business_account ?? null;
+    report.pageError = page?.error?.message ?? null;
+
+    const needed = ['pages_manage_posts', 'pages_read_engagement', 'instagram_basic', 'instagram_content_publish'];
+    report.missingScopes = Array.isArray(report.scopes) ? needed.filter((s) => !(report.scopes as string[]).includes(s)) : 'unknown';
+  } catch (e) {
+    report.error = e instanceof Error ? e.message : String(e);
+  }
+  return report;
+}
