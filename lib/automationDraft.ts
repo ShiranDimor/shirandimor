@@ -18,6 +18,13 @@ export function isShabbatWindow(): boolean {
 // לבדוק שהכלל מופעל (כפתור בעמוד /admin/automations), לשמור כטיוטה (published=false - אף פעם
 // לא מתפרסם לבד), ולהתריע למנהלות שיש טיוטה חדשה לבדיקה. בלי זה היינו צריכים לשכפל את זה
 // בכל אחד מ-7+ ה-cron-ים בנפרד
+// תאריך "היום" לפי שעון ישראל, יציב להשוואה (לא תלוי UTC של השרת) - אותו רעיון בדיוק כמו
+// israelDateKey ב-lib/automations.ts, רק שכאן זה חייב להישאר בקובץ הזה כדי לא ליצור תלות
+// מעגלית בין שני הקבצים
+function israelDateKey(d: Date): string {
+  return d.toLocaleDateString('en-CA', { timeZone: 'Asia/Jerusalem' });
+}
+
 export async function draftAutomatedAnnouncement(
   ruleKey: string,
   title: string,
@@ -32,7 +39,21 @@ export async function draftAutomatedAnnouncement(
     return { drafted: false, reason: 'disabled' };
   }
 
-  const { error } = await supabaseAdmin.from('announcements').insert({ title, content, published: false });
+  // מגן כפילות - אם כבר נוצרה טיוטה לאוטומציה הזו היום (קרון שרץ פעמיים בטעות, או קרון+הרצה
+  // ידנית מ-/admin/automations על אותו מפתח), לא יוצרים עוד אחת זהה. זה בדיוק מה שקרה בפועל
+  // עם "הלייבים שלנו השבוע" - שתי טיוטות כמעט זהות אושרו ופורסמו בנפרד באותו יום
+  const { data: existingToday } = await supabaseAdmin
+    .from('announcements')
+    .select('id, created_at')
+    .eq('source_automation_key', ruleKey)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (existingToday && israelDateKey(new Date(existingToday.created_at)) === israelDateKey(new Date())) {
+    return { drafted: false, reason: 'already_today' };
+  }
+
+  const { error } = await supabaseAdmin.from('announcements').insert({ title, content, published: false, source_automation_key: ruleKey });
   if (error) {
     console.error(`אוטומציה ${ruleKey}: שגיאה בשמירת הטיוטה`, error);
     return { drafted: false, reason: 'save_error' };

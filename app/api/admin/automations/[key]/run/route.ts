@@ -27,12 +27,35 @@ const REASON_LABELS: Record<string, string> = {
   not_starting_soon: 'הלייב של היום לא מתחיל בשעה הקרובה',
 };
 
+function israelDateKey(d: Date): string {
+  return d.toLocaleDateString('en-CA', { timeZone: 'Asia/Jerusalem' });
+}
+
 // POST - יצירת טיוטה עכשיו, ידנית, בלוח המודעות (published=false) עם הנתונים האמיתיים. משם
 // ממשיכים כרגיל: עריכה/בדיקה לעצמי/אישור ופרסום ב-/admin/announcements. בכוונה לא בודק שבת/
-// כבוי - זו פעולה ידנית של המנהלת עצמה, ולא שולח התראה לאף אחד
+// כבוי - זו פעולה ידנית של המנהלת עצמה, ולא שולח התראה לאף אחד. כן בודק טיוטה כפולה מהיום
+// (force=true עוקף) - זה בדיוק מה שקרה בפועל עם "הלייבים שלנו השבוע": קרון + הרצה ידנית
+// (או שתי הרצות ידניות) יצרו שתי טיוטות כמעט זהות שאושרו ופורסמו בנפרד
 export async function POST(request: Request, { params }: { params: { key: string } }) {
   const admin = await requireAdmin(request);
   if (!admin) return NextResponse.json({ error: 'אין הרשאת ניהול' }, { status: 403 });
+
+  const body = await request.json().catch(() => ({}));
+  const force = body?.force === true;
+
+  if (!force) {
+    const { data: existingToday } = await supabaseAdmin
+      .from('announcements')
+      .select('id, created_at')
+      .eq('source_automation_key', params.key)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (existingToday && israelDateKey(new Date(existingToday.created_at)) === israelDateKey(new Date())) {
+      const time = new Date(existingToday.created_at).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem' });
+      return NextResponse.json({ error: 'already_today', message: `כבר נוצרה טיוטה היום לאוטומציה הזו (ב-${time}) - ליצור בכל זאת עוד אחת?` }, { status: 409 });
+    }
+  }
 
   let msg: { title: string; content: string };
   if (params.key === 'market-digest') {
@@ -49,7 +72,7 @@ export async function POST(request: Request, { params }: { params: { key: string
     msg = built;
   }
 
-  const { data, error } = await supabaseAdmin.from('announcements').insert({ title: msg.title, content: msg.content, published: false }).select('id').single();
+  const { data, error } = await supabaseAdmin.from('announcements').insert({ title: msg.title, content: msg.content, published: false, source_automation_key: params.key }).select('id').single();
   if (error) return NextResponse.json({ error: 'שגיאה בשמירת הטיוטה' }, { status: 500 });
 
   return NextResponse.json({ ok: true, id: data.id });

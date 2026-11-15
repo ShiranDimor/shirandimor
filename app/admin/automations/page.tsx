@@ -134,13 +134,29 @@ export default function AdminAutomationsPage() {
       : 'השליחה נכשלה בפועל - יש לבדוק שההתראות עדיין מופעלות אצלך במכשיר');
   }
 
+  // מריץ את יצירת הטיוטה, ואם כבר נוצרה טיוטה לאותה אוטומציה היום (409) - שואל בנפרד אם
+  // ליצור בכל זאת עוד אחת (force) לפני שמוותרים. בדיוק המקרה שקרה בפועל עם "הלייבים שלנו
+  // השבוע": לחיצה כפולה (או קרון + לחיצה ידנית) יצרה שתי טיוטות כמעט זהות שאושרו בנפרד
+  async function runCreateDraft(key: string, headers: Record<string, string>) {
+    let res = await fetch(`/api/admin/automations/${key}/run`, { method: 'POST', headers, body: JSON.stringify({}) });
+    let data = await res.json().catch(() => ({}));
+    if (res.status === 409) {
+      if (!window.confirm(data.message || 'כבר נוצרה טיוטה היום לאוטומציה הזו - ליצור בכל זאת עוד אחת?')) {
+        return { ok: false, cancelled: true };
+      }
+      res = await fetch(`/api/admin/automations/${key}/run`, { method: 'POST', headers, body: JSON.stringify({ force: true }) });
+      data = await res.json().catch(() => ({}));
+    }
+    return { ok: res.ok, data };
+  }
+
   async function runNow(key: string) {
     if (!window.confirm('ליצור עכשיו טיוטה בלוח המודעות עם הנוסח הזה? (שום דבר לא מתפרסם ולא נשלח - רק טיוטה לאישור)')) return;
     setBusy(`${key}:run`);
-    const res = await fetch(`/api/admin/automations/${key}/run`, { method: 'POST', headers: await authHeader() });
-    const data = await res.json().catch(() => ({}));
+    const { ok, cancelled, data } = await runCreateDraft(key, await authHeader());
     setBusy('');
-    if (!res.ok) { window.alert(data.error || 'שגיאה ביצירת הטיוטה'); return; }
+    if (cancelled) return;
+    if (!ok) { window.alert(data?.error === 'already_today' ? data.message : (data?.error || 'שגיאה ביצירת הטיוטה')); return; }
     if (window.confirm('הטיוטה נוצרה בלוח המודעות ✅\nלעבור ללוח המודעות כדי לאשר ולפרסם?')) {
       window.location.href = '/admin/announcements';
     }
@@ -153,9 +169,9 @@ export default function AdminAutomationsPage() {
     setBusy(`${key}:runsend`);
     const headers = await authHeader();
 
-    const runRes = await fetch(`/api/admin/automations/${key}/run`, { method: 'POST', headers });
-    const runData = await runRes.json().catch(() => ({}));
-    if (!runRes.ok) { setBusy(''); window.alert(runData.error || 'שגיאה ביצירת הטיוטה'); return; }
+    const { ok: runOk, cancelled, data: runData } = await runCreateDraft(key, headers);
+    if (cancelled) { setBusy(''); return; }
+    if (!runOk) { setBusy(''); window.alert(runData?.error === 'already_today' ? runData.message : (runData?.error || 'שגיאה ביצירת הטיוטה')); return; }
 
     const publishRes = await fetch(`/api/admin/announcements/${runData.id}`, { method: 'PATCH', headers, body: JSON.stringify({ published: true }) });
     if (!publishRes.ok) { setBusy(''); window.alert('הטיוטה נוצרה אבל הפרסום נכשל - אפשר לאשר ידנית בלוח המודעות'); return; }
