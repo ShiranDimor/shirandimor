@@ -186,15 +186,19 @@ export async function classifyContactMonday(
   if (!token || !boardId) return 'unknown';
 
   try {
-    const { subscriberGroupId, updatesGroupId, trialGroupId, phoneColumnId, emailColumnId } = await getBoardSchema(token, boardId);
-    if ((!subscriberGroupId && !updatesGroupId && !trialGroupId) || (!phoneColumnId && !emailColumnId)) return 'unknown';
+    const { subscriberGroupId, updatesGroupId, trialGroupId, pushActivatedNoSubGroupId, phoneColumnId, emailColumnId } = await getBoardSchema(token, boardId);
+    if ((!subscriberGroupId && !updatesGroupId && !trialGroupId && !pushActivatedNoSubGroupId) || (!phoneColumnId && !emailColumnId)) return 'unknown';
 
     const targetPhone = phone && phoneColumnId ? normalizePhone(phone) : null;
     const targetEmail = email && emailColumnId ? email.trim().toLowerCase() : null;
     if (!targetPhone && !targetEmail) return 'unknown';
 
     const columnIds = [phoneColumnId, emailColumnId].filter(Boolean) as string[];
-    const groupIds = [subscriberGroupId, trialGroupId, updatesGroupId].filter(Boolean) as string[];
+    // כוללים גם את "הפעיל עדכונים באתר ללא מנוי" (pushActivatedNoSubGroupId) - בלי זה מי שכבר
+    // הפעיל/ה התראות פוש בעבר נראה/ית "ליד חדש" לגמרי כשהוא/היא ממלא/ת טופס אחר (כמו שער
+    // ההרשמה הכללי), וזה פתח כרטיס "לידים חדשים" נוסף במקום להכיר בכרטיס הקיים - בדיוק המקרה
+    // שקרה בפועל עם ראובן בכר: כרטיס אחד בקבוצת העדכונים-ללא-מנוי, ועוד אחד כפול ב"לידים חדשים"
+    const groupIds = [subscriberGroupId, trialGroupId, updatesGroupId, pushActivatedNoSubGroupId].filter(Boolean) as string[];
 
     const matchesContact = (item: { column_values: { id: string; text: string | null }[] }) => {
       if (targetPhone && phoneColumnId) {
