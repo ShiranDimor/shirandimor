@@ -9,7 +9,7 @@ export const maxDuration = 60;
 // 1. פרסום: פוסטים ששירן אישרה ותזמנה (status = 'scheduled') ושזמנם הגיע. טיוטות ופוסטים
 //    "מאושרים" בלי תזמון לא נוגעים בהם. פוסט שנכשל 3 פעמים נעצר ומחכה לטיפול ידני.
 // 2. רינדור: פוסטים חדשים מחבילת תוכן (slides_html) שעוד אין להם תמונות - כדי ששירן תראה
-//    תמונות אמיתיות כשהיא נכנסת לאשר. פוסט אחד בכל סבב, כדי לא לחרוג מזמן הריצה.
+//    תמונות אמיתיות כשהיא נכנסת לאשר. כמה פוסטים בכל סבב, כל עוד יש זמן.
 export async function GET(request: Request) {
   const authHeader = request.headers.get('authorization');
   if (authHeader !== `Bearer ${process.env.PG_CRON_SECRET}`) {
@@ -49,8 +49,10 @@ export async function GET(request: Request) {
     }
   }
 
-  let rendered: string | null = null;
-  if (Date.now() - startedAt < 15_000) {
+  // כל עוד נשאר זמן בריצה - פוסט אחרי פוסט (כל פוסט עד כמה שניות לשקף)
+  const rendered: string[] = [];
+  const failedRender = new Set<string>();
+  while (Date.now() - startedAt < 25_000) {
     const { data: pending } = await supabaseAdmin
       .from('marketing_posts')
       .select('id')
@@ -58,14 +60,15 @@ export async function GET(request: Request) {
       .is('image_base64', null)
       .neq('status', 'archived')
       .order('scheduled_at', { ascending: true, nullsFirst: false })
-      .limit(1);
-    if (pending?.[0]) {
-      try {
-        await renderSlidesIfNeeded(pending[0].id);
-        rendered = pending[0].id;
-      } catch (e) {
-        console.error('publish-scheduled-marketing: רינדור נכשל', pending[0].id, e);
-      }
+      .limit(5);
+    const next = (pending || []).find((row) => !failedRender.has(row.id));
+    if (!next) break;
+    try {
+      await renderSlidesIfNeeded(next.id);
+      rendered.push(next.id);
+    } catch (e) {
+      failedRender.add(next.id);
+      console.error('publish-scheduled-marketing: רינדור נכשל', next.id, e);
     }
   }
 
