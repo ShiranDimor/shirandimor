@@ -457,9 +457,13 @@ export default function AdminAnnouncementsPage() {
     </div>
   );
 
+  // גם כש-schedulingId/editingId שייכים להודעה הזו, לא רק !a.published - אחרת לחיצה על
+  // "תזמון שליחה"/"עריכה" בהודעה מפורסמת (שה-<details> שלה סגור) לא עושה שום דבר גלוי: הפופאפ/
+  // הטופס מצוירים בתוך גוף ה-details, שנשאר מכווץ כי כפתורי הפעולה ב-summary עוצרים propagation
+  // כדי לא לפתוח/לסגור את הכרטיס בטעות בלחיצה רגילה
   function renderAnnouncement(a: Announcement) {
     return (
-      <details key={a.id} className="section-collapse" open={!a.published}>
+      <details key={a.id} className="section-collapse" open={!a.published || schedulingId === a.id || editingId === a.id}>
         <summary>
           <div>
             <div style={{ fontSize: '13.5px', fontWeight: 700 }}>{a.title}</div>
