@@ -518,23 +518,22 @@ export default function AdminAnnouncementsPage() {
                 <button className="btn-outline" style={{ padding: '6px 10px', fontSize: '12px' }} disabled={scheduleSavingId === a.id} onClick={() => handleScheduleIn(a.id, 180)}>בעוד 3 שעות</button>
                 <button className="btn-outline" style={{ padding: '6px 10px', fontSize: '12px' }} disabled={scheduleSavingId === a.id} onClick={() => handleScheduleIn(a.id, 24 * 60)}>מחר באותה שעה</button>
               </div>
-              <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                <input
-                  type="datetime-local"
-                  className="tp-text-input"
-                  style={{ minHeight: 'auto', flex: 1 }}
-                  value={scheduleCustom}
-                  onChange={(e) => setScheduleCustom(e.target.value)}
-                />
-                <button
-                  className="btn-primary"
-                  style={{ padding: '6px 14px', fontSize: '12px' }}
-                  disabled={!scheduleCustom || scheduleSavingId === a.id}
-                  onClick={() => handleSchedule(a.id, new Date(scheduleCustom).toISOString())}
-                >
-                  תזמון
-                </button>
-              </div>
+              {/* נפרד לשתי שורות מלאות-רוחב ולא flex לצד כפתור - ל-datetime-local יש רוחב פנימי לא
+                  עקבי בין דפדפנים (בעיקר ספארי באייפון), שבתוך שורה אחת דוחק/מסתיר את הכפתור לידו */}
+              <input
+                type="datetime-local"
+                style={{ width: '100%', background: 'var(--bg-surface-raised)', border: '1px solid var(--border-hairline-strong)', borderRadius: '8px', padding: '10px 12px', color: 'var(--text-primary)', fontFamily: 'inherit', fontSize: '14px', marginBottom: '8px', boxSizing: 'border-box' }}
+                value={scheduleCustom}
+                onChange={(e) => setScheduleCustom(e.target.value)}
+              />
+              <button
+                className="btn-primary"
+                style={{ width: '100%', padding: '9px 14px', fontSize: '12.5px' }}
+                disabled={!scheduleCustom || scheduleSavingId === a.id}
+                onClick={() => handleSchedule(a.id, new Date(scheduleCustom).toISOString())}
+              >
+                תזמון לזמן שנבחר
+              </button>
               <button className="btn-outline" style={{ padding: '5px 10px', fontSize: '11.5px', marginTop: '8px' }} onClick={() => { setSchedulingId(''); setScheduleCustom(''); }}>סגירה</button>
               <p style={{ fontSize: '10.5px', color: 'var(--text-tertiary)', marginTop: '6px', marginBottom: 0 }}>בדיקה פנימית כל 15 דקות - ייתכן איחור קטן בטווח הזה מהזמן המדויק שנבחר.</p>
             </div>
