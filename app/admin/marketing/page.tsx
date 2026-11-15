@@ -4,11 +4,12 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import ApprovalBoard from '@/components/marketing/ApprovalBoard';
+import DailyReports from '@/components/marketing/DailyReports';
 
 type Platform = 'instagram' | 'facebook' | 'both';
 type ContentType = 'feed_post' | 'reel' | 'story';
 type Status = 'draft' | 'approved' | 'scheduled' | 'published' | 'archived';
-type StudioView = 'approve' | 'list' | 'tools';
+type StudioView = 'approve' | 'report' | 'list' | 'tools';
 
 type Post = {
   id: string;
@@ -631,7 +632,7 @@ export default function AdminMarketingPage() {
       </header>
 
       <div style={{ display: 'flex', gap: '6px', margin: '4px 0 18px', borderBottom: '1px solid var(--border-hairline)', paddingBottom: '10px' }}>
-        {([['approve', 'לאישור'], ['list', 'כל הפוסטים'], ['tools', 'כלים']] as [StudioView, string][]).map(([v, label]) => (
+        {([['approve', 'לאישור'], ['report', 'בקרה'], ['list', 'כל הפוסטים'], ['tools', 'כלים']] as [StudioView, string][]).map(([v, label]) => (
           <button
             key={v}
             onClick={() => setView(v)}
@@ -646,6 +647,8 @@ export default function AdminMarketingPage() {
           </button>
         ))}
       </div>
+
+      {view === 'report' && <DailyReports authHeaders={authHeaders} />}
 
       {view === 'approve' && (
         <ApprovalBoard
