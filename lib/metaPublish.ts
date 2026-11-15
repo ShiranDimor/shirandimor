@@ -222,3 +222,40 @@ export async function publishStoryToInstagram(params: { storyImageBase64: string
   const { id } = await igPost(`${igUserId}/media`, { image_url: url, media_type: 'STORIES' }, accessToken);
   return publishContainer(igUserId, id, accessToken);
 }
+
+// ---------------------------------------------------------------------------------------------
+// ריילס (וידאו). הסרטון כבר יושב בדלי הציבורי marketing-media (ר' marketingPublisher -
+// ensureVideoUploaded), ופייסבוק ואינסטגרם מורידים אותו משם לפי כתובת.
+// אינסטגרם מעבד וידאו לאט (לפעמים יותר מדקה), ולכן הפרסום מתחלק לשני שלבים: יצירת "מיכל" ושמירת
+// המזהה שלו, ופרסום בסבב הבא כשהעיבוד הסתיים - כדי לא לחרוג מזמן הריצה של הפונקציה.
+// ---------------------------------------------------------------------------------------------
+export async function createInstagramReelContainer(params: { videoUrl: string; caption: string }): Promise<{ containerId: string }> {
+  const { igUserId, accessToken } = await getInstagramContext();
+  const { id } = await igPost(`${igUserId}/media`, { media_type: 'REELS', video_url: params.videoUrl, caption: params.caption, share_to_feed: true }, accessToken);
+  return { containerId: id };
+}
+
+// מחזיר null אם הסרטון עדיין בעיבוד; זורק שגיאה אם העיבוד נכשל
+export async function publishInstagramReelIfReady(containerId: string): Promise<{ postId: string; permalink: string | null } | null> {
+  const { igUserId, accessToken } = await getInstagramContext();
+  const res = await fetch(`https://graph.facebook.com/${GRAPH_API_VERSION}/${containerId}?fields=status_code,status&access_token=${encodeURIComponent(accessToken)}`);
+  const data = await res.json();
+  if (data?.status_code === 'ERROR' || data?.status_code === 'EXPIRED') {
+    throw new Error(`אינסטגרם לא הצליח לעבד את הסרטון: ${data?.status || data.status_code}`);
+  }
+  if (data?.status_code !== 'FINISHED') return null;
+  return publishContainer(igUserId, containerId, accessToken);
+}
+
+export async function publishVideoToFacebookPage(params: { videoUrl: string; description: string }): Promise<{ postId: string }> {
+  const { pageId, accessToken: rawToken } = requireCredentials();
+  const accessToken = await resolvePageAccessToken(pageId, rawToken);
+  const res = await fetch(`https://graph-video.facebook.com/${GRAPH_API_VERSION}/${pageId}/videos`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ file_url: params.videoUrl, description: params.description, access_token: accessToken }),
+  });
+  const data = await res.json();
+  if (!res.ok || !data.id) throw new Error(`שגיאה מפייסבוק בהעלאת הסרטון: ${data?.error?.error_user_msg || data?.error?.message || 'שגיאה לא ידועה'}`);
+  return { postId: data.id as string };
+}

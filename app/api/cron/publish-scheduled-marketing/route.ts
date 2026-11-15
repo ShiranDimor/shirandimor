@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/instantLogin';
-import { MAX_PUBLISH_ATTEMPTS, publishMarketingPost, renderSlidesIfNeeded } from '@/lib/marketingPublisher';
+import { MAX_PUBLISH_ATTEMPTS, ensureVideoUploaded, publishMarketingPost, renderSlidesIfNeeded } from '@/lib/marketingPublisher';
 
 export const maxDuration = 60;
 
@@ -72,5 +72,24 @@ export async function GET(request: Request) {
     }
   }
 
-  return NextResponse.json({ ok: true, published, rendered });
+  // סרטוני ריילס חדשים מחבילת תוכן - מעתיקים לאחסון כדי שיופיעו בלוח האישורים
+  const importedVideos: string[] = [];
+  if (Date.now() - startedAt < 40_000) {
+    const { data: videos } = await supabaseAdmin
+      .from('marketing_posts')
+      .select('id')
+      .not('video_source_url', 'is', null)
+      .is('video_url', null)
+      .limit(3);
+    for (const row of videos || []) {
+      try {
+        await ensureVideoUploaded(row.id);
+        importedVideos.push(row.id);
+      } catch (e) {
+        console.error('publish-scheduled-marketing: העתקת סרטון נכשלה', row.id, e);
+      }
+    }
+  }
+
+  return NextResponse.json({ ok: true, published, rendered, importedVideos });
 }

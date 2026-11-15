@@ -11,7 +11,12 @@ import {
   publishPhotoStoryToFacebookPage,
   publishToInstagram,
   publishStoryToInstagram,
+  createInstagramReelContainer,
+  publishInstagramReelIfReady,
+  publishVideoToFacebookPage,
 } from '@/lib/metaPublish';
+
+const MARKETING_MEDIA_BUCKET = 'marketing-media';
 
 export const MAX_PUBLISH_ATTEMPTS = 3;
 
@@ -31,7 +36,29 @@ type MarketingPostRow = {
   ig_story_published_at: string | null;
   slides_html: string[] | null;
   publish_attempts: number | null;
+  video_url: string | null;
+  video_source_url: string | null;
+  ig_container_id: string | null;
 };
+
+// סרטון של רילס מגיע מחבילת התוכן ככתובת מקור (video_source_url). כאן הוא מועתק לדלי הציבורי
+// באחסון, כדי שהאתר יציג אותו בלוח האישורים ושפייסבוק ואינסטגרם יוכלו להוריד אותו בפרסום.
+export async function ensureVideoUploaded(postId: string): Promise<string | null> {
+  const { data: post } = await supabaseAdmin.from('marketing_posts').select('id, video_url, video_source_url').eq('id', postId).single();
+  if (!post) return null;
+  if (post.video_url) return post.video_url;
+  if (!post.video_source_url) return null;
+
+  const res = await fetch(post.video_source_url);
+  if (!res.ok) throw new Error(`לא הצלחתי להוריד את הסרטון מהמקור (${res.status})`);
+  const buffer = Buffer.from(await res.arrayBuffer());
+  const objectPath = `reels/${postId}.mp4`;
+  const { error } = await supabaseAdmin.storage.from(MARKETING_MEDIA_BUCKET).upload(objectPath, buffer, { contentType: 'video/mp4', upsert: true });
+  if (error) throw new Error(`שגיאה בהעלאת הסרטון לאחסון: ${error.message}`);
+  const url = supabaseAdmin.storage.from(MARKETING_MEDIA_BUCKET).getPublicUrl(objectPath).data.publicUrl;
+  await supabaseAdmin.from('marketing_posts').update({ video_url: url, updated_at: new Date().toISOString() }).eq('id', postId);
+  return url;
+}
 
 const FEED_HEIGHT = 1350;
 const STORY_HEIGHT = 1920;
@@ -61,7 +88,7 @@ export async function renderSlidesIfNeeded(postId: string): Promise<{ rendered: 
   return { rendered: true };
 }
 
-export type ChannelResult = { channel: string; ok: boolean; skipped?: boolean; error?: string };
+export type ChannelResult = { channel: string; ok: boolean; skipped?: boolean; pending?: boolean; error?: string };
 
 // מפרסם את הפוסט לכל הערוצים שעוד לא פורסמו. only מאפשר לכפתור ידני לפרסם ערוץ אחד בלבד.
 export async function publishMarketingPost(
@@ -74,9 +101,9 @@ export async function publishMarketingPost(
   if (error || !data) throw new Error('הפוסט לא נמצא');
   const post = data as MarketingPostRow;
 
-  if (post.content_type === 'reel') {
-    throw new Error('פרסום רילס (וידאו) אוטומטי עוד לא נתמך - צריך להעלות את הסרטון ידנית');
-  }
+  const isReel = post.content_type === 'reel';
+  const videoUrl = isReel ? await ensureVideoUploaded(postId) : null;
+  if (isReel && !videoUrl) throw new Error('לרילס הזה אין סרטון');
 
   const wantsFacebook = (post.platform === 'facebook' || post.platform === 'both') && options.only !== 'instagram';
   const wantsInstagram = (post.platform === 'instagram' || post.platform === 'both') && options.only !== 'facebook';
@@ -101,7 +128,38 @@ export async function publishMarketingPost(
     }
   }
 
-  if (!isStoryPost) {
+  if (isReel && videoUrl) {
+    if (wantsFacebook) {
+      await attempt('פייסבוק - רילס', Boolean(post.external_post_id), async () => {
+        const { postId: id } = await publishVideoToFacebookPage({ videoUrl, description: caption });
+        return { external_post_id: id };
+      });
+    }
+    if (wantsInstagram && !post.ig_post_id) {
+      // שלב 1: יצירת מיכל. שלב 2 (בסבב הבא או מיד אם כבר מוכן): פרסום
+      try {
+        let containerId = post.ig_container_id;
+        if (!containerId) {
+          containerId = (await createInstagramReelContainer({ videoUrl, caption })).containerId;
+          updates.ig_container_id = containerId;
+        }
+        const published = await publishInstagramReelIfReady(containerId);
+        if (published) {
+          Object.assign(updates, { ig_post_id: published.postId, ig_permalink: published.permalink, ig_published_at: new Date().toISOString() });
+          results.push({ channel: 'אינסטגרם - רילס', ok: true });
+        } else {
+          results.push({ channel: 'אינסטגרם - רילס', ok: true, pending: true });
+        }
+      } catch (e) {
+        updates.ig_container_id = null; // מיכל שנכשל לא נשמר - בניסיון הבא נוצר חדש
+        results.push({ channel: 'אינסטגרם - רילס', ok: false, error: e instanceof Error ? e.message : 'שגיאה לא ידועה' });
+      }
+    } else if (wantsInstagram) {
+      results.push({ channel: 'אינסטגרם - רילס', ok: true, skipped: true });
+    }
+  }
+
+  if (!isStoryPost && !isReel) {
     if (wantsFacebook) {
       await attempt('פייסבוק - פיד', Boolean(post.external_post_id), async () => {
         const { postId: id } = await publishPhotoToFacebookPage({ images: feedImages, caption });
@@ -153,7 +211,8 @@ export async function publishMarketingPost(
     (!fullFacebook || ((isStoryPost || Boolean(merged.external_post_id)) && (!storyImage || Boolean(merged.story_published_at)))) &&
     (!fullInstagram || ((isStoryPost || Boolean(merged.ig_post_id)) && (!storyImage || Boolean(merged.ig_story_published_at))));
 
-  if (allDone && everyChannelDone) {
+  const anyPending = results.some((r) => r.pending);
+  if (allDone && everyChannelDone && !anyPending) {
     updates.status = 'published';
     updates.published_at = now;
   }

@@ -34,6 +34,7 @@ type Post = {
   ig_post_id: string | null;
   ig_permalink: string | null;
   revision_history: { at: string; note: string }[] | null;
+  video_url: string | null;
   last_revision_summary: string | null;
   ig_story_published_at: string | null;
   slides_html: string[] | null;

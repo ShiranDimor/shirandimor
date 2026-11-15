@@ -23,6 +23,7 @@ export type BoardPost = {
   slides_html: string[] | null;
   publish_error: string | null;
   revision_history: { at: string; note: string }[] | null;
+  video_url?: string | null;
 };
 
 type Props = {
@@ -384,7 +385,7 @@ function WeekView({ week, isCurrentWeek, onOpen, onApproveAll, onRender }: {
 function Thumb({ post, onOpen, onRender }: { post: BoardPost; onOpen: () => void; onRender: () => void }) {
   const state = itemState(post);
   const imgs = imagesOf(post);
-  const isStory = post.content_type === 'story';
+  const isStory = post.content_type === 'story' || post.content_type === 'reel';
   const w = isStory ? 54 : 76;
   const h = isStory ? 96 : 95;
   const hasSlides = Array.isArray(post.slides_html) && post.slides_html.length > 0;
@@ -410,6 +411,9 @@ function Thumb({ post, onOpen, onRender }: { post: BoardPost; onOpen: () => void
           >
             {hasSlides ? 'יוצר תמונה...' : 'אין תמונה'}
           </span>
+        )}
+        {post.content_type === 'reel' && (
+          <span aria-hidden="true" style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: '26px', height: '26px', borderRadius: '50%', background: 'rgba(26,24,28,0.75)', color: '#F5F3F4', fontSize: '11px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>▶</span>
         )}
         {imgs.length > 1 && (
           <span style={{ position: 'absolute', top: '4px', left: '4px', background: 'rgba(26,24,28,0.8)', color: '#F5F3F4', fontSize: '10px', fontWeight: 700, borderRadius: '6px', padding: '1px 5px' }}>
@@ -455,7 +459,7 @@ function ReviewSheet(props: {
   const [busy, setBusy] = useState(false);
   const touchX = useRef<number | null>(null);
   const state = itemState(post);
-  const isStory = post.content_type === 'story';
+  const isStory = post.content_type === 'story' || post.content_type === 'reel';
   const isPast = post.scheduled_at ? new Date(post.scheduled_at) <= new Date() : false;
 
   useEffect(() => { setSlide(0); setNoteOpen(false); setNote(''); setCaptionOpen(false); }, [post.id]);
@@ -519,7 +523,17 @@ function ReviewSheet(props: {
           }}
           style={{ position: 'relative', borderRadius: '14px', overflow: 'hidden', background: 'var(--bg-surface)', margin: '0 auto', maxWidth: isStory ? '300px' : '100%', aspectRatio: isStory ? '9 / 16' : '4 / 5' }}
         >
-          {imgs[slide] ? (
+          {post.content_type === 'reel' && post.video_url ? (
+            <video
+              key={post.video_url}
+              src={post.video_url}
+              poster={imgs[0] ? `data:image/png;base64,${imgs[0]}` : undefined}
+              controls
+              playsInline
+              loop
+              style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', background: '#000' }}
+            />
+          ) : imgs[slide] ? (
             <img src={`data:image/png;base64,${imgs[slide]}`} alt={`שקף ${slide + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
           ) : (
             <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-tertiary)', fontSize: '13px' }}>התמונות עוד נוצרות...</div>
@@ -549,7 +563,7 @@ function ReviewSheet(props: {
           </div>
         )}
         <div style={{ fontSize: '11.5px', color: 'var(--text-tertiary)', marginTop: '8px' }}>
-          {PLATFORM_LABEL[post.platform]}{isStory ? ' · בסטורי אין כיתוב, הכל בתוך התמונה' : ''}
+          {PLATFORM_LABEL[post.platform]}{post.content_type === 'story' ? ' · בסטורי אין כיתוב, הכל בתוך התמונה' : ''}
         </div>
 
         {post.publish_error && <p style={{ fontSize: '12px', color: 'var(--loss)', marginTop: '8px' }}>{post.publish_error}</p>}
@@ -562,7 +576,7 @@ function ReviewSheet(props: {
             {(state === 'pending' || state === 'failed') && (
               <button
                 className="btn-primary"
-                disabled={busy || props.revising || !post.scheduled_at || isPast || imgs.length === 0}
+                disabled={busy || props.revising || !post.scheduled_at || isPast || (imgs.length === 0 && !post.video_url)}
                 onClick={() => run(props.onApproveAndNext)}
               >
                 {busy ? 'שומרים...' : !post.scheduled_at || isPast ? 'צריך לבחור זמן פרסום עתידי' : state === 'failed' ? '↻ אישור וניסיון פרסום חוזר' : '✓ אישור והבא'}
