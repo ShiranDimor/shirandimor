@@ -70,6 +70,10 @@ export default function AccessibilityWidget() {
   if (!ready) return null;
   // עמוד המשחק הפרטי של דור - בלי שום כפתור צף של האתר, כמו שאר הרכיבים הגלובליים
   if (pathname?.startsWith('/dor-english')) return null;
+  // עמודי ניהול - כפתור צף שחוסם פיזית כפתורי פעולה ברשימות שגוללות מתחתיו (DorChatWidget
+  // כבר מוחרג כאן מאותה סיבה). תקנות הנגישות חלות על השירות הציבורי באתר, לא על כלי ניהול
+  // פנימי שרק שירן נכנסת אליו עם הרשאת אדמין - הצהרת הנגישות עצמה (/accessibility) נשארת ציבורית
+  if (pathname?.startsWith('/admin')) return null;
 
   return (
     <>
