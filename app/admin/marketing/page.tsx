@@ -29,6 +29,11 @@ type Post = {
   story_image_base64: string | null;
   story_published_at: string | null;
   story_external_post_id: string | null;
+  ig_post_id: string | null;
+  ig_permalink: string | null;
+  ig_story_published_at: string | null;
+  slides_html: string[] | null;
+  publish_error: string | null;
 };
 
 type BrandVoice = {
@@ -51,6 +56,19 @@ const SOURCE_ICON: Record<Post['source_type'], string> = { trade: '📈', whatsa
 const PLATFORM_LABEL: Record<Platform, string> = { instagram: 'אינסטגרם', facebook: 'פייסבוק', both: 'שתיהן' };
 const CONTENT_TYPE_LABEL: Record<ContentType, string> = { feed_post: 'פוסט פיד', reel: 'רילס', story: 'סטורי' };
 const STATUS_LABEL: Record<Status, string> = { draft: 'טיוטה', approved: 'מאושר', scheduled: 'מתוזמן', published: 'פורסם', archived: 'בארכיון' };
+
+// שדה datetime-local עובד בשעון המקומי של הדפדפן בלי אזור זמן - ממירים הלוך וחזור כדי שהשעה
+// שנבחרה (שעון ישראל) תישמר נכון, ולא תוזז בשעתיים כשהשרת מפרש אותה כ-UTC
+function toLocalInputValue(iso: string | null) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function localInputToIso(value: string) {
+  return value ? new Date(value).toISOString() : null;
+}
 
 function formatDateTime(iso: string) {
   return new Date(iso).toLocaleString('he-IL', { day: 'numeric', month: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
@@ -79,6 +97,7 @@ export default function AdminMarketingPage() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [previewOpenId, setPreviewOpenId] = useState<string | null>(null);
   const [publishingId, setPublishingId] = useState<string | null>(null);
+  const [renderingId, setRenderingId] = useState<string | null>(null);
   const [publishError, setPublishError] = useState<Record<string, string>>({});
   const [generatingStoryId, setGeneratingStoryId] = useState<string | null>(null);
   const [generatingImageId, setGeneratingImageId] = useState<string | null>(null);
@@ -286,9 +305,12 @@ export default function AdminMarketingPage() {
       headers: await authHeaders(),
       body: JSON.stringify(updates),
     });
-    if (res.ok) {
-      const data = await res.json();
+    const data = await res.json().catch(() => null);
+    if (res.ok && data?.post) {
       setPosts((prev) => prev.map((p) => (p.id === id ? data.post : p)));
+      setPublishError((prev) => ({ ...prev, [id]: '' }));
+    } else {
+      setPublishError((prev) => ({ ...prev, [id]: data?.error || 'שגיאה בעדכון' }));
     }
   }
 
@@ -414,6 +436,42 @@ export default function AdminMarketingPage() {
       setPublishError((prev) => ({ ...prev, [postId]: 'שגיאה בשליחת הבקשה' }));
     }
     setPublishingId(null);
+  }
+
+  async function handlePublishInstagram(postId: string) {
+    if (!confirm('לפרסם את הפוסט הזה בפועל לאינסטגרם עכשיו? זו פעולה שמפרסמת החוצה, לא ניתן לבטל.')) return;
+    setPublishingId(postId);
+    setPublishError((prev) => ({ ...prev, [postId]: '' }));
+    try {
+      const res = await fetch('/api/admin/marketing/publish-instagram', {
+        method: 'POST',
+        headers: await authHeaders(),
+        body: JSON.stringify({ postId }),
+      });
+      const data = await res.json().catch(() => null);
+      if (data?.post) setPosts((prev) => prev.map((p) => (p.id === postId ? data.post : p)));
+      if (!res.ok || !data) setPublishError((prev) => ({ ...prev, [postId]: data?.error || 'שגיאה בפרסום' }));
+    } catch {
+      setPublishError((prev) => ({ ...prev, [postId]: 'שגיאה בשליחת הבקשה' }));
+    }
+    setPublishingId(null);
+  }
+
+  async function handleRenderSlides(postId: string) {
+    setRenderingId(postId);
+    setPublishError((prev) => ({ ...prev, [postId]: '' }));
+    try {
+      const res = await fetch(`/api/admin/marketing/posts/${postId}/render-slides`, { method: 'POST', headers: await authHeaders() });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.post) {
+        setPublishError((prev) => ({ ...prev, [postId]: data?.error || 'שגיאה ביצירת התמונות' }));
+      } else {
+        setPosts((prev) => prev.map((p) => (p.id === postId ? data.post : p)));
+      }
+    } catch {
+      setPublishError((prev) => ({ ...prev, [postId]: 'שגיאה בשליחת הבקשה' }));
+    }
+    setRenderingId(null);
   }
 
   async function handleGenerateStory(postId: string) {
@@ -698,13 +756,31 @@ export default function AdminMarketingPage() {
                 {SOURCE_ICON[post.source_type]} {post.hook || post.topic || '(ללא כותרת)'}
               </h2>
               <p style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '2px' }}>
-                {PLATFORM_LABEL[post.platform]} · {CONTENT_TYPE_LABEL[post.content_type]} · {STATUS_LABEL[post.status]} · {formatDateTime(post.created_at)}
+                {PLATFORM_LABEL[post.platform]} · {CONTENT_TYPE_LABEL[post.content_type]} · {STATUS_LABEL[post.status]}
+                {post.scheduled_at ? ` · לפרסום ב-${formatDateTime(post.scheduled_at)}` : ` · ${formatDateTime(post.created_at)}`}
+                {post.publish_error ? ' · ⚠️ הפרסום נכשל' : ''}
               </p>
             </div>
           </summary>
 
           <div style={{ padding: '10px 4px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <p style={{ fontSize: '11.5px', color: 'var(--text-tertiary)' }}>בריף: {post.topic}</p>
+
+            {!post.image_base64 && Array.isArray(post.slides_html) && post.slides_html.length > 0 && (
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+                <p style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>
+                  {post.slides_html.length} שקפים מוכנים - התמונות נוצרות אוטומטית תוך כמה דקות.
+                </p>
+                <button
+                  className="nav-link"
+                  style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-hairline-strong)', borderRadius: '8px', padding: '6px 12px', cursor: 'pointer', fontSize: '12px' }}
+                  onClick={() => handleRenderSlides(post.id)}
+                  disabled={renderingId === post.id}
+                >
+                  {renderingId === post.id ? 'יוצרים תמונות...' : 'ליצור עכשיו'}
+                </button>
+              </div>
+            )}
 
             {post.image_base64 ? (
               <div>
@@ -864,8 +940,8 @@ export default function AdminMarketingPage() {
 
               <input
                 type="datetime-local"
-                defaultValue={post.scheduled_at ? post.scheduled_at.slice(0, 16) : ''}
-                onBlur={(e) => updatePost(post.id, { scheduledAt: e.target.value || null })}
+                defaultValue={toLocalInputValue(post.scheduled_at)}
+                onBlur={(e) => updatePost(post.id, { scheduledAt: localInputToIso(e.target.value) })}
                 style={{ padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-surface)', color: 'var(--text-primary)', fontSize: '12.5px' }}
               />
 
@@ -892,11 +968,43 @@ export default function AdminMarketingPage() {
                 </button>
               )}
 
+              {(post.platform === 'instagram' || post.platform === 'both') && !(post.content_type === 'story' ? post.ig_story_published_at : post.ig_post_id) && (
+                <button
+                  className="nav-link"
+                  style={{ background: 'var(--profit-bg)', border: '1px solid var(--profit)', color: 'var(--profit)', borderRadius: '8px', padding: '8px 14px', cursor: 'pointer' }}
+                  onClick={() => handlePublishInstagram(post.id)}
+                  disabled={publishingId === post.id}
+                >
+                  {publishingId === post.id ? 'מפרסמים...' : 'פרסום בפועל לאינסטגרם'}
+                </button>
+              )}
+
+              {post.status !== 'published' && post.status !== 'scheduled' && post.scheduled_at && (
+                <button
+                  className="nav-link"
+                  style={{ background: 'var(--teal)', border: '1px solid var(--teal)', color: '#0B0F17', fontWeight: 700, borderRadius: '8px', padding: '8px 14px', cursor: 'pointer' }}
+                  onClick={() => updatePost(post.id, { status: 'scheduled' })}
+                >
+                  ✓ אישור ותזמון
+                </button>
+              )}
+
               <button className="nav-link" style={{ background: 'none', border: 'none', color: 'var(--loss)', cursor: 'pointer', marginRight: 'auto' }} onClick={() => deletePost(post.id)}>
                 מחיקה
               </button>
             </div>
             {publishError[post.id] && <p style={{ fontSize: '12px', color: 'var(--loss)' }}>{publishError[post.id]}</p>}
+            {post.status === 'scheduled' && post.scheduled_at && (
+              <p style={{ fontSize: '12px', color: 'var(--teal)' }}>
+                מאושר ומתוזמן - יתפרסם אוטומטית ב-{formatDateTime(post.scheduled_at)} ({PLATFORM_LABEL[post.platform]}). כדי לעצור, להחזיר לטיוטה.
+              </p>
+            )}
+            {post.publish_error && <p style={{ fontSize: '12px', color: 'var(--loss)' }}>הפרסום האוטומטי נכשל: {post.publish_error}</p>}
+            {post.ig_permalink && (
+              <a href={post.ig_permalink} target="_blank" rel="noreferrer" style={{ fontSize: '12px', color: 'var(--teal)' }}>
+                לצפייה בפוסט שפורסם באינסטגרם ←
+              </a>
+            )}
             {post.status === 'published' && post.external_post_id && (
               <a href={`https://www.facebook.com/${post.external_post_id}`} target="_blank" rel="noreferrer" style={{ fontSize: '12px', color: 'var(--teal)' }}>
                 לצפייה בפוסט שפורסם בפייסבוק ←

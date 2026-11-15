@@ -70,6 +70,45 @@ async function renderHtmlToPngBase64(html: string, height = 1080): Promise<strin
   return buffer.toString('base64');
 }
 
+// רינדור כמה שקפים (קרוסלה/סטוריז מחבילת תוכן מוכנה) בדפדפן אחד - פתיחת כרום לכל שקף בנפרד
+// לוקחת כמה שניות בכל פעם וחורגת מהזמן המותר לפונקציה כשיש 6 שקפים. רוחב תמיד 1080, הגובה
+// לפי הפורמט (1350 לפיד 4:5, 1920 לסטורי). שקף שיצא "ריק" (ר' SUSPICIOUSLY_BLANK_BYTES) מרונדר שוב.
+export async function renderSlidesToPngBase64(htmls: string[], height: number): Promise<string[]> {
+  const executablePath = await chromium.executablePath();
+  const fontsDir = path.join(os.tmpdir(), 'fonts');
+  await waitForFontsExtracted(fontsDir);
+
+  const browser = await puppeteer.launch({
+    args: chromium.args,
+    defaultViewport: { width: 1080, height },
+    executablePath,
+    headless: true,
+    env: { ...process.env, FONTCONFIG_PATH: fontsDir, HOME: os.tmpdir() },
+  });
+
+  try {
+    const results: string[] = [];
+    for (const html of htmls) {
+      let buffer: Buffer | null = null;
+      for (let attempt = 0; attempt < 2; attempt++) {
+        const page = await browser.newPage();
+        try {
+          await page.setContent(html, { waitUntil: 'load' });
+          await page.evaluate(() => document.fonts.ready);
+          buffer = Buffer.from(await page.screenshot({ type: 'png' }));
+        } finally {
+          await page.close();
+        }
+        if (buffer.length >= SUSPICIOUSLY_BLANK_BYTES) break;
+      }
+      results.push(buffer!.toString('base64'));
+    }
+    return results;
+  } finally {
+    await browser.close();
+  }
+}
+
 // פלטת האתר: לכל צבע ink (גוון כהה ורווי - לטקסט/קווים על הרקע הבהיר) ו-rgb (לבניית rgba
 // שקוף לרקעי צ'יפים/זוהר עדין). כרטיס מרוויח בוחר צבע דגש יחיד באקראי מתוך כל הפלטה (כולל
 // ירוק) כדי שלא כל הכרטיסים ייראו זהים; כרטיס מפסיד נשאר תמיד אדום - זה סימן אמיתי לא קישוט.

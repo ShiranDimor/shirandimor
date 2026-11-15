@@ -41,6 +41,21 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     updates.scheduled_at = body.scheduledAt ? new Date(body.scheduledAt).toISOString() : null;
   }
 
+  // "מתוזמן" = אישור לפרסום אוטומטי (ר' api/cron/publish-scheduled-marketing) - לכן חייב זמן
+  // פרסום. כל אישור/תזמון מחדש מאפס את מונה הניסיונות, כדי שפוסט שנכשל יחזור לתור.
+  if (updates.status === 'scheduled') {
+    let scheduledAt = updates.scheduled_at as string | null | undefined;
+    if (scheduledAt === undefined) {
+      const { data: current } = await supabaseAdmin.from('marketing_posts').select('scheduled_at').eq('id', params.id).single();
+      scheduledAt = current?.scheduled_at ?? null;
+    }
+    if (!scheduledAt) {
+      return NextResponse.json({ error: 'כדי לתזמן צריך קודם לבחור תאריך ושעת פרסום' }, { status: 400 });
+    }
+    updates.publish_attempts = 0;
+    updates.publish_error = null;
+  }
+
   // imageBase64 - כרטיס גרפי ראשי שמעלים ידנית. נחוץ בעיקר לפוסטים מסוג "manual"
   // (בריף חופשי), שאין להם יצירת כרטיס אוטומטית כמו לפוסטי עסקה/ווטסאפ.
   if (body.imageBase64 !== undefined) {
