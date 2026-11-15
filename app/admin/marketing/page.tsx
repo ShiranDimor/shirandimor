@@ -3,10 +3,12 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
+import ApprovalBoard from '@/components/marketing/ApprovalBoard';
 
 type Platform = 'instagram' | 'facebook' | 'both';
 type ContentType = 'feed_post' | 'reel' | 'story';
 type Status = 'draft' | 'approved' | 'scheduled' | 'published' | 'archived';
+type StudioView = 'approve' | 'list' | 'tools';
 
 type Post = {
   id: string;
@@ -102,6 +104,8 @@ export default function AdminMarketingPage() {
   const [renderingId, setRenderingId] = useState<string | null>(null);
   const [revisionNotes, setRevisionNotes] = useState<Record<string, string>>({});
   const [revisingId, setRevisingId] = useState<string | null>(null);
+  const [view, setView] = useState<StudioView>('approve');
+  const [openPostId, setOpenPostId] = useState<string | null>(null);
   const [revisionMessage, setRevisionMessage] = useState<Record<string, string>>({});
   const [publishError, setPublishError] = useState<Record<string, string>>({});
   const [generatingStoryId, setGeneratingStoryId] = useState<string | null>(null);
@@ -462,8 +466,8 @@ export default function AdminMarketingPage() {
     setPublishingId(null);
   }
 
-  async function handleRevise(postId: string) {
-    const note = (revisionNotes[postId] || '').trim();
+  async function handleRevise(postId: string, noteOverride?: string) {
+    const note = (noteOverride ?? revisionNotes[postId] ?? '').trim();
     if (!note) return;
     setRevisingId(postId);
     setRevisionMessage((prev) => ({ ...prev, [postId]: '' }));
@@ -488,8 +492,8 @@ export default function AdminMarketingPage() {
     setRevisingId(null);
   }
 
-  async function handleUndoRevision(postId: string) {
-    if (!confirm('לחזור לגרסה שלפני התיקון האחרון?')) return;
+  async function handleUndoRevision(postId: string, skipConfirm = false) {
+    if (!skipConfirm && !confirm('לחזור לגרסה שלפני התיקון האחרון?')) return;
     setRevisingId(postId);
     setPublishError((prev) => ({ ...prev, [postId]: '' }));
     try {
@@ -571,6 +575,13 @@ export default function AdminMarketingPage() {
     window.location.href = '/';
   }
 
+  // "עריכה מלאה" מלוח האישורים - פותח את הפוסט ברשימה המלאה וגולל אליו
+  useEffect(() => {
+    if (view !== 'list' || !openPostId) return;
+    const t = setTimeout(() => document.getElementById(`post-${openPostId}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+    return () => clearTimeout(t);
+  }, [view, openPostId]);
+
   const filteredPosts = statusFilter === 'all' ? posts : posts.filter((p) => p.status === statusFilter);
 
   if (checking) {
@@ -618,6 +629,40 @@ export default function AdminMarketingPage() {
         </div>
       </header>
 
+      <div style={{ display: 'flex', gap: '6px', margin: '4px 0 18px', borderBottom: '1px solid var(--border-hairline)', paddingBottom: '10px' }}>
+        {([['approve', 'לאישור'], ['list', 'כל הפוסטים'], ['tools', 'כלים']] as [StudioView, string][]).map(([v, label]) => (
+          <button
+            key={v}
+            onClick={() => setView(v)}
+            style={{
+              padding: '8px 16px', borderRadius: '999px', fontSize: '13.5px', fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer',
+              border: view === v ? 'none' : '1px solid var(--border-hairline-strong)',
+              background: view === v ? 'var(--grad-brand)' : 'transparent',
+              color: view === v ? '#1A181C' : 'var(--text-secondary)',
+            }}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {view === 'approve' && (
+        <ApprovalBoard
+          posts={posts}
+          loading={loadingPosts}
+          revisingId={revisingId}
+          revisionMessage={revisionMessage}
+          errors={publishError}
+          onUpdate={updatePost}
+          onRevise={(id, note) => handleRevise(id, note)}
+          onUndo={(id) => handleUndoRevision(id, true)}
+          onRender={handleRenderSlides}
+          onOpenFullEdit={(id) => { setStatusFilter('all'); setOpenPostId(id); setView('list'); }}
+        />
+      )}
+
+      {view === 'tools' && (
+        <>
       <div className="section-label"><h2>יצירת תוכן חדש</h2></div>
 
       <div className="journal-form" style={{ borderRightColor: 'var(--profit)' }}>
@@ -777,6 +822,64 @@ export default function AdminMarketingPage() {
       </div>
       </details>
 
+      <p style={{ fontSize: '11.5px', color: 'var(--text-tertiary)', marginTop: '24px', lineHeight: 1.6 }}>
+        כפתור "פרסום בפועל לפייסבוק" מפרסם ישירות לעמוד שלך דרך Meta Graph API - רק אחרי שאת לוחצת עליו במפורש, אף פוסט לא יוצא לבד. כדי שזה יעבוד, צריך לחבר את עמוד הפייסבוק פעם אחת (META_PAGE_ID ו-META_PAGE_ACCESS_TOKEN ב-Vercel). פרסום לפיד ולסטורי הם שני כפתורים נפרדים - אפשר לפרסם רק לפיד, רק לסטורי, או לשניהם על אותו פוסט.
+      </p>
+
+      <details className="section-collapse" style={{ marginTop: '30px' }}>
+        <summary>
+          <div>
+            <h2 style={{ fontSize: '14px' }}>פרופיל הקול שלך</h2>
+            <p style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '2px' }}>
+              עריכה נדירה - כל תוכן חדש שנוצר קורא מהפרופיל הזה, אז אין צורך לפתוח את זה בכל פעם
+            </p>
+          </div>
+        </summary>
+        <div style={{ padding: '10px 4px' }}>
+          <p style={{ fontSize: '12.5px', color: 'var(--text-tertiary)', marginBottom: '14px', lineHeight: 1.6 }}>
+            ככל שתתני יותר דוגמאות אמיתיות ותיאור מדויק - כך ה-AI יתרחק מניסוח שיווקי גנרי ויישמע יותר כמוך. אפשר להדביק כאן גם ציטוטים מהוואטסאפ או מפוסטים ישנים שאהבת.
+          </p>
+          <div className="journal-form">
+            <div className="field">
+              <label>איך הטון שלך נשמע (למי מדברת, מה מאפיין אותך, מה שונה אצלך)</label>
+              <textarea
+                value={brandVoice.tone_notes}
+                onChange={(e) => setBrandVoice((v) => ({ ...v, tone_notes: e.target.value }))}
+                rows={4}
+                placeholder="למשל: ישירה, כנה, לא מוכרת חלומות, מדברת כמו חברה שמבינה בשוק..."
+                style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--bg-surface)', color: 'var(--text-primary)', fontSize: '12.5px', fontFamily: 'inherit', resize: 'vertical' }}
+              />
+            </div>
+            <div className="field">
+              <label>דוגמאות פוסטים/הודעות אמיתיות שלך (אפשר כמה, מופרדות בשורה ריקה)</label>
+              <textarea
+                value={brandVoice.sample_posts}
+                onChange={(e) => setBrandVoice((v) => ({ ...v, sample_posts: e.target.value }))}
+                rows={6}
+                style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--bg-surface)', color: 'var(--text-primary)', fontSize: '12.5px', fontFamily: 'inherit', resize: 'vertical' }}
+              />
+            </div>
+            <div className="field">
+              <label>דברים שממש לא רוצים (ביטויים, טון, סוג תוכן)</label>
+              <textarea
+                value={brandVoice.avoid_notes}
+                onChange={(e) => setBrandVoice((v) => ({ ...v, avoid_notes: e.target.value }))}
+                rows={3}
+                style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--bg-surface)', color: 'var(--text-primary)', fontSize: '12.5px', fontFamily: 'inherit', resize: 'vertical' }}
+              />
+            </div>
+            <button className="btn-primary" onClick={handleSaveVoice} disabled={savingVoice}>
+              {savingVoice ? 'שומרים...' : 'שמירת פרופיל הקול'}
+            </button>
+            {voiceSavedMsg && <p style={{ marginTop: '8px', fontSize: '12.5px', color: 'var(--profit)' }}>{voiceSavedMsg}</p>}
+          </div>
+        </div>
+      </details>
+        </>
+      )}
+
+      {view === 'list' && (
+        <>
       <div className="section-label" style={{ marginTop: '30px' }}>
         <h2>התור שלך</h2>
         <span className="count">{filteredPosts.length}</span>
@@ -799,7 +902,7 @@ export default function AdminMarketingPage() {
       {!loadingPosts && filteredPosts.length === 0 && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>אין עדיין פוסטים במצב הזה</p>}
 
       {filteredPosts.map((post) => (
-        <details key={post.id} className="section-collapse" style={{ marginBottom: '10px' }}>
+        <details key={post.id} id={`post-${post.id}`} open={openPostId === post.id ? true : undefined} className="section-collapse" style={{ marginBottom: '10px' }}>
           <summary>
             <div>
               <h2 style={{ fontSize: '14px' }}>
@@ -1196,59 +1299,8 @@ export default function AdminMarketingPage() {
         </details>
       ))}
 
-      <p style={{ fontSize: '11.5px', color: 'var(--text-tertiary)', marginTop: '24px', lineHeight: 1.6 }}>
-        כפתור "פרסום בפועל לפייסבוק" מפרסם ישירות לעמוד שלך דרך Meta Graph API - רק אחרי שאת לוחצת עליו במפורש, אף פוסט לא יוצא לבד. כדי שזה יעבוד, צריך לחבר את עמוד הפייסבוק פעם אחת (META_PAGE_ID ו-META_PAGE_ACCESS_TOKEN ב-Vercel). פרסום לפיד ולסטורי הם שני כפתורים נפרדים - אפשר לפרסם רק לפיד, רק לסטורי, או לשניהם על אותו פוסט.
-      </p>
-
-      <details className="section-collapse" style={{ marginTop: '30px' }}>
-        <summary>
-          <div>
-            <h2 style={{ fontSize: '14px' }}>פרופיל הקול שלך</h2>
-            <p style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '2px' }}>
-              עריכה נדירה - כל תוכן חדש שנוצר קורא מהפרופיל הזה, אז אין צורך לפתוח את זה בכל פעם
-            </p>
-          </div>
-        </summary>
-        <div style={{ padding: '10px 4px' }}>
-          <p style={{ fontSize: '12.5px', color: 'var(--text-tertiary)', marginBottom: '14px', lineHeight: 1.6 }}>
-            ככל שתתני יותר דוגמאות אמיתיות ותיאור מדויק - כך ה-AI יתרחק מניסוח שיווקי גנרי ויישמע יותר כמוך. אפשר להדביק כאן גם ציטוטים מהוואטסאפ או מפוסטים ישנים שאהבת.
-          </p>
-          <div className="journal-form">
-            <div className="field">
-              <label>איך הטון שלך נשמע (למי מדברת, מה מאפיין אותך, מה שונה אצלך)</label>
-              <textarea
-                value={brandVoice.tone_notes}
-                onChange={(e) => setBrandVoice((v) => ({ ...v, tone_notes: e.target.value }))}
-                rows={4}
-                placeholder="למשל: ישירה, כנה, לא מוכרת חלומות, מדברת כמו חברה שמבינה בשוק..."
-                style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--bg-surface)', color: 'var(--text-primary)', fontSize: '12.5px', fontFamily: 'inherit', resize: 'vertical' }}
-              />
-            </div>
-            <div className="field">
-              <label>דוגמאות פוסטים/הודעות אמיתיות שלך (אפשר כמה, מופרדות בשורה ריקה)</label>
-              <textarea
-                value={brandVoice.sample_posts}
-                onChange={(e) => setBrandVoice((v) => ({ ...v, sample_posts: e.target.value }))}
-                rows={6}
-                style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--bg-surface)', color: 'var(--text-primary)', fontSize: '12.5px', fontFamily: 'inherit', resize: 'vertical' }}
-              />
-            </div>
-            <div className="field">
-              <label>דברים שממש לא רוצים (ביטויים, טון, סוג תוכן)</label>
-              <textarea
-                value={brandVoice.avoid_notes}
-                onChange={(e) => setBrandVoice((v) => ({ ...v, avoid_notes: e.target.value }))}
-                rows={3}
-                style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--bg-surface)', color: 'var(--text-primary)', fontSize: '12.5px', fontFamily: 'inherit', resize: 'vertical' }}
-              />
-            </div>
-            <button className="btn-primary" onClick={handleSaveVoice} disabled={savingVoice}>
-              {savingVoice ? 'שומרים...' : 'שמירת פרופיל הקול'}
-            </button>
-            {voiceSavedMsg && <p style={{ marginTop: '8px', fontSize: '12.5px', color: 'var(--profit)' }}>{voiceSavedMsg}</p>}
-          </div>
-        </div>
-      </details>
+        </>
+      )}
     </div>
   );
 }
