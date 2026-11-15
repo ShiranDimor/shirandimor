@@ -22,8 +22,6 @@ async function alertLeadLost(name: string, phone: string, email: string) {
 
 const LEAD_GROUP_NAME = 'לידים חדשים';
 const CAMPAIGN_COLUMN_TITLE = 'campaign_name';
-const STATUS_COLUMN_TITLE = 'סטטוס טיפול';
-const DUPLICATE_STATUS_LABEL = 'ליד כפול';
 const DEFAULT_SOURCE_LABEL = 'הגיע מהאתר - עדכונים';
 
 function normalizePhone(raw: string) {
@@ -63,12 +61,15 @@ async function getBoardSchema(token: string, boardId: string) {
     phoneColumnId: columns.find((c) => c.type === 'phone')?.id,
     emailColumnId: columns.find((c) => c.type === 'email')?.id,
     campaignColumnId: columns.find((c) => c.title === CAMPAIGN_COLUMN_TITLE)?.id,
-    statusColumnId: columns.find((c) => c.title === STATUS_COLUMN_TITLE)?.id,
   };
 }
 
-// בודק אם כבר קיים ליד/מנוי אחר בלוח (בכל קבוצה, לא רק "לידים חדשים") עם אותו מספר נייד
-async function hasExistingPhone(token: string, boardId: string, phoneColumnId: string, targetNormalized: string) {
+// מחפש ליד/מנוי קיים בלוח (בכל קבוצה, לא רק "לידים חדשים") עם אותו מספר נייד - מחזיר את
+// מזהה הפריט הקיים (לא רק true/false) כי המטרה היא להוסיף הערה על הכרטיס הקיים, לא לפתוח
+// כרטיס נוסף: בעבר הבדיקה הזו רק *סימנה* את הכרטיס החדש כ"ליד כפול" אבל עדיין יצרה אותו -
+// כך שאיש קשר שכבר יש לו כרטיס בקבוצה אחרת (למשל "לידים חדשים - בידרנט") קיבל כרטיס שני
+// מכופל בכל פעם שנרשם להתראות, במקום שהכרטיס הקיים שלו יתעדכן
+async function findExistingItemByPhone(token: string, boardId: string, phoneColumnId: string, targetNormalized: string): Promise<string | null> {
   let cursor: string | null = null;
 
   do {
@@ -78,7 +79,7 @@ async function hasExistingPhone(token: string, boardId: string, phoneColumnId: s
         boards (ids: [$boardId]) {
           items_page (limit: 100, cursor: $cursor) {
             cursor
-            items { column_values (ids: $columnIds) { text } }
+            items { id column_values (ids: $columnIds) { text } }
           }
         }
       }`,
@@ -86,18 +87,18 @@ async function hasExistingPhone(token: string, boardId: string, phoneColumnId: s
     );
 
     const page = itemsData?.data?.boards?.[0]?.items_page;
-    const items = page?.items || [];
+    const items: { id: string; column_values: { text: string | null }[] }[] = page?.items || [];
 
-    const found = items.some((item: { column_values: { text: string | null }[] }) => {
+    const found = items.find((item) => {
       const text = item.column_values?.[0]?.text;
       return text && normalizePhone(text) === targetNormalized;
     });
-    if (found) return true;
+    if (found) return found.id;
 
     cursor = page?.cursor || null;
   } while (cursor);
 
-  return false;
+  return null;
 }
 
 export async function POST(request: Request) {
@@ -156,43 +157,23 @@ export async function POST(request: Request) {
   }
 
   try {
-    const { groupId, phoneColumnId, emailColumnId, campaignColumnId, statusColumnId } = await getBoardSchema(token, boardId);
+    const { groupId, phoneColumnId, emailColumnId, campaignColumnId } = await getBoardSchema(token, boardId);
     if (!groupId) {
       console.error(`Monday.com: לא נמצאה קבוצה בשם "${LEAD_GROUP_NAME}" בלוח ${boardId}`);
     }
 
-    const isDuplicate = phoneColumnId
-      ? await hasExistingPhone(token, boardId, phoneColumnId, normalizePhone(phone)).catch(() => false)
-      : false;
+    const existingItemId = phoneColumnId
+      ? await findExistingItemByPhone(token, boardId, phoneColumnId, normalizePhone(phone)).catch(() => null)
+      : null;
 
-    const columnValues: Record<string, unknown> = {};
-    if (phoneColumnId) columnValues[phoneColumnId] = { phone: phone.startsWith('0') ? `972${phone.slice(1)}` : phone, countryShortName: 'IL' };
-    if (emailColumnId && email) columnValues[emailColumnId] = { email, text: email };
-    if (campaignColumnId) columnValues[campaignColumnId] = sourceLabel;
+    let itemId: string | undefined;
 
-    const createItemData = await mondayRequest(
-      token,
-      `mutation ($boardId: ID!, $groupId: String, $itemName: String!, $columnValues: JSON) {
-        create_item (board_id: $boardId, group_id: $groupId, item_name: $itemName, column_values: $columnValues) { id }
-      }`,
-      { boardId, groupId: groupId || null, itemName: name, columnValues: JSON.stringify(columnValues) }
-    );
-
-    const itemId = createItemData?.data?.create_item?.id;
-
-    if (itemId) {
-      // מסמנים בנפרד (לא באותה מוטציית יצירה) כדי שאם התווית "ליד כפול" לא קיימת בדיוק כך בעמודה,
-      // זה לא יפיל את יצירת הליד עצמו - רק את סימון הכפילות
-      if (isDuplicate && statusColumnId) {
-        await mondayRequest(
-          token,
-          `mutation ($boardId: ID!, $itemId: ID!, $columnId: String!, $value: String!) {
-            change_simple_column_value (board_id: $boardId, item_id: $itemId, column_id: $columnId, value: $value) { id }
-          }`,
-          { boardId, itemId, columnId: statusColumnId, value: DUPLICATE_STATUS_LABEL }
-        ).catch((e) => console.error('Monday.com: נכשל סימון "ליד כפול"', e));
-      }
-
+    if (existingItemId) {
+      // כבר קיים כרטיס עם הנייד הזה במקום כלשהו בלוח - לא פותחים כרטיס שני ("ליד כפול"), רק
+      // מוסיפים הערה על הכרטיס הקיים. בעבר התווית "ליד כפול" נוספה אבל כרטיס חדש נוצר בכל זאת,
+      // כך שכל הרשמה חוזרת (למשל להתראות פוש) של מי שכבר יש לו ליד/כרטיס במקום אחר בלוח
+      // (כמו קבוצת "לידים חדשים - בידרנט") פתחה עוד ועוד כרטיסים מכופלים
+      itemId = existingItemId;
       await mondayRequest(
         token,
         `mutation ($itemId: ID!, $body: String!) {
@@ -200,11 +181,39 @@ export async function POST(request: Request) {
         }`,
         {
           itemId,
-          body: `נייד: ${phone}${email ? `\nאימייל: ${email}` : ''}\nמקור: ${sourceLabel}${isDuplicate ? '\n⚠ כבר קיים ליד/מנוי אחר עם אותו נייד - סומן כ"ליד כפול"' : ''}`,
+          body: `נייד: ${phone}${email ? `\nאימייל: ${email}` : ''}\nמקור: ${sourceLabel}\n⚠ כבר קיים כרטיס אחר עם אותו נייד בלוח - לא נפתח כרטיס נוסף, זו הערה על הכרטיס הקיים`,
         }
-      );
+      ).catch((e) => console.error('Monday.com: נכשל להוסיף הערה לכרטיס קיים (ליד כפול)', e));
     } else {
-      console.error('Monday.com לא החזיר מזהה פריט', createItemData);
+      const columnValues: Record<string, unknown> = {};
+      if (phoneColumnId) columnValues[phoneColumnId] = { phone: phone.startsWith('0') ? `972${phone.slice(1)}` : phone, countryShortName: 'IL' };
+      if (emailColumnId && email) columnValues[emailColumnId] = { email, text: email };
+      if (campaignColumnId) columnValues[campaignColumnId] = sourceLabel;
+
+      const createItemData = await mondayRequest(
+        token,
+        `mutation ($boardId: ID!, $groupId: String, $itemName: String!, $columnValues: JSON) {
+          create_item (board_id: $boardId, group_id: $groupId, item_name: $itemName, column_values: $columnValues) { id }
+        }`,
+        { boardId, groupId: groupId || null, itemName: name, columnValues: JSON.stringify(columnValues) }
+      );
+
+      itemId = createItemData?.data?.create_item?.id;
+
+      if (itemId) {
+        await mondayRequest(
+          token,
+          `mutation ($itemId: ID!, $body: String!) {
+            create_update (item_id: $itemId, body: $body) { id }
+          }`,
+          {
+            itemId,
+            body: `נייד: ${phone}${email ? `\nאימייל: ${email}` : ''}\nמקור: ${sourceLabel}`,
+          }
+        );
+      } else {
+        console.error('Monday.com לא החזיר מזהה פריט', createItemData);
+      }
     }
 
     const response = NextResponse.json({ ok: true, monday: Boolean(itemId) });
