@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/instantLogin';
-import { sendPushToEveryone, sendPushToUser } from '@/lib/webPush';
+import { sendPushToUser } from '@/lib/webPush';
+import { sendAnnouncementNotification } from '@/lib/announcementNotify';
 
 async function requireAdmin(request: Request) {
   const authHeader = request.headers.get('Authorization') || '';
@@ -21,34 +22,24 @@ export async function POST(request: Request, { params }: { params: { id: string 
   const admin = await requireAdmin(request);
   if (!admin) return NextResponse.json({ error: 'אין הרשאת ניהול' }, { status: 403 });
 
-  const { data: announcement, error } = await supabaseAdmin.from('announcements').select('*').eq('id', params.id).maybeSingle();
-  if (error || !announcement) return NextResponse.json({ error: 'ההודעה לא נמצאה' }, { status: 404 });
-
-  // טיוטה (published=false, למשל סיכום שוק יומי שממתין לאישור) לא מופיעה בלוח הציבורי בכלל -
-  // קישור לשם היה מראה "ריק" ונראה בטעות כמו הבאג הישן של לוח מודעות קפוא. לטיוטה מפנים
-  // לעמוד הניהול, שם היא כן מוצגת (פתוחה, למעלה) עם כפתור "אישור ופרסום"
-  const payload = {
-    title: `📌 ${announcement.title}`,
-    body: announcement.content.length > 120 ? `${announcement.content.slice(0, 117)}...` : announcement.content,
-    url: announcement.published ? `/announcements#ann-${params.id}` : '/admin/announcements',
-  };
-
   // בדיקה לעצמי - שולח רק אלי, בלי לגעת ב-notification_sent_at ובלי לרשום ביומן ההתראות
-  // (sendPushToUser לא רושם), כדי שהשליחה האמיתית לכולם תישאר זמינה בלי "שהתראה כבר נשלחה"
+  // (sendPushToUser לא רושם), כדי שהשליחה האמיתית לכולם תישאר זמינה בלי "שהתראה כבר נשלחה".
+  // טיוטה (published=false) לא מופיעה בלוח הציבורי - לינק הבדיקה מפנה לעמוד הניהול במקום
   const { searchParams } = new URL(request.url);
   if (searchParams.get('test') === '1') {
+    const { data: announcement } = await supabaseAdmin.from('announcements').select('title, content, published').eq('id', params.id).maybeSingle();
+    if (!announcement) return NextResponse.json({ error: 'ההודעה לא נמצאה' }, { status: 404 });
+    const payload = {
+      title: `📌 ${announcement.title}`,
+      body: announcement.content.length > 120 ? `${announcement.content.slice(0, 117)}...` : announcement.content,
+      url: announcement.published ? `/announcements#ann-${params.id}` : '/admin/announcements',
+    };
     const result = await sendPushToUser(admin.id, payload);
     return NextResponse.json({ ok: true, test: true, ...result });
   }
 
-  const result = await sendPushToEveryone(payload, 'announcement', params.id);
+  const sent = await sendAnnouncementNotification(params.id);
+  if ('error' in sent) return NextResponse.json({ error: sent.error }, { status: 404 });
 
-  const { data: updated } = await supabaseAdmin
-    .from('announcements')
-    .update({ notification_sent_at: new Date().toISOString() })
-    .eq('id', params.id)
-    .select('*')
-    .single();
-
-  return NextResponse.json({ announcement: updated || announcement, ...result });
+  return NextResponse.json({ announcement: sent.announcement, ...sent.result });
 }

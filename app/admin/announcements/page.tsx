@@ -13,6 +13,7 @@ type Announcement = {
   published: boolean;
   created_at: string;
   notification_sent_at: string | null;
+  scheduled_notify_at: string | null;
 };
 
 function formatDateTime(iso: string) {
@@ -62,6 +63,9 @@ export default function AdminAnnouncementsPage() {
   const [notifyingId, setNotifyingId] = useState('');
   const [testNotifyingId, setTestNotifyingId] = useState('');
   const [publishingId, setPublishingId] = useState('');
+  const [schedulingId, setSchedulingId] = useState(''); // איזו הודעה פותחת כרגע את בורר התזמון
+  const [scheduleCustom, setScheduleCustom] = useState(''); // ערך ה-datetime-local בבורר המותאם אישית
+  const [scheduleSavingId, setScheduleSavingId] = useState('');
 
   const [editingId, setEditingId] = useState('');
   const [editTitle, setEditTitle] = useState('');
@@ -274,6 +278,38 @@ export default function AdminAnnouncementsPage() {
     }
   }
 
+  // מתזמנים את שליחת ההתראה לזמן עתידי במקום עכשיו - קרון (/api/cron/send-scheduled-announcements,
+  // כל 15 דקות) בודק ושולח בפועל כשהזמן מגיע. ההודעה עצמה כבר מאושרת/מפורסמת - זה רק דוחה
+  // את שלב ההתראה, לא מפרסם שום דבר חדש אוטומטית
+  async function handleSchedule(id: string, isoTime: string) {
+    setScheduleSavingId(id);
+    const res = await fetch(`/api/admin/announcements/${id}`, { method: 'PATCH', headers: await authHeader(), body: JSON.stringify({ scheduled_notify_at: isoTime }) });
+    setScheduleSavingId('');
+    if (res.ok) {
+      const data = await res.json();
+      setAnnouncements((prev) => prev.map((a) => (a.id === id ? data.announcement : a)));
+      setSchedulingId('');
+      setScheduleCustom('');
+    } else {
+      const data = await res.json().catch(() => ({}));
+      window.alert(data.error || 'שגיאה בתזמון');
+    }
+  }
+
+  function handleScheduleIn(id: string, minutes: number) {
+    handleSchedule(id, new Date(Date.now() + minutes * 60 * 1000).toISOString());
+  }
+
+  async function handleCancelSchedule(id: string) {
+    setScheduleSavingId(id);
+    const res = await fetch(`/api/admin/announcements/${id}`, { method: 'PATCH', headers: await authHeader(), body: JSON.stringify({ scheduled_notify_at: null }) });
+    setScheduleSavingId('');
+    if (res.ok) {
+      const data = await res.json();
+      setAnnouncements((prev) => prev.map((a) => (a.id === id ? data.announcement : a)));
+    }
+  }
+
   // שליחת התראה רק אלי, בלי לגעת בסטטוס "נשלח" של ההודעה - כדי לראות איך זה ייראה בפועל
   // לפני ששולחים לכולם
   async function handleTestNotify(id: string) {
@@ -431,6 +467,7 @@ export default function AdminAnnouncementsPage() {
               {formatDateTime(a.created_at)}
               {!a.published && <span style={{ color: 'var(--lavender)' }}> · 📝 טיוטה - ממתינה לאישור</span>}
               {a.notification_sent_at && <span style={{ color: 'var(--profit)' }}> · ✓ התראה נשלחה</span>}
+              {a.scheduled_notify_at && !a.notification_sent_at && <span style={{ color: 'var(--lavender)' }}> · ⏰ מתוזמן ל-{formatDateTime(a.scheduled_notify_at)}</span>}
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
@@ -449,6 +486,17 @@ export default function AdminAnnouncementsPage() {
                   {notifyingId === a.id ? '…' : a.notification_sent_at ? '📣 שליחה שוב' : '📣 שליחת התראה'}
                 </button>
               )}
+              {a.published && !a.notification_sent_at && (
+                a.scheduled_notify_at ? (
+                  <button onClick={() => handleCancelSchedule(a.id)} disabled={scheduleSavingId === a.id} className="btn-outline" style={{ padding: '6px 12px', fontSize: '12.5px', color: 'var(--lavender)' }}>
+                    {scheduleSavingId === a.id ? '…' : '❌ ביטול תזמון'}
+                  </button>
+                ) : (
+                  <button onClick={() => setSchedulingId(schedulingId === a.id ? '' : a.id)} className="btn-outline" style={{ padding: '6px 12px', fontSize: '12.5px' }}>
+                    ⏰ תזמון שליחה
+                  </button>
+                )
+              )}
               {editingId !== a.id && (
                 <button onClick={() => startEditAnnouncement(a)} className="btn-outline" style={{ padding: '6px 12px', fontSize: '12.5px' }}>
                   ✏️ עריכה
@@ -462,6 +510,35 @@ export default function AdminAnnouncementsPage() {
           </div>
         </summary>
         <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-hairline-strong)', borderTop: 'none', borderRadius: '0 0 10px 10px', padding: '14px' }}>
+          {schedulingId === a.id && (
+            <div style={{ background: 'var(--bg-void)', border: '1px solid var(--border-hairline-strong)', borderRadius: '8px', padding: '12px', marginBottom: '12px' }}>
+              <div style={{ fontSize: '12.5px', fontWeight: 700, marginBottom: '8px' }}>מתי לשלוח את ההתראה?</div>
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '10px' }}>
+                <button className="btn-outline" style={{ padding: '6px 10px', fontSize: '12px' }} disabled={scheduleSavingId === a.id} onClick={() => handleScheduleIn(a.id, 60)}>בעוד שעה</button>
+                <button className="btn-outline" style={{ padding: '6px 10px', fontSize: '12px' }} disabled={scheduleSavingId === a.id} onClick={() => handleScheduleIn(a.id, 180)}>בעוד 3 שעות</button>
+                <button className="btn-outline" style={{ padding: '6px 10px', fontSize: '12px' }} disabled={scheduleSavingId === a.id} onClick={() => handleScheduleIn(a.id, 24 * 60)}>מחר באותה שעה</button>
+              </div>
+              <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                <input
+                  type="datetime-local"
+                  className="tp-text-input"
+                  style={{ minHeight: 'auto', flex: 1 }}
+                  value={scheduleCustom}
+                  onChange={(e) => setScheduleCustom(e.target.value)}
+                />
+                <button
+                  className="btn-primary"
+                  style={{ padding: '6px 14px', fontSize: '12px' }}
+                  disabled={!scheduleCustom || scheduleSavingId === a.id}
+                  onClick={() => handleSchedule(a.id, new Date(scheduleCustom).toISOString())}
+                >
+                  תזמון
+                </button>
+              </div>
+              <button className="btn-outline" style={{ padding: '5px 10px', fontSize: '11.5px', marginTop: '8px' }} onClick={() => { setSchedulingId(''); setScheduleCustom(''); }}>סגירה</button>
+              <p style={{ fontSize: '10.5px', color: 'var(--text-tertiary)', marginTop: '6px', marginBottom: 0 }}>בדיקה פנימית כל 15 דקות - ייתכן איחור קטן בטווח הזה מהזמן המדויק שנבחר.</p>
+            </div>
+          )}
           {editingId !== a.id && a.image_url && <img src={a.image_url} alt="" style={{ width: '100%', borderRadius: '8px', marginBottom: '10px' }} />}
           {editingId === a.id ? (
             <>

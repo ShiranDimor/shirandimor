@@ -23,12 +23,26 @@ export async function PATCH(request: Request, { params }: { params: { id: string
   if (!admin) return NextResponse.json({ error: 'אין הרשאת ניהול' }, { status: 403 });
 
   const body = await request.json().catch(() => ({}));
-  const { published, title, content, image_url } = body as { published?: unknown; title?: unknown; content?: unknown; image_url?: unknown };
+  const { published, title, content, image_url, scheduled_notify_at } = body as { published?: unknown; title?: unknown; content?: unknown; image_url?: unknown; scheduled_notify_at?: unknown };
 
   const updates: Record<string, unknown> = {};
   if (published !== undefined) {
     if (typeof published !== 'boolean') return NextResponse.json({ error: 'published לא תקין' }, { status: 400 });
     updates.published = published;
+  }
+  // תזמון שליחת התראה - null מבטל תזמון קיים. ולידציה שזה תאריך עתידי אמיתי, לא טקסט שרירותי
+  if (scheduled_notify_at !== undefined) {
+    if (scheduled_notify_at === null) {
+      updates.scheduled_notify_at = null;
+    } else {
+      if (typeof scheduled_notify_at !== 'string' || Number.isNaN(new Date(scheduled_notify_at).getTime())) {
+        return NextResponse.json({ error: 'תאריך תזמון לא תקין' }, { status: 400 });
+      }
+      if (new Date(scheduled_notify_at).getTime() <= Date.now()) {
+        return NextResponse.json({ error: 'אפשר לתזמן רק לזמן עתידי' }, { status: 400 });
+      }
+      updates.scheduled_notify_at = scheduled_notify_at;
+    }
   }
   if (title !== undefined) {
     if (typeof title !== 'string' || !title.trim()) return NextResponse.json({ error: 'חסרה כותרת' }, { status: 400 });
