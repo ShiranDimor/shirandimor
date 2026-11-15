@@ -2,12 +2,15 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/instantLogin';
 import { sendAnnouncementNotification } from '@/lib/announcementNotify';
 
-// רץ כל 15 דקות - מוצא הודעות לוח מודעות שתוזמנו לשליחת התראה (scheduled_notify_at) ושהזמן
-// שלהן כבר הגיע, ושולח את ההתראה בפועל. שירן עדיין מאשרת/מפרסמת את ההודעה בעצמה כרגיל -
-// זה רק דוחה את השלב הנפרד של "מתי בדיוק תישלח ההתראה", לא מפרסם שום דבר חדש אוטומטית
+// נקרא כל כמה דקות - לא דרך קרון של Vercel (בחשבון Hobby קרון מוגבל לפעם ביום, לא מספיק כדי
+// לכבד תזמון שהוא "בעוד שעה") אלא דרך pg_cron+pg_net ב-Supabase עצמו, שאין לו הגבלת תדירות
+// כזו - ר' מיגרציית schedule_send_scheduled_announcements_job. מוצא הודעות לוח מודעות
+// שתוזמנו לשליחת התראה (scheduled_notify_at) ושהזמן שלהן כבר הגיע, ושולח את ההתראה בפועל.
+// שירן עדיין מאשרת/מפרסמת את ההודעה בעצמה כרגיל - זה רק דוחה את השלב הנפרד של "מתי בדיוק
+// תישלח ההתראה", לא מפרסם שום דבר חדש אוטומטית. סוד נפרד מ-CRON_SECRET (לא קרון של Vercel)
 export async function GET(request: Request) {
   const authHeader = request.headers.get('authorization');
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (authHeader !== `Bearer ${process.env.PG_CRON_SECRET}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

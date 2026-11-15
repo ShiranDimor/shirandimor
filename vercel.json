@@ -83,10 +83,6 @@
     {
       "path": "/api/cron/push-health-check",
       "schedule": "15 8 * * *"
-    },
-    {
-      "path": "/api/cron/send-scheduled-announcements",
-      "schedule": "*/15 * * * *"
     }
   ]
 }
