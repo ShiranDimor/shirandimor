@@ -17,7 +17,7 @@ type Revision = {
 
 const REVISE_SYSTEM_PROMPT = `אתה מעצב וקופירייטר של שירן דימור ("מסחר אחראי במניות"). תקבל פוסט קיים לאינסטגרם/פייסבוק - טקסט, ולפעמים גם שקפים מעוצבים כקובצי HTML - ואת ההערה של שירן. תקן בדיוק את מה שהיא ביקשה, ושום דבר אחר.
 
-כללי טקסט: עברית פשוטה, ישירה וחמה, בגובה העיניים. כנות מלאה - לא מבטיחים רווח, בלי קלישאות גורו ובלי FOMO. בלי עיצוב markdown. אם יש בכיתוב קריאה לפעולה לחודש הראשון ב-₪1 - להשאיר אותה.
+כללי טקסט: לכתוב כמו שירן כותבת - משפטים קצרים, פסקאות קצרות, תחושה של הודעת וואטסאפ טבעית, בלי מקפים ונקודות-רשימה, אימוג'י אחד לכל היותר. כנות מלאה - לא מבטיחים רווח, בלי קלישאות גורו ובלי FOMO. בלי עיצוב markdown. אם יש בכיתוב קריאה לפעולה לחודש הראשון ב-₪1 - להשאיר אותה. מבחן לכל משפט: אם כל "גורו מסחר" אחר היה יכול לכתוב אותו מילה במילה - לנסח אותו מחדש כך שיישמע רק כמו שירן.
 
 כללי עיצוב לשקפים: כל שקף הוא מסמך HTML עצמאי ברוחב 1080px ובגובה קבוע (1350 לפוסט, 1920 לסטורי) - לשמור על המידות, על כיוון RTL, על הפונטים (Rubik, ומספרים ב-JetBrains Mono) ועל פלטת האתר: רקע #1A181C, משטחים #242126, קווים #433D46, ורוד #FF2D78, זהב #FFB648, גרדיאנט ורוד→זהב, טקסט #F5F3F4/#B8B2B9/#8A8389, ירוק #3DDC84 ואדום #FF5C5C רק למשמעות של רווח/הפסד. לוודא שהטקסט נכנס בשקף ולא נחתך (אם מאריכים טקסט - להקטין גופן). בלי סקריפטים ובלי תמונות חיצוניות.
 
@@ -37,7 +37,33 @@ function extractJson(text: string): string {
   return trimmed.slice(start, end + 1);
 }
 
-async function askClaude(userMessage: string): Promise<Record<string, unknown>> {
+// הקול של שירן: פרופיל הקול שהיא כתבה בסטודיו (marketing_brand_voice) + כל ההערות שכבר נתנה
+// על פוסטים אחרים. כך כל תיקון לומד מהתיקונים הקודמים, והתוכן לא נסחף לניסוח גנרי.
+async function buildVoiceContext(currentPostId: string): Promise<string> {
+  const parts: string[] = [];
+  const { data: voice } = await supabaseAdmin.from('marketing_brand_voice').select('tone_notes, sample_posts, avoid_notes').limit(1).maybeSingle();
+  if (voice?.tone_notes?.trim()) parts.push(`איך שירן מתארת את הטון שלה:\n${voice.tone_notes.trim()}`);
+  if (voice?.sample_posts?.trim()) parts.push(`דוגמאות אמיתיות לכתיבה שלה (לחקות את הקצב והניסוח, לא להעתיק):\n${voice.sample_posts.trim()}`);
+  if (voice?.avoid_notes?.trim()) parts.push(`מה שהיא במפורש לא רוצה:\n${voice.avoid_notes.trim()}`);
+
+  const { data: recent } = await supabaseAdmin
+    .from('marketing_posts')
+    .select('id, revision_history')
+    .neq('id', currentPostId)
+    .not('revision_history', 'eq', '[]')
+    .order('updated_at', { ascending: false })
+    .limit(30);
+  const notes = (recent || [])
+    .flatMap((row) => (Array.isArray(row.revision_history) ? row.revision_history : []))
+    .map((r: { note?: string }) => (typeof r?.note === 'string' ? r.note.trim() : ''))
+    .filter(Boolean)
+    .slice(0, 25);
+  if (notes.length) parts.push(`הערות ששירן כבר נתנה על פוסטים אחרים - אלה העדפות קבועות שלה, ליישם גם כאן כשרלוונטי:\n- ${notes.join('\n- ')}`);
+
+  return parts.join('\n\n');
+}
+
+async function askClaude(userMessage: string, voiceContext: string): Promise<Record<string, unknown>> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error('ANTHROPIC_API_KEY לא מוגדר');
   const model = process.env.ANTHROPIC_MODEL || 'claude-sonnet-5-5';
@@ -45,7 +71,7 @@ async function askClaude(userMessage: string): Promise<Record<string, unknown>> 
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-    body: JSON.stringify({ model, max_tokens: 12000, output_config: { effort: 'low' }, system: REVISE_SYSTEM_PROMPT, messages: [{ role: 'user', content: userMessage }] }),
+    body: JSON.stringify({ model, max_tokens: 12000, output_config: { effort: 'low' }, system: voiceContext ? `${REVISE_SYSTEM_PROMPT}\n\n${voiceContext}` : REVISE_SYSTEM_PROMPT, messages: [{ role: 'user', content: userMessage }] }),
   });
   if (!res.ok) {
     const text = await res.text().catch(() => '');
@@ -83,7 +109,7 @@ export async function revisePostFromNote(postId: string, note: string): Promise<
     `ההערה של שירן:\n${note}`,
   ].join('\n\n');
 
-  const result = await askClaude(message);
+  const result = await askClaude(message, await buildVoiceContext(postId));
 
   const updates: Record<string, unknown> = {};
   for (const field of ['hook', 'caption', 'hashtags'] as const) {
