@@ -471,8 +471,12 @@ export default function AdminAnnouncementsPage() {
               {formatDateTime(a.created_at)}
               {!a.published && <span style={{ color: 'var(--lavender)' }}> · 📝 טיוטה - ממתינה לאישור</span>}
               {a.notification_sent_at && <span style={{ color: 'var(--profit)' }}> · ✓ התראה נשלחה</span>}
-              {a.scheduled_notify_at && !a.notification_sent_at && <span style={{ color: 'var(--lavender)' }}> · ⏰ מתוזמן ל-{formatDateTime(a.scheduled_notify_at)}</span>}
             </div>
+            {/* שורה נפרדת ולא עוד ספאן על אותה שורה - שרשור כל התגיות על שורה אחת (עם תאריך
+                שני בתוכה) גלש הצידה במכשירים צרים */}
+            {a.scheduled_notify_at && !a.notification_sent_at && (
+              <div style={{ fontSize: '11.5px', color: 'var(--lavender)', marginTop: '2px' }}>⏰ מתוזמן ל-{formatDateTime(a.scheduled_notify_at)}</div>
+            )}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
             {/* עצירת ה-click שלא יגלוש ל-summary ויפתח/יסגור בטעות כשלוחצים על כפתור פעולה */}
