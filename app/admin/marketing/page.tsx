@@ -31,6 +31,8 @@ type Post = {
   story_external_post_id: string | null;
   ig_post_id: string | null;
   ig_permalink: string | null;
+  revision_history: { at: string; note: string }[] | null;
+  last_revision_summary: string | null;
   ig_story_published_at: string | null;
   slides_html: string[] | null;
   publish_error: string | null;
@@ -98,6 +100,9 @@ export default function AdminMarketingPage() {
   const [previewOpenId, setPreviewOpenId] = useState<string | null>(null);
   const [publishingId, setPublishingId] = useState<string | null>(null);
   const [renderingId, setRenderingId] = useState<string | null>(null);
+  const [revisionNotes, setRevisionNotes] = useState<Record<string, string>>({});
+  const [revisingId, setRevisingId] = useState<string | null>(null);
+  const [revisionMessage, setRevisionMessage] = useState<Record<string, string>>({});
   const [publishError, setPublishError] = useState<Record<string, string>>({});
   const [generatingStoryId, setGeneratingStoryId] = useState<string | null>(null);
   const [generatingImageId, setGeneratingImageId] = useState<string | null>(null);
@@ -455,6 +460,51 @@ export default function AdminMarketingPage() {
       setPublishError((prev) => ({ ...prev, [postId]: 'שגיאה בשליחת הבקשה' }));
     }
     setPublishingId(null);
+  }
+
+  async function handleRevise(postId: string) {
+    const note = (revisionNotes[postId] || '').trim();
+    if (!note) return;
+    setRevisingId(postId);
+    setRevisionMessage((prev) => ({ ...prev, [postId]: '' }));
+    setPublishError((prev) => ({ ...prev, [postId]: '' }));
+    try {
+      const res = await fetch(`/api/admin/marketing/posts/${postId}/revise`, {
+        method: 'POST',
+        headers: await authHeaders(),
+        body: JSON.stringify({ note }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.post) {
+        setPublishError((prev) => ({ ...prev, [postId]: data?.error || 'שגיאה בתיקון' }));
+      } else {
+        setPosts((prev) => prev.map((p) => (p.id === postId ? data.post : p)));
+        setRevisionNotes((prev) => ({ ...prev, [postId]: '' }));
+        setRevisionMessage((prev) => ({ ...prev, [postId]: data.summary || 'בוצע תיקון' }));
+      }
+    } catch {
+      setPublishError((prev) => ({ ...prev, [postId]: 'שגיאה בשליחת הבקשה (אם זה לקח הרבה זמן - נסי הערה ממוקדת יותר)' }));
+    }
+    setRevisingId(null);
+  }
+
+  async function handleUndoRevision(postId: string) {
+    if (!confirm('לחזור לגרסה שלפני התיקון האחרון?')) return;
+    setRevisingId(postId);
+    setPublishError((prev) => ({ ...prev, [postId]: '' }));
+    try {
+      const res = await fetch(`/api/admin/marketing/posts/${postId}/undo-revision`, { method: 'POST', headers: await authHeaders() });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.post) {
+        setPublishError((prev) => ({ ...prev, [postId]: data?.error || 'שגיאה בשחזור' }));
+      } else {
+        setPosts((prev) => prev.map((p) => (p.id === postId ? data.post : p)));
+        setRevisionMessage((prev) => ({ ...prev, [postId]: 'חזרנו לגרסה הקודמת' }));
+      }
+    } catch {
+      setPublishError((prev) => ({ ...prev, [postId]: 'שגיאה בשליחת הבקשה' }));
+    }
+    setRevisingId(null);
   }
 
   async function handleRenderSlides(postId: string) {
@@ -1000,6 +1050,45 @@ export default function AdminMarketingPage() {
               </p>
             )}
             {post.publish_error && <p style={{ fontSize: '12px', color: 'var(--loss)' }}>הפרסום האוטומטי נכשל: {post.publish_error}</p>}
+
+            {post.status !== 'published' && (
+              <div className="field" style={{ borderTop: '1px solid var(--border-hairline)', paddingTop: '12px' }}>
+                <label>✨ הערה לתיקון (טקסט או עיצוב)</label>
+                <textarea
+                  value={revisionNotes[post.id] || ''}
+                  onChange={(e) => setRevisionNotes((prev) => ({ ...prev, [post.id]: e.target.value }))}
+                  placeholder={Array.isArray(post.slides_html) && post.slides_html.length ? 'למשל: בשקף 3 הכותרת ארוכה מדי, תקצרי אותה / תוסיפי שורה על ניהול סיכונים בכיתוב' : 'למשל: תקצרי את הכיתוב ותוסיפי שאלה לקהל בסוף'}
+                  rows={2}
+                  disabled={revisingId === post.id}
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-surface)', color: 'var(--text-primary)', fontSize: '12.5px', fontFamily: 'inherit', resize: 'vertical' }}
+                />
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center', marginTop: '8px' }}>
+                  <button
+                    className="nav-link"
+                    style={{ background: 'var(--grad-brand)', border: 'none', color: '#1A181C', fontWeight: 700, borderRadius: '8px', padding: '8px 14px', cursor: 'pointer', opacity: (revisionNotes[post.id] || '').trim() ? 1 : 0.5 }}
+                    onClick={() => handleRevise(post.id)}
+                    disabled={revisingId === post.id || !(revisionNotes[post.id] || '').trim()}
+                  >
+                    {revisingId === post.id ? 'מתקנים... (עד חצי דקה)' : 'תקן לפי ההערה'}
+                  </button>
+                  {Array.isArray(post.revision_history) && post.revision_history.length > 0 && (
+                    <button
+                      className="nav-link"
+                      style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-hairline-strong)', borderRadius: '8px', padding: '8px 14px', cursor: 'pointer' }}
+                      onClick={() => handleUndoRevision(post.id)}
+                      disabled={revisingId === post.id}
+                    >
+                      ↩ חזרה לגרסה הקודמת
+                    </button>
+                  )}
+                </div>
+                {revisionMessage[post.id] && (
+                  <p style={{ fontSize: '12px', color: 'var(--profit)', marginTop: '6px' }}>
+                    {revisionMessage[post.id]}{post.status === 'draft' && post.scheduled_at ? ' · הפוסט חזר לטיוטה - צריך לאשר שוב' : ''}
+                  </p>
+                )}
+              </div>
+            )}
             {post.ig_permalink && (
               <a href={post.ig_permalink} target="_blank" rel="noreferrer" style={{ fontSize: '12px', color: 'var(--teal)' }}>
                 לצפייה בפוסט שפורסם באינסטגרם ←
