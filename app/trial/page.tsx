@@ -10,7 +10,7 @@ export default function TrialSignupPage() {
   const router = useRouter();
 
   useEffect(() => {
-    router.replace('/subscribe');
+    router.replace('/subscribe' + window.location.search);
   }, [router]);
 
   return null;

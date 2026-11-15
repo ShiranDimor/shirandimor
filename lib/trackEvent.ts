@@ -18,7 +18,9 @@ export type FunnelEvent =
   | 'mentoring_form_started'
   | 'mentoring_form_completed'
   | 'mentoring_calendar_opened'
-  | 'mentoring_call_booked';
+  | 'mentoring_call_booked'
+  // כניסה לאתר מקישור בסושיאל (?source=ig_* / fb_*) - כדי לדעת אילו פוסטים באמת מביאים אנשים
+  | 'social_landing_view';
 
 // מיפוי לאירועי המרה סטנדרטיים של פייסבוק/מטא, כדי שקמפיינים ממומנים ידעו לבצע אופטימיזציה
 // לפי מי שבאמת מתקדם במשפך - לא רק כניסות לעמוד. פועל רק אם ה-Pixel מוגדר (ראו components/MetaPixel).

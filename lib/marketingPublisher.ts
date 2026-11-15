@@ -20,6 +20,17 @@ const MARKETING_MEDIA_BUCKET = 'marketing-media';
 
 export const MAX_PUBLISH_ATTEMPTS = 3;
 
+const SITE_URL = 'https://www.shirandimor.com';
+
+// באינסטגרם קישור בכיתוב לא לחיץ, ולכן הכיתוב אומר "הקישור בביו". בפייסבוק הקישור כן לחיץ -
+// אז שם מחליפים את "הקישור בביו" בקישור אמיתי ליעד של הפוסט (cta_path), עם source ייחודי
+// לפוסט, כדי שבמשפך באדמין יופיע בדיוק איזה פוסט הביא כל כניסה והצטרפות
+function facebookCaption(caption: string, postId: string, ctaPath: string | null): string {
+  const path = ctaPath && ctaPath.startsWith('/') ? ctaPath : '/subscribe';
+  const url = `${SITE_URL}${path}${path.includes('?') ? '&' : '?'}source=fb_${postId.slice(0, 8)}`;
+  return caption.includes('הקישור בביו') ? caption.replace(/הקישור בביו/g, `כאן: ${url}`) : `${caption}\n\n${url}`;
+}
+
 type MarketingPostRow = {
   id: string;
   platform: 'instagram' | 'facebook' | 'both';
@@ -36,6 +47,7 @@ type MarketingPostRow = {
   ig_story_published_at: string | null;
   slides_html: string[] | null;
   publish_attempts: number | null;
+  cta_path: string | null;
   video_url: string | null;
   video_source_url: string | null;
   ig_container_id: string | null;
@@ -131,7 +143,7 @@ export async function publishMarketingPost(
   if (isReel && videoUrl) {
     if (wantsFacebook) {
       await attempt('פייסבוק - רילס', Boolean(post.external_post_id), async () => {
-        const { postId: id } = await publishVideoToFacebookPage({ videoUrl, description: caption });
+        const { postId: id } = await publishVideoToFacebookPage({ videoUrl, description: facebookCaption(caption, post.id, post.cta_path) });
         return { external_post_id: id };
       });
     }
@@ -162,7 +174,7 @@ export async function publishMarketingPost(
   if (!isStoryPost && !isReel) {
     if (wantsFacebook) {
       await attempt('פייסבוק - פיד', Boolean(post.external_post_id), async () => {
-        const { postId: id } = await publishPhotoToFacebookPage({ images: feedImages, caption });
+        const { postId: id } = await publishPhotoToFacebookPage({ images: feedImages, caption: facebookCaption(caption, post.id, post.cta_path) });
         return { external_post_id: id };
       });
     }

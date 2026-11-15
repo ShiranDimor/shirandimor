@@ -20,6 +20,7 @@ const ALLOWED_EVENTS = [
   'mentoring_form_completed',
   'mentoring_calendar_opened',
   'mentoring_call_booked',
+  'social_landing_view',
 ] as const;
 
 // POST - רישום אירוע המרה בדאטהבייס (בנוסף ל-Vercel Analytics) - כדי שאפשר יהיה להציג

@@ -18,6 +18,15 @@ export function captureSourceFromUrl() {
     const source = params.get('source') || params.get('utm_source');
     if (source && !sessionStorage.getItem(SOURCE_KEY)) {
       sessionStorage.setItem(SOURCE_KEY, source);
+      // תנועה מהסושיאל (ביו באינסטגרם, קישור בפוסט בפייסבוק) - נספרת פעם אחת לביקור, כדי
+      // שבמשפך יופיע כמה אנשים כל פוסט/ערוץ הביא לאתר, ולא רק כמה מהם לחצו על תשלום
+      if (/^(ig|fb)_/.test(source)) {
+        fetch('/api/track-event', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ event: 'social_landing_view', source }),
+        }).catch(() => {});
+      }
     }
     for (const key of EXTRA_KEYS) {
       const value = params.get(key);
