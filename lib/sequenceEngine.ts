@@ -6,65 +6,7 @@ import { hasFullAccessContact } from '@/lib/subscriberStatus';
 
 type Contact = { userId?: string | null; phone?: string | null; email?: string | null };
 
-// אותו רעיון בדיוק כמו recipientKey ב-lib/webPush.ts - מזהה איש קשר אחד (לא מכשיר אחד), כדי
-// שאותו אדם לא יתחיל את אותו רצף פעמיים (למשל אם ההתראה הופעלה פעמיים משתי מכשירים שונים)
-function contactKey(contact: Contact): string {
-  if (contact.userId) return `u:${contact.userId}`;
-  return `c:${normalizePhone(contact.phone)}|${normalizeEmail(contact.email)}`;
-}
-
-// מתחיל רצף לאיש קשר, ושולח מיד את הצעד הראשון (יום 0) - לא מחכים ל-cron היומי בשביל זה,
-// כדי ש"ברוכים הבאים"/"תודה שהפעלת התראות" יגיע ממש ברגע האירוע, לא רק מחר. אם הרצף כבר
-// התחיל בעבר לאיש הקשר הזה (אותו contactKey) - לא עושים כלום, בלי להתחיל אותו מחדש/לשלוח שוב
-export async function startSequence(sequenceKey: SequenceKey, contact: Contact): Promise<void> {
-  const key = contactKey(contact);
-
-  const { data: existing } = await supabaseAdmin
-    .from('sequence_progress')
-    .select('id')
-    .eq('sequence_key', sequenceKey)
-    .eq('contact_key', key)
-    .maybeSingle();
-  if (existing) return;
-
-  const { data: inserted, error } = await supabaseAdmin
-    .from('sequence_progress')
-    .insert({
-      sequence_key: sequenceKey,
-      contact_key: key,
-      user_id: contact.userId || null,
-      phone: contact.phone || null,
-      email: contact.email || null,
-    })
-    .select('id')
-    .single();
-
-  if (error || !inserted) {
-    console.error(`רצף ${sequenceKey}: נכשלה התחלת הרצף לאיש קשר`, key, error);
-    return;
-  }
-
-  const firstStep = SEQUENCES[sequenceKey].steps[0];
-  const sendResult = await sendStep(firstStep.key, contact).catch((e) => {
-    console.error(`רצף ${sequenceKey}: נכשלה שליחת הצעד הראשון`, key, e);
-    return null;
-  });
-
-  // אם אין בכלל מכשיר תקף לשלוח אליו (למשל ההתראה כבר נשברה בין הרגע שהתקבלה הבקשה לרגע הזה) -
-  // לא מסמנים שהצעד נשלח, אבל כן עוצרים את הרצף כאן כדי שלא ינסה שוב ושוב כל יום בלי תוחלת
-  if (sendResult && sendResult.attempted === 0) {
-    await supabaseAdmin.from('sequence_progress').update({ stopped_at: new Date().toISOString(), stopped_reason: 'push_invalid' }).eq('id', inserted.id);
-    return;
-  }
-
-  await supabaseAdmin.from('sequence_progress').update({ last_step_sent: 1, last_sent_at: new Date().toISOString() }).eq('id', inserted.id);
-}
-
-async function sendStep(stepKey: string, contact: Contact) {
-  const tpl = await getEffectiveTemplate(stepKey);
-  if (!tpl) throw new Error(`צעד רצף לא מוכר: ${stepKey}`);
-  return sendPushToContact(contact, { title: tpl.title, body: tpl.content, url: '/' });
-}
+type StepRule = { key: string; step_index: number; day_offset: number; enabled: boolean };
 
 type ProgressRow = {
   id: string;
@@ -76,6 +18,28 @@ type ProgressRow = {
   started_at: string;
   last_step_sent: number;
 };
+
+// אותו רעיון בדיוק כמו recipientKey ב-lib/webPush.ts - מזהה איש קשר אחד (לא מכשיר אחד), כדי
+// שאותו אדם לא יתחיל את אותו רצף פעמיים (למשל אם ההתראה הופעלה פעמיים משתי מכשירים שונים)
+function contactKey(contact: Contact): string {
+  if (contact.userId) return `u:${contact.userId}`;
+  return `c:${normalizePhone(contact.phone)}|${normalizeEmail(contact.email)}`;
+}
+
+async function sendStep(stepKey: string, contact: Contact) {
+  const tpl = await getEffectiveTemplate(stepKey);
+  if (!tpl) throw new Error(`צעד רצף לא מוכר: ${stepKey}`);
+  return sendPushToContact(contact, { title: tpl.title, body: tpl.content, url: '/' });
+}
+
+async function getStepsForSequence(sequenceKey: SequenceKey): Promise<StepRule[]> {
+  const { data } = await supabaseAdmin
+    .from('automation_rules')
+    .select('key, step_index, day_offset, enabled')
+    .eq('sequence_key', sequenceKey)
+    .order('step_index', { ascending: true });
+  return (data || []) as StepRule[];
+}
 
 function daysElapsedSince(iso: string): number {
   return Math.floor((Date.now() - new Date(iso).getTime()) / (24 * 60 * 60 * 1000));
@@ -104,23 +68,106 @@ async function stopReasonFor(sequenceKey: SequenceKey, row: ProgressRow): Promis
   return null;
 }
 
+// הלוגיקה המשותפת לצעד אחד של איש קשר אחד - משמשת גם מהקרון היומי וגם מה-start המיידי (יום 0),
+// כדי שלא יהיו שני מקומות נפרדים שצריך לזכור לסנכרן ביניהם (ור' הבאג שבאמת קרה: ה-start
+// המיידי התעלם לגמרי מ-enabled של הצעד, ושלח גם כששירן כיבתה את הרצף). מדלג קדימה על צעדים
+// כבויים שכבר הגיע הזמן שלהם, שולח צעד אחד בפועל (אם מופעל ומגיע הזמן שלו), ועוצר אם אין
+// אף מכשיר תקף לשלוח אליו - ר' בקשה מפורשת של שירן לבדוק את זה לפני כל שליחה
+async function processDueStep(sequenceKey: SequenceKey, steps: StepRule[], totalSteps: number, row: ProgressRow): Promise<void> {
+  const reason = await stopReasonFor(sequenceKey, row).catch(() => null);
+  if (reason) {
+    await stop(row.id, reason);
+    return;
+  }
+
+  const elapsed = daysElapsedSince(row.started_at);
+  let nextIndex = row.last_step_sent + 1;
+  let newLastSent = row.last_step_sent;
+  let sentNow = false;
+
+  while (true) {
+    const step = steps.find((s) => s.step_index === nextIndex);
+    if (!step) break;
+    if (elapsed < step.day_offset) break; // הצעד הבא עוד לא הגיע הזמן שלו
+
+    if (!step.enabled) {
+      newLastSent = nextIndex;
+      nextIndex++;
+      continue;
+    }
+
+    const contact: Contact = { userId: row.user_id, phone: row.phone, email: row.email };
+    const result = await sendStep(step.key, contact).catch((e) => {
+      console.error(`רצף ${sequenceKey}: נכשלה שליחת צעד ${step.key}`, row.contact_key, e);
+      return null;
+    });
+
+    if (!result || result.attempted === 0) {
+      await stop(row.id, 'push_invalid');
+      return;
+    }
+
+    newLastSent = nextIndex;
+    sentNow = true;
+    break; // צעד אחד בפועל בכל הרצה - גם אם כמה הפכו "זמינים" יחד, לא מציפים בכמה הודעות ביחד
+  }
+
+  if (newLastSent === row.last_step_sent) return; // שום דבר לא התקדם (שום צעד לא הגיע הזמן שלו)
+
+  const update: Record<string, unknown> = { last_step_sent: newLastSent };
+  if (sentNow) update.last_sent_at = new Date().toISOString();
+  if (newLastSent >= totalSteps) {
+    update.stopped_at = new Date().toISOString();
+    update.stopped_reason = 'completed';
+  }
+  await supabaseAdmin.from('sequence_progress').update(update).eq('id', row.id);
+}
+
+// מתחיל רצף לאיש קשר - אם הרצף כבר התחיל בעבר לאיש הקשר הזה (אותו contactKey) לא עושים
+// כלום, בלי להתחיל אותו מחדש/לשלוח שוב. מיד אחרי היצירה בודק אם צעד יום-0 מופעל וצריך
+// לצאת עכשיו (לא מחכים ל-cron היומי בשביל זה) - דרך אותה פונקציה בדיוק שהקרון משתמש בה,
+// כדי שכיבוי צעד/רצף בעמוד הניהול יכבד גם את השליחה המיידית הזו, לא רק את הקרון
+export async function startSequence(sequenceKey: SequenceKey, contact: Contact): Promise<void> {
+  const key = contactKey(contact);
+
+  const { data: existing } = await supabaseAdmin
+    .from('sequence_progress')
+    .select('id')
+    .eq('sequence_key', sequenceKey)
+    .eq('contact_key', key)
+    .maybeSingle();
+  if (existing) return;
+
+  const { data: inserted, error } = await supabaseAdmin
+    .from('sequence_progress')
+    .insert({
+      sequence_key: sequenceKey,
+      contact_key: key,
+      user_id: contact.userId || null,
+      phone: contact.phone || null,
+      email: contact.email || null,
+    })
+    .select('id, sequence_key, contact_key, user_id, phone, email, started_at, last_step_sent')
+    .single();
+
+  if (error || !inserted) {
+    console.error(`רצף ${sequenceKey}: נכשלה התחלת הרצף לאיש קשר`, key, error);
+    return;
+  }
+
+  const steps = await getStepsForSequence(sequenceKey);
+  await processDueStep(sequenceKey, steps, SEQUENCES[sequenceKey].steps.length, inserted as ProgressRow);
+}
+
 // נקרא פעם ביום (cron) - עובר על כל איש קשר בכל רצף שעוד לא הסתיים/נעצר, ובודק אם הגיע הזמן
 // לצעד הבא שלו/ה. בלי זה הרצף היה חייב לרוץ ברקע כל הזמן - פעם ביום מספיק כי ימי ה-offset
 // הם תמיד הפרש של כמה ימים שלמים, לא שעות מדויקות
-export async function runSequenceStepsForToday(): Promise<{ sent: number; stopped: number; skippedDisabled: number }> {
-  let sent = 0;
-  let stopped = 0;
-  let skippedDisabled = 0;
+export async function runSequenceStepsForToday(): Promise<{ processed: number }> {
+  let processed = 0;
 
   for (const sequenceKey of Object.keys(SEQUENCES) as SequenceKey[]) {
     const seqDef = SEQUENCES[sequenceKey];
-
-    const { data: stepRules } = await supabaseAdmin
-      .from('automation_rules')
-      .select('key, step_index, day_offset, enabled')
-      .eq('sequence_key', sequenceKey)
-      .order('step_index', { ascending: true });
-    const steps = (stepRules || []) as { key: string; step_index: number; day_offset: number; enabled: boolean }[];
+    const steps = await getStepsForSequence(sequenceKey);
     if (steps.length === 0) continue;
 
     const { data: rows } = await supabaseAdmin
@@ -131,62 +178,10 @@ export async function runSequenceStepsForToday(): Promise<{ sent: number; stoppe
       .lt('last_step_sent', seqDef.steps.length);
 
     for (const row of (rows || []) as ProgressRow[]) {
-      const reason = await stopReasonFor(sequenceKey, row).catch(() => null);
-      if (reason) {
-        await stop(row.id, reason);
-        stopped++;
-        continue;
-      }
-
-      const elapsed = daysElapsedSince(row.started_at);
-      let nextIndex = row.last_step_sent + 1;
-      let currentLastSent = row.last_step_sent;
-
-      // מדלג קדימה על צעדים שכבויים (כבר הגיע הזמן שלהם, אבל מופעל/ת כיבתה אותם) - בלי זה
-      // כל מי שעבר על צעד כבוי היה תקוע שם לנצח, גם אם הוא הופעל מחדש אחר כך
-      while (true) {
-        const step = steps.find((s) => s.step_index === nextIndex);
-        if (!step) break;
-        if (elapsed < step.day_offset) break; // הצעד הבא עוד לא הגיע הזמן שלו
-
-        if (!step.enabled) {
-          currentLastSent = nextIndex;
-          nextIndex++;
-          skippedDisabled++;
-          continue;
-        }
-
-        const contact: Contact = { userId: row.user_id, phone: row.phone, email: row.email };
-        const result = await sendStep(step.key, contact).catch((e) => {
-          console.error(`רצף ${sequenceKey}: נכשלה שליחת צעד ${step.key}`, row.contact_key, e);
-          return null;
-        });
-
-        if (!result || result.attempted === 0) {
-          await stop(row.id, 'push_invalid');
-          stopped++;
-          currentLastSent = -1; // כבר נעצר, לא לעדכן last_step_sent בהמשך
-          break;
-        }
-
-        currentLastSent = nextIndex;
-        sent++;
-        nextIndex++;
-        break; // צעד אחד בפועל ביום - גם אם כמה הפכו "זמינים" באותו יום, לא מציפים בכמה הודעות יחד
-      }
-
-      if (currentLastSent === -1) continue;
-      if (currentLastSent !== row.last_step_sent) {
-        const update: Record<string, unknown> = { last_step_sent: currentLastSent };
-        if (currentLastSent > row.last_step_sent) update.last_sent_at = new Date().toISOString();
-        if (currentLastSent >= seqDef.steps.length) {
-          update.stopped_at = new Date().toISOString();
-          update.stopped_reason = 'completed';
-        }
-        await supabaseAdmin.from('sequence_progress').update(update).eq('id', row.id);
-      }
+      await processDueStep(sequenceKey, steps, seqDef.steps.length, row);
+      processed++;
     }
   }
 
-  return { sent, stopped, skippedDisabled };
+  return { processed };
 }
