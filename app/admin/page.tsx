@@ -294,6 +294,12 @@ export default function AdminDashboard() {
           <div className="at-count">פרסום עדכון לכולם</div>
         </Link>
 
+        <Link href="/admin/agreements" className="admin-tile">
+          <div className="at-icon">✍️</div>
+          <div className="at-title">הסכמים וחתימות</div>
+          <div className="at-count">קישור לחתימה דיגיטלית</div>
+        </Link>
+
         <Link href="/admin/automations" className="admin-tile">
           <div className="at-icon">⚙️</div>
           <div className="at-title">אוטומציות</div>
