@@ -63,6 +63,25 @@ export default function AgreementsAdminPage() {
     setLink(json.url);
   }
 
+  // פותח את ההסכם החתום בחלון חדש, עם כפתורי הורדה ושמירה כ-PDF (הדפסה)
+  async function openSigned(id: string) {
+    const win = window.open('', '_blank');
+    const res = await fetch(`/api/admin/agreements/${id}`, { headers: await authHeader(), cache: 'no-store' });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok || !win) {
+      win?.close();
+      setError(json.error || 'לא הצלחנו לפתוח את ההסכם');
+      return;
+    }
+    const doc = `<!doctype html><html lang="he" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${json.fileName}</title>
+<style>body{margin:0;background:#fff}.bar{position:sticky;top:0;display:flex;gap:8px;padding:10px;background:#f4f1ee;border-bottom:1px solid #ddd;font-family:Arial}.bar button{padding:9px 14px;border-radius:8px;border:1px solid #ccc;background:#fff;font-size:14px;cursor:pointer}@media print{.bar{display:none}}</style></head>
+<body><div class="bar"><button onclick="window.print()">שמירה כ-PDF / הדפסה</button><button id="dl">הורדה</button></div>${json.html}
+<script>document.getElementById('dl').onclick=function(){var b=new Blob(['<!doctype html><meta charset=utf-8>'+document.body.innerHTML.replace(/<div class="bar">[\s\S]*?<\/div>/,'')],{type:'text/html'});var a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=document.title+'.html';a.click();};</script></body></html>`;
+    win.document.open();
+    win.document.write(doc);
+    win.document.close();
+  }
+
   async function copy() {
     try {
       await navigator.clipboard.writeText(link);
@@ -138,22 +157,23 @@ export default function AgreementsAdminPage() {
           ) : (
             <div className="trade-table-wrap">
               <table className="trade-table">
-                <thead><tr><th>שם</th><th>נחתם</th><th>נייד</th><th>מייל</th><th>גרסה</th></tr></thead>
+                <thead><tr><th>שם</th><th>נחתם</th><th>מסלול</th><th>נייד</th><th>מייל</th><th>הסכם</th></tr></thead>
                 <tbody>
                   {signedHere.map((s) => (
                     <tr key={s.id}>
                       <td className="sym-cell">{s.full_name}</td>
                       <td>{new Date(s.created_at).toLocaleString('he-IL', { timeZone: 'Asia/Jerusalem', dateStyle: 'short', timeStyle: 'short' })}</td>
+                      <td>{s.terms?.track === 'extended' ? 'מורחב (6 ח׳)' : s.terms?.track === 'core' ? 'ליווי אישי (4 ח׳)' : '-'}</td>
                       <td dir="ltr">{s.phone}</td>
                       <td dir="ltr">{s.email}</td>
-                      <td>{s.agreement_version}</td>
+                      <td><button type="button" className="qa-btn" onClick={() => openSigned(s.id)}>צפייה / הורדה</button></td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
           )}
-          <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 10 }}>העותק החתום המלא (כולל החתימה ביד) נשלח במייל בכל חתימה.</p>
+          <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 10 }}>&quot;צפייה / הורדה&quot; פותח את ההסכם החתום המלא, כולל החתימה ביד - משם אפשר לשמור כ-PDF. עותק נשלח גם במייל בכל חתימה.</p>
         </>
       )}
     </div>
