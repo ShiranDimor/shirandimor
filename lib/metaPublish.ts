@@ -235,6 +235,14 @@ export async function createInstagramReelContainer(params: { videoUrl: string; c
   return { containerId: id };
 }
 
+// סטורי וידאו באינסטגרם מאותו סרטון של הרילס (פייסבוק עושה את זה לבד, אינסטגרם לא). גם הוא
+// עובר עיבוד, ולכן מתפרסם באותו מנגנון דו-שלבי (publishInstagramReelIfReady עובד לכל מיכל)
+export async function createInstagramVideoStoryContainer(params: { videoUrl: string }): Promise<{ containerId: string }> {
+  const { igUserId, accessToken } = await getInstagramContext();
+  const { id } = await igPost(`${igUserId}/media`, { media_type: 'STORIES', video_url: params.videoUrl }, accessToken);
+  return { containerId: id };
+}
+
 // מחזיר null אם הסרטון עדיין בעיבוד; זורק שגיאה אם העיבוד נכשל
 export async function publishInstagramReelIfReady(containerId: string): Promise<{ postId: string; permalink: string | null } | null> {
   const { igUserId, accessToken } = await getInstagramContext();

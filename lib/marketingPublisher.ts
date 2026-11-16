@@ -14,6 +14,7 @@ import {
   publishStoryToInstagram,
   createInstagramReelContainer,
   publishInstagramReelIfReady,
+  createInstagramVideoStoryContainer,
   publishVideoToFacebookPage,
 } from '@/lib/metaPublish';
 
@@ -54,6 +55,7 @@ type MarketingPostRow = {
   video_url: string | null;
   video_source_url: string | null;
   ig_container_id: string | null;
+  ig_story_container_id: string | null;
 };
 
 // סרטון של רילס מגיע מחבילת התוכן ככתובת מקור (video_source_url). כאן הוא מועתק לדלי הציבורי
@@ -172,6 +174,31 @@ export async function publishMarketingPost(
     } else if (wantsInstagram) {
       results.push({ channel: 'אינסטגרם - רילס', ok: true, skipped: true });
     }
+
+    // הרילס עולה גם כסטורי באינסטגרם (שירן ביקשה, כמו שפייסבוק עושה לבד) - רק אחרי שהרילס
+    // עצמו כבר פורסם, ובאותו מנגנון דו-שלבי של מיכל ועיבוד
+    const reelOnInstagram = Boolean(post.ig_post_id || updates.ig_post_id);
+    if (wantsInstagram && reelOnInstagram && !post.ig_story_published_at) {
+      try {
+        let storyContainerId = post.ig_story_container_id;
+        if (!storyContainerId) {
+          storyContainerId = (await createInstagramVideoStoryContainer({ videoUrl })).containerId;
+          updates.ig_story_container_id = storyContainerId;
+        }
+        const story = await publishInstagramReelIfReady(storyContainerId);
+        if (story) {
+          Object.assign(updates, { ig_story_id: story.postId, ig_story_published_at: new Date().toISOString() });
+          results.push({ channel: 'אינסטגרם - סטורי', ok: true });
+        } else {
+          results.push({ channel: 'אינסטגרם - סטורי', ok: true, pending: true });
+        }
+      } catch (e) {
+        updates.ig_story_container_id = null;
+        results.push({ channel: 'אינסטגרם - סטורי', ok: false, error: e instanceof Error ? e.message : 'שגיאה לא ידועה' });
+      }
+    } else if (wantsInstagram && reelOnInstagram) {
+      results.push({ channel: 'אינסטגרם - סטורי', ok: true, skipped: true });
+    }
   }
 
   if (!isStoryPost && !isReel) {
@@ -224,7 +251,7 @@ export async function publishMarketingPost(
   const fullInstagram = post.platform === 'instagram' || post.platform === 'both';
   const everyChannelDone =
     (!fullFacebook || ((isStoryPost || Boolean(merged.external_post_id)) && (!storyImage || Boolean(merged.story_published_at)))) &&
-    (!fullInstagram || ((isStoryPost || Boolean(merged.ig_post_id)) && (!storyImage || Boolean(merged.ig_story_published_at))));
+    (!fullInstagram || ((isStoryPost || Boolean(merged.ig_post_id)) && (!(storyImage || isReel) || Boolean(merged.ig_story_published_at))));
 
   const anyPending = results.some((r) => r.pending);
   if (allDone && everyChannelDone && !anyPending) {
