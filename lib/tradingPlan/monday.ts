@@ -861,6 +861,53 @@ export async function markPushDisabledOnMonday(params: { phone?: string | null; 
   }
 }
 
+// רשימת כל אנשי הקשר שנמצאים *עכשיו* בקבוצת "הפעיל עדכונים באתר ללא מנוי" - לשימוש בניקוי
+// חד-פעמי (ר' /api/admin/push-subscriptions/cleanup-stale-monday): הקבוצה הזו רק גדלה עם הזמן
+// (כרטיס נוסף בכל הפעלה, אף פעם לא מוסר אוטומטית לפני markPushDisabledOnMonday), אז יכולים
+// להצטבר בה אנשי קשר שכבר לא רלוונטיים בפועל - צריך לדעת מי נמצא בה בכלל כדי לבדוק אחד-אחד
+export async function listPushActivatedNoSubContacts(): Promise<{ id: string; name: string; phone: string | null; email: string | null }[]> {
+  const token = process.env.MONDAY_API_TOKEN;
+  const boardId = process.env.MONDAY_BOARD_ID;
+  if (!token || !boardId) return [];
+
+  const { phoneColumnId, emailColumnId, pushActivatedNoSubGroupId } = await getBoardSchema(token, boardId);
+  if (!pushActivatedNoSubGroupId) return [];
+
+  const columnIds = [phoneColumnId, emailColumnId].filter(Boolean) as string[];
+  const results: { id: string; name: string; phone: string | null; email: string | null }[] = [];
+  let cursor: string | null = null;
+
+  do {
+    const itemsData: any = await mondayRequest(
+      token,
+      `query ($boardId: ID!, $groupId: String!, $cursor: String, $columnIds: [String!]) {
+        boards (ids: [$boardId]) {
+          groups (ids: [$groupId]) {
+            items_page (limit: 100, cursor: $cursor) {
+              cursor
+              items { id name column_values (ids: $columnIds) { id text } }
+            }
+          }
+        }
+      }`,
+      { boardId, groupId: pushActivatedNoSubGroupId, cursor, columnIds }
+    );
+
+    const page = itemsData?.data?.boards?.[0]?.groups?.[0]?.items_page;
+    const items: { id: string; name: string; column_values: { id: string; text: string | null }[] }[] = page?.items || [];
+
+    for (const item of items) {
+      const phone = phoneColumnId ? item.column_values?.find((cv) => cv.id === phoneColumnId)?.text || null : null;
+      const email = emailColumnId ? item.column_values?.find((cv) => cv.id === emailColumnId)?.text || null : null;
+      results.push({ id: item.id, name: item.name, phone, email });
+    }
+
+    cursor = page?.cursor || null;
+  } while (cursor);
+
+  return results;
+}
+
 // גרסה לסנכרון מרובה אנשי קשר בבת אחת (ר' /api/admin/push-subscriptions/resync-monday) -
 // markAppDownloadOnMonday הרגילה סורקת את כל הלוח (items_page, pagination) בכל קריאה
 // בודדת; להריץ אותה בלולאה על עשרות אנשי קשר לקח כל כך הרבה זמן שזה תקע את הדפדפן ולא

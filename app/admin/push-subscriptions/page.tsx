@@ -35,6 +35,8 @@ export default function AdminPushSubscriptionsPage() {
   const [approveMessage, setApproveMessage] = useState('');
   const [resyncing, setResyncing] = useState(false);
   const [resyncMessage, setResyncMessage] = useState('');
+  const [cleaningUp, setCleaningUp] = useState(false);
+  const [cleanupMessage, setCleanupMessage] = useState('');
 
   useEffect(() => {
     checkAdmin();
@@ -79,6 +81,24 @@ export default function AdminPushSubscriptionsPage() {
       loadRows();
     } else {
       setResyncMessage('שגיאה בסנכרון');
+    }
+  }
+
+  // ניקוי חד-פעמי: עד עכשיו קבוצת "הפעיל עדכונים באתר ללא מנוי" במאנדיי רק גדלה עם הזמן -
+  // זה עובר על כל מי שנמצא/ת שם עכשיו ומעביר ל"לידים חדשים" את מי שכבר אין לו/ה שום מכשיר
+  // תקף אצלנו (ר' app/api/admin/push-subscriptions/cleanup-stale-monday). לא קשור לכפתור
+  // הסנכרון הרגיל למעלה - זה עובד בכיוון ההפוך (מוציא מהקבוצה, לא מכניס אליה)
+  async function handleCleanupStaleMonday() {
+    if (!window.confirm('לעבור על כל הכרטיסים בקבוצת "הפעיל עדכונים באתר ללא מנוי" במאנדיי, ולהעביר ל"לידים חדשים" כל מי שכבר אין לו/ה שום מכשיר תקף באתר?')) return;
+    setCleaningUp(true);
+    setCleanupMessage('');
+    const res = await fetch('/api/admin/push-subscriptions/cleanup-stale-monday', { method: 'POST', headers: await authHeader() });
+    const data = await res.json().catch(() => ({}));
+    setCleaningUp(false);
+    if (res.ok) {
+      setCleanupMessage(`נבדקו ${data.checked} כרטיסים - ${data.moved} הועברו ל"לידים חדשים", ${data.stillValid} עדיין תקפים ונשארו${data.errors?.length ? `, ${data.errors.length} נכשלו` : ''}.`);
+    } else {
+      setCleanupMessage(`שגיאה בניקוי: ${data.error || 'שגיאה לא ידועה'}`);
     }
   }
 
@@ -213,6 +233,11 @@ export default function AdminPushSubscriptionsPage() {
         {resyncing ? 'מסנכרן...' : '🔄 סנכרון מחדש למאנדיי (תיקון חד-פעמי למי שהתעדכן קודם)'}
       </button>
       {resyncMessage && <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', marginBottom: '18px' }}>{resyncMessage}</p>}
+
+      <button onClick={handleCleanupStaleMonday} disabled={cleaningUp} className="btn-outline" style={{ marginBottom: '8px' }} title='עובר על קבוצת "הפעיל עדכונים באתר ללא מנוי" במאנדיי ומעביר ל"לידים חדשים" את מי שכבר אין לו/ה מכשיר תקף'>
+        {cleaningUp ? 'מנקה...' : '🧹 ניקוי "הפעיל עדכונים" במאנדיי (תיקון חד-פעמי)'}
+      </button>
+      {cleanupMessage && <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', marginBottom: '18px' }}>{cleanupMessage}</p>}
 
       {approveMessage && <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', marginBottom: '18px' }}>{approveMessage}</p>}
 
