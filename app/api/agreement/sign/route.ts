@@ -29,6 +29,12 @@ export async function POST(request: Request) {
     if (link.expired) return NextResponse.json({ error: 'הקישור פג תוקף - צריך לבקש קישור חדש' }, { status: 410 });
     terms = link.terms;
   }
+  // הבחירה שמשנה את נוסח ההסכם (מסלול) - חובה, ורק מתוך האפשרויות
+  if (agreement.variant) {
+    const v = clean((body.choices as Record<string, unknown> | undefined)?.[agreement.variant.key], 40);
+    if (!agreement.variant.options.some((o) => o.value === v)) return NextResponse.json({ error: `נשאר לבחור: ${agreement.variant.label}` }, { status: 400 });
+    terms[agreement.variant.key] = v;
+  }
   // בחירות שהחותם/ת ממלא/ת בעצמו/ה (רק ערכים מתוך הרשימה)
   for (const c of agreement.signerChoices || []) {
     const v = clean((body.choices as Record<string, unknown> | undefined)?.[c.key], 60);

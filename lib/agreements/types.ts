@@ -30,6 +30,8 @@ export type AgreementTemplate = {
   termFields: TermField[];
   // בחירות שהחותם/ת ממלא/ת בעצמו/ה בטופס - חוסך משירן למלא תנאים לכל אחד
   signerChoices?: SignerChoice[];
+  // בחירה אחת שמשנה את נוסח ההסכם עצמו (למשל מסלול) - נבחרת בראש העמוד, וההסכם מוצג ונחתם לפיה
+  variant?: { key: string; label: string; options: { value: string; label: string; note?: string; total?: number }[] };
   blocks: (terms: Terms) => AgreementBlock[];
 };
 

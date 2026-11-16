@@ -7,7 +7,7 @@ type Status = 'idle' | 'sending' | 'done' | 'error';
 // טופס פרטים + אישור + חתימה ביד (בעכבר או באצבע) על הסכם
 type Choice = { key: string; label: string; options: string[] };
 
-export default function SignForm({ agreementId, token, defaultName, choices = [] }: { agreementId: string; token: string; defaultName: string; choices?: Choice[] }) {
+export default function SignForm({ agreementId, token, defaultName, choices = [], fixedChoices = {}, total, summary }: { agreementId: string; token: string; defaultName: string; choices?: Choice[]; fixedChoices?: Record<string, string>; total?: number; summary?: string }) {
   const [picked, setPicked] = useState<Record<string, string>>({});
   const [form, setForm] = useState({ fullName: defaultName, idNumber: '', phone: '', email: '', address: '', typedName: '' });
   const [agree, setAgree] = useState(false);
@@ -94,7 +94,7 @@ export default function SignForm({ agreementId, token, defaultName, choices = []
       const res = await fetch('/api/agreement/sign', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ agreementId, t: token, ...form, choices: picked, agree, signature }),
+        body: JSON.stringify({ agreementId, t: token, ...form, choices: { ...picked, ...fixedChoices }, agree, signature }),
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -120,6 +120,7 @@ export default function SignForm({ agreementId, token, defaultName, choices = []
 
   return (
     <form className="mt-form" onSubmit={submit} noValidate>
+      {summary && <div className="mt-chosen" style={{ marginBottom: 16 }}><span>המסלול שנבחר: {summary}</span></div>}
       <div className="mt-form-grid">
         <div className="field"><label htmlFor="ag-name">שם מלא *</label><input id="ag-name" value={form.fullName} onChange={set('fullName')} maxLength={100} autoComplete="name" /></div>
         <div className="field"><label htmlFor="ag-id">תעודת זהות *</label><input id="ag-id" value={form.idNumber} onChange={set('idNumber')} inputMode="numeric" dir="ltr" maxLength={12} /></div>
@@ -140,11 +141,15 @@ export default function SignForm({ agreementId, token, defaultName, choices = []
           </div>
         </fieldset>
       ))}
-      {picked.payments && (
+      {picked.payments && total ? (
         <p className="mt-form-note" style={{ textAlign: 'right' }}>
-          {picked.payments === '1' ? 'תשלום אחד של ₪8,900' : `${picked.payments} תשלומים של כ-₪${Math.floor(8900 / Number(picked.payments)).toLocaleString('en-US')}`} (סה"כ ₪8,900 כולל מע"מ)
+          {(() => {
+            const sum = total || 0;
+            const fmt = (x: number) => `₪${x.toLocaleString('en-US')}`;
+            return picked.payments === '1' ? `תשלום אחד של ${fmt(sum)}` : `${picked.payments} תשלומים של כ-${fmt(Math.floor(sum / Number(picked.payments)))} (סה"כ ${fmt(sum)} כולל מע"מ)`;
+          })()}
         </p>
-      )}
+      ) : null}
 
       <label className="mt-check">
         <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} />

@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import SiteHeader from '@/components/SiteHeader';
 import { getAgreement, readLink } from '@/lib/agreements';
 import type { Terms } from '@/lib/agreements/types';
-import SignForm from './SignForm';
+import AgreementView from './AgreementView';
 import '../../mentoring/mentoring.css';
 
 export const dynamic = 'force-dynamic';
@@ -27,7 +27,12 @@ export default function AgreementPage({ params, searchParams }: { params: { id: 
     else terms = link.terms;
   }
 
-  const blocks = agreement && !problem ? agreement.blocks(terms) : [];
+  // הנוסח המלא לכל אפשרות בחירה (מסלול) - מוצג לפי מה שהתלמיד/ה בוחר/ת, בלי לטעון מחדש
+  const blocksByOption: Record<string, ReturnType<NonNullable<typeof agreement>['blocks']>> = {};
+  if (agreement && !problem) {
+    if (agreement.variant) for (const o of agreement.variant.options) blocksByOption[o.value] = agreement.blocks({ ...terms, [agreement.variant.key]: o.value });
+    else blocksByOption._ = agreement.blocks(terms);
+  }
 
   return (
     <div className="wrap mt-page">
@@ -43,27 +48,15 @@ export default function AgreementPage({ params, searchParams }: { params: { id: 
           <section className="mt-section" style={{ marginTop: 8 }}>
             <h1 className="mt-h2">{agreement.title}</h1>
             <p className="mt-lead">{agreement.intro}</p>
-            <div className="ag-doc">
-              {blocks.map((b) => (
-                <div key={b.h} className="ag-block">
-                  <h2>{b.h}</h2>
-                  {b.p?.map((x) => <p key={x}>{x}</p>)}
-                  {b.table && (
-                    <table className="ag-table">
-                      <tbody>{b.table.map(([k, v]) => <tr key={k}><th>{k}</th><td>{v}</td></tr>)}</tbody>
-                    </table>
-                  )}
-                  {b.ul && <ul>{b.ul.map((x) => <li key={x}>{x}</li>)}</ul>}
-                  {b.ol && <ol>{b.ol.map((x) => <li key={x}>{x}</li>)}</ol>}
-                </div>
-              ))}
-            </div>
           </section>
-          <section className="mt-section mt-fitcall" id="sign">
-            <h2 className="mt-h2">פרטים, אישור <em>וחתימה</em></h2>
-            <p className="mt-lead">אחרי החתימה יישלח אלייך במייל עותק חתום של ההסכם, ועותק גם לשירן.</p>
-            <SignForm agreementId={agreement.id} token={searchParams.t || ''} defaultName={terms.studentName || ''} choices={agreement.signerChoices || []} />
-          </section>
+          <AgreementView
+            agreementId={agreement.id}
+            token={searchParams.t || ''}
+            defaultName={terms.studentName || ''}
+            variant={agreement.variant || null}
+            blocksByOption={blocksByOption}
+            choices={agreement.signerChoices || []}
+          />
         </>
       )}
     </div>

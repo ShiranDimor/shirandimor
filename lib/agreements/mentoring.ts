@@ -1,12 +1,19 @@
-// הסכם הליווי האישי 1:1 (מסלול 4 חודשים). הנוסח כאן הוא מה שהתלמיד/ה רואה וחותם/ת (מקביל למסמך "הסכם ליווי אישי 1:1" ב-Claude Docs).
+// הסכם הליווי האישי 1:1 (שני המסלולים - 4 או 6 חודשים, לפי בחירת התלמיד/ה). הנוסח כאן הוא מה שהתלמיד/ה רואה וחותם/ת (מקביל למסמך "הסכם ליווי אישי 1:1" ב-Claude Docs).
 import { type AgreementBlock, type AgreementTemplate, type Terms } from './types';
 
-const PRICE = '₪8,900';
-const TOTAL = 8900;
 const MAX_PAYMENTS = 10;
 
+// שני המסלולים - התלמיד/ה בוחר/ת מסלול בראש העמוד, וכל ההסכם (מחיר, מפגשים, קבוצה) מותאם אליו
+export const MENTORING_TRACKS = {
+  core: { label: 'ליווי אישי', months: 4, sessions: 6, total: 8900, groupValue: '₪1,600' },
+  extended: { label: 'ליווי אישי מורחב', months: 6, sessions: 8, total: 12900, groupValue: '₪2,400' },
+} as const;
+type TrackId = keyof typeof MENTORING_TRACKS;
+const trackOf = (t: Terms) => MENTORING_TRACKS[(t.track as TrackId) in MENTORING_TRACKS ? (t.track as TrackId) : 'core'];
+const shekel = (x: number) => `₪${x.toLocaleString('en-US')}`;
+
 // סכום כל תשלום, מעוגל לשקל (ההפרש מהעיגול נכנס לתשלום הראשון)
-function perPayment(n: string) {
+function perPayment(n: string, TOTAL: number) {
   const count = Math.max(1, Math.min(MAX_PAYMENTS, parseInt(n, 10) || 1));
   const each = Math.floor(TOTAL / count);
   const first = TOTAL - each * (count - 1);
@@ -15,6 +22,8 @@ function perPayment(n: string) {
 }
 
 function mentoringBlocks(t: Terms): AgreementBlock[] {
+  const tr = trackOf(t);
+  const PRICE = shekel(tr.total);
   return [
     {
       h: '1. הצדדים',
@@ -26,31 +35,31 @@ function mentoringBlocks(t: Terms): AgreementBlock[] {
     {
       h: '2. השירות והמסלול',
       p: [
-        'שירן תעניק לתלמיד/ה ליווי אישי 1:1 ללימוד מסחר בשוק ההון, במסלול "ליווי אישי":',
+        `שירן תעניק לתלמיד/ה ליווי אישי 1:1 ללימוד מסחר בשוק ההון, במסלול "${tr.label}":`,
       ],
       table: [
-        ['מסלול', 'ליווי אישי'],
-        ['משך', '4 חודשים'],
-        ['מפגשי Zoom אישיים', '6'],
-        ['קבוצת הסוחרים בלי עלות נוספת', '4 חודשים (שווי ₪1,600)'],
+        ['מסלול', tr.label],
+        ['משך', `${tr.months} חודשים`],
+        ['מפגשי Zoom אישיים', String(tr.sessions)],
+        ['קבוצת הסוחרים בלי עלות נוספת', `${tr.months} חודשים (שווי ${tr.groupValue})`],
         ['מחיר כולל מע"מ', PRICE],
       ],
       ul: [
-        'תקופת הליווי היא 4 חודשים ממועד המפגש הראשון, שייקבע בתיאום בין הצדדים.',
+        `תקופת הליווי היא ${tr.months} חודשים ממועד המפגש הראשון, שייקבע בתיאום בין הצדדים.`,
         'סילבוס המפגשים מפורט בעמוד shirandimor.com/mentoring. שירן רשאית להתאים את הסדר והדגשים לקצב ולצרכים של התלמיד/ה.',
       ],
     },
     {
       h: '3. מה כלול בליווי',
       ul: [
-        '6 מפגשי Zoom אישיים 1:1 לאורך 4 חודשים, כל מפגש עד כ-60 דקות, לפי הסילבוס: מתחילים מהבסיס, קריאת גרף, בניית עסקת Swing, מתי נכנסים, ניהול עסקה, ובניית דרך העבודה האישית',
+        `${tr.sessions} מפגשי Zoom אישיים 1:1 לאורך ${tr.months} חודשים, כל מפגש עד כ-60 דקות, לפי הסילבוס: מתחילים מהבסיס, קריאת גרף, בניית עסקת Swing, מתי נכנסים, ניהול עסקה, ובניית דרך העבודה האישית${tr.sessions > 6 ? ', ועוד 2 מפגשים: ללמוד מהמסחר שלך, ובניית שיטת העבודה להמשך' : ''}`,
         'ליווי ומענה אישי שוטף בין המפגשים, בוואטסאפ או במייל, בימי עבודה ובזמן סביר',
         'בניית יומן מסחר ומעקב אחריו',
         'ניתוח עסקאות של התלמיד/ה - גם הטובות, לא רק הטעויות',
         'משימות ותרגול בין המפגשים',
         'בניית Watchlist, שגרת עבודה, ניהול סיכון וחישוב גודל פוזיציה',
         'תוכנית מסחר אישית כתובה בסיום התהליך',
-        '4 חודשי גישה לקבוצת הסוחרים "מדברים עסקאות" ללא עלות נוספת (שווי ₪1,600): עסקאות, עדכוני עסקאות ושוק, לייבים, ספריית שיעורים, ניתוחים, תיק המסחר והקהילה',
+        `${tr.months} חודשי גישה לקבוצת הסוחרים "מדברים עסקאות" ללא עלות נוספת (שווי ${tr.groupValue}): עסקאות, עדכוני עסקאות ושוק, לייבים, ספריית שיעורים, ניתוחים, תיק המסחר והקהילה`,
       ],
     },
     {
@@ -69,7 +78,7 @@ function mentoringBlocks(t: Terms): AgreementBlock[] {
       table: [
         ['סכום כולל', PRICE],
         ['מספר תשלומים', t.payments || 'לפי הבחירה בטופס החתימה'],
-        ['סכום כל תשלום', t.payments ? perPayment(t.payments) : 'מחושב לפי מספר התשלומים'],
+        ['סכום כל תשלום', t.payments ? perPayment(t.payments, tr.total) : 'מחושב לפי מספר התשלומים'],
         ['אמצעי תשלום', t.paymentMethod || 'לפי הבחירה בטופס החתימה'],
       ],
       ul: [
@@ -146,11 +155,19 @@ function mentoringBlocks(t: Terms): AgreementBlock[] {
 export const mentoringAgreement: AgreementTemplate = {
   id: 'mentoring',
   title: 'הסכם ליווי אישי 1:1 בשוק ההון',
-  version: '2026-11-16c',
+  version: '2026-11-16d',
   active: true,
-  intro: 'זה ההסכם לליווי האישי שדיברנו עליו. כדאי לעבור עליו בנחת - ובסוף למלא פרטים, לבחור את פריסת התשלומים שסיכמנו, לאשר ולחתום.',
+  intro: 'זה ההסכם לליווי האישי שדיברנו עליו. בוחרים את המסלול שסיכמנו, וההסכם מתעדכן לפיו. כדאי לעבור עליו בנחת - ובסוף למלא פרטים, לבחור את פריסת התשלומים, לאשר ולחתום.',
   // קישור אחד קבוע לכל התלמידים: shirandimor.com/agreement/mentoring - בלי מילוי תנאים מצד שירן
   termFields: [],
+  variant: {
+    key: 'track',
+    label: 'באיזה מסלול בחרת?',
+    options: [
+      { value: 'core', label: 'ליווי אישי · 4 חודשים · 6 מפגשים', note: '₪8,900 כולל מע"מ', total: 8900 },
+      { value: 'extended', label: 'ליווי אישי מורחב · 6 חודשים · 8 מפגשים', note: '₪12,900 כולל מע"מ', total: 12900 },
+    ],
+  },
   signerChoices: [
     { key: 'payments', label: 'מספר תשלומים (כפי שסוכם בשיחה)', options: Array.from({ length: MAX_PAYMENTS }, (_, k) => String(k + 1)) },
     { key: 'paymentMethod', label: 'אמצעי תשלום', options: ['כרטיס אשראי', 'העברה בנקאית', 'ביט / פייבוקס'] },
