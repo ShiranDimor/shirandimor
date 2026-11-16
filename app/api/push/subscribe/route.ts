@@ -3,7 +3,7 @@ import { supabaseAdmin } from '@/lib/instantLogin';
 import { isPhoneBlocked } from '@/lib/blockedContacts';
 import { normalizePhone, normalizeEmail } from '@/lib/subscriberStatus';
 import { entitlementOrFilter } from '@/lib/entitlement';
-import { isContactInSubscribersGroupMonday, markAppDownloadOnMonday } from '@/lib/tradingPlan/monday';
+import { isContactInSubscribersGroupMonday, markAppDownloadOnMonday, markPushDisabledOnMonday } from '@/lib/tradingPlan/monday';
 import { startSequence } from '@/lib/sequenceEngine';
 
 // שומר את תוצאת סנכרון מאנדיי (שגיאה, אם הייתה) על שורת המינוי - בלי זה כישלון סנכרון היה
@@ -158,6 +158,35 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ error: 'חסר endpoint' }, { status: 400 });
   }
 
+  const { data: row } = await supabaseAdmin.from('push_subscriptions').select('user_id, phone, email').eq('endpoint', endpoint).maybeSingle();
+
   await supabaseAdmin.from('push_subscriptions').delete().eq('endpoint', endpoint);
+
+  // אם זה היה המכשיר התקף האחרון של איש הקשר הזה (לא נשאר לו/ה שום דרך אחרת לקבל פוש) -
+  // מעדכנים את מאנדיי שהוא/היא כיבה/תה בפועל את ההתראות (ר' markPushDisabledOnMonday).
+  // אם יש עוד מכשיר תקף (למשל נייד+לפטופ) - לא נוגעים במאנדיי, כי עדיין אפשר להגיע אליו/ה
+  if (row) {
+    let stillReachable: boolean;
+    let phone = row.phone;
+    let email = row.email;
+
+    if (row.user_id) {
+      const { data: profile } = await supabaseAdmin.from('profiles').select('phone, email').eq('id', row.user_id).maybeSingle();
+      phone = profile?.phone || phone;
+      email = profile?.email || email;
+      const { count } = await supabaseAdmin.from('push_subscriptions').select('id', { count: 'exact', head: true }).eq('user_id', row.user_id).is('invalid_at', null);
+      stillReachable = Boolean(count && count > 0);
+    } else {
+      const targetPhone = normalizePhone(phone);
+      const targetEmail = normalizeEmail(email);
+      const { data: remaining } = await supabaseAdmin.from('push_subscriptions').select('phone, email').is('user_id', null).is('invalid_at', null);
+      stillReachable = (remaining || []).some((r) => (!!targetPhone && normalizePhone(r.phone) === targetPhone) || (!!targetEmail && normalizeEmail(r.email) === targetEmail));
+    }
+
+    if (!stillReachable && (phone || email)) {
+      await markPushDisabledOnMonday({ phone, email }).catch((e) => console.error('push/subscribe DELETE: נכשל עדכון מאנדיי על כיבוי התראות', e));
+    }
+  }
+
   return NextResponse.json({ ok: true });
 }

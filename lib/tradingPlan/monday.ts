@@ -33,6 +33,9 @@ const MONTHLY_COST_COLUMN_TITLE = 'עלות חודשית ששילם';
 // בעמודה נפרדת שפחות נבדקת. נכתבת תמיד על הכרטיס בקבוצת PUSH_ACTIVATED_NO_SUB_GROUP_NAME,
 // בין אם זה כרטיס חדש ובין אם זה כרטיס קיים שהועבר לשם - ר' markAppDownloadOnMonday/Bulk
 const PUSH_ACTIVATED_NO_SUB_STATUS_LABEL = 'הפעיל התראות ללא מנוי';
+// תווית סטטוס למי שהיה/הייתה בקבוצת PUSH_ACTIVATED_NO_SUB_GROUP_NAME וכיבה/תה בפועל את
+// ההתראות באתר (לא רק שהן נשברו ברקע) - ר' markPushDisabledOnMonday
+const PUSH_DISABLED_STATUS_LABEL = 'כיבה את ההתראות באתר';
 const TRADING_PLAN_STATUS_LABEL = 'בנה תוכנית מסחר';
 export const TRADING_PLAN_ABANDONED_STATUS_LABEL = 'יצא באמצע התוכנית מסחר';
 const CAMPAIGN_VALUE = 'תוכנית מסחר 30 יום';
@@ -803,6 +806,58 @@ export async function markAppDownloadOnMonday(params: { name?: string | null; ph
   } catch (e) {
     console.error('שגיאה בסימון הורדת האתר ב-Monday.com', e);
     return { ok: false, matched: false, error: e instanceof Error ? e.message : 'unknown_error' };
+  }
+}
+
+// נקרא כשאיש קשר שהיה בקבוצת "הפעיל עדכונים באתר ללא מנוי" מכבה בפועל את ההתראות באתר (לא
+// שהן נשברו ברקע - כיבוי מודע) ואין לו/ה שום מכשיר תקף נוסף. מעביר את הכרטיס חזרה ל"לידים
+// חדשים" ומסמן בסטטוס שהוא/היא כיבה/תה - כדי שהקבוצה "הפעיל עדכונים" תשקף רק מי שעדיין
+// באמת מקבל/ת מאיתנו עדכונים, לא כל מי שאי פעם הפעיל. אם הכרטיס לא נמצא בכלל, או שהוא לא
+// נמצא *בדיוק* בקבוצת "הפעיל עדכונים" (למשל כבר מנוי/ה בקבוצת סוחרים) - לא נוגעים בו בכלל
+export async function markPushDisabledOnMonday(params: { phone?: string | null; email?: string | null }): Promise<{ ok: boolean; moved: boolean; error?: string }> {
+  const token = process.env.MONDAY_API_TOKEN;
+  const boardId = process.env.MONDAY_BOARD_ID;
+  if (!token || !boardId) return { ok: false, moved: false, error: 'missing_monday_config' };
+  if (!params.phone && !params.email) return { ok: false, moved: false, error: 'missing_contact' };
+
+  try {
+    const { groupId, phoneColumnId, emailColumnId, statusColumnId, pushActivatedNoSubGroupId } = await getBoardSchema(token, boardId);
+    if (!groupId || !pushActivatedNoSubGroupId) return { ok: false, moved: false, error: 'missing_target_group' };
+
+    const targetPhone = params.phone ? normalizePhone(params.phone) : null;
+    const targetEmail = params.email ? params.email.trim().toLowerCase() : null;
+
+    const existing = await findItemByContactAnywhere(token, boardId, phoneColumnId, emailColumnId, targetPhone, targetEmail);
+    if (!existing || existing.groupId !== pushActivatedNoSubGroupId) return { ok: true, moved: false };
+
+    await mondayRequest(
+      token,
+      `mutation ($itemId: ID!, $groupId: String!) { move_item_to_group (item_id: $itemId, group_id: $groupId) { id } }`,
+      { itemId: existing.id, groupId }
+    );
+
+    if (statusColumnId) {
+      await mondayRequest(
+        token,
+        // create_labels_if_missing - אם התווית הזו עדיין לא קיימת כאופציה בעמודת הסטטוס
+        // במאנדיי, Monday ייצור אותה אוטומטית במקום לדחות את העדכון
+        `mutation ($boardId: ID!, $itemId: ID!, $columnValues: JSON!) {
+          change_multiple_column_values (board_id: $boardId, item_id: $itemId, column_values: $columnValues, create_labels_if_missing: true) { id }
+        }`,
+        { boardId, itemId: existing.id, columnValues: JSON.stringify({ [statusColumnId]: { label: PUSH_DISABLED_STATUS_LABEL } }) }
+      ).catch((e) => console.error('Monday.com: נכשל סימון סטטוס "כיבה את ההתראות"', e));
+    }
+
+    await mondayRequest(
+      token,
+      `mutation ($itemId: ID!, $body: String!) { create_update (item_id: $itemId, body: $body) { id } }`,
+      { itemId: existing.id, body: 'כיבה/תה את ההתראות באתר - הכרטיס הועבר בחזרה ל"לידים חדשים"' }
+    ).catch((e) => console.error('Monday.com: נכשל הוספת הערה (כיבוי התראות)', e));
+
+    return { ok: true, moved: true };
+  } catch (e) {
+    console.error('שגיאה בסימון כיבוי התראות ב-Monday.com', e);
+    return { ok: false, moved: false, error: e instanceof Error ? e.message : 'unknown_error' };
   }
 }
 
