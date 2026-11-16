@@ -82,6 +82,18 @@ export default function AgreementsAdminPage() {
     win.document.close();
   }
 
+  async function downloadPdf(id: string, name: string) {
+    setError('');
+    const res = await fetch(`/api/admin/agreements/${id}?format=pdf`, { headers: await authHeader(), cache: 'no-store' });
+    if (!res.ok) return setError('לא הצלחנו להפיק PDF - אפשר לפתוח בצפייה ולשמור כ-PDF משם');
+    const url = URL.createObjectURL(await res.blob());
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `הסכם-${name}.pdf`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   async function copy() {
     try {
       await navigator.clipboard.writeText(link);
@@ -166,7 +178,7 @@ export default function AgreementsAdminPage() {
                       <td>{s.terms?.track === 'extended' ? 'מורחב (6 ח׳)' : s.terms?.track === 'core' ? 'ליווי אישי (4 ח׳)' : '-'}</td>
                       <td dir="ltr">{s.phone}</td>
                       <td dir="ltr">{s.email}</td>
-                      <td><button type="button" className="qa-btn" onClick={() => openSigned(s.id)}>צפייה / הורדה</button></td>
+                      <td style={{ display: 'flex', gap: 6 }}><button type="button" className="qa-btn" onClick={() => downloadPdf(s.id, s.full_name)}>הורדת PDF</button><button type="button" className="qa-btn edit" onClick={() => openSigned(s.id)}>צפייה</button></td>
                     </tr>
                   ))}
                 </tbody>

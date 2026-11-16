@@ -3,10 +3,13 @@ import { clean } from '@/lib/businessLead';
 import { supabaseAdmin } from '@/lib/instantLogin';
 import { OWNER_EMAIL } from '@/lib/tradeClosedAlert';
 import { sendPushToAdmins } from '@/lib/webPush';
+import { agreementPdfHtml, renderPdf } from '@/lib/agreements/pdf';
 import { contentHash, getAgreement, readLink, signedAgreementHtml } from '@/lib/agreements';
 import type { Terms } from '@/lib/agreements/types';
 
 export const dynamic = 'force-dynamic';
+// הפקת ה-PDF בכרום לוקחת כמה שניות
+export const maxDuration = 60;
 
 const MAX_SIGNATURE_BYTES = 400_000;
 
@@ -94,10 +97,21 @@ export async function POST(request: Request) {
   const apiKey = process.env.RESEND_API_KEY;
   let emailed = false;
   if (apiKey) {
-    const attachments = [
-      { filename: 'signature.png', content: signature.replace('data:image/png;base64,', '') },
-      { filename: `${agreement.id}-agreement-signed.html`, content: Buffer.from(`<!doctype html><meta charset="utf-8">${html}`).toString('base64') },
-    ];
+    // ההסכם החתום כקובץ PDF מצורף (כולל החתימה ביד). אם הפקת ה-PDF נכשלה - נשלח את ההסכם בגוף המייל, כגיבוי
+    let pdf: Buffer | null = null;
+    try {
+      pdf = await renderPdf(agreementPdfHtml(html, signature));
+    } catch (e) {
+      console.error('שגיאה בהפקת PDF להסכם חתום', e);
+    }
+    const fileName = `הסכם-${signer.fullName}.pdf`.replace(/[\\/:*?"<>|]/g, '');
+    const attachments = pdf
+      ? [{ filename: fileName, content: pdf.toString('base64') }]
+      : [{ filename: 'signature.png', content: signature.replace('data:image/png;base64,', '') }];
+    const bodyFor = (intro: string) =>
+      pdf
+        ? `<div dir="rtl" style="font-family:Arial,Helvetica,sans-serif;background:#ffffff;color:#1a1a1a;padding:8px;line-height:1.6"><p>${intro}</p><p>ההסכם החתום מצורף כקובץ PDF.</p><p style="color:#888;font-size:12px">${agreement.title} · נחתם ב-${signedAt}</p></div>`
+        : `<div dir="rtl" style="font-family:Arial,Helvetica,sans-serif;background:#ffffff;color:#1a1a1a;padding:8px"><p>${intro}</p></div>${html}`;
     const send = (to: string, replyTo: string, subject: string, intro: string) =>
       fetch('https://api.resend.com/emails', {
         method: 'POST',
@@ -107,7 +121,7 @@ export async function POST(request: Request) {
           to,
           reply_to: replyTo,
           subject,
-          html: `<div dir="rtl" style="font-family:Arial,Helvetica,sans-serif;background:#ffffff;color:#1a1a1a;padding:8px"><p>${intro}</p></div>${html}`,
+          html: bodyFor(intro),
           attachments,
         }),
       }).then((r) => r.ok);

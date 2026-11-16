@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/instantLogin';
 import { contentHash, getAgreement, signedAgreementHtml } from '@/lib/agreements';
+import { agreementPdfHtml, renderPdf } from '@/lib/agreements/pdf';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
 
 async function requireAdmin(request: Request) {
   const token = (request.headers.get('Authorization') || '').replace('Bearer ', '');
@@ -31,6 +33,11 @@ export async function GET(request: Request, { params }: { params: { sigId: strin
     signedAt,
     audit: `IP ${row.ip || 'לא ידוע'} · ${row.user_agent || ''} · טביעת נוסח ${String(row.content_hash || '').slice(0, 16)}${sameText ? '' : ' · שימו לב: נוסח התבנית עודכן אחרי החתימה'}`,
   });
+  // ?format=pdf - הורדת ההסכם החתום כקובץ PDF
+  if (new URL(request.url).searchParams.get('format') === 'pdf') {
+    const pdf = await renderPdf(agreementPdfHtml(html, row.signature_png || undefined));
+    return new NextResponse(new Uint8Array(pdf), { headers: { 'Content-Type': 'application/pdf', 'Cache-Control': 'no-store' } });
+  }
   const signature = row.signature_png ? `<div dir="rtl" style="font-family:Arial;padding:0 8px"><h3>חתימה ביד</h3><img alt="חתימה" style="border:1px solid #ccc;max-width:360px;width:100%" src="${row.signature_png}"></div>` : '';
   return NextResponse.json({ html: html + signature, fileName: `הסכם-${row.full_name}-${String(row.created_at).slice(0, 10)}` });
 }

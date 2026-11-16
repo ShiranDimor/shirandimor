@@ -38,6 +38,10 @@ const nextConfig = {
       '/api/admin/marketing/create-story-post': ['./node_modules/@sparticuz/chromium/bin/**/*'],
       '/api/admin/marketing/create-story-from-url/route': ['./node_modules/@sparticuz/chromium/bin/**/*'],
       '/api/admin/marketing/create-story-from-url': ['./node_modules/@sparticuz/chromium/bin/**/*'],
+      '/api/agreement/sign/route': ['./node_modules/@sparticuz/chromium/bin/**/*'],
+      '/api/agreement/sign': ['./node_modules/@sparticuz/chromium/bin/**/*'],
+      '/api/admin/agreements/[sigId]/route': ['./node_modules/@sparticuz/chromium/bin/**/*'],
+      '/api/admin/agreements/[sigId]': ['./node_modules/@sparticuz/chromium/bin/**/*'],
     },
   },
 };
