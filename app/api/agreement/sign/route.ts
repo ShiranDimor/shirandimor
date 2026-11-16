@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { clean } from '@/lib/businessLead';
 import { supabaseAdmin } from '@/lib/instantLogin';
 import { OWNER_EMAIL } from '@/lib/tradeClosedAlert';
+import { sendPushToAdmins } from '@/lib/webPush';
 import { contentHash, getAgreement, readLink, signedAgreementHtml } from '@/lib/agreements';
 import type { Terms } from '@/lib/agreements/types';
 
@@ -116,6 +117,13 @@ export async function POST(request: Request) {
     ]);
     emailed = toOwner || toSigner;
   }
+
+  // התראה לשירן בטלפון (פוש לאדמין) על כל חתימה
+  const trackLabel = agreement.variant?.options.find((o) => o.value === terms[agreement.variant!.key])?.label;
+  await sendPushToAdmins(
+    { title: `✍️ נחתם הסכם: ${signer.fullName}`, body: trackLabel || agreement.title, url: '/admin/agreements' },
+    'announcement'
+  ).catch((e) => console.error('שגיאה בשליחת התראת חתימה לאדמין', e));
 
   if (dbError && !emailed) return NextResponse.json({ error: 'השמירה נכשלה' }, { status: 502 });
   return NextResponse.json({ ok: true, signedAt });
