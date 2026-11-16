@@ -62,7 +62,7 @@ export default function AgreementPage({ params, searchParams }: { params: { id: 
           <section className="mt-section mt-fitcall" id="sign">
             <h2 className="mt-h2">פרטים, אישור <em>וחתימה</em></h2>
             <p className="mt-lead">אחרי החתימה יישלח אלייך במייל עותק חתום של ההסכם, ועותק גם לשירן.</p>
-            <SignForm agreementId={agreement.id} token={searchParams.t || ''} defaultName={terms.studentName || ''} />
+            <SignForm agreementId={agreement.id} token={searchParams.t || ''} defaultName={terms.studentName || ''} choices={agreement.signerChoices || []} />
           </section>
         </>
       )}

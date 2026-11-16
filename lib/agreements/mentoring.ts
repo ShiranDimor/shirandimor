@@ -1,14 +1,25 @@
 // הסכם הליווי האישי 1:1 (מסלול 4 חודשים). המקור לנוסח: מסמך "הסכם ליווי אישי 1:1" ב-Claude Docs.
-import { blank, fmtDate, type AgreementBlock, type AgreementTemplate, type Terms } from './types';
+import { type AgreementBlock, type AgreementTemplate, type Terms } from './types';
 
 const PRICE = '₪8,900';
+const TOTAL = 8900;
+const MAX_PAYMENTS = 10;
+
+// סכום כל תשלום, מעוגל לשקל (ההפרש מהעיגול נכנס לתשלום הראשון)
+function perPayment(n: string) {
+  const count = Math.max(1, Math.min(MAX_PAYMENTS, parseInt(n, 10) || 1));
+  const each = Math.floor(TOTAL / count);
+  const first = TOTAL - each * (count - 1);
+  const fmt = (x: number) => `₪${x.toLocaleString('en-US')}`;
+  return count === 1 ? fmt(TOTAL) : first === each ? fmt(each) : `${fmt(first)} בתשלום הראשון, ו-${fmt(each)} בכל אחד מהשאר`;
+}
 
 function mentoringBlocks(t: Terms): AgreementBlock[] {
   return [
     {
       h: '1. הצדדים',
       p: [
-        `נותנת השירות: שירן דימור, ע.מ / ת.ז ${blank(t.providerId)}, טלפון 054-716-7419, מייל shiran@shirandimor.com (להלן: "שירן").`,
+        'נותנת השירות: שירן דימור, טלפון 054-716-7419, מייל shiran@shirandimor.com (להלן: "שירן").',
         'לבין התלמיד/ה, שפרטיו/ה מופיעים בטופס החתימה (להלן: "התלמיד/ה").',
       ],
     },
@@ -25,7 +36,7 @@ function mentoringBlocks(t: Terms): AgreementBlock[] {
         ['מחיר כולל מע"מ', PRICE],
       ],
       ul: [
-        `תקופת הליווי מתחילה בתאריך המפגש הראשון: ${fmtDate(t.startDate)}, ומסתיימת בתאריך: ${fmtDate(t.endDate)}.`,
+        'תקופת הליווי היא 4 חודשים ממועד המפגש הראשון, שייקבע בתיאום בין הצדדים.',
         'סילבוס המפגשים מפורט בעמוד shirandimor.com/mentoring. שירן רשאית להתאים את הסדר והדגשים לקצב ולצרכים של התלמיד/ה.',
       ],
     },
@@ -48,10 +59,9 @@ function mentoringBlocks(t: Terms): AgreementBlock[] {
       p: [`התמורה היא ${PRICE} כולל מע"מ. הפריסה לתשלומים גמישה ומותאמת אישית, כפי שסוכמה בין הצדדים:`],
       table: [
         ['סכום כולל', PRICE],
-        ['מספר תשלומים', blank(t.payments)],
-        ['סכום כל תשלום', t.paymentAmount ? `₪${t.paymentAmount.replace(/^₪/, '')}` : '____________'],
-        ['אמצעי תשלום', blank(t.paymentMethod)],
-        ['תאריך תשלום ראשון', fmtDate(t.firstPaymentDate)],
+        ['מספר תשלומים', t.payments || 'לפי הבחירה בטופס החתימה'],
+        ['סכום כל תשלום', t.payments ? perPayment(t.payments) : 'מחושב לפי מספר התשלומים'],
+        ['אמצעי תשלום', t.paymentMethod || 'לפי הבחירה בטופס החתימה'],
       ],
       ul: [
         'התשלום הראשון משולם לפני המפגש הראשון, והוא שמשריין את מועדי המפגשים.',
@@ -117,7 +127,7 @@ function mentoringBlocks(t: Terms): AgreementBlock[] {
       ol: [
         'הסכם זה ממצה את מה שסוכם בין הצדדים. שינוי בו ייעשה רק בכתב, ומייל או וואטסאפ נחשבים כתב.',
         'ההסכם אישי ואינו ניתן להעברה לאדם אחר בלי הסכמת שירן.',
-        `חל על ההסכם הדין הישראלי. סמכות השיפוט הייחודית נתונה לבתי המשפט ב${t.jurisdiction ? t.jurisdiction.trim() : '-____________'}.`,
+        'חל על ההסכם הדין הישראלי.',
         'אישור ההסכם וחתימה דיגיטלית בעמוד זה מחייבים כמו חתימה רגילה.',
       ],
     },
@@ -127,19 +137,14 @@ function mentoringBlocks(t: Terms): AgreementBlock[] {
 export const mentoringAgreement: AgreementTemplate = {
   id: 'mentoring',
   title: 'הסכם ליווי אישי 1:1 בשוק ההון',
-  version: '2026-11-16',
+  version: '2026-11-16b',
   active: true,
-  intro: 'זה ההסכם לליווי האישי שדיברנו עליו. כדאי לעבור עליו בנחת - ובסוף למלא פרטים, לאשר ולחתום.',
-  termFields: [
-    { key: 'studentName', label: 'שם התלמיד/ה' },
-    { key: 'startDate', label: 'תאריך מפגש ראשון', type: 'date' },
-    { key: 'endDate', label: 'תאריך סיום הליווי', type: 'date' },
-    { key: 'payments', label: 'מספר תשלומים', type: 'number' },
-    { key: 'paymentAmount', label: 'סכום כל תשלום (₪)', placeholder: 'למשל 2,225' },
-    { key: 'paymentMethod', label: 'אמצעי תשלום', placeholder: 'כרטיס אשראי / העברה בנקאית' },
-    { key: 'firstPaymentDate', label: 'תאריך תשלום ראשון', type: 'date' },
-    { key: 'providerId', label: 'ע.מ / ת.ז שלך', remember: true },
-    { key: 'jurisdiction', label: 'עיר לסמכות שיפוט', placeholder: 'למשל תל אביב', remember: true },
+  intro: 'זה ההסכם לליווי האישי שדיברנו עליו. כדאי לעבור עליו בנחת - ובסוף למלא פרטים, לבחור את פריסת התשלומים שסיכמנו, לאשר ולחתום.',
+  // קישור אחד קבוע לכל התלמידים: shirandimor.com/agreement/mentoring - בלי מילוי תנאים מצד שירן
+  termFields: [],
+  signerChoices: [
+    { key: 'payments', label: 'מספר תשלומים (כפי שסוכם בשיחה)', options: Array.from({ length: MAX_PAYMENTS }, (_, k) => String(k + 1)) },
+    { key: 'paymentMethod', label: 'אמצעי תשלום', options: ['כרטיס אשראי', 'העברה בנקאית', 'ביט / פייבוקס'] },
   ],
   blocks: mentoringBlocks,
 };

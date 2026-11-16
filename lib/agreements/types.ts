@@ -15,6 +15,9 @@ export type TermField = {
 
 export type Terms = Record<string, string>;
 
+// שדה בחירה שהחותם/ת ממלא/ת בעצמו/ה בטופס (למשל מספר תשלומים) - נכנס להסכם החתום
+export type SignerChoice = { key: string; label: string; options: string[] };
+
 export type AgreementTemplate = {
   id: string; // מופיע בכתובת: /agreement/<id>
   title: string;
@@ -25,6 +28,8 @@ export type AgreementTemplate = {
   intro: string; // משפט פתיחה מעל ההסכם בעמוד החתימה
   // יש תנאים אישיים? אז חתימה רק דרך קישור אישי שנוצר בעמוד הניהול. אין? קישור אחד קבוע לכולם
   termFields: TermField[];
+  // בחירות שהחותם/ת ממלא/ת בעצמו/ה בטופס - חוסך משירן למלא תנאים לכל אחד
+  signerChoices?: SignerChoice[];
   blocks: (terms: Terms) => AgreementBlock[];
 };
 
