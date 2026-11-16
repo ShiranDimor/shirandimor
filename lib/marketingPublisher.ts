@@ -6,6 +6,7 @@
 // ופוסטים "מאושרים" בלי זמן לא מתפרסמים לעולם בלי לחיצה שלה.
 import { supabaseAdmin } from '@/lib/instantLogin';
 import { renderSlidesToPngBase64 } from '@/lib/marketingCardImage';
+import { sendPushToAdmins } from '@/lib/webPush';
 import {
   publishPhotoToFacebookPage,
   publishPhotoStoryToFacebookPage,
@@ -35,6 +36,8 @@ type MarketingPostRow = {
   id: string;
   platform: 'instagram' | 'facebook' | 'both';
   content_type: 'feed_post' | 'reel' | 'story';
+  topic: string | null;
+  hook: string | null;
   caption: string | null;
   hashtags: string | null;
   status: string;
@@ -235,5 +238,31 @@ export async function publishMarketingPost(
   const { error: saveError } = await supabaseAdmin.from('marketing_posts').update(updates).eq('id', postId);
   if (saveError) console.error('marketingPublisher: הפרסום בוצע אבל שמירת הסטטוס נכשלה', postId, saveError);
 
+  await notifyShiran(post, results, merged, !allDone && (post.publish_attempts || 0) + 1 >= MAX_PUBLISH_ATTEMPTS);
+
   return { results, allDone };
+}
+
+// שירן ביקשה לקבל התראה לטלפון בכל פעם שמשהו עולה לאינסטגרם/פייסבוק - התראה אחת לכל סבב
+// פרסום (לא אחת לכל ערוץ), עם הערוצים שעלו עכשיו. וגם התראה כשפוסט נכשל סופית (אחרי כל הניסיונות)
+async function notifyShiran(
+  post: MarketingPostRow,
+  results: ChannelResult[],
+  merged: Record<string, unknown>,
+  gaveUp: boolean
+) {
+  try {
+    const title = (post.topic || post.hook || 'פוסט').replace(/^שבוע [^·]*·\s*/, '').slice(0, 80);
+    const fresh = results.filter((r) => r.ok && !r.skipped && !r.pending).map((r) => r.channel);
+    const permalink = typeof merged.ig_permalink === 'string' ? merged.ig_permalink : null;
+    if (fresh.length > 0) {
+      await sendPushToAdmins({ title: `✅ עלה: ${title}`, body: fresh.join(' · '), url: permalink || '/admin/marketing' }, 'announcement', post.id);
+    }
+    if (gaveUp) {
+      const failed = results.filter((r) => !r.ok).map((r) => r.channel);
+      await sendPushToAdmins({ title: `⚠️ לא עלה: ${title}`, body: `${failed.join(' · ')} - אחרי ${MAX_PUBLISH_ATTEMPTS} ניסיונות. פרטים בסטודיו`, url: '/admin/marketing' }, 'announcement', post.id);
+    }
+  } catch (e) {
+    console.error('marketingPublisher: שליחת התראה לשירן נכשלה', post.id, e);
+  }
 }
