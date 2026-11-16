@@ -156,6 +156,31 @@ export async function sendPushToUsers(userIds: string[], payload: PushPayload) {
   await Promise.all(userIds.map((id) => sendPushToUser(id, payload)));
 }
 
+// שולח לאיש קשר אחד ספציפי (לא broadcast) - לשימוש ברצפי קליטה/טיפוח (ר' lib/sequenceEngine.ts).
+// אם יש user_id (מחובר/ת) שולח לפי זה, בדיוק כמו sendPushToUser. אם אין (ליד בלי חשבון) שולח
+// לפי טלפון/מייל מנורמלים על שורות עם user_id=null - בדיוק אותן שורות שנוצרות ב-/api/push/subscribe
+// עבור ליד שאינו מחובר. attempted=0 בתוצאה שמתקבלת היא בדיוק הדרך לדעת שאין יותר שום מכשיר
+// תקף לאיש הקשר הזה (לא אישר/ה, או שההרשאה נשברה) - בלי query נפרד לבדיקת תוקף
+export async function sendPushToContact(contact: { userId?: string | null; phone?: string | null; email?: string | null }, payload: PushPayload): Promise<SendResult> {
+  if (contact.userId) return sendPushToUser(contact.userId, payload);
+
+  const targetPhone = normalizePhone(contact.phone);
+  const targetEmail = normalizeEmail(contact.email);
+  if (!targetPhone && !targetEmail) return { configured: true, attempted: 0, sent: 0, failed: 0, removedStale: 0 };
+
+  const { data: rows } = await supabaseAdmin
+    .from('push_subscriptions')
+    .select('id, endpoint, p256dh, auth, phone, email')
+    .is('user_id', null)
+    .is('invalid_at', null);
+
+  const matched = (rows || []).filter(
+    (r) => (!!targetPhone && normalizePhone(r.phone) === targetPhone) || (!!targetEmail && normalizeEmail(r.email) === targetEmail)
+  );
+
+  return sendToRows(matched, payload);
+}
+
 async function getActiveSubscriberUserIds(): Promise<string[]> {
   const { data: rows } = await supabaseAdmin.from('profiles').select('id').or(entitlementOrFilter());
   return (rows || []).map((r) => r.id);

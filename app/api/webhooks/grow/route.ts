@@ -3,6 +3,7 @@ import { parseGrowPayload, syncGrowPaymentToMonday, FIRST_MONTH_PRICE } from '@/
 import { ensureActiveSubscriberAccount } from '@/lib/subscriberStatus';
 import { sendLoginEmail, supabaseAdmin } from '@/lib/instantLogin';
 import { sendPushToUsers } from '@/lib/webPush';
+import { startSequence } from '@/lib/sequenceEngine';
 
 // מתריע לשירן בפוש אם משהו בטיפול בתשלום נכשל בשקט - בלי זה מישהו יכול לשלם, להופיע במאנדיי,
 // ולא לקבל חשבון עובד באתר (או מייל כניסה) בלי שום סימן לבעיה עד שמישהו יפתח פניה בעצמו
@@ -78,10 +79,14 @@ export async function POST(request: Request) {
   // מתמודד עם מייל חסר בעצמו (מתאים לפי טלפון, ואם צריך ליצור חשבון חדש - עם placeholder זמני)
   let siteAccount: 'ok' | 'error' = 'ok';
   try {
-    await ensureActiveSubscriberAccount(
+    const { userId, newlyActivated } = await ensureActiveSubscriberAccount(
       payment.email || '', payment.phone || '', payment.fullName || payment.email || payment.phone || '',
       undefined, payment.amount === FIRST_MONTH_PRICE
     );
+    // רק הצטרפות אמיתית חדשה (לא חיוב חודשי חוזר) מתחילה את רצף הקליטה - ר' lib/sequenceEngine.ts
+    if (newlyActivated) {
+      await startSequence('welcome-subscriber', { userId }).catch((e) => console.error('Grow webhook: נכשלה התחלת רצף הקליטה', e));
+    }
     if (payment.email) {
       await sendLoginEmail(payment.email);
     } else {

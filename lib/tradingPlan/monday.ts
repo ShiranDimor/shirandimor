@@ -727,14 +727,14 @@ async function renameMondayItem(token: string, boardId: string, itemId: string, 
 // לקבוצה הייעודית "הפעיל עדכונים באתר ללא מנוי" - בלי כפילויות: אם כבר יש לו/ה כרטיס במקום
 // אחר בלוח, הכרטיס הקיים *מועבר* לקבוצה הזו (לא נוצר כרטיס נוסף), ואם הגיע מקבוצת "נרשם וביטל"
 // מסומן גם בשם הפריט עצמו "(מנוי וביטל)" כדי שיהיה ברור שזה לא ליד טרי לגמרי
-export async function markAppDownloadOnMonday(params: { name?: string | null; phone?: string | null; email?: string | null }): Promise<{ ok: boolean; matched: boolean; error?: string }> {
+export async function markAppDownloadOnMonday(params: { name?: string | null; phone?: string | null; email?: string | null }): Promise<{ ok: boolean; matched: boolean; skippedFullAccess?: boolean; error?: string }> {
   const token = process.env.MONDAY_API_TOKEN;
   const boardId = process.env.MONDAY_BOARD_ID;
   if (!token || !boardId) return { ok: false, matched: false, error: 'missing_monday_config' };
   if (!params.phone && !params.email) return { ok: false, matched: false, error: 'missing_contact' };
 
   if (await hasFullAccessContact(params.phone, params.email).catch(() => false)) {
-    return { ok: true, matched: false };
+    return { ok: true, matched: false, skippedFullAccess: true };
   }
 
   try {

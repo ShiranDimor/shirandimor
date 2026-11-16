@@ -1,6 +1,7 @@
 import { supabaseAdmin } from '@/lib/instantLogin';
 import { draftAutomatedAnnouncement } from '@/lib/automationDraft';
 import { sendPushToUsers } from '@/lib/webPush';
+import { SEQUENCES } from '@/lib/sequences';
 
 function israelDateLabel(d: Date): string {
   return d.toLocaleDateString('he-IL', { weekday: 'long', day: 'numeric', month: 'numeric', timeZone: 'Asia/Jerusalem' });
@@ -325,6 +326,29 @@ https://www.shirandimor.com/trading-plan
     closingPlan: 'friday',
     cronDays: [5], // "0 9 * * 5" ב-vercel.json - יום שישי
   },
+
+  // רצפי קליטה/טיפוח (lib/sequences.ts, lib/sequenceEngine.ts) - נרשמים כאן כדי שאפשר יהיה
+  // לערוך את הנוסח של כל צעד/הודעה בעמוד /admin/automations בדיוק כמו כל אוטומציה אחרת. בלי
+  // {greeting}/{closing} - אלה הודעות אישיות לאדם אחד, לא הודעות קבוצה לפי שעה קבועה.
+  // cronDays:'none' כי זה לא רץ לפי cron יומי קבוע - lib/sequenceEngine.ts בודק כל יום למי
+  // מגיע הצעד הבא, ושולח בפועל ישירות (לא דרך טיוטה בלוח המודעות - ר' lib/sequenceEngine.ts)
+  ...Object.fromEntries(
+    Object.values(SEQUENCES).flatMap((seq) =>
+      seq.steps.map((step) => [
+        step.key,
+        {
+          title: step.title,
+          content: step.content,
+          placeholders: {},
+          sample: {},
+          getVars: NO_VARS,
+          scheduledHour: 9,
+          closingPlan: 'generic' as ClosingPlan,
+          cronDays: 'none' as const,
+        },
+      ])
+    )
+  ),
 };
 
 // התבנית בפועל - הגרסה הערוכה מהעמוד אם קיימת, אחרת ברירת המחדל מהקוד

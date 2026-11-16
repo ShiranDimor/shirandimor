@@ -90,7 +90,7 @@ export async function findCompletedTradingPlanIdByContact(phone: string | null |
 // isFirstMonthPrice - true כשהתשלום שהפעיל את הקריאה הזו הוא בדיוק מחיר החודש הראשון (1 ש"ח).
 // מסמן trial_price_used=true על הפרופיל לצמיתות (לא מתאפס גם אם המנוי בוטל אח"כ) - כדי
 // שאפשר יהיה בעתיד לזהות מי כבר ניצל את המחיר הסמלי ולא להציע לו אותו שוב ב-/subscribe
-export async function ensureActiveSubscriberAccount(email: string, phone: string, fullName: string, startedAt?: string, isFirstMonthPrice = false, monthlyPrice?: number | null) {
+export async function ensureActiveSubscriberAccount(email: string, phone: string, fullName: string, startedAt?: string, isFirstMonthPrice = false, monthlyPrice?: number | null): Promise<{ userId: string; newlyActivated: boolean }> {
   const subscriptionStartedAt = startedAt || new Date().toISOString();
   const normalizedPhoneForPlaceholder = normalizePhone(phone);
   // Grow לא תמיד מעביר מייל בתשלום (למשל אם טופס הסליקה אסף רק טלפון) - בלי מייל אין אפשרות
@@ -117,8 +117,11 @@ export async function ensureActiveSubscriberAccount(email: string, phone: string
   if (matched) {
     const updates: Record<string, unknown> = { phone, full_name: fullName };
     // "לא מנוי פעיל עדיין" כולל גם מי שהיה מנוי ובוטל (role נשאר subscriber, אבל
-    // subscription_status !== 'active') - צריך להפעיל מחדש בדיוק כמו הצטרפות ראשונה
-    if (matched.role !== 'admin' && (matched.role !== 'subscriber' || matched.subscription_status !== 'active')) {
+    // subscription_status !== 'active') - צריך להפעיל מחדש בדיוק כמו הצטרפות ראשונה. זה גם
+    // בדיוק הרגע שבו "מצטרף/ת חדש/ה" אמיתי - לא כל חיוב חוזר (ר' newlyActivated, משמש
+    // כדי להפעיל את רצף הקליטה של מנוי/ה חדש/ה רק פעם אחת, לא בכל חיוב חודשי)
+    const newlyActivated = matched.role !== 'admin' && (matched.role !== 'subscriber' || matched.subscription_status !== 'active');
+    if (newlyActivated) {
       updates.role = 'subscriber';
       updates.subscription_status = 'active';
       updates.subscription_started_at = subscriptionStartedAt;
@@ -142,7 +145,7 @@ export async function ensureActiveSubscriberAccount(email: string, phone: string
     }
 
     await supabaseAdmin.from('profiles').update(updates).eq('id', matched.id);
-    return;
+    return { userId: matched.id, newlyActivated };
   }
 
   // role/subscription_status מועברים כבר כאן ב-metadata, כדי שהטריגר שיוצר את הפרופיל (handle_new_user)
@@ -167,6 +170,8 @@ export async function ensureActiveSubscriberAccount(email: string, phone: string
     }
   }
 
+  if (!userId) throw new Error('שגיאה ביצירת חשבון - לא התקבל מזהה משתמש');
+
   await supabaseAdmin
     .from('profiles')
     .upsert({
@@ -174,6 +179,8 @@ export async function ensureActiveSubscriberAccount(email: string, phone: string
       subscription_started_at: subscriptionStartedAt, phone, trial_price_used: isFirstMonthPrice,
       monthly_price: monthlyPrice ?? null,
     });
+
+  return { userId, newlyActivated: true };
 }
 
 export { normalizePhone, normalizeEmail };

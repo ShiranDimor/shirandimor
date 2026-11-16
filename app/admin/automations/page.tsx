@@ -11,6 +11,14 @@ type AutomationRule = {
   schedule_label: string;
   enabled: boolean;
   last_run_at: string | null;
+  is_sequence_step?: boolean;
+  sequence_key?: string | null;
+  step_index?: number | null;
+};
+
+const SEQUENCE_NAMES: Record<string, string> = {
+  'welcome-subscriber': 'רצף קליטה - מנוי/ה חדש/ה',
+  'nurture-push-no-sub': 'רצף טיפוח - הפעיל/ה התראות בלי מנוי',
 };
 
 type AutomationDetail = {
@@ -220,6 +228,136 @@ export default function AdminAutomationsPage() {
     );
   }
 
+  const broadcastRules = rules.filter((r) => !r.is_sequence_step);
+  const sequenceGroups: [string, AutomationRule[]][] = Object.entries(
+    rules
+      .filter((r) => r.is_sequence_step && r.sequence_key)
+      .reduce<Record<string, AutomationRule[]>>((acc, r) => {
+        const k = r.sequence_key as string;
+        (acc[k] = acc[k] || []).push(r);
+        return acc;
+      }, {})
+  ).map(([k, list]) => [k, list.sort((a, b) => (a.step_index || 0) - (b.step_index || 0))]);
+
+  function renderRuleCard(rule: AutomationRule, showBroadcastActions: boolean) {
+    const d = details[rule.key];
+    const editing = editingKey === rule.key;
+    return (
+      <details
+        key={rule.key}
+        className="section-collapse"
+        onToggle={(e) => { if ((e.target as HTMLDetailsElement).open && !details[rule.key]) loadDetail(rule.key); }}
+      >
+        <summary>
+          <div>
+            <div style={{ fontSize: '13.5px', fontWeight: 700 }}>{rule.name}</div>
+            <div style={{ fontSize: '11.5px', color: 'var(--text-tertiary)', marginTop: '2px' }}>
+              {rule.schedule_label} · רץ לאחרונה: {formatDateTime(rule.last_run_at)}
+              {d?.customized && <span style={{ color: 'var(--lavender)' }}> · ✏️ נוסח ערוך</span>}
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+            <span onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
+              <button
+                className="btn-outline"
+                style={{ padding: '6px 14px', fontSize: '12.5px', color: rule.enabled ? 'var(--profit)' : 'var(--text-tertiary)' }}
+                onClick={() => toggleRule(rule.key, !rule.enabled)}
+                disabled={togglingKey === rule.key}
+              >
+                {togglingKey === rule.key ? '…' : rule.enabled ? '✅ מופעל' : '⛔ כבוי'}
+              </button>
+            </span>
+            <span className="collapse-chevron">▾</span>
+          </div>
+        </summary>
+
+        <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-hairline-strong)', borderTop: 'none', borderRadius: '0 0 10px 10px', padding: '14px' }}>
+          {!d && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>טוענים...</p>}
+
+          {d && !d.templated && (
+            <>
+              <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: d.marketDigest ? '10px' : 0 }}>
+                ההודעה הזו נכתבת מחדש ע&quot;י AI בכל בוקר לפי מה שקרה בשוק, אז אין לה נוסח קבוע לעריכה. הטיוטה של כל יום מחכה ב<Link href="/admin/announcements" style={{ color: 'var(--teal)' }}>לוח המודעות</Link> - שם אפשר לבדוק, לשלוח לעצמי ולאשר.
+              </p>
+              {d.marketDigest && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                  <button className="btn-outline" style={{ padding: '6px 12px', fontSize: '12.5px' }} onClick={() => testToSelf(rule.key)} disabled={busy === `${rule.key}:test`} title="שליחת התראת בדיקה רק אלי">
+                    {busy === `${rule.key}:test` ? '…' : '🔔 בדיקה לעצמי'}
+                  </button>
+                  <button className="btn-outline" style={{ padding: '6px 12px', fontSize: '12.5px' }} onClick={() => runNow(rule.key)} disabled={busy === `${rule.key}:run` || busy === `${rule.key}:runsend`} title="מכין את הסיכום עכשיו ויוצר טיוטה בלוח המודעות, בלי לחכות לשעה הקבועה">
+                    {busy === `${rule.key}:run` ? 'מכין...' : '📝 יצירת טיוטה עכשיו'}
+                  </button>
+                  <button className="btn-primary" style={{ padding: '6px 12px', fontSize: '12.5px' }} onClick={() => runNowAndSend(rule.key)} disabled={busy === `${rule.key}:run` || busy === `${rule.key}:runsend`} title="יוצר, מפרסם ושולח התראה לכולם - בלחיצה אחת, בלי לעבור דרך לוח המודעות">
+                    {busy === `${rule.key}:runsend` ? 'שולח...' : '🚀 יצירה ושליחה לכולם'}
+                  </button>
+                </div>
+              )}
+            </>
+          )}
+
+          {d?.templated && !editing && (
+            <>
+              <div style={{ fontSize: '11.5px', color: 'var(--text-tertiary)', marginBottom: '8px' }}>
+                {d.preview?.usedSample ? 'תצוגה מקדימה (עם נתוני דוגמה - כרגע אין נתונים אמיתיים להודעה הזו):' : 'תצוגה מקדימה - כך ההודעה הייתה יוצאת עכשיו:'}
+              </div>
+              {d.preview && (
+                <div style={{ background: 'var(--bg-void)', border: '1px solid var(--border-hairline-strong)', borderRadius: '8px', padding: '12px', marginBottom: '12px' }}>
+                  <div style={{ fontSize: '14.5px', fontWeight: 700, marginBottom: '8px' }}>{d.preview.title}</div>
+                  <p style={{ fontSize: '14.5px', color: 'var(--text-primary)', lineHeight: 1.7, whiteSpace: 'pre-line' }}><FormattedText text={d.preview.content} /></p>
+                </div>
+              )}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                <button className="btn-outline" style={{ padding: '6px 12px', fontSize: '12.5px' }} onClick={() => startEdit(rule.key)}>✏️ עריכה</button>
+                <button className="btn-outline" style={{ padding: '6px 12px', fontSize: '12.5px' }} onClick={() => testToSelf(rule.key)} disabled={busy === `${rule.key}:test`} title="שליחת התראת בדיקה רק אלי">
+                  {busy === `${rule.key}:test` ? '…' : '🔔 בדיקה לעצמי'}
+                </button>
+                {showBroadcastActions && (
+                  <>
+                    <button className="btn-outline" style={{ padding: '6px 12px', fontSize: '12.5px' }} onClick={() => runNow(rule.key)} disabled={busy === `${rule.key}:run` || busy === `${rule.key}:runsend`} title="יוצר טיוטה בלוח המודעות עכשיו, בלי לחכות לתזמון">
+                      {busy === `${rule.key}:run` ? '…' : '📝 יצירת טיוטה עכשיו'}
+                    </button>
+                    <button className="btn-primary" style={{ padding: '6px 12px', fontSize: '12.5px' }} onClick={() => runNowAndSend(rule.key)} disabled={busy === `${rule.key}:run` || busy === `${rule.key}:runsend`} title="יוצר, מפרסם ושולח התראה לכולם - בלחיצה אחת, בלי לעבור דרך לוח המודעות">
+                      {busy === `${rule.key}:runsend` ? 'שולח...' : '🚀 יצירה ושליחה לכולם'}
+                    </button>
+                  </>
+                )}
+                {d.customized && (
+                  <button className="btn-outline" style={{ padding: '6px 12px', fontSize: '12.5px' }} onClick={() => saveTemplate(rule.key, true)} disabled={busy === `${rule.key}:save`}>
+                    ↩️ חזרה לנוסח המקורי
+                  </button>
+                )}
+              </div>
+            </>
+          )}
+
+          {d?.templated && editing && (
+            <>
+              <input className="tp-text-input" style={{ minHeight: 'auto', marginBottom: '10px' }} placeholder="כותרת" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} />
+              <textarea className="tp-text-input" style={{ marginBottom: '6px' }} placeholder="תוכן ההודעה" rows={12} value={editContent} onChange={(e) => setEditContent(e.target.value)} />
+              <p style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginBottom: '6px' }}>
+                טיפ: *מילה או משפט בין כוכביות* יוצג <strong>מודגש</strong> · קישור (https://...) הופך ללחיץ אוטומטית
+              </p>
+              {d.placeholders && Object.keys(d.placeholders).length > 0 && (
+                <div style={{ fontSize: '11.5px', color: 'var(--text-tertiary)', marginBottom: '10px', lineHeight: 1.7 }}>
+                  משתנים שמתמלאים אוטומטית (להשאיר בדיוק כך, כולל הסוגריים):
+                  {Object.entries(d.placeholders).map(([name, label]) => (
+                    <div key={name}><code dir="ltr">{`{${name}}`}</code> - {label}</div>
+                  ))}
+                </div>
+              )}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                <button className="btn-primary" style={{ padding: '6px 14px', fontSize: '12.5px' }} onClick={() => saveTemplate(rule.key)} disabled={busy === `${rule.key}:save` || !editTitle.trim() || !editContent.trim()}>
+                  {busy === `${rule.key}:save` ? 'שומר...' : '💾 שמירה'}
+                </button>
+                <button className="btn-outline" style={{ padding: '6px 12px', fontSize: '12.5px' }} onClick={() => setEditingKey('')}>ביטול</button>
+              </div>
+            </>
+          )}
+        </div>
+      </details>
+    );
+  }
+
   return (
     <div className="wrap">
       <header>
@@ -231,127 +369,39 @@ export default function AdminAutomationsPage() {
         </div>
       </header>
 
-      <div className="section-label"><h2>אוטומציות</h2><span className="count">{rules.length}</span></div>
+      <div className="section-label"><h2>אוטומציות</h2><span className="count">{broadcastRules.length}</span></div>
       <p style={{ fontSize: '12.5px', color: 'var(--text-tertiary)', marginBottom: '18px', lineHeight: 1.6 }}>
         כל אוטומציה מכינה טיוטה בלוח המודעות ושולחת לך התראת פוש לבדיקה - שום דבר לא מתפרסם או נשלח לבד, בלי אישור שלך ב-/admin/announcements. לחיצה על אוטומציה פותחת את ההודעה - אפשר לערוך את הנוסח, לשלוח בדיקה לעצמי וליצור טיוטה עכשיו.
       </p>
 
       {loading && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>טוענים...</p>}
 
-      {!loading && rules.map((rule) => {
-        const d = details[rule.key];
-        const editing = editingKey === rule.key;
-        return (
-          <details
-            key={rule.key}
-            className="section-collapse"
-            onToggle={(e) => { if ((e.target as HTMLDetailsElement).open && !details[rule.key]) loadDetail(rule.key); }}
-          >
-            <summary>
-              <div>
-                <div style={{ fontSize: '13.5px', fontWeight: 700 }}>{rule.name}</div>
-                <div style={{ fontSize: '11.5px', color: 'var(--text-tertiary)', marginTop: '2px' }}>
-                  {rule.schedule_label} · רץ לאחרונה: {formatDateTime(rule.last_run_at)}
-                  {d?.customized && <span style={{ color: 'var(--lavender)' }}> · ✏️ נוסח ערוך</span>}
+      {!loading && broadcastRules.map((rule) => renderRuleCard(rule, true))}
+
+      {!loading && sequenceGroups.length > 0 && (
+        <>
+          <div className="section-label" style={{ marginTop: '28px' }}>
+            <h2>רצפי קליטה/טיפוח</h2>
+          </div>
+          <p style={{ fontSize: '12.5px', color: 'var(--text-tertiary)', marginBottom: '18px', lineHeight: 1.6 }}>
+            אלו לא טיוטות - כל צעד נשלח ישירות ומיידית לאדם הספציפי שמגיע לו/ה (מצטרף/ת חדש/ה, או מי שהפעיל/ה התראות בלי מנוי), בזמן האמיתי. אפשר לערוך נוסח/לבדוק לעצמי לכל צעד בנפרד, ולכבות צעד בודד או את כל הרצף.
+          </p>
+          {sequenceGroups.map(([sequenceKey, steps]) => (
+            <details key={sequenceKey} className="section-collapse">
+              <summary>
+                <div>
+                  <div style={{ fontSize: '13.5px', fontWeight: 700 }}>{SEQUENCE_NAMES[sequenceKey] || sequenceKey}</div>
+                  <div style={{ fontSize: '11.5px', color: 'var(--text-tertiary)', marginTop: '2px' }}>{steps.length} צעדים</div>
                 </div>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
-                <span onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
-                  <button
-                    className="btn-outline"
-                    style={{ padding: '6px 14px', fontSize: '12.5px', color: rule.enabled ? 'var(--profit)' : 'var(--text-tertiary)' }}
-                    onClick={() => toggleRule(rule.key, !rule.enabled)}
-                    disabled={togglingKey === rule.key}
-                  >
-                    {togglingKey === rule.key ? '…' : rule.enabled ? '✅ מופעל' : '⛔ כבוי'}
-                  </button>
-                </span>
                 <span className="collapse-chevron">▾</span>
+              </summary>
+              <div style={{ padding: '10px 0 0 0' }}>
+                {steps.map((rule) => renderRuleCard(rule, false))}
               </div>
-            </summary>
-
-            <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-hairline-strong)', borderTop: 'none', borderRadius: '0 0 10px 10px', padding: '14px' }}>
-              {!d && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>טוענים...</p>}
-
-              {d && !d.templated && (
-                <>
-                  <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: d.marketDigest ? '10px' : 0 }}>
-                    ההודעה הזו נכתבת מחדש ע&quot;י AI בכל בוקר לפי מה שקרה בשוק, אז אין לה נוסח קבוע לעריכה. הטיוטה של כל יום מחכה ב<Link href="/admin/announcements" style={{ color: 'var(--teal)' }}>לוח המודעות</Link> - שם אפשר לבדוק, לשלוח לעצמי ולאשר.
-                  </p>
-                  {d.marketDigest && (
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                      <button className="btn-outline" style={{ padding: '6px 12px', fontSize: '12.5px' }} onClick={() => testToSelf(rule.key)} disabled={busy === `${rule.key}:test`} title="שליחת התראת בדיקה רק אלי">
-                        {busy === `${rule.key}:test` ? '…' : '🔔 בדיקה לעצמי'}
-                      </button>
-                      <button className="btn-outline" style={{ padding: '6px 12px', fontSize: '12.5px' }} onClick={() => runNow(rule.key)} disabled={busy === `${rule.key}:run` || busy === `${rule.key}:runsend`} title="מכין את הסיכום עכשיו ויוצר טיוטה בלוח המודעות, בלי לחכות לשעה הקבועה">
-                        {busy === `${rule.key}:run` ? 'מכין...' : '📝 יצירת טיוטה עכשיו'}
-                      </button>
-                      <button className="btn-primary" style={{ padding: '6px 12px', fontSize: '12.5px' }} onClick={() => runNowAndSend(rule.key)} disabled={busy === `${rule.key}:run` || busy === `${rule.key}:runsend`} title="יוצר, מפרסם ושולח התראה לכולם - בלחיצה אחת, בלי לעבור דרך לוח המודעות">
-                        {busy === `${rule.key}:runsend` ? 'שולח...' : '🚀 יצירה ושליחה לכולם'}
-                      </button>
-                    </div>
-                  )}
-                </>
-              )}
-
-              {d?.templated && !editing && (
-                <>
-                  <div style={{ fontSize: '11.5px', color: 'var(--text-tertiary)', marginBottom: '8px' }}>
-                    {d.preview?.usedSample ? 'תצוגה מקדימה (עם נתוני דוגמה - כרגע אין נתונים אמיתיים להודעה הזו):' : 'תצוגה מקדימה - כך ההודעה הייתה יוצאת עכשיו:'}
-                  </div>
-                  {d.preview && (
-                    <div style={{ background: 'var(--bg-void)', border: '1px solid var(--border-hairline-strong)', borderRadius: '8px', padding: '12px', marginBottom: '12px' }}>
-                      <div style={{ fontSize: '14.5px', fontWeight: 700, marginBottom: '8px' }}>{d.preview.title}</div>
-                      <p style={{ fontSize: '14.5px', color: 'var(--text-primary)', lineHeight: 1.7, whiteSpace: 'pre-line' }}><FormattedText text={d.preview.content} /></p>
-                    </div>
-                  )}
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                    <button className="btn-outline" style={{ padding: '6px 12px', fontSize: '12.5px' }} onClick={() => startEdit(rule.key)}>✏️ עריכה</button>
-                    <button className="btn-outline" style={{ padding: '6px 12px', fontSize: '12.5px' }} onClick={() => testToSelf(rule.key)} disabled={busy === `${rule.key}:test`} title="שליחת התראת בדיקה רק אלי">
-                      {busy === `${rule.key}:test` ? '…' : '🔔 בדיקה לעצמי'}
-                    </button>
-                    <button className="btn-outline" style={{ padding: '6px 12px', fontSize: '12.5px' }} onClick={() => runNow(rule.key)} disabled={busy === `${rule.key}:run` || busy === `${rule.key}:runsend`} title="יוצר טיוטה בלוח המודעות עכשיו, בלי לחכות לתזמון">
-                      {busy === `${rule.key}:run` ? '…' : '📝 יצירת טיוטה עכשיו'}
-                    </button>
-                    <button className="btn-primary" style={{ padding: '6px 12px', fontSize: '12.5px' }} onClick={() => runNowAndSend(rule.key)} disabled={busy === `${rule.key}:run` || busy === `${rule.key}:runsend`} title="יוצר, מפרסם ושולח התראה לכולם - בלחיצה אחת, בלי לעבור דרך לוח המודעות">
-                      {busy === `${rule.key}:runsend` ? 'שולח...' : '🚀 יצירה ושליחה לכולם'}
-                    </button>
-                    {d.customized && (
-                      <button className="btn-outline" style={{ padding: '6px 12px', fontSize: '12.5px' }} onClick={() => saveTemplate(rule.key, true)} disabled={busy === `${rule.key}:save`}>
-                        ↩️ חזרה לנוסח המקורי
-                      </button>
-                    )}
-                  </div>
-                </>
-              )}
-
-              {d?.templated && editing && (
-                <>
-                  <input className="tp-text-input" style={{ minHeight: 'auto', marginBottom: '10px' }} placeholder="כותרת" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} />
-                  <textarea className="tp-text-input" style={{ marginBottom: '6px' }} placeholder="תוכן ההודעה" rows={12} value={editContent} onChange={(e) => setEditContent(e.target.value)} />
-                  <p style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginBottom: '6px' }}>
-                    טיפ: *מילה או משפט בין כוכביות* יוצג <strong>מודגש</strong> · קישור (https://...) הופך ללחיץ אוטומטית
-                  </p>
-                  {d.placeholders && Object.keys(d.placeholders).length > 0 && (
-                    <div style={{ fontSize: '11.5px', color: 'var(--text-tertiary)', marginBottom: '10px', lineHeight: 1.7 }}>
-                      משתנים שמתמלאים אוטומטית (להשאיר בדיוק כך, כולל הסוגריים):
-                      {Object.entries(d.placeholders).map(([name, label]) => (
-                        <div key={name}><code dir="ltr">{`{${name}}`}</code> - {label}</div>
-                      ))}
-                    </div>
-                  )}
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                    <button className="btn-primary" style={{ padding: '6px 14px', fontSize: '12.5px' }} onClick={() => saveTemplate(rule.key)} disabled={busy === `${rule.key}:save` || !editTitle.trim() || !editContent.trim()}>
-                      {busy === `${rule.key}:save` ? 'שומר...' : '💾 שמירה'}
-                    </button>
-                    <button className="btn-outline" style={{ padding: '6px 12px', fontSize: '12.5px' }} onClick={() => setEditingKey('')}>ביטול</button>
-                  </div>
-                </>
-              )}
-            </div>
-          </details>
-        );
-      })}
+            </details>
+          ))}
+        </>
+      )}
     </div>
   );
 }

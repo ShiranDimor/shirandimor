@@ -4,6 +4,7 @@ import { isPhoneBlocked } from '@/lib/blockedContacts';
 import { normalizePhone, normalizeEmail } from '@/lib/subscriberStatus';
 import { entitlementOrFilter } from '@/lib/entitlement';
 import { isContactInSubscribersGroupMonday, markAppDownloadOnMonday } from '@/lib/tradingPlan/monday';
+import { startSequence } from '@/lib/sequenceEngine';
 
 // שומר את תוצאת סנכרון מאנדיי (שגיאה, אם הייתה) על שורת המינוי - בלי זה כישלון סנכרון היה
 // שקוף לגמרי: הפעלת ההתראות עצמה עדיין מצליחה (ok:true ללקוח) אבל אין שום עקבה שהעדכון
@@ -74,8 +75,13 @@ export async function POST(request: Request) {
 
     if (shouldSyncMonday) {
       const { data: profile } = await supabaseAdmin.from('profiles').select('full_name, phone, email').eq('id', userId).maybeSingle();
-      const mondayResult = await markAppDownloadOnMonday({ name: profile?.full_name, phone: profile?.phone, email: profile?.email }).catch((e) => ({ ok: false, matched: false, error: e instanceof Error ? e.message : 'threw' }));
+      const mondayResult = await markAppDownloadOnMonday({ name: profile?.full_name, phone: profile?.phone, email: profile?.email }).catch((e) => ({ ok: false, matched: false, skippedFullAccess: false, error: e instanceof Error ? e.message : 'threw' }));
       await recordMondaySyncResult(endpoint, mondayResult);
+      // לא מנוי/ה (markAppDownloadOnMonday עצמה כבר בדקה את זה) - זו בדיוק ההפעלה-ללא-מנוי
+      // שרצף הטיפוח (lib/sequenceEngine.ts) מיועד לה
+      if (mondayResult.ok && !mondayResult.skippedFullAccess) {
+        await startSequence('nurture-push-no-sub', { userId }).catch((e) => console.error('push/subscribe: נכשלה התחלת רצף הטיפוח (מחובר/ת)', e));
+      }
     }
 
     return NextResponse.json({ ok: true });
@@ -119,7 +125,7 @@ export async function POST(request: Request) {
     if (error) return NextResponse.json({ error: 'שגיאה בשמירת המינוי' }, { status: 500 });
 
     if (shouldSyncMonday) {
-      const mondayResult = await markAppDownloadOnMonday({ name, phone, email: email || null }).catch((e) => ({ ok: false, matched: false, error: e instanceof Error ? e.message : 'threw' }));
+      const mondayResult = await markAppDownloadOnMonday({ name, phone, email: email || null }).catch((e) => ({ ok: false, matched: false, skippedFullAccess: false, error: e instanceof Error ? e.message : 'threw' }));
       await recordMondaySyncResult(endpoint, mondayResult);
     }
 
@@ -129,13 +135,18 @@ export async function POST(request: Request) {
   // ליד חדש (לא מנוי, לא מחובר) - זו בדיוק נקודת הכניסה שצריכה תמיד לפתוח/לעדכן כרטיס במאנדיי,
   // בלי קשר ל-shouldSyncMonday (ליד אמיתי חדש הוא כמעט תמיד גם endpoint חדש, אבל גם אם לא -
   // עדיף לסנכרן יתר על המידה כאן מאשר לפספס ליד אמיתי)
-  const mondayResultLead = await markAppDownloadOnMonday({ name, phone, email: email || null }).catch((e) => ({ ok: false, matched: false, error: e instanceof Error ? e.message : 'threw' }));
+  const mondayResultLead = await markAppDownloadOnMonday({ name, phone, email: email || null }).catch((e) => ({ ok: false, matched: false, skippedFullAccess: false, error: e instanceof Error ? e.message : 'threw' }));
 
   const { error } = await supabaseAdmin
     .from('push_subscriptions')
     .upsert({ user_id: null, endpoint, p256dh: keys.p256dh, auth: keys.auth, name, phone, email: email || null, monday_sync_error: mondayResultLead.ok ? null : (mondayResultLead.error || 'unknown_error'), invalid_at: null, invalid_reason: null }, { onConflict: 'endpoint' });
 
   if (error) return NextResponse.json({ error: 'שגיאה בשמירת המינוי' }, { status: 500 });
+
+  if (mondayResultLead.ok && !mondayResultLead.skippedFullAccess) {
+    await startSequence('nurture-push-no-sub', { phone, email: email || null }).catch((e) => console.error('push/subscribe: נכשלה התחלת רצף הטיפוח (ליד)', e));
+  }
+
   return NextResponse.json({ ok: true });
 }
 
