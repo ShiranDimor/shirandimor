@@ -19,6 +19,9 @@ const nextConfig = {
       { source: '/:slug([gG][uU][yY])', destination: '/guy/index.html', permanent: false },
       // Dor's Pokémon English game - short, case-insensitive address that's easy to type on a tablet.
       { source: '/:slug([dD][oO][rR])', destination: '/dor-english', permanent: false },
+      // Short tracked links for the Instagram bio and the Facebook page button (social attribution via ?source=).
+      { source: '/:slug([iI][gG])', destination: '/?source=ig_bio', permanent: false },
+      { source: '/:slug([fF][bB])', destination: '/?source=fb_page', permanent: false },
     ];
   },
   experimental: {
