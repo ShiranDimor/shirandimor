@@ -72,6 +72,7 @@ export async function listRecentGrowPayments(daysBack = 3): Promise<GrowEmailPay
 
   const listRes = await fetch(`${GMAIL_API}/messages?q=${encodeURIComponent(query)}&maxResults=50`, {
     headers: { Authorization: `Bearer ${accessToken}` },
+    cache: 'no-store',
   });
   if (!listRes.ok) {
     console.error('growEmailWatch: נכשלה חיפוש מיילים', await listRes.text().catch(() => ''));
@@ -82,7 +83,7 @@ export async function listRecentGrowPayments(daysBack = 3): Promise<GrowEmailPay
 
   const payments: GrowEmailPayment[] = [];
   for (const id of ids) {
-    const msgRes = await fetch(`${GMAIL_API}/messages/${id}?format=FULL`, { headers: { Authorization: `Bearer ${accessToken}` } });
+    const msgRes = await fetch(`${GMAIL_API}/messages/${id}?format=FULL`, { headers: { Authorization: `Bearer ${accessToken}` }, cache: 'no-store' });
     if (!msgRes.ok) {
       console.error(`growEmailWatch: נכשלה קריאת מייל ${id}`, await msgRes.text().catch(() => ''));
       continue;
