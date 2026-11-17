@@ -1,0 +1,308 @@
+.root {
+  --world: #ffcb05;
+  min-height: 100vh;
+  min-height: 100dvh;
+  max-width: 820px;
+  margin: 0 auto;
+  padding: 16px 16px 32px;
+  background:
+    radial-gradient(circle at 20% 0%, #fff6c9 0, transparent 45%),
+    radial-gradient(circle at 100% 30%, #d7f0ff 0, transparent 45%),
+    linear-gradient(180deg, #fffdf3, #eaf7ff);
+  color: #2a2f45;
+  font-family: 'Fredoka', 'Rubik', system-ui, sans-serif;
+  direction: rtl;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  overflow-x: hidden;
+}
+
+.root button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  color: inherit;
+  touch-action: manipulation;
+}
+.root button:disabled { cursor: default; }
+
+/* ---------- כפתורים ---------- */
+.bigBtn {
+  background: linear-gradient(180deg, #ff5a5f, #e03237);
+  color: #fff !important;
+  font-size: 30px;
+  font-weight: 700;
+  padding: 16px 40px;
+  border-radius: 999px;
+  box-shadow: 0 6px 0 #a3171c, 0 10px 24px rgba(224, 50, 55, 0.35);
+  margin-top: 20px;
+}
+.bigBtn:active { transform: translateY(4px); box-shadow: 0 2px 0 #a3171c; }
+
+.midBtn {
+  background: #fff;
+  font-size: 20px;
+  font-weight: 600;
+  padding: 12px 20px;
+  border-radius: 18px;
+  box-shadow: 0 4px 0 #c9d3e6;
+}
+.midBtn:active { transform: translateY(3px); box-shadow: 0 1px 0 #c9d3e6; }
+.midBtn small { font-size: 14px; opacity: 0.7; }
+
+.smallBtn {
+  background: rgba(255, 255, 255, 0.9);
+  font-size: 17px;
+  padding: 8px 16px;
+  border-radius: 14px;
+  box-shadow: 0 3px 0 #c9d3e6;
+}
+.iconBtn {
+  background: #fff;
+  font-size: 26px;
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  box-shadow: 0 4px 0 #c9d3e6;
+  flex-shrink: 0;
+}
+.row { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; align-items: center; }
+
+/* ---------- פתיחה ---------- */
+.title { display: flex; flex-direction: column; align-items: center; text-align: center; padding-top: 6vh; }
+.logo {
+  font-size: clamp(34px, 8vw, 58px);
+  line-height: 1.05;
+  color: #ffcb05;
+  -webkit-text-stroke: 2px #2a5aa8;
+  text-shadow: 0 5px 0 #2a5aa8;
+  margin-top: 12px;
+  font-weight: 800;
+}
+.sub, .he { font-family: 'Rubik', sans-serif; direction: rtl; color: #5b6380; font-size: 18px; margin-top: 8px; text-align: center; }
+.titleBalls { height: 180px; display: flex; align-items: flex-end; }
+
+/* ---------- מפה ---------- */
+.mapTop { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.trainer { display: flex; align-items: center; gap: 10px; background: #fff; border-radius: 20px; padding: 6px 14px 6px 6px; box-shadow: 0 4px 0 #c9d3e6; }
+.trainerName { font-weight: 700; font-size: 20px; }
+.trainerSub { font-size: 16px; color: #5b6380; }
+.mapTitle { font-size: clamp(24px, 5vw, 32px); text-align: center; margin: 20px 0 14px; font-weight: 700; cursor: pointer; }
+
+.worlds { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px; }
+.world {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 16px 12px 12px;
+  border-radius: 26px;
+  background: linear-gradient(180deg, #fff, color-mix(in srgb, var(--world) 30%, #fff));
+  border: 4px solid var(--world) !important;
+  box-shadow: 0 6px 0 color-mix(in srgb, var(--world) 70%, #000);
+}
+.world:active { transform: translateY(4px); box-shadow: 0 2px 0 color-mix(in srgb, var(--world) 70%, #000); }
+.locked { filter: grayscale(1); opacity: 0.6; }
+.worldIcon { font-size: 52px; }
+.worldName { font-size: 22px; font-weight: 700; }
+.worldMons { display: flex; gap: 4px; margin-top: 6px; }
+.worldCount { position: absolute; top: 10px; right: 14px; font-weight: 700; font-size: 16px; }
+.silhouette { filter: brightness(0); opacity: 0.35; }
+
+.parentsLink { display: block; margin: 30px auto 0; background: none; font-family: 'Rubik', sans-serif !important; color: #7a829c !important; font-size: 15px; text-decoration: underline; }
+
+/* ---------- בחירת שותף ---------- */
+.starters { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-top: 16px; }
+.starter {
+  display: flex; flex-direction: column; align-items: center;
+  background: #fff; border-radius: 24px; padding: 10px 14px;
+  font-size: 20px; font-weight: 600;
+  box-shadow: 0 5px 0 #c9d3e6;
+  border: 4px solid transparent !important;
+}
+.starterOn { border-color: #ffcb05 !important; transform: scale(1.08); box-shadow: 0 5px 0 #e0a800, 0 0 30px rgba(255, 203, 5, 0.6); }
+.starters + .bigBtn { display: block; margin: 24px auto 0; }
+
+/* ---------- קרב ---------- */
+.battleTop { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.stars { font-weight: 700; font-size: 20px; background: #fff; padding: 8px 14px; border-radius: 16px; box-shadow: 0 4px 0 #c9d3e6; }
+
+.arena {
+  position: relative;
+  margin-top: 14px;
+  border-radius: 30px;
+  padding: 16px 16px 20px;
+  min-height: 250px;
+  background:
+    radial-gradient(ellipse 60% 18% at 50% 78%, rgba(0, 0, 0, 0.12), transparent 70%),
+    linear-gradient(180deg, color-mix(in srgb, var(--world) 25%, #fff), color-mix(in srgb, var(--world) 55%, #fff));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.wild { position: relative; height: 150px; display: flex; justify-content: center; }
+.wildCaught img { animation: suck 1.2s 0.7s forwards; }
+
+/* ---------- חיים של הפוקימון הפראי ---------- */
+.hpBox { display: flex; align-items: center; gap: 8px; background: rgba(255, 255, 255, 0.85); padding: 6px 12px; border-radius: 14px; margin-bottom: 4px; box-shadow: 0 3px 0 rgba(0, 0, 0, 0.08); }
+.hpName { font-family: 'Rubik', sans-serif; font-weight: 700; font-size: 16px; white-space: nowrap; }
+
+/* ---------- התקפה / התחמקות ---------- */
+.sway { animation: sway 2.2s ease-in-out infinite; }
+.lvl {
+  position: absolute; bottom: -2px; left: 50%; transform: translateX(-50%);
+  background: #2a2f45; color: #fff; font-size: 12px; font-weight: 700;
+  padding: 1px 7px; border-radius: 99px; white-space: nowrap; direction: ltr;
+}
+.levelUp { display: flex; align-items: center; gap: 6px; font-family: 'Rubik', sans-serif; font-weight: 700; font-size: 18px; color: #2a5aa8; margin-top: 6px; }
+
+/* ---------- זריקת כדור פוקימון ---------- */
+.ring {
+  position: absolute; left: 50%; top: 50%;
+  width: 180px; height: 180px; margin: -90px 0 0 -90px;
+  border-radius: 50%;
+  border: 7px solid #ff5252;
+  pointer-events: none;
+  animation-name: ring;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+.pokeball, .ballCatch, .ballMiss {
+  display: inline-block;
+  width: 54px; height: 54px; border-radius: 50%;
+  background: radial-gradient(circle at 50% 50%, #fff 0 16%, #333 16% 24%, transparent 24%),
+    linear-gradient(180deg, #ff4b4b 0 45%, #333 45% 55%, #fff 55%);
+  border: 4px solid #333;
+}
+.pokeball { width: 40px; height: 40px; border-width: 3px; vertical-align: middle; }
+.ballCatch, .ballMiss { position: absolute; left: 50%; top: 50%; margin: -27px 0 0 -27px; }
+.ballCatch { animation: ballIn 0.7s ease-out forwards, wobble 0.5s 1s 3 ease-in-out; }
+.ballMiss { animation: ballMiss 0.9s ease-out forwards; }
+.throwBtn {
+  display: flex; align-items: center; gap: 14px;
+  background: linear-gradient(180deg, #ff5a5f, #e03237);
+  color: #fff !important; font-size: 34px; font-weight: 700;
+  font-family: 'Rubik', sans-serif !important;
+  padding: 16px 44px; border-radius: 999px;
+  box-shadow: 0 7px 0 #a3171c, 0 12px 26px rgba(224, 50, 55, 0.4);
+  animation: pulse 1.2s infinite;
+}
+.throwBtn:active { transform: translateY(4px); box-shadow: 0 2px 0 #a3171c; }
+.bubble {
+  margin-top: 10px;
+  background: #fff;
+  border-radius: 22px;
+  padding: 12px 18px;
+  font-size: clamp(20px, 4.4vw, 26px);
+  font-weight: 600;
+  text-align: center;
+  max-width: 560px;
+  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.08);
+  cursor: pointer;
+  min-height: 56px;
+}
+.replay { font-size: 18px; opacity: 0.6; }
+.bubbleHe { font-family: 'Rubik', sans-serif; font-size: 0.82em; font-weight: 500; color: #4a5272; }
+.partner { position: absolute; left: 6px; bottom: 0; }
+@media (max-width: 560px) {
+  .partner { bottom: auto; top: 10px; }
+  .partner img { width: 60px; height: 60px; }
+}
+
+.challenge { margin-top: 18px; display: flex; flex-direction: column; align-items: center; gap: 16px; }
+
+.bigPic { font-size: 120px; line-height: 1.05; white-space: pre-line; text-align: center; background: #fff; border-radius: 30px; padding: 10px 30px; box-shadow: 0 6px 0 #c9d3e6; }
+.mic {
+  width: 110px; height: 110px; border-radius: 50%;
+  font-size: 54px;
+  background: linear-gradient(180deg, #4fc3ff, #1e88e5);
+  box-shadow: 0 6px 0 #0d5aa7, 0 10px 24px rgba(30, 136, 229, 0.35);
+}
+.micOn { animation: pulse 1s infinite; background: linear-gradient(180deg, #ff6b6b, #e53935); box-shadow: 0 6px 0 #a31515; }
+.helpRow { display: flex; gap: 10px; }
+.helpRow .smallBtn:last-child { font-family: 'Rubik', sans-serif; }
+
+/* ---------- נתפס! ---------- */
+.caught { display: flex; flex-direction: column; align-items: center; text-align: center; padding-top: 4vh; }
+.confetti { font-size: 34px; letter-spacing: 6px; animation: bounce 1s infinite; }
+.caughtTitle { font-size: 56px; font-weight: 800; color: #ffcb05; -webkit-text-stroke: 2px #2a5aa8; text-shadow: 0 4px 0 #2a5aa8; }
+.caughtSub { font-size: 26px; }
+
+/* ---------- פוקדקס ---------- */
+.dex { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 12px; margin-top: 10px; }
+.dexCard { background: #fff; border-radius: 22px; padding: 10px; display: flex; flex-direction: column; align-items: center; font-weight: 600; font-size: 16px; box-shadow: 0 4px 0 #c9d3e6; }
+
+/* ---------- הורים ---------- */
+.parents { font-family: 'Rubik', sans-serif; direction: rtl; max-width: 640px; margin: 0 auto; }
+.parents h2 { margin: 16px 0 10px; }
+.parents h3 { margin: 20px 0 6px; font-size: 18px; }
+.statRow { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.statRow div { background: #fff; border-radius: 16px; padding: 12px; text-align: center; display: flex; flex-direction: column; box-shadow: 0 3px 0 #c9d3e6; }
+.statRow b { font-size: 24px; }
+.statRow span { font-size: 13px; color: #5b6380; }
+.table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 12px; overflow: hidden; font-size: 15px; }
+.table td { padding: 6px 8px; border-bottom: 1px solid #eef1f6; }
+.parentsNote { color: #5b6380; font-size: 14px; margin-top: 14px; line-height: 1.6; }
+.toggle { display: flex; gap: 12px; align-items: flex-start; background: #fff; border-radius: 16px; padding: 14px; margin-top: 16px; box-shadow: 0 3px 0 #c9d3e6; cursor: pointer; }
+.toggle input { width: 22px; height: 22px; margin-top: 2px; flex-shrink: 0; }
+.toggle span { display: flex; flex-direction: column; font-weight: 600; }
+.toggle small { font-weight: 400; color: #5b6380; font-size: 13px; margin-top: 4px; line-height: 1.5; }
+.dangerBtn { margin-top: 18px; background: #fff0f0 !important; color: #c62828 !important; padding: 10px 18px; border-radius: 12px; font-family: 'Rubik', sans-serif !important; }
+
+/* ---------- אנימציות ---------- */
+.float { animation: float 2.4s ease-in-out infinite; }
+.bounce { animation: bounce 1.6s ease-in-out infinite; }
+.pop { animation: pop 0.6s ease-out; }
+@keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+@keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-14px); } }
+@keyframes pop { 0% { transform: scale(0.2); } 70% { transform: scale(1.15); } 100% { transform: scale(1); } }
+@keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
+@keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-8px); } 75% { transform: translateX(8px); } }
+@keyframes suck { 0%, 40% { transform: scale(1); opacity: 1; } 100% { transform: scale(0) translateY(60px); opacity: 0; } }
+@keyframes sway { 0%, 100% { transform: translateX(-50px); } 50% { transform: translateX(50px); } }
+@keyframes ring {
+  0% { transform: scale(1); border-color: #ff5252; }
+  50% { border-color: #ffca28; }
+  56% { border-color: #4caf50; }
+  100% { transform: scale(0.3); border-color: #4caf50; }
+}
+@keyframes ballIn { 0% { transform: translate(-30px, 260px) scale(1.4) rotate(0); } 100% { transform: translate(0, 10px) scale(1) rotate(720deg); } }
+@keyframes wobble { 0%, 100% { transform: translate(0, 10px) rotate(0); } 25% { transform: translate(0, 10px) rotate(-22deg); } 75% { transform: translate(0, 10px) rotate(22deg); } }
+@keyframes ballMiss { 0% { transform: translate(-30px, 260px) rotate(0); opacity: 1; } 100% { transform: translate(170px, -80px) rotate(540deg); opacity: 0; } }
+
+/* ---------- זירת הקרב ---------- */
+.gemBar { flex: 1; display: flex; align-items: center; gap: 10px; margin: 0 14px; font-family: 'Rubik', sans-serif; font-weight: 700; font-size: 18px; }
+.gemTrack { flex: 1; height: 16px; background: #e3e7ef; border-radius: 99px; overflow: hidden; }
+.gemTrack div { height: 100%; background: linear-gradient(90deg, #4dd0e1, #26c6da); transition: width 0.3s; }
+.bossTrack div { background: linear-gradient(90deg, #ff8a65, #e53935); }
+.arenaWrap { position: relative; margin-top: 12px; border-radius: 22px; overflow: hidden; box-shadow: 0 6px 0 rgba(0, 0, 0, 0.1); touch-action: none; user-select: none; -webkit-user-select: none; }
+.joyZone { position: absolute; left: 0; top: 0; bottom: 0; width: 45%; touch-action: none; }
+.joyBase { position: absolute; width: 120px; height: 120px; margin: -60px 0 0 -60px; border-radius: 50%; background: rgba(255, 255, 255, 0.35); border: 3px solid rgba(255, 255, 255, 0.8); }
+.joyKnob { position: absolute; left: 30px; top: 30px; width: 60px; height: 60px; border-radius: 50%; background: rgba(66, 165, 245, 0.85); box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3); }
+.joyHint { position: absolute; left: 24px; bottom: 24px; background: rgba(42, 47, 69, 0.85); color: #fff; font-family: 'Rubik', sans-serif; font-weight: 700; font-size: 18px; padding: 10px 16px; border-radius: 14px; animation: pulse 1.2s infinite; direction: rtl; }
+.fireBtn {
+  position: absolute; right: 22px; bottom: 22px; width: 96px; height: 96px; border-radius: 50%;
+  font-size: 46px; background: radial-gradient(circle at 40% 35%, #ff7b7f, #e53935) !important;
+  box-shadow: 0 6px 0 #a3171c, 0 8px 18px rgba(0, 0, 0, 0.3);
+}
+.fireBtn:active { transform: translateY(4px); box-shadow: 0 2px 0 #a3171c; }
+.fireHint { position: absolute; top: -34px; left: 50%; transform: translateX(-50%); background: rgba(42, 47, 69, 0.85); color: #fff; font-family: 'Rubik', sans-serif; font-size: 16px; font-weight: 700; padding: 3px 10px; border-radius: 10px; white-space: nowrap; }
+.superBtn {
+  position: absolute; right: 132px; bottom: 30px; width: 74px; height: 74px; border-radius: 50%;
+  background: conic-gradient(#ffca28 var(--charge), rgba(0, 0, 0, 0.25) 0) !important;
+  display: flex; align-items: center; justify-content: center;
+}
+.superBtn span { width: 58px; height: 58px; border-radius: 50%; background: #5c4d9a; display: flex; align-items: center; justify-content: center; font-size: 30px; }
+.superReady { animation: pulse 0.8s infinite; box-shadow: 0 0 22px #ffca28; }
+.superReady span { background: #ffb300; }
+.cardOverlay { position: absolute; inset: 0; background: rgba(20, 24, 40, 0.55); display: flex; align-items: center; justify-content: center; padding: 12px; }
+.speakCard { position: relative; background: #fffdf3; border-radius: 26px; padding: 16px 18px; display: flex; flex-direction: column; align-items: center; gap: 10px; max-width: 520px; width: 100%; max-height: 100%; overflow: auto; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35); }
+.speakCard .bigPic { font-size: 64px; padding: 4px 20px; }
+.speakCard .bubble { margin-top: 0; }
+.cardTitle { font-family: 'Rubik', sans-serif; font-weight: 800; font-size: 22px; }
+.cardClose { position: absolute; top: 10px; left: 12px; background: #eef1f6 !important; width: 36px; height: 36px; border-radius: 50%; font-size: 16px; }
+.runCanvas { display: block; touch-action: none; }
+.bubbleLine { min-height: 30px; margin: 10px 0 0; text-align: center; font-size: 18px; font-weight: 600; color: #4a5272; }
+.bubbleLine span { display: inline-block; margin: 0 6px; }

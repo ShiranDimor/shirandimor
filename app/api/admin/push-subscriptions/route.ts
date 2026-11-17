@@ -1,0 +1,104 @@
+import { NextResponse } from 'next/server';
+import { supabaseAdmin } from '@/lib/instantLogin';
+import { normalizePhone, normalizeEmail } from '@/lib/subscriberStatus';
+import { hasActiveEntitlement } from '@/lib/entitlement';
+
+async function requireAdmin(request: Request) {
+  const authHeader = request.headers.get('Authorization') || '';
+  const token = authHeader.replace('Bearer ', '');
+
+  const { data: { user } } = await supabaseAdmin.auth.getUser(token);
+  if (!user) return null;
+
+  const { data: adminProfile } = await supabaseAdmin.from('profiles').select('role').eq('id', user.id).single();
+  if (adminProfile?.role !== 'admin') return null;
+
+  return user;
+}
+
+// GET - רשימת כל מכשירי ההתראות הרשומים (מנויים ולידים), עם שם/איש קשר לכל אחד - מנוי
+// מזוהה דרך הפרופיל שלו (user_id), ליד דרך הפרטים ששמר בעצמו בשורה (name/phone/email)
+export async function GET(request: Request) {
+  const admin = await requireAdmin(request);
+  if (!admin) return NextResponse.json({ error: 'אין הרשאת ניהול' }, { status: 403 });
+
+  const { data: subs } = await supabaseAdmin
+    .from('push_subscriptions')
+    .select('id, user_id, name, phone, email, created_at, monday_sync_error')
+    .is('invalid_at', null)
+    .order('created_at', { ascending: false });
+
+  const userIds = Array.from(new Set((subs || []).map((s) => s.user_id).filter(Boolean))) as string[];
+  const { data: profiles } = userIds.length
+    ? await supabaseAdmin.from('profiles').select('id, full_name, email, role, subscription_status, subscription_paid_until').in('id', userIds)
+    : { data: [] as { id: string; full_name: string | null; email: string | null; role: string; subscription_status: string; subscription_paid_until: string | null }[] };
+
+  const profileById = new Map((profiles || []).map((p) => [p.id, p]));
+
+  const deviceRows = (subs || []).map((s) => {
+    const profile = s.user_id ? profileById.get(s.user_id) : null;
+    const isSubscriber = hasActiveEntitlement(profile);
+    // role נשאר "subscriber" גם אחרי ביטול (ר' lib/entitlement.ts) - כך אפשר להבדיל בין מי
+    // שמעולם לא היה מנוי לבין מנוי לשעבר, גם כשלשניהם אין כרגע גישה פעילה
+    const isFormerSubscriber = !isSubscriber && profile?.role === 'subscriber';
+    return {
+      id: s.id,
+      createdAt: s.created_at,
+      isSubscriber,
+      isFormerSubscriber,
+      name: profile?.full_name || s.name || null,
+      email: profile?.email || s.email || null,
+      phone: s.phone || null,
+      mondaySyncError: s.monday_sync_error || null,
+      // מפתח קיבוץ - מנוי לפי user_id, ליד לפי טלפון/מייל מנורמלים (אותו איש קשר ממכשירים
+      // שונים צריך להופיע כשורה אחת, לא שורה לכל מכשיר)
+      groupKey: s.user_id ? `u:${s.user_id}` : `c:${normalizePhone(s.phone)}|${normalizeEmail(s.email)}`,
+    };
+  });
+
+  const groups = new Map<string, typeof deviceRows>();
+  for (const row of deviceRows) {
+    const list = groups.get(row.groupKey) || [];
+    list.push(row);
+    groups.set(row.groupKey, list);
+  }
+
+  const rows = Array.from(groups.values()).map((members) => {
+    const sorted = [...members].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    const latest = sorted[0];
+    return {
+      id: latest.id,
+      deviceIds: members.map((m) => m.id),
+      deviceCount: members.length,
+      createdAt: latest.createdAt,
+      isSubscriber: latest.isSubscriber,
+      isFormerSubscriber: latest.isFormerSubscriber,
+      name: members.find((m) => m.name)?.name || null,
+      email: members.find((m) => m.email)?.email || null,
+      phone: members.find((m) => m.phone)?.phone || null,
+      // לא חייב שתהיה באותה שורה שהוחזרה כ-"latest" - מראים כל שגיאת סנכרון מאנדיי שלא
+      // נפתרה, מכל מכשיר של איש הקשר הזה, כדי שליד שה"מהלך" שלו למאנדיי נכשל לא יהיה בלתי-נראה
+      mondaySyncError: members.find((m) => m.mondaySyncError)?.mondaySyncError || null,
+    };
+  }).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+  return NextResponse.json({
+    rows,
+    subscriberCount: rows.filter((r) => r.isSubscriber).length,
+    leadCount: rows.filter((r) => !r.isSubscriber).length,
+  });
+}
+
+// DELETE - מחיקת מכשיר/ים רשומים. מקבל id (שורה בודדת) או ids (כמה שורות בבת אחת - כדי
+// להסיר איש קשר אחד שרשום מכמה מכשירים בפעולה אחת)
+export async function DELETE(request: Request) {
+  const admin = await requireAdmin(request);
+  if (!admin) return NextResponse.json({ error: 'אין הרשאת ניהול' }, { status: 403 });
+
+  const { id, ids } = await request.json().catch(() => ({}));
+  const targetIds = Array.isArray(ids) && ids.length ? ids : id ? [id] : [];
+  if (!targetIds.length) return NextResponse.json({ error: 'חסר מזהה' }, { status: 400 });
+
+  await supabaseAdmin.from('push_subscriptions').delete().in('id', targetIds);
+  return NextResponse.json({ ok: true });
+}

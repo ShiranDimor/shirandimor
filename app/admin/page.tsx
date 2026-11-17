@@ -1,0 +1,374 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { supabase } from '@/lib/supabase';
+
+export default function AdminDashboard() {
+  const [checking, setChecking] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [userEmail, setUserEmail] = useState('');
+
+  const [approvedCount, setApprovedCount] = useState(0);
+  const [openTradesCount, setOpenTradesCount] = useState(0);
+  const [abandonedTotal, setAbandonedTotal] = useState(0);
+  const [abandonedUnread, setAbandonedUnread] = useState(0);
+  const [livesCount, setLivesCount] = useState(0);
+  const [liveRegistrationsTotal, setLiveRegistrationsTotal] = useState(0);
+  const [lessonsCount, setLessonsCount] = useState(0);
+  const [revenueTotal, setRevenueTotal] = useState(0);
+  const [salesLeadsInProgress, setSalesLeadsInProgress] = useState(0);
+  const [salesLeadsAttention, setSalesLeadsAttention] = useState(0);
+
+  const [sendingSummary, setSendingSummary] = useState(false);
+  const [summaryMessage, setSummaryMessage] = useState('');
+  const [summaryMonth, setSummaryMonth] = useState(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  });
+  const [summaryAudience, setSummaryAudience] = useState<'traders' | 'updates'>('traders');
+
+  const [sendingStopLossTest, setSendingStopLossTest] = useState(false);
+  const [stopLossTestMessage, setStopLossTestMessage] = useState('');
+
+  const [sendingPushReminder, setSendingPushReminder] = useState(false);
+  const [pushReminderMessage, setPushReminderMessage] = useState('');
+
+  async function handleSendMonthlySummary() {
+    setSendingSummary(true);
+    setSummaryMessage('');
+
+    // פותחים טאב ריק מיד, באופן סינכרוני בתוך אירוע הלחיצה עצמו - דפדפנים חוסמים
+    // window.open שמגיע אחרי await (fetch) כי הם כבר לא רואים בזה פעולה יזומה ע"י המשתמש
+    const waWindow = window.open('', '_blank');
+
+    const { data: { session } } = await supabase.auth.getSession();
+
+    try {
+      const res = await fetch('/api/admin/send-monthly-summary', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session?.access_token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ month: summaryMonth, audience: summaryAudience }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        setSummaryMessage('שגיאה: ' + (data.error || 'לא הצלחנו לשלוח'));
+        waWindow?.close();
+      } else {
+        setSummaryMessage(`נשלח למייל, התמונה ירדה למכשיר ונפתח וואטסאפ עם טקסט מוכן · ${data.openedThisWeekStillOpen} עסקאות פתוחות · ${data.closedThisWeek} נסגרו החודש`);
+
+        // מורידים את התמונה למכשיר - כדי שאפשר יהיה לצרף אותה לוואטסאפ ידנית (אין חיבור API לוואטסאפ)
+        if (data.imageBase64) {
+          const link = document.createElement('a');
+          link.href = `data:image/png;base64,${data.imageBase64}`;
+          link.download = 'סיכום-החודש.png';
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        }
+        if (data.whatsappText && waWindow) {
+          // מנווטים את הטאב שכבר נפתח (בתוך אירוע הלחיצה) ישר לצ'אט האישי של שירן -
+          // לא לחלון בחירת איש קשר - כדי שאפשר יהיה לשלוח לעצמה קודם ולהעביר הלאה לקבוצה
+          waWindow.location.href = `https://wa.me/972529115377?text=${encodeURIComponent(data.whatsappText)}`;
+        } else if (data.whatsappText) {
+          setSummaryMessage((prev) => `${prev} · הדפדפן חסם את פתיחת הטאב - נסי שוב או אשרי חלונות קופצים לאתר`);
+        }
+      }
+    } catch (e) {
+      waWindow?.close();
+      setSummaryMessage('שגיאה בשליחת הסיכום');
+    }
+
+    setSendingSummary(false);
+  }
+
+  async function handleSendStopLossTest() {
+    setSendingStopLossTest(true);
+    setStopLossTestMessage('');
+
+    const { data: { session } } = await supabase.auth.getSession();
+
+    try {
+      const res = await fetch('/api/admin/test-stop-loss-alert', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session?.access_token}` },
+      });
+      const data = await res.json();
+
+      setStopLossTestMessage(res.ok ? 'נשלחו 2 דוגמאות לכתובת הבדיקה' : 'שגיאה: ' + (data.error || 'לא הצלחנו לשלוח'));
+    } catch (e) {
+      setStopLossTestMessage('שגיאה בשליחת הדוגמה');
+    }
+
+    setSendingStopLossTest(false);
+  }
+
+  async function handleSendPushReminder() {
+    setSendingPushReminder(true);
+    setPushReminderMessage('');
+
+    const { data: { session } } = await supabase.auth.getSession();
+
+    try {
+      const res = await fetch('/api/admin/send-push-reminder', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session?.access_token}` },
+      });
+      const data = await res.json();
+
+      setPushReminderMessage(
+        res.ok
+          ? `נשלח ל-${data.sent} מנויים שעדיין לא הפעילו התראות (${data.skipped} כבר הפעילו - לא קיבלו שוב)`
+          : 'שגיאה: ' + (data.error || 'לא הצלחנו לשלוח')
+      );
+    } catch (e) {
+      setPushReminderMessage('שגיאה בשליחת התזכורת');
+    }
+
+    setSendingPushReminder(false);
+  }
+
+  useEffect(() => {
+    checkAdmin();
+  }, []);
+
+  async function checkAdmin() {
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      setChecking(false);
+      return;
+    }
+
+    setUserEmail(user.email || '');
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    setIsAdmin(profile?.role === 'admin');
+    setChecking(false);
+
+    if (profile?.role === 'admin') {
+      loadCounts();
+    }
+  }
+
+  async function loadCounts() {
+    const { data: { session } } = await supabase.auth.getSession();
+
+    const [approved, openTrades, abandonedRes, livesRes, lessonsRes, revenueRes, salesLeadsRes] = await Promise.all([
+      supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'subscriber').eq('subscription_status', 'active'),
+      supabase.from('trades').select('id', { count: 'exact', head: true }).eq('status', 'open'),
+      fetch('/api/admin/trading-plan-abandoned/count', { headers: { Authorization: `Bearer ${session?.access_token}` } }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+      fetch('/api/admin/lives', { headers: { Authorization: `Bearer ${session?.access_token}` } }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+      fetch('/api/admin/lessons', { headers: { Authorization: `Bearer ${session?.access_token}` } }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+      fetch('/api/admin/revenue-projection', { headers: { Authorization: `Bearer ${session?.access_token}` } }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+      fetch('/api/admin/sales-leads/stats', { headers: { Authorization: `Bearer ${session?.access_token}` } }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+    ]);
+
+    setApprovedCount(approved.count || 0);
+    setOpenTradesCount(openTrades.count || 0);
+    setAbandonedTotal(abandonedRes?.total || 0);
+    setAbandonedUnread(abandonedRes?.unread || 0);
+    const lives: { registrationsCount: number; scheduled_at: string }[] = livesRes?.lives || [];
+    // רק לייבים עתידיים - נרשמים ללייב שכבר עבר עדיין נספרים בתוך הלייב עצמו, אבל לא בסיכום
+    // הזה, כדי שהמספר כאן ישקף רק מה שעוד רלוונטי להיערך אליו
+    const upcomingLives = lives.filter((l) => new Date(l.scheduled_at).getTime() >= Date.now());
+    setLivesCount(upcomingLives.length);
+    setLiveRegistrationsTotal(upcomingLives.reduce((sum, l) => sum + (l.registrationsCount || 0), 0));
+    setLessonsCount((lessonsRes?.lessons || []).length);
+    setRevenueTotal(revenueRes?.totalAmount || 0);
+    setSalesLeadsInProgress(salesLeadsRes?.inProgress || 0);
+    setSalesLeadsAttention((salesLeadsRes?.followupsOverdue || 0) + (salesLeadsRes?.followupsToday || 0));
+  }
+
+  async function handleLogout() {
+    await supabase.auth.signOut();
+    window.location.href = '/';
+  }
+
+  if (checking) {
+    return <div className="wrap"><p style={{ padding: '40px', textAlign: 'center' }}>בודקים הרשאות...</p></div>;
+  }
+
+  if (!userEmail) {
+    return (
+      <div className="wrap">
+        <header>
+          <a href="/" className="brand">מסחר <span>אחראי</span> במניות</a>
+          <a href="/" className="nav-link">בית</a>
+        </header>
+        <p style={{ padding: '40px 0', textAlign: 'center' }}>צריך להתחבר קודם. <a href="/login" style={{ color: 'var(--teal)' }}>כניסה</a></p>
+      </div>
+    );
+  }
+
+  if (!isAdmin) {
+    return (
+      <div className="wrap">
+        <header>
+          <a href="/" className="brand">מסחר <span>אחראי</span> במניות</a>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <a href="/" className="nav-link">בית</a>
+            <button onClick={handleLogout} className="nav-link" style={{ background: 'none', border: 'none', cursor: 'pointer', font: 'inherit', padding: 0 }}>התנתקות</button>
+          </div>
+        </header>
+        <p style={{ padding: '40px 0', textAlign: 'center' }}>אין הרשאת ניהול לחשבון המחובר ({userEmail})</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="wrap">
+      <header>
+        <a href="/" className="brand">מסחר <span>אחראי</span> במניות</a>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <a href="/" className="nav-link">בית</a>
+          <a href="/account" className="nav-link">הגדרת סיסמה</a>
+          <button onClick={handleLogout} className="nav-link" style={{ background: 'none', border: 'none', cursor: 'pointer', font: 'inherit', padding: 0 }}>התנתקות</button>
+        </div>
+      </header>
+
+      <div className="section-label"><h2>אזור הניהול</h2></div>
+
+      <div className="section-label" style={{ marginTop: 0 }}><h2>לידים ומנויים</h2></div>
+      <div className="admin-tiles">
+        <Link href="/admin/sales-leads" className={`admin-tile ${salesLeadsAttention > 0 ? 'attention' : ''}`}>
+          <div className="at-icon">📞</div>
+          <div className="at-title">שיחות מכירה - קבוצת עדכונים</div>
+          <div className="at-count">{salesLeadsAttention > 0 ? `${salesLeadsAttention} דורשים טיפול · ` : ''}{salesLeadsInProgress} בטיפול</div>
+        </Link>
+
+        <Link href="/admin/subscribers" className="admin-tile">
+          <div className="at-icon">✅</div>
+          <div className="at-title">מנויים מאושרים</div>
+          <div className="at-count">{approvedCount} פעילים · ₪{revenueTotal.toLocaleString('he-IL')}</div>
+        </Link>
+
+        <Link href="/admin/trading-plan" className={`admin-tile ${abandonedUnread > 0 ? 'attention' : ''}`}>
+          <div className="at-icon">📝</div>
+          <div className="at-title">לידים - תוכנית מסחר</div>
+          <div className="at-count">{abandonedUnread > 0 ? `${abandonedUnread} חדשים · ` : ''}{abandonedTotal} סה״כ</div>
+        </Link>
+
+        <Link href="/admin/push-subscriptions" className="admin-tile">
+          <div className="at-icon">🔔</div>
+          <div className="at-title">הפעילו התראות פוש</div>
+          <div className="at-count">מנויים ולידים שהפעילו</div>
+        </Link>
+
+        <Link href="/admin/notifications" className="admin-tile">
+          <div className="at-icon">📜</div>
+          <div className="at-title">היסטוריית התראות</div>
+          <div className="at-count">מי באמת קיבל, לא רק נשלח</div>
+        </Link>
+      </div>
+
+      <div className="section-label"><h2>שאר האתר</h2></div>
+      <div className="admin-tiles">
+        <Link href="/admin/trades" className="admin-tile">
+          <div className="at-icon">📊</div>
+          <div className="at-title">תיק מסחר</div>
+          <div className="at-count">{openTradesCount} עסקאות פתוחות</div>
+        </Link>
+
+        <Link href="/admin/lessons" className="admin-tile">
+          <div className="at-icon">🎥</div>
+          <div className="at-title">ספריית שיעורים</div>
+          <div className="at-count">{lessonsCount} שיעורים</div>
+        </Link>
+
+        <Link href="/admin/lives" className="admin-tile">
+          <div className="at-icon">📡</div>
+          <div className="at-title">מפגשים</div>
+          <div className="at-count">{liveRegistrationsTotal} נרשמים · {livesCount} מפגשים קרובים</div>
+        </Link>
+
+        <Link href="/admin/announcements" className="admin-tile">
+          <div className="at-icon">📌</div>
+          <div className="at-title">לוח מודעות</div>
+          <div className="at-count">פרסום עדכון לכולם</div>
+        </Link>
+
+        <Link href="/admin/agreements" className="admin-tile">
+          <div className="at-icon">✍️</div>
+          <div className="at-title">הסכמים וחתימות</div>
+          <div className="at-count">קישור לחתימה דיגיטלית</div>
+        </Link>
+
+        <Link href="/admin/automations" className="admin-tile">
+          <div className="at-icon">⚙️</div>
+          <div className="at-title">אוטומציות</div>
+          <div className="at-count">תזכורות וטיוטות אוטומטיות</div>
+        </Link>
+
+        <Link href="/admin/support-bot" className="admin-tile">
+          <div className="at-icon">🤖</div>
+          <div className="at-title">בוט תמיכה - בדיקה</div>
+          <div className="at-count">כלי פנימי</div>
+        </Link>
+
+        <Link href="/admin/blocked-contacts" className="admin-tile">
+          <div className="at-icon">🚫</div>
+          <div className="at-title">אנשי קשר חסומים</div>
+          <div className="at-count">כלי פנימי</div>
+        </Link>
+
+        <Link href="/admin/marketing" className="admin-tile">
+          <div className="at-icon">📣</div>
+          <div className="at-title">סטודיו תוכן שיווקי</div>
+          <div className="at-count">כלי פנימי</div>
+        </Link>
+      </div>
+
+      <div className="toggle-row" style={{ marginTop: '8px' }}>
+        <div className={`toggle-opt ${summaryAudience === 'traders' ? 'long-active' : ''}`} onClick={() => setSummaryAudience('traders')} style={{ cursor: 'pointer' }}>
+          לקבוצת הסוחרים (סימבולים גלויים)
+        </div>
+        <div className={`toggle-opt ${summaryAudience === 'updates' ? 'short-active' : ''}`} onClick={() => setSummaryAudience('updates')} style={{ cursor: 'pointer' }}>
+          לקבוצת העדכונים (סימבולים מטושטשים)
+        </div>
+      </div>
+      <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+        <input
+          type="month"
+          className="tp-text-input"
+          style={{ minHeight: 'auto', width: '140px', flexShrink: 0 }}
+          value={summaryMonth}
+          onChange={(e) => setSummaryMonth(e.target.value)}
+          max={`${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`}
+        />
+        <button className="btn-outline" style={{ flex: 1 }} onClick={handleSendMonthlySummary} disabled={sendingSummary}>
+          {sendingSummary ? 'שולחים...' : '📧 שליחת סיכום החודש למייל'}
+        </button>
+      </div>
+      {summaryMessage && (
+        <p style={{ fontSize: '12px', color: summaryMessage.startsWith('שגיאה') ? 'var(--loss)' : 'var(--profit)', marginTop: '10px', textAlign: 'center' }}>
+          {summaryMessage}
+        </p>
+      )}
+
+      <button className="btn-outline" style={{ width: '100%', marginTop: '18px' }} onClick={handleSendStopLossTest} disabled={sendingStopLossTest}>
+        {sendingStopLossTest ? 'שולחים דוגמה...' : '📧 שליחת דוגמה - מייל "עסקה נסגרה" למנויים (רווח + הפסד)'}
+      </button>
+      {stopLossTestMessage && (
+        <p style={{ fontSize: '12px', color: stopLossTestMessage.startsWith('שגיאה') ? 'var(--loss)' : 'var(--profit)', marginTop: '10px', textAlign: 'center' }}>
+          {stopLossTestMessage}
+        </p>
+      )}
+
+      <button className="btn-outline" style={{ width: '100%', marginTop: '18px' }} onClick={handleSendPushReminder} disabled={sendingPushReminder}>
+        {sendingPushReminder ? 'שולחים תזכורת...' : '🔔 תזכורת למנויים שלא הפעילו התראות פוש'}
+      </button>
+      {pushReminderMessage && (
+        <p style={{ fontSize: '12px', color: pushReminderMessage.startsWith('שגיאה') ? 'var(--loss)' : 'var(--profit)', marginTop: '10px', textAlign: 'center' }}>
+          {pushReminderMessage}
+        </p>
+      )}
+    </div>
+  );
+}

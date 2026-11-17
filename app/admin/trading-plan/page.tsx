@@ -1,0 +1,466 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { supabase } from '@/lib/supabase';
+
+type AbandonedRow = {
+  id: string;
+  name: string | null;
+  phone: string | null;
+  email: string | null;
+  source: string | null;
+  status: 'in_progress' | 'completed';
+  created_at: string;
+  updated_at: string;
+  completed_at: string | null;
+  computedProfile: string | null;
+  stepsReached: number;
+  totalSteps: number;
+  viewed: boolean;
+  handledAt: string | null;
+};
+
+type DetailAnswer = { id: string; title: string; value: string };
+
+type SubscriberRow = {
+  id: string;
+  name: string | null;
+  phone: string | null;
+  email: string | null;
+  computedProfile: string | null;
+  completed_at: string | null;
+};
+
+function stepLabel(r: AbandonedRow) {
+  if (r.status === 'completed') return r.computedProfile ? `הושלם - פרופיל: ${r.computedProfile}` : 'השאלון הושלם';
+  if (!r.stepsReached) return 'בטופס הפרטים, עדיין לפני תחילת השאלון';
+  return `בשלב ${r.stepsReached} מתוך ${r.totalSteps} בשאלון`;
+}
+
+function timeAgo(iso: string) {
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const mins = Math.round(diffMs / 60000);
+  if (mins < 60) return `לפני ${mins} דק'`;
+  const hours = Math.round(mins / 60);
+  if (hours < 24) return `לפני ${hours} שעות`;
+  const days = Math.round(hours / 24);
+  return `לפני ${days} ימים`;
+}
+
+export default function AdminTradingPlanAbandonedPage() {
+  const [checking, setChecking] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [userEmail, setUserEmail] = useState('');
+
+  const [rows, setRows] = useState<AbandonedRow[]>([]);
+  const [loadingRows, setLoadingRows] = useState(false);
+  const [leadStats, setLeadStats] = useState<{ total: number; leads: number; blank: number; alreadySubscriber: number } | null>(null);
+
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [details, setDetails] = useState<Record<string, DetailAnswer[]>>({});
+  const [loadingDetailsId, setLoadingDetailsId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [handlingId, setHandlingId] = useState<string | null>(null);
+  const [showHandled, setShowHandled] = useState(false);
+  const [resyncingId, setResyncingId] = useState<string | null>(null);
+  const [resyncMessage, setResyncMessage] = useState<Record<string, string>>({});
+
+  const [subscriberRows, setSubscriberRows] = useState<SubscriberRow[]>([]);
+  const [loadingSubscriberRows, setLoadingSubscriberRows] = useState(false);
+  const [showSubscribers, setShowSubscribers] = useState(false);
+
+  useEffect(() => {
+    checkAdmin();
+  }, []);
+
+  async function checkAdmin() {
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      setChecking(false);
+      return;
+    }
+
+    setUserEmail(user.email || '');
+
+    const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+
+    setIsAdmin(profile?.role === 'admin');
+    setChecking(false);
+    if (profile?.role === 'admin') {
+      loadRows();
+      loadSubscriberRows();
+    }
+  }
+
+  async function loadRows() {
+    setLoadingRows(true);
+    const { data: { session } } = await supabase.auth.getSession();
+    const res = await fetch('/api/admin/trading-plan-abandoned', {
+      headers: { Authorization: `Bearer ${session?.access_token}` },
+    });
+    if (res.ok) {
+      const data = await res.json();
+      setRows(data.rows || []);
+      setLeadStats(data.stats || null);
+    }
+    setLoadingRows(false);
+  }
+
+  async function loadSubscriberRows() {
+    setLoadingSubscriberRows(true);
+    const { data: { session } } = await supabase.auth.getSession();
+    const res = await fetch('/api/admin/trading-plan-subscribers', {
+      headers: { Authorization: `Bearer ${session?.access_token}` },
+    });
+    if (res.ok) {
+      const data = await res.json();
+      setSubscriberRows(data.rows || []);
+    }
+    setLoadingSubscriberRows(false);
+  }
+
+  async function toggleDetails(id: string) {
+    if (expandedId === id) {
+      setExpandedId(null);
+      return;
+    }
+    setExpandedId(id);
+    if (!details[id]) {
+      setLoadingDetailsId(id);
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`/api/admin/trading-plan-abandoned/${id}`, {
+        headers: { Authorization: `Bearer ${session?.access_token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setDetails((prev) => ({ ...prev, [id]: data.answers || [] }));
+        setRows((prev) => prev.map((r) => (r.id === id ? { ...r, viewed: true } : r)));
+      }
+      setLoadingDetailsId(null);
+    }
+  }
+
+  async function handleToggleHandled(id: string, handled: boolean) {
+    setHandlingId(id);
+    const { data: { session } } = await supabase.auth.getSession();
+    const res = await fetch(`/api/admin/trading-plan-abandoned/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
+      body: JSON.stringify({ handled }),
+    });
+    setHandlingId(null);
+    if (res.ok) {
+      setRows((prev) => prev.map((r) => (r.id === id ? { ...r, handledAt: handled ? new Date().toISOString() : null } : r)));
+    }
+  }
+
+  async function handleDelete(id: string, label: string) {
+    if (!window.confirm(`למחוק לצמיתות את הרשומה של ${label}?`)) return;
+    setDeletingId(id);
+
+    const { data: { session } } = await supabase.auth.getSession();
+    const res = await fetch(`/api/admin/trading-plan-abandoned/${id}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${session?.access_token}` },
+    });
+
+    setDeletingId(null);
+    if (res.ok) {
+      setRows((prev) => prev.filter((r) => r.id !== id));
+      setSubscriberRows((prev) => prev.filter((r) => r.id !== id));
+      if (expandedId === id) setExpandedId(null);
+    }
+  }
+
+  async function handleResync(id: string) {
+    if (resyncingId) return; // הגנה מפני לחיצה כפולה מהירה לפני שהכפתור מספיק להיחסם ויזואלית
+    setResyncingId(id);
+    setResyncMessage((prev) => ({ ...prev, [id]: '' }));
+
+    const { data: { session } } = await supabase.auth.getSession();
+    const res = await fetch('/api/admin/trading-plan-resync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
+      body: JSON.stringify({ id }),
+    });
+    const data = await res.json().catch(() => null);
+
+    setResyncingId(null);
+    setResyncMessage((prev) => ({ ...prev, [id]: res.ok ? 'סונכרן למאנדיי ✓' : `שגיאה: ${data?.error || 'לא הצלחנו לסנכרן'}` }));
+  }
+
+  async function handleLogout() {
+    await supabase.auth.signOut();
+    window.location.href = '/';
+  }
+
+  if (checking) {
+    return <div className="wrap"><p style={{ padding: '40px', textAlign: 'center' }}>בודקים הרשאות...</p></div>;
+  }
+
+  if (!userEmail) {
+    return (
+      <div className="wrap">
+        <header>
+          <a href="/" className="brand">מסחר <span>אחראי</span> במניות</a>
+          <a href="/" className="nav-link">בית</a>
+        </header>
+        <p style={{ padding: '40px 0', textAlign: 'center' }}>צריך להתחבר קודם. <a href="/login" style={{ color: 'var(--teal)' }}>כניסה</a></p>
+      </div>
+    );
+  }
+
+  if (!isAdmin) {
+    return (
+      <div className="wrap">
+        <header>
+          <a href="/" className="brand">מסחר <span>אחראי</span> במניות</a>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <a href="/" className="nav-link">בית</a>
+            <button onClick={handleLogout} className="nav-link" style={{ background: 'none', border: 'none', cursor: 'pointer', font: 'inherit', padding: 0 }}>התנתקות</button>
+          </div>
+        </header>
+        <p style={{ padding: '40px 0', textAlign: 'center' }}>אין הרשאת ניהול לחשבון המחובר ({userEmail})</p>
+      </div>
+    );
+  }
+
+  const activeRows = rows.filter((r) => !r.handledAt);
+  const handledRows = rows.filter((r) => r.handledAt);
+
+  const completed = activeRows.filter((r) => r.status === 'completed');
+  const abandoned = activeRows.filter((r) => r.status === 'in_progress');
+  const contactable = abandoned.filter((r) => r.phone || r.email);
+  const noContact = abandoned.filter((r) => !r.phone && !r.email);
+
+  function renderRow(r: AbandonedRow) {
+    const waLink = r.phone ? `https://wa.me/972${r.phone.replace(/\D/g, '').replace(/^0/, '')}` : null;
+    const isExpanded = expandedId === r.id;
+    const rowAnswers = details[r.id];
+
+    return (
+      <div key={r.id} className="admin-row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '10px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', width: '100%', gap: '10px' }}>
+          <div>
+            <div className="name">
+              {r.name || 'ללא שם'}
+              {!r.viewed && (
+                <span style={{ marginRight: '8px', fontSize: '10.5px', fontWeight: 700, color: '#1A181C', background: '#E8A33D', borderRadius: '5px', padding: '2px 6px', verticalAlign: 'middle' }}>
+                  חדש
+                </span>
+              )}
+            </div>
+            {r.phone && <div className="email">{r.phone}</div>}
+            {r.email && <div className="email">{r.email}</div>}
+            <div className="email" style={{ marginTop: '2px' }}>
+              {r.status === 'completed' ? stepLabel(r) : `עצירה ${stepLabel(r)}`} · {r.source ? `מקור: ${r.source} · ` : ''}עדכון אחרון: {timeAgo(r.status === 'completed' ? (r.completed_at || r.updated_at) : r.updated_at)}
+            </div>
+            {r.handledAt && (
+              <div style={{ fontSize: '11.5px', color: 'var(--profit)', marginTop: '2px' }}>✓ טופל {timeAgo(r.handledAt)}</div>
+            )}
+          </div>
+          <button
+            className="row-delete-btn"
+            onClick={() => handleDelete(r.id, r.name || r.phone || r.email || 'ללא שם')}
+            disabled={deletingId === r.id}
+            title="מחיקת רשומה"
+            style={{ flexShrink: 0 }}
+          >
+            {deletingId === r.id ? '…' : (
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--loss)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 6h18" /><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /><line x1="10" y1="11" x2="10" y2="17" /><line x1="14" y1="11" x2="14" y2="17" />
+              </svg>
+            )}
+          </button>
+        </div>
+
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+          <button type="button" className="btn-outline" style={{ padding: '8px 12px', fontSize: '12.5px', flex: '0 0 auto' }} onClick={() => toggleDetails(r.id)}>
+            {isExpanded ? 'סגירה' : 'פרטים מלאים'}
+          </button>
+          {r.status === 'completed' && (
+            <a
+              href={`/my-plan/${r.id}?admin=1`}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ textDecoration: 'none', display: 'inline-block', padding: '8px 12px', fontSize: '12.5px', fontWeight: 700, color: '#E8A33D', background: 'rgba(232, 163, 61,0.1)', border: '1px solid rgba(232, 163, 61,0.3)', borderRadius: '8px', flex: '0 0 auto' }}
+            >
+              מעקב התקדמות ←
+            </a>
+          )}
+          {waLink && (
+            <a href={waLink} target="_blank" rel="noopener noreferrer" className="approve-btn" style={{ textDecoration: 'none', display: 'inline-block', flex: '0 0 auto' }}>
+              וואטסאפ ←
+            </a>
+          )}
+          {r.phone && (
+            <button
+              type="button"
+              className="btn-outline"
+              style={{ padding: '8px 12px', fontSize: '12.5px', flex: '0 0 auto' }}
+              onClick={() => handleResync(r.id)}
+              disabled={resyncingId === r.id}
+              title="אם הליד לא נראה במאנדיי - לחיצה כאן שולחת/מעדכנת אותו שם שוב"
+            >
+              {resyncingId === r.id ? '…' : '🔄 סנכרון למאנדיי'}
+            </button>
+          )}
+          <button
+            type="button"
+            className="btn-outline"
+            style={{ padding: '8px 12px', fontSize: '12.5px', flex: '0 0 auto' }}
+            onClick={() => handleToggleHandled(r.id, !r.handledAt)}
+            disabled={handlingId === r.id}
+          >
+            {handlingId === r.id ? '…' : r.handledAt ? 'ביטול סימון טופל' : '✓ סימון כטופל'}
+          </button>
+        </div>
+
+        {resyncMessage[r.id] && (
+          <p style={{ fontSize: '12px', color: resyncMessage[r.id].startsWith('שגיאה') ? 'var(--loss)' : 'var(--profit)', margin: 0 }}>
+            {resyncMessage[r.id]}
+          </p>
+        )}
+
+        {isExpanded && (
+          <div style={{ marginTop: '14px', paddingTop: '14px', borderTop: '1px solid var(--border, #2a2e37)' }}>
+            {loadingDetailsId === r.id && <p style={{ fontSize: '12.5px', color: 'var(--text-tertiary)' }}>טוענים תשובות...</p>}
+            {rowAnswers && rowAnswers.length === 0 && <p style={{ fontSize: '12.5px', color: 'var(--text-tertiary)' }}>עדיין אין תשובות שמורות</p>}
+            {rowAnswers && rowAnswers.map((a) => (
+              <div key={a.id} style={{ marginBottom: '8px' }}>
+                <div style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>{a.title}</div>
+                <div style={{ fontSize: '13.5px', color: 'var(--text-primary, #fff)' }}>{a.value}</div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="wrap">
+      <header>
+        <Link href="/admin" className="brand">מסחר <span>אחראי</span> במניות</Link>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <Link href="/" className="nav-link">בית</Link>
+          <Link href="/admin" className="nav-link">← לניהול</Link>
+          <button onClick={handleLogout} className="nav-link" style={{ background: 'none', border: 'none', cursor: 'pointer', font: 'inherit', padding: 0 }}>התנתקות</button>
+        </div>
+      </header>
+
+      <div className="section-label"><h2>לידים - תוכנית מסחר</h2><span className="count">{activeRows.length}</span></div>
+      <p style={{ fontSize: '13px', color: 'var(--text-tertiary)', marginBottom: '20px' }}>
+        כל מי שמילא את השאלון - גם מי שהשלים וגם מי שננטש באמצע. {activeRows.filter((r) => !r.viewed).length > 0 ? `${activeRows.filter((r) => !r.viewed).length} מהם חדשים - עדיין לא נפתחו. ` : ''}
+        "פרטים מלאים" מציג את כל התשובות, ומסמן שנצפה. "סימון כטופל" מעביר את הליד לאזור נפרד למטה.
+      </p>
+
+      {leadStats && (
+        <p style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginBottom: '20px', lineHeight: 1.7 }}>
+          מתוך {leadStats.total} שלחצו "התחלה": {leadStats.blank > 0 ? `${leadStats.blank} עזבו בלי להשאיר שם/טלפון/מייל (אי אפשר ליצור איתם קשר), ` : ''}
+          {leadStats.alreadySubscriber > 0 ? `${leadStats.alreadySubscriber} כבר מנויים (לא מוצגים כאן כי כבר המירו), ` : ''}
+          ונשארו {leadStats.leads} לידים בני-פנייה ברשימה למטה. במשפך ההמרה באנליטיקה רואים גם את כל הלחיצות על "התחלה" שבכלל לא הגיעו לטופס הפרטים.
+        </p>
+      )}
+
+      {loadingRows && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>טוענים...</p>}
+      {!loadingRows && activeRows.length === 0 && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>אין כרגע אף אחד לטיפול</p>}
+
+      {completed.length > 0 && (
+        <>
+          <div className="section-label" style={{ marginTop: '8px' }}><h2 style={{ fontSize: '15px' }}>השלימו את השאלון</h2></div>
+          {completed.map(renderRow)}
+        </>
+      )}
+
+      {contactable.length > 0 && (
+        <>
+          <div className="section-label" style={{ marginTop: '24px' }}><h2 style={{ fontSize: '15px' }}>ננטשו באמצע - יש פרטי קשר</h2></div>
+          {contactable.map(renderRow)}
+        </>
+      )}
+
+      {noContact.length > 0 && (
+        <>
+          <div className="section-label" style={{ marginTop: '24px' }}><h2 style={{ fontSize: '15px' }}>ננטשו באמצע - בלי פרטי קשר (עצרו בדיוק בטופס הפרטים עצמו)</h2></div>
+          {noContact.map(renderRow)}
+        </>
+      )}
+
+      {handledRows.length > 0 && (
+        <div style={{ marginTop: '32px', paddingTop: '20px', borderTop: '1px solid var(--border-hairline)' }}>
+          <button
+            type="button"
+            onClick={() => setShowHandled((v) => !v)}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', gap: '8px', width: '100%' }}
+          >
+            <h2 style={{ fontSize: '15px', color: 'var(--text-secondary)' }}>✓ לידים שטופלו ({handledRows.length})</h2>
+            <span style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>{showHandled ? '▲ הסתרה' : '▼ הצגה'}</span>
+          </button>
+          {showHandled && <div style={{ marginTop: '14px' }}>{handledRows.map(renderRow)}</div>}
+        </div>
+      )}
+
+      <div style={{ marginTop: '32px', paddingTop: '20px', borderTop: '1px solid var(--border-hairline)' }}>
+        <button
+          type="button"
+          onClick={() => setShowSubscribers((v) => !v)}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', gap: '8px', width: '100%' }}
+        >
+          <h2 style={{ fontSize: '15px', color: 'var(--text-primary)' }}>מנויים שמילאו את התוכנית ({subscriberRows.length})</h2>
+          <span style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>{showSubscribers ? '▲ הסתרה' : '▼ הצגה'}</span>
+        </button>
+        <p style={{ fontSize: '12.5px', color: 'var(--text-tertiary)', marginTop: '8px' }}>
+          מנויים פעילים (גם באתר וגם ב"קבוצת סוחרים" ב-Monday.com) שהשלימו את שאלון תוכנית המסחר.
+        </p>
+
+        {loadingSubscriberRows && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)', marginTop: '10px' }}>טוענים...</p>}
+
+        {showSubscribers && (
+          <div style={{ marginTop: '14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {subscriberRows.length === 0 && !loadingSubscriberRows && (
+              <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>אף מנוי עדיין לא מילא את השאלון</p>
+            )}
+            {subscriberRows.map((r) => (
+              <div key={r.id} className="admin-row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '10px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', width: '100%', gap: '10px' }}>
+                  <div>
+                    <div className="name">{r.name || 'ללא שם'}</div>
+                    {r.phone && <div className="email">{r.phone}</div>}
+                    {r.email && <div className="email">{r.email}</div>}
+                    <div className="email" style={{ marginTop: '2px' }}>
+                      {r.computedProfile ? `פרופיל: ${r.computedProfile} · ` : ''}השלמה {r.completed_at ? timeAgo(r.completed_at) : ''}
+                    </div>
+                  </div>
+                  <button
+                    className="row-delete-btn"
+                    onClick={() => handleDelete(r.id, r.name || r.phone || r.email || 'ללא שם')}
+                    disabled={deletingId === r.id}
+                    title="מחיקת רשומה"
+                    style={{ flexShrink: 0 }}
+                  >
+                    {deletingId === r.id ? '…' : (
+                      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--loss)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M3 6h18" /><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /><line x1="10" y1="11" x2="10" y2="17" /><line x1="14" y1="11" x2="14" y2="17" />
+                      </svg>
+                    )}
+                  </button>
+                </div>
+                <a
+                  href={`/my-plan/${r.id}?admin=1`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ textDecoration: 'none', display: 'inline-block', padding: '8px 12px', fontSize: '12.5px', fontWeight: 700, color: '#E8A33D', background: 'rgba(232, 163, 61,0.1)', border: '1px solid rgba(232, 163, 61,0.3)', borderRadius: '8px', alignSelf: 'flex-start' }}
+                >
+                  מעקב התקדמות ←
+                </a>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

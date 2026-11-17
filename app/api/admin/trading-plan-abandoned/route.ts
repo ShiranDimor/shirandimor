@@ -1,0 +1,79 @@
+import { NextResponse } from 'next/server';
+import { supabaseAdmin } from '@/lib/instantLogin';
+import { visibleSteps } from '@/lib/tradingPlan/questions';
+import { getActiveSubscriberContacts, normalizePhone, normalizeEmail } from '@/lib/subscriberStatus';
+import { getMondaySubscriberContacts } from '@/lib/tradingPlan/monday';
+
+// GET - כל מי שמילא את "תוכנית המסחר", גם מי שהשלים וגם מי שננטש באמצע -
+// כדי שיהיה מקום אחד לראות מי חדש (סיים או לא) וליזום קשר עם מי שהשאיר נייד/מייל.
+// מנויים פעילים לא מופיעים כאן - זה רשימת "לידים" להמרה, ומנוי כבר המיר. תוכנית המנוי
+// עדיין נגישה תמיד דרך כפתור "תוכנית מסחר" בעמוד הניהול האישי של המנוי (/admin/subscribers/[id]).
+export async function GET(request: Request) {
+  const authHeader = request.headers.get('Authorization') || '';
+  const token = authHeader.replace('Bearer ', '');
+
+  const { data: { user } } = await supabaseAdmin.auth.getUser(token);
+  if (!user) {
+    return NextResponse.json({ error: 'לא מחוברים' }, { status: 401 });
+  }
+
+  const { data: adminProfile } = await supabaseAdmin.from('profiles').select('role').eq('id', user.id).single();
+  if (adminProfile?.role !== 'admin') {
+    return NextResponse.json({ error: 'אין הרשאת ניהול' }, { status: 403 });
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from('trading_plan_responses')
+    .select('*')
+    .in('status', ['in_progress', 'completed'])
+    .order('updated_at', { ascending: false })
+    .limit(300);
+
+  if (error) {
+    return NextResponse.json({ error: 'שגיאה בשליפת נתונים' }, { status: 500 });
+  }
+
+  const [{ phones: subscriberPhones, emails: subscriberEmails }, { phones: mondayPhones, emails: mondayEmails }] = await Promise.all([
+    getActiveSubscriberContacts(),
+    getMondaySubscriberContacts(),
+  ]);
+
+  const isSubscriber = (r: { phone: string | null; email: string | null }) =>
+    subscriberPhones.has(normalizePhone(r.phone)) ||
+    subscriberEmails.has(normalizeEmail(r.email)) ||
+    // גם מנוי שמנוהל רק ב-Monday.com (בקבוצת "קבוצת סוחרים"), בלי חשבון תואם באתר -
+    // לפי טלפון או מייל, כי לרוב אין טלפון שמור
+    mondayPhones.has(normalizePhone(r.phone)) ||
+    mondayEmails.has(normalizeEmail(r.email));
+  const hasContact = (r: { name: string | null; phone: string | null; email: string | null }) => !!(r.name || r.phone || r.email);
+
+  const allRows = data || [];
+  // מי שלחץ "התחלה" ועזב מיד, בלי שם/טלפון/מייל - אין שום דרך ליצור איתו קשר, אז אין טעם
+  // להציג אותו כ"ליד" ברשימה. במקום זאת סופרים אותו בנפרד, כדי שהפער מול מספר המתחילים
+  // הכולל (שרואים במשפך ההמרה) יהיה מוסבר ולא נראה כמו אי-התאמה
+  const leadsOnly = allRows.filter((r) => !isSubscriber(r) && hasContact(r));
+  const blankCount = allRows.filter((r) => !hasContact(r)).length;
+  const alreadySubscriberCount = allRows.filter((r) => hasContact(r) && isSubscriber(r)).length;
+
+  const rows = leadsOnly.map((r) => ({
+    id: r.id,
+    name: r.name,
+    phone: r.phone,
+    email: r.email,
+    source: r.source,
+    status: r.status,
+    created_at: r.created_at,
+    updated_at: r.updated_at,
+    completed_at: r.completed_at,
+    computedProfile: r.computed_profile,
+    stepsReached: r.current_step ?? 0,
+    totalSteps: visibleSteps(r).length,
+    viewed: !!r.admin_viewed_at,
+    handledAt: r.admin_handled_at,
+  }));
+
+  return NextResponse.json({
+    rows,
+    stats: { total: allRows.length, leads: rows.length, blank: blankCount, alreadySubscriber: alreadySubscriberCount },
+  });
+}

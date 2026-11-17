@@ -1,0 +1,375 @@
+'use client';
+
+import { useEffect, useState, type CSSProperties } from 'react';
+import Link from 'next/link';
+import { supabase } from '@/lib/supabase';
+import { LESSONS_LIBRARY_PUBLIC, LESSON_CATEGORIES, LESSON_CATEGORY_ICONS, LESSON_CATEGORY_COLORS } from '@/lib/lessonsConfig';
+import PushNotificationButton from '@/components/PushNotificationButton';
+
+const PRESENTATIONS_KEY = '__presentations__';
+// הנושא הראשון שמומלץ למי שנכנס/ת בפעם הראשונה - מסומן בתג "התחילו כאן" כדי שלא יצטרכו לנחש
+const START_HERE_CATEGORY = 'איך תכלס מתחילים?';
+
+type LessonSummary = {
+  id: string;
+  title: string;
+  description: string | null;
+  category: string | null;
+  videoProvider: string;
+  durationMinutes: number | null;
+  thumbnailUrl: string | null;
+  locked: boolean;
+};
+
+export default function LessonsLibraryPage() {
+  const [lessons, setLessons] = useState<LessonSummary[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [checkingAccess, setCheckingAccess] = useState(true);
+  const [gateNeeded, setGateNeeded] = useState(false);
+  // 'registered' - ליד ידוע (עבר את שער הכניסה) אבל בלי מנוי בתשלום בפועל - חלק מהשיעורים
+  // (tier='subscriber') מוצגים לו נעולים עם קריאה להצטרפות, במקום פתוחים לגמרי כמו קודם
+  const [viewerTier, setViewerTier] = useState<'public' | 'registered' | 'subscriber'>('public');
+
+  // שער דו-שלבי: קודם רק נייד (מספיק כדי לזהות מנוי/קבוצת עדכונים קיימים - בלי לבקש שם סתם
+  // בשביל "לוודא מי זה"), ורק אם התברר שזה ליד חדש שבאמת נרשם ל-Monday מבקשים גם שם.
+  const [gateStep, setGateStep] = useState<'phone' | 'name'>('phone');
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [entering, setEntering] = useState(false);
+  const [gateError, setGateError] = useState('');
+  const [enterResult, setEnterResult] = useState<'subscriber' | 'updates' | null>(null);
+
+  useEffect(() => {
+    init();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function init() {
+    const { data: { user } } = await supabase.auth.getUser();
+    let admin = false;
+    if (user) {
+      const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle();
+      admin = profile?.role === 'admin';
+      setIsAdmin(admin);
+    }
+
+    setCheckingAccess(false);
+
+    if (!LESSONS_LIBRARY_PUBLIC && !admin) return;
+    await load(admin);
+  }
+
+  // שער כניסה יחיד לכל הספרייה - אין יותר נעילה לפי שיעור בודד. מי שכבר מנוי או כבר בקבוצת
+  // העדכונים (viewerTier חוזר לא 'public') נכנס ישר; מי שלא, מקבל טופס השארת פרטים קצר.
+  async function load(adminOverride?: boolean) {
+    setLoading(true);
+    const { data: { session } } = await supabase.auth.getSession();
+    const res = await fetch('/api/lessons', {
+      credentials: 'include',
+      headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {},
+    });
+    if (res.ok) {
+      const data = await res.json();
+      const admin = adminOverride ?? isAdmin;
+      setViewerTier(data.viewerTier || 'public');
+      if (!admin && data.viewerTier === 'public') {
+        setGateNeeded(true);
+        setLessons([]);
+      } else {
+        setGateNeeded(false);
+        setLessons(data.lessons || []);
+      }
+    }
+    setLoading(false);
+  }
+
+  function isValidPhone(v: string) {
+    return /^05\d{8}$/.test(v.replace(/\D/g, ''));
+  }
+
+  // אם הטלפון כבר משויך למנוי/חברת עדכונים במאנדיי - /api/lead לא יוצר ליד, ורק מחזיר matched,
+  // בלי שהיה צריך בכלל לבקש שם. אם לא - השרת מחזיר needsName, ורק אז עוברים לשלב השם.
+  async function handleEnter() {
+    if (gateStep === 'phone' && !isValidPhone(phone)) {
+      setGateError('צריך מספר נייד תקין (לדוגמה 0501234567)');
+      return;
+    }
+    if (gateStep === 'name' && !name.trim()) {
+      setGateError('צריך שם');
+      return;
+    }
+
+    setEntering(true);
+    setGateError('');
+
+    let matched: string | undefined;
+    let needsName = false;
+    try {
+      const res = await fetch('/api/lead', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: name.trim() || undefined, phone: phone.trim(), source: 'ספריית שיעורים' }),
+      });
+      const data = await res.json().catch(() => ({}));
+      matched = data.matched;
+      needsName = Boolean(data.needsName);
+    } catch {}
+
+    setEntering(false);
+
+    if (matched === 'subscriber' || matched === 'updates') {
+      setEnterResult(matched as 'subscriber' | 'updates');
+      return;
+    }
+
+    if (needsName) {
+      setGateStep('name');
+      return;
+    }
+
+    await load();
+  }
+
+  async function continueToLibrary() {
+    setEnterResult(null);
+    await load();
+  }
+
+  // מצגות מקבלות תיקייה נפרדת משלהן, בלי חלוקה לפי נושא - הן לא משתתפות בסינון/בקיבוץ לפי
+  // LESSON_CATEGORIES בכלל, גם אם יש להן ערך category שמור (נשמר רק לצרכי ניהול).
+  const presentationLessons = lessons.filter((l) => l.videoProvider === 'gamma');
+  const videoLessons = lessons.filter((l) => l.videoProvider !== 'gamma');
+
+  // רק נושאים שיש בהם בפועל שיעורים, בסדר הקבוע מ-LESSON_CATEGORIES (ולא לפי סדר הופעה מקרי)
+  const presentCategories = LESSON_CATEGORIES.filter((c) => videoLessons.some((l) => l.category === c));
+
+  // בברירת מחדל מציגים רק את התיקיות עצמן (בלי לפרוס את כל השיעורים) - לוחצים על תיקייה כדי
+  // להיכנס אליה. ככה אין יותר גלילה ארוכה כדי להגיע לנושא רחוק ברשימה.
+  const visibleLessons = activeCategory === PRESENTATIONS_KEY
+    ? presentationLessons
+    : activeCategory
+    ? videoLessons.filter((l) => l.category === activeCategory)
+    : [];
+  const nothingToShow = !activeCategory && presentationLessons.length === 0 && presentCategories.length === 0;
+  const activeCategoryLabel = activeCategory === PRESENTATIONS_KEY ? 'מצגות' : activeCategory;
+
+  function renderGrid(list: LessonSummary[]) {
+    return (
+      <div className="lesson-grid">
+        {list.map((lesson) => (
+          <Link key={lesson.id} href={`/lessons/${lesson.id}`} className="lesson-card" style={{ textDecoration: 'none', color: 'inherit' }}>
+            <div className={`lesson-card-thumb${lesson.locked ? ' locked' : ''}`}>
+              {lesson.thumbnailUrl ? (
+                <>
+                  <img src={lesson.thumbnailUrl} alt={lesson.title} />
+                  <div className="lesson-card-play"><span>{lesson.locked ? '🔒' : '▶'}</span></div>
+                </>
+              ) : (
+                <div className="lesson-card-presentation"><span>📊</span>מצגת</div>
+              )}
+              {lesson.locked && <div className="lesson-card-locked-badge">🔒 למנויים</div>}
+              {lesson.durationMinutes && <div className="lesson-card-duration">{lesson.durationMinutes} דק'</div>}
+            </div>
+            <div className="lesson-card-body">
+              <div className="lesson-card-title">{lesson.title}</div>
+              {lesson.category && <div className="lesson-card-meta"><span className="lesson-card-cat">{lesson.category}</span></div>}
+            </div>
+          </Link>
+        ))}
+      </div>
+    );
+  }
+
+  function renderSkeleton() {
+    return (
+      <div className="lesson-skeleton-grid">
+        {[0, 1, 2, 3].map((i) => <div key={i} className="lesson-skeleton" />)}
+      </div>
+    );
+  }
+
+  if (checkingAccess) {
+    return <div className="wrap"><p style={{ padding: '40px', textAlign: 'center' }}>טוענים...</p></div>;
+  }
+
+  if (!LESSONS_LIBRARY_PUBLIC && !isAdmin) {
+    return (
+      <div className="wrap">
+        <header>
+          <Link href="/" className="brand">מסחר <span>אחראי</span> במניות</Link>
+          <Link href="/" className="nav-link">בית</Link>
+        </header>
+        <p style={{ padding: '60px 0', textAlign: 'center', color: 'var(--text-tertiary)' }}>בקרוב 🎬</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="wrap">
+      <header>
+        <Link href="/" className="brand">מסחר <span>אחראי</span> במניות</Link>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <Link href="/" className="nav-link">בית</Link>
+          <Link href="/login" className="nav-link">כניסה לסוחרים</Link>
+        </div>
+      </header>
+
+      <div className="lessons-hero">
+        <div className="lessons-hero-icon">🎬</div>
+        <h1>ספריית שיעורים</h1>
+        <p>וובינרים, הרצאות ומצגות על מסחר - פתוחות לצפייה לכל מי שהוא חלק מהקהילה שלנו.</p>
+        {!gateNeeded && lessons.length > 0 && (
+          <div className="lessons-hero-stats">
+            <div className="lessons-hero-stat"><b>{lessons.length}</b><span>שיעורים</span></div>
+            <div className="lessons-hero-stat"><b>{presentCategories.length}</b><span>נושאים</span></div>
+          </div>
+        )}
+      </div>
+
+      {!gateNeeded && <PushNotificationButton />}
+
+      {gateNeeded && !loading && !enterResult && gateStep === 'phone' && (
+        <div className="tp-question-card">
+          <div className="tp-question-title">רק נייד, וזה שלך</div>
+          <div className="tp-step-intro" style={{ marginBottom: '14px' }}>
+            בלי שאלונים, בלי מייל - אם כבר קיימים אצלנו זה כל מה שצריך כדי לזהות אתכם ולפתוח את כל השיעורים.
+          </div>
+
+          <input className="tp-text-input" style={{ minHeight: 'auto', marginBottom: '10px' }} type="tel" placeholder="נייד" value={phone} onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))} autoFocus />
+
+          {gateError && <p style={{ color: 'var(--loss)', fontSize: '13px', marginBottom: '10px' }}>{gateError}</p>}
+
+          <button type="button" className="btn-primary" onClick={handleEnter} disabled={entering}>
+            {entering ? 'בודקים...' : 'כניסה לספרייה'}
+          </button>
+        </div>
+      )}
+
+      {gateNeeded && !loading && !enterResult && gateStep === 'name' && (
+        <div className="tp-question-card">
+          <div className="tp-question-title">עוד רגע - איך קוראים לך?</div>
+          <div className="tp-step-intro" style={{ marginBottom: '14px' }}>
+            לא זיהינו אתכם אצלנו - השארת שם פותחת גישה חינמית לספרייה ולעדכונים שלנו.
+          </div>
+
+          <input className="tp-text-input" style={{ minHeight: 'auto', marginBottom: '10px' }} placeholder="שם" value={name} onChange={(e) => setName(e.target.value)} autoFocus />
+
+          {gateError && <p style={{ color: 'var(--loss)', fontSize: '13px', marginBottom: '10px' }}>{gateError}</p>}
+
+          <button type="button" className="btn-primary" onClick={handleEnter} disabled={entering}>
+            {entering ? 'נכנסים...' : 'כניסה לספרייה'}
+          </button>
+        </div>
+      )}
+
+      {gateNeeded && enterResult === 'subscriber' && (
+        <div className="tp-question-card">
+          <div className="tp-question-title">כבר יש לך גישה מלאה 🎉</div>
+          <div className="tp-step-intro" style={{ marginBottom: '14px' }}>
+            את/ה כבר מנוי/ה ב"מדברים עסקאות" - אין צורך להשאיר שום פרטים, הכל כבר פתוח לך.
+          </div>
+          <button type="button" className="btn-primary" onClick={continueToLibrary}>כניסה לספרייה</button>
+        </div>
+      )}
+
+      {gateNeeded && enterResult === 'updates' && (
+        <div className="tp-question-card">
+          <div className="tp-question-title">כבר מכירים אותך 👋</div>
+          <div className="tp-step-intro" style={{ marginBottom: '14px' }}>
+            הספרייה פתוחה לך. רוצה גם <strong style={{ color: 'var(--lavender)' }}>ללמוד לסחור לצדי</strong>? זה &quot;מדברים עסקאות&quot;.
+          </div>
+          <a
+            href="https://pay.grow.link/ODUwNDc~e1145301cbce2cc9d1e0395611428e83-NDIxNTkxMw"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn-outline"
+            style={{ display: 'block', textAlign: 'center', textDecoration: 'none', marginBottom: '10px' }}
+          >
+            הצטרפות ל&quot;מדברים עסקאות&quot; ←
+          </a>
+          <button type="button" className="btn-primary" onClick={continueToLibrary}>כניסה לספרייה</button>
+        </div>
+      )}
+
+      {!gateNeeded && (
+        <>
+          {loading && renderSkeleton()}
+          {!loading && nothingToShow && (
+            <div className="lessons-empty">
+              <div className="lessons-empty-icon">🎬</div>
+              עדיין אין כאן שיעורים
+            </div>
+          )}
+
+          {!loading && !nothingToShow && !activeCategory && viewerTier === 'registered' && lessons.some((l) => l.locked) && (
+            <div className="lock-banner">
+              <div className="lb-icon">🔒</div>
+              <div className="lb-text">
+                <p className="lb-title">חלק מהשיעורים כאן שמורים למנויים</p>
+                <p className="lb-sub">חודש ניסיון ב&quot;מדברים עסקאות&quot; פותח גישה לכל הספרייה - כולל השיעורים הנעולים שתראו למטה.</p>
+              </div>
+              <div className="lb-cta-row">
+                <Link href="/subscribe" className="lb-cta">לחודש ניסיון ←</Link>
+              </div>
+            </div>
+          )}
+
+          {!loading && !nothingToShow && !activeCategory && (
+            <div className="lesson-folder-grid">
+              {presentationLessons.length > 0 && (
+                <button
+                  type="button"
+                  className="lesson-folder-tile"
+                  style={{ '--tile-accent': 'var(--orange)' } as CSSProperties}
+                  onClick={() => setActiveCategory(PRESENTATIONS_KEY)}
+                >
+                  <div className="lesson-folder-icon">📊</div>
+                  <div className="lesson-folder-title">מצגות</div>
+                  <div className="lesson-folder-count">
+                    {presentationLessons.length}
+                    {presentationLessons.some((l) => l.locked) && <span className="locked-tag">🔒 למנויים</span>}
+                  </div>
+                </button>
+              )}
+              {presentCategories.map((c) => {
+                const isStartHere = c === START_HERE_CATEGORY;
+                const categoryLessons = videoLessons.filter((l) => l.category === c);
+                return (
+                  <button
+                    key={c}
+                    type="button"
+                    className={`lesson-folder-tile${isStartHere ? ' lesson-folder-tile--start' : ''}`}
+                    style={{ '--tile-accent': `var(${LESSON_CATEGORY_COLORS[c] || '--orange'})` } as CSSProperties}
+                    onClick={() => setActiveCategory(c)}
+                  >
+                    {isStartHere && <span className="lesson-folder-tile--start-badge">התחילו כאן 👇</span>}
+                    <div className="lesson-folder-icon">{LESSON_CATEGORY_ICONS[c] || '📁'}</div>
+                    <div className="lesson-folder-title">{c}</div>
+                    <div className="lesson-folder-count">
+                      {categoryLessons.length}
+                      {categoryLessons.some((l) => l.locked) && <span className="locked-tag">🔒 למנויים</span>}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {!loading && activeCategory && (
+            <>
+              <button type="button" className="nav-link" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginBottom: '16px', fontSize: '14px' }} onClick={() => setActiveCategory(null)}>
+                ← לכל התיקיות
+              </button>
+              <div className="section-label"><h2>{activeCategoryLabel}</h2><span className="count">{visibleLessons.length}</span></div>
+              {renderGrid(visibleLessons)}
+            </>
+          )}
+        </>
+      )}
+
+    </div>
+  );
+}

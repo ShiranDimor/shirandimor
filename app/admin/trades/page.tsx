@@ -1,0 +1,1061 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { supabase } from '@/lib/supabase';
+import ClearableInput from '@/components/ClearableInput';
+import EquityCurve from '@/components/EquityCurve';
+import StatsRing from '@/components/StatsRing';
+import CalendarHeatmap from '@/components/CalendarHeatmap';
+import { realizeShares } from '@/lib/tradeClose';
+import PushNotificationButton from '@/components/PushNotificationButton';
+
+type Trade = {
+  id: string;
+  direction: string;
+  symbol: string;
+  entry_price: number;
+  stop_loss: number;
+  max_entry_price: number | null;
+  target_price: number | null;
+  shares_calculated: number;
+  exit_price: number | null;
+  current_price: number | null;
+  realized_pnl_usd: number | null;
+  notes: string | null;
+  opened_at: string;
+  closed_at: string | null;
+  parent_trade_id: string | null;
+  half_size: boolean;
+};
+
+function pctPnl(trade: Trade, isClosed: boolean) {
+  const dirFactor = trade.direction === 'short' ? -1 : 1;
+  const refPrice = isClosed ? trade.exit_price : (trade.current_price ?? trade.entry_price);
+  if (refPrice == null) return null;
+  return ((refPrice - trade.entry_price) / trade.entry_price) * 100 * dirFactor;
+}
+
+function usdPnl(trade: Trade, isClosed: boolean) {
+  if (isClosed) return trade.realized_pnl_usd ?? null;
+  const dirFactor = trade.direction === 'short' ? -1 : 1;
+  const refPrice = trade.current_price ?? trade.entry_price;
+  return (refPrice - trade.entry_price) * trade.shares_calculated * dirFactor;
+}
+
+function formatDate(iso: string | null) {
+  if (!iso) return '';
+  return new Date(iso).toLocaleDateString('he-IL');
+}
+
+const MONTH_LABELS = ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני', 'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר'];
+
+function monthKey(dateStr: string) {
+  const d = new Date(dateStr);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function monthLabel(key: string) {
+  const [year, month] = key.split('-');
+  return `${MONTH_LABELS[parseInt(month, 10) - 1]} ${year}`;
+}
+
+function currentMonthKey() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+export default function AdminTradesPage() {
+  const [checking, setChecking] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [userEmail, setUserEmail] = useState('');
+  const [userId, setUserId] = useState<string | null>(null);
+
+  const [openTrades, setOpenTrades] = useState<Trade[]>([]);
+  const [closedTrades, setClosedTrades] = useState<Trade[]>([]);
+  const [initialBalance, setInitialBalance] = useState<number | null>(null);
+  const [calYear, setCalYear] = useState(() => new Date().getFullYear());
+  const [calMonthIdx, setCalMonthIdx] = useState(() => new Date().getMonth());
+  const [profitMonthFilter, setProfitMonthFilter] = useState(currentMonthKey);
+  const [lossMonthFilter, setLossMonthFilter] = useState(currentMonthKey);
+
+  const [closingId, setClosingId] = useState<string | null>(null);
+  const [popoverPos, setPopoverPos] = useState<{ top: number; left: number } | null>(null);
+  const [exitPrice, setExitPrice] = useState('');
+  const [exitDate, setExitDate] = useState('');
+  const [closing, setClosing] = useState(false);
+
+  function closeAllPopovers() {
+    setClosingId(null);
+    setEditingId(null);
+    setAddQtyId(null);
+    setSellQtyId(null);
+  }
+
+  function openEditPopover(trade: Trade, e: React.MouseEvent<HTMLButtonElement>) {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const popW = 260;
+    // 420 כאומדן גובה סביר לפופאפ עריכת עסקה פתוחה (כולל כפתור מחיקה בתחתית) - בלי זה, במסך
+    // נייד קצר, top יכול לצאת רחוק מדי למטה ולהשאיר את הכפתור התחתון מתחת לקצה המסך בלי שום
+    // דרך לגלול אליו (position:fixed לא נגלל עם הדף, וה-overflow הפנימי לא עוזר אם הקופסה
+    // עצמה כבר ממוקמת מחוץ לגבולות החלון)
+    const popMaxH = Math.min(420, window.innerHeight - 16);
+    const left = Math.min(Math.max(8, rect.left), window.innerWidth - popW - 8);
+    const spaceBelow = window.innerHeight - rect.bottom;
+    let top = spaceBelow < popMaxH ? rect.top - 8 - popMaxH : rect.bottom + 8;
+    top = Math.max(8, Math.min(top, window.innerHeight - popMaxH - 8));
+    setPopoverPos({ top, left });
+    closeAllPopovers();
+    startEdit(trade);
+  }
+
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editSymbol, setEditSymbol] = useState('');
+  const [editEntry, setEditEntry] = useState('');
+  const [editStop, setEditStop] = useState('');
+  const [editMaxEntry, setEditMaxEntry] = useState('');
+  const [editTarget, setEditTarget] = useState('');
+  const [editShares, setEditShares] = useState('');
+  const [editExitPrice, setEditExitPrice] = useState('');
+  const [editOpenDate, setEditOpenDate] = useState('');
+  const [editCloseDate, setEditCloseDate] = useState('');
+  const [savingEdit, setSavingEdit] = useState(false);
+
+  const [addQtyId, setAddQtyId] = useState<string | null>(null);
+  const [addQtyPrice, setAddQtyPrice] = useState('');
+  const [addQtyShares, setAddQtyShares] = useState('');
+  const [addingQty, setAddingQty] = useState(false);
+
+  const [sellQtyId, setSellQtyId] = useState<string | null>(null);
+  const [sellQtyPrice, setSellQtyPrice] = useState('');
+  const [sellQtyShares, setSellQtyShares] = useState('');
+  const [sellingQty, setSellingQty] = useState(false);
+  const [sellQtyError, setSellQtyError] = useState('');
+
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshMessage, setRefreshMessage] = useState('');
+  const [direction, setDirection] = useState<'long' | 'short'>('long');
+  const [sizeMode, setSizeMode] = useState<'full' | 'half'>('full');
+  const [symbol, setSymbol] = useState('');
+  const [entryPrice, setEntryPrice] = useState('');
+  const [stopLoss, setStopLoss] = useState('');
+  const [maxEntryPrice, setMaxEntryPrice] = useState('');
+  const [targetPrice, setTargetPrice] = useState('');
+  const [riskAmount, setRiskAmount] = useState('3000');
+  const [openDate, setOpenDate] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState('');
+  const [resendingId, setResendingId] = useState('');
+
+  const [editingBalance, setEditingBalance] = useState(false);
+  const [balanceInput, setBalanceInput] = useState('');
+  const [savingBalance, setSavingBalance] = useState(false);
+
+  useEffect(() => {
+    checkAdmin();
+
+    // רענון כשחוזרים לטאב - בלי זה, טאב ניהול שהיה פתוח ברקע כשעסקה נסגרת אוטומטית בסטופ
+    // לוס (או משתנה ממקור אחר) ממשיך להציג את הנתונים הישנים עד רילוד מלא
+    function refreshIfVisible() {
+      if (document.visibilityState === 'visible') loadTrades();
+    }
+    document.addEventListener('visibilitychange', refreshIfVisible);
+    window.addEventListener('focus', refreshIfVisible);
+    window.addEventListener('pageshow', refreshIfVisible);
+    return () => {
+      document.removeEventListener('visibilitychange', refreshIfVisible);
+      window.removeEventListener('focus', refreshIfVisible);
+      window.removeEventListener('pageshow', refreshIfVisible);
+    };
+  }, []);
+
+  function startEditBalance() {
+    setBalanceInput(initialBalance !== null ? String(initialBalance) : '');
+    setEditingBalance(true);
+  }
+
+  async function saveBalance() {
+    const value = parseFloat(balanceInput);
+    if (!value || value <= 0) return;
+    setSavingBalance(true);
+
+    const { error } = await supabase.from('portfolio_settings').update({ initial_balance: value }).eq('id', 1);
+
+    setSavingBalance(false);
+
+    if (!error) {
+      setInitialBalance(value);
+      setEditingBalance(false);
+    }
+  }
+
+  async function loadTrades() {
+    const { data: open } = await supabase
+      .from('trades')
+      .select('id, direction, symbol, entry_price, stop_loss, max_entry_price, target_price, shares_calculated, exit_price, current_price, realized_pnl_usd, notes, opened_at, closed_at, parent_trade_id, half_size')
+      .eq('status', 'open')
+      .order('opened_at', { ascending: false });
+    if (open) setOpenTrades(open);
+
+    const { data: closed } = await supabase
+      .from('trades')
+      .select('id, direction, symbol, entry_price, stop_loss, max_entry_price, target_price, shares_calculated, exit_price, current_price, realized_pnl_usd, notes, opened_at, closed_at, parent_trade_id, half_size')
+      .eq('status', 'closed')
+      .order('closed_at', { ascending: false });
+    if (closed) setClosedTrades(closed);
+
+    const { data: settings } = await supabase
+      .from('portfolio_settings')
+      .select('initial_balance')
+      .eq('id', 1)
+      .single();
+    if (settings) setInitialBalance(Number(settings.initial_balance));
+  }
+
+  async function handleCloseTrade(trade: Trade) {
+    if (!exitPrice) return;
+    setClosing(true);
+
+    await realizeShares(supabase, trade, trade.shares_calculated, parseFloat(exitPrice), exitDate ? new Date(exitDate).toISOString() : new Date().toISOString(), userId);
+
+    // מייל "עסקה נסגרה" (ברווח / בהפסד) למנויים - כישלון בשליחה לא חוסם את הסגירה עצמה
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      await fetch('/api/admin/trade-closed', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
+        body: JSON.stringify({ tradeId: trade.id }),
+      });
+    } catch (e) {
+      console.error('שגיאה בשליחת מייל סגירת עסקה', e);
+    }
+
+    setClosing(false);
+    setClosingId(null);
+    setExitPrice('');
+    setExitDate('');
+    loadTrades();
+  }
+
+  function startAddQty(trade: Trade) {
+    setAddQtyId(trade.id);
+    setAddQtyPrice(trade.current_price !== null ? String(trade.current_price) : '');
+    setAddQtyShares('');
+  }
+
+  async function handleAddQuantity(trade: Trade) {
+    const price = parseFloat(addQtyPrice);
+    const shares = parseFloat(addQtyShares);
+    if (!price || !shares) return;
+    setAddingQty(true);
+
+    const newShares = trade.shares_calculated + shares;
+    const newEntryPrice = (trade.entry_price * trade.shares_calculated + price * shares) / newShares;
+
+    const { error } = await supabase
+      .from('trades')
+      // half_size מתאפס - אחרי הוספה הכמות כבר לא "חצי" מהתוכנית המקורית, התג היה מטעה אם היה נשאר
+      .update({ entry_price: newEntryPrice, shares_calculated: newShares, half_size: false })
+      .eq('id', trade.id);
+
+    setAddingQty(false);
+
+    if (!error) {
+      setAddQtyId(null);
+      loadTrades();
+
+      // הוספת כמות שולחת התראה בדיוק כמו פתיחת עסקה חדשה - שירן ביקשה מפורשות שכל הוספה
+      // לעסקה פתוחה תעודכן למנויים, לא רק סטופ/יעד/מחיר כניסה ידני (ר' saveEdit)
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch('/api/admin/notify-trade-updated', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
+        body: JSON.stringify({
+          symbol: trade.symbol,
+          changes: [`הוספת כמות: +${shares} ב-$${price} (סה"כ ${newShares} מניות, כניסה ממוצעת $${newEntryPrice.toFixed(2)})`],
+        }),
+      });
+      if (!res.ok) window.alert('העסקה עודכנה, אבל שליחת ההתראה על ההוספה נכשלה - כדאי לשלוח ידנית');
+    }
+  }
+
+  function startSellQty(trade: Trade) {
+    setSellQtyId(trade.id);
+    setSellQtyPrice('');
+    setSellQtyShares('');
+    setSellQtyError('');
+  }
+
+  async function handlePartialSell(trade: Trade) {
+    const price = parseFloat(sellQtyPrice);
+    const shares = parseFloat(sellQtyShares);
+
+    if (!price || !shares) return;
+    if (shares >= trade.shares_calculated) {
+      setSellQtyError('למכירת כל הכמות יש להשתמש בכפתור "⚡ סגירה"');
+      return;
+    }
+
+    setSellingQty(true);
+    await realizeShares(supabase, trade, shares, price, new Date().toISOString(), userId);
+    setSellingQty(false);
+    setSellQtyId(null);
+    loadTrades();
+  }
+
+  function startEdit(trade: Trade) {
+    setEditingId(trade.id);
+    setEditSymbol(trade.symbol);
+    setEditEntry(String(trade.entry_price));
+    setEditStop(String(trade.stop_loss));
+    setEditMaxEntry(trade.max_entry_price !== null ? String(trade.max_entry_price) : '');
+    setEditTarget(trade.target_price !== null ? String(trade.target_price) : '');
+    setEditShares(String(trade.shares_calculated));
+    setEditExitPrice(trade.exit_price !== null ? String(trade.exit_price) : '');
+    setEditOpenDate(trade.opened_at.slice(0, 10));
+    setEditCloseDate(trade.closed_at ? trade.closed_at.slice(0, 10) : '');
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+  }
+
+  async function saveEdit(trade: Trade, isClosed: boolean) {
+    setSavingEdit(true);
+
+    const entry = parseFloat(editEntry);
+    const stop = parseFloat(editStop);
+    const shares = parseFloat(editShares);
+    const dirFactor = trade.direction === 'short' ? -1 : 1;
+
+    const updates: Record<string, unknown> = {
+      symbol: editSymbol.toUpperCase(),
+      entry_price: entry,
+      stop_loss: stop,
+      max_entry_price: editMaxEntry ? parseFloat(editMaxEntry) : null,
+      target_price: editTarget ? parseFloat(editTarget) : null,
+      shares_calculated: shares,
+    };
+
+    // סטופ לוס חדש הוא סף חדש לבדיקה - מאפסים את דגל ההתראה כדי שתוכל להישלח שוב אם הסף
+    // החדש הזה יופעל (בלי זה, סף חדש לא היה מתריע בכלל אם כבר התריעו על הסף הקודם)
+    if (stop !== trade.stop_loss) updates.stop_loss_alert_sent = false;
+
+    if (isClosed && editExitPrice) {
+      const exit = parseFloat(editExitPrice);
+      updates.exit_price = exit;
+      updates.realized_pnl_usd = (exit - entry) * shares * dirFactor;
+    }
+
+    if (isClosed) {
+      if (editOpenDate) updates.opened_at = new Date(editOpenDate).toISOString();
+      if (editCloseDate) updates.closed_at = new Date(editCloseDate).toISOString();
+    }
+
+    const { error } = await supabase.from('trades').update(updates).eq('id', trade.id);
+
+    setSavingEdit(false);
+
+    if (!error) {
+      if (!isClosed) {
+        // כל שינוי בפרמטרים של עסקה פתוחה שולח התראה - לא רק סטופ לוס כמו שהיה פעם
+        const newTarget = editTarget ? parseFloat(editTarget) : null;
+        const newMaxEntry = editMaxEntry ? parseFloat(editMaxEntry) : null;
+        const changes: string[] = [];
+        if (entry !== trade.entry_price) changes.push(`מחיר כניסה: $${entry}`);
+        if (stop !== trade.stop_loss) changes.push(`סטופ לוס: $${stop}`);
+        if (newTarget !== trade.target_price) changes.push(newTarget !== null ? `יעד רווח: $${newTarget}` : 'יעד רווח הוסר');
+        if (newMaxEntry !== trade.max_entry_price) changes.push(newMaxEntry !== null ? `כניסה עד מחיר: $${newMaxEntry}` : 'הגבלת כניסה הוסרה');
+
+        if (changes.length > 0) {
+          const { data: { session } } = await supabase.auth.getSession();
+          fetch('/api/admin/notify-trade-updated', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
+            body: JSON.stringify({ symbol: editSymbol.toUpperCase(), changes }),
+          }).catch(() => {});
+        }
+      }
+      setEditingId(null);
+      loadTrades();
+    }
+  }
+
+  async function handleDeleteTrade(trade: Trade) {
+    if (!window.confirm(`למחוק לצמיתות את העסקה ${trade.symbol}?`)) return;
+    const { error } = await supabase.from('trades').delete().eq('id', trade.id);
+    if (!error) loadTrades();
+  }
+
+  function toggleSelect(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleSelectAllInList(list: Trade[]) {
+    setSelectedIds((prev) => {
+      const allSelected = list.length > 0 && list.every((t) => prev.has(t.id));
+      const next = new Set(prev);
+      if (allSelected) {
+        list.forEach((t) => next.delete(t.id));
+      } else {
+        list.forEach((t) => next.add(t.id));
+      }
+      return next;
+    });
+  }
+
+  async function handleBulkDelete() {
+    const count = selectedIds.size;
+    if (count === 0) return;
+    if (!window.confirm(`למחוק לצמיתות ${count} עסקאות נבחרות?`)) return;
+    const { error } = await supabase.from('trades').delete().in('id', Array.from(selectedIds));
+    if (!error) {
+      setSelectedIds(new Set());
+      loadTrades();
+    }
+  }
+
+  async function checkAdmin() {
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      setChecking(false);
+      return;
+    }
+
+    setUserEmail(user.email || '');
+    setUserId(user.id);
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    setIsAdmin(profile?.role === 'admin');
+    setChecking(false);
+    if (profile?.role === 'admin') {
+      loadTrades();
+    }
+  }
+
+  async function handleRefreshAllPrices() {
+    setRefreshing(true);
+    setRefreshMessage('');
+
+    const { data: { session } } = await supabase.auth.getSession();
+
+    try {
+      const res = await fetch('/api/refresh-all-prices', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session?.access_token}` },
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        setRefreshMessage('שגיאה: ' + (data.error || 'לא הצלחנו לעדכן'));
+      } else {
+        setRefreshMessage(`עודכנו מחירים ל-${data.symbolsFetched} מניות · ${data.tradesUpdated} עסקאות בתיק · ${data.entriesUpdated} עסקאות ביומנים של מנויים`);
+        loadTrades();
+      }
+    } catch (e) {
+      setRefreshMessage('שגיאה בעדכון המחירים');
+    }
+
+    setRefreshing(false);
+  }
+
+  async function handleAddTrade() {
+    if (!symbol || !entryPrice || !stopLoss || !riskAmount) {
+      setMessage('חסרים שדות');
+      return;
+    }
+
+    setSaving(true);
+    setMessage('');
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const entry = parseFloat(entryPrice);
+    const stop = parseFloat(stopLoss);
+    const fullRisk = parseFloat(riskAmount);
+    const risk = sizeMode === 'half' ? fullRisk / 2 : fullRisk;
+    const shares = Math.floor(risk / Math.abs(entry - stop));
+
+    const { error } = await supabase.from('trades').insert({
+      created_by: user.id,
+      direction,
+      symbol: symbol.toUpperCase(),
+      entry_price: entry,
+      stop_loss: stop,
+      max_entry_price: maxEntryPrice ? parseFloat(maxEntryPrice) : null,
+      target_price: targetPrice ? parseFloat(targetPrice) : null,
+      risk_amount_usd: risk,
+      shares_calculated: shares,
+      current_price: entry,
+      status: 'open',
+      half_size: sizeMode === 'half',
+      ...(openDate ? { opened_at: new Date(openDate).toISOString() } : {}),
+    });
+
+    setSaving(false);
+
+    if (error) {
+      setMessage('שגיאה: ' + error.message);
+    } else {
+      setMessage('העסקה נוספה בהצלחה!');
+      setSymbol('');
+      setEntryPrice('');
+      setStopLoss('');
+      setMaxEntryPrice('');
+      setTargetPrice('');
+      setOpenDate('');
+      setSizeMode('full');
+      setShowAddForm(false);
+      loadTrades();
+
+      const { data: { session } } = await supabase.auth.getSession();
+      fetch('/api/admin/notify-trade-opened', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
+        body: JSON.stringify({ symbol: symbol.toUpperCase(), direction, entryPrice: entry, stopLoss: stop, halfSize: sizeMode === 'half' }),
+      }).then((res) => {
+        if (!res.ok) window.alert('העסקה נשמרה, אבל שליחת ההתראה נכשלה - אפשר לשלוח שוב מהרשימה (🔔 שליחת התראה)');
+      }).catch(() => {
+        window.alert('העסקה נשמרה, אבל שליחת ההתראה נכשלה - אפשר לשלוח שוב מהרשימה (🔔 שליחת התראה)');
+      });
+    }
+  }
+
+  // שליחה/שליחה-מחדש ידנית של התראת "עסקה חדשה" על עסקה פתוחה קיימת - בעיקר לתיקון מקרה
+  // שבו השליחה האוטומטית בהוספה נכשלה בשקט (ר' handleAddTrade) ואף אחד לא קיבל התראה בפועל
+  async function handleResendNotify(trade: Trade) {
+    setResendingId(trade.id);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch('/api/admin/notify-trade-opened', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
+        body: JSON.stringify({ symbol: trade.symbol, direction: trade.direction, entryPrice: trade.entry_price, stopLoss: trade.stop_loss }),
+      });
+      window.alert(res.ok ? `ההתראה על ${trade.symbol} נשלחה` : 'שליחת ההתראה נכשלה - נסי שוב בעוד רגע');
+    } catch (e) {
+      window.alert('שליחת ההתראה נכשלה - נסי שוב בעוד רגע');
+    }
+    setResendingId('');
+  }
+
+  async function handleLogout() {
+    await supabase.auth.signOut();
+    window.location.href = '/';
+  }
+
+  const closedProfitTrades_ = closedTrades.filter((t) => (pctPnl(t, true) ?? 0) >= 0);
+  const closedLossTrades_ = closedTrades.filter((t) => (pctPnl(t, true) ?? 0) < 0);
+
+  const availableClosedMonths = Array.from(
+    new Set([currentMonthKey(), ...closedTrades.filter((t) => t.closed_at).map((t) => monthKey(t.closed_at as string))])
+  ).sort().reverse();
+
+  const closedProfitTrades = profitMonthFilter === 'all'
+    ? closedProfitTrades_
+    : closedProfitTrades_.filter((t) => t.closed_at && monthKey(t.closed_at) === profitMonthFilter);
+
+  const closedLossTrades = lossMonthFilter === 'all'
+    ? closedLossTrades_
+    : closedLossTrades_.filter((t) => t.closed_at && monthKey(t.closed_at) === lossMonthFilter);
+
+  // "תובנות התיק" מציגות נתוני כל-הזמנים, לא רק החודש שמוצג בלוח השנה - שירן ביקשה מפורשות
+  // להסיר את הסינכרון לחודש הנבחר כדי לראות תמיד את התמונה המלאה
+  const closedTradesForInsights = closedTrades;
+  const closedProfitForInsights = closedTradesForInsights.filter((t) => (pctPnl(t, true) ?? 0) >= 0);
+
+  const winRate = closedTradesForInsights.length > 0 ? (closedProfitForInsights.length / closedTradesForInsights.length) * 100 : null;
+
+  const closedPcts = closedTradesForInsights.map((t) => pctPnl(t, true) ?? 0);
+  const avgPnlPct = closedPcts.length > 0 ? closedPcts.reduce((s, x) => s + x, 0) / closedPcts.length : null;
+
+  const winPcts = closedPcts.filter((p) => p >= 0);
+  const lossPcts = closedPcts.filter((p) => p < 0);
+  const avgWinPct = winPcts.length > 0 ? winPcts.reduce((s, x) => s + x, 0) / winPcts.length : 0;
+  const avgLossPct = lossPcts.length > 0 ? Math.abs(lossPcts.reduce((s, x) => s + x, 0) / lossPcts.length) : 0;
+  const riskReward = avgLossPct > 0 ? avgWinPct / avgLossPct : null;
+
+  const daysToClose = closedTradesForInsights
+    .filter((t) => t.closed_at)
+    .map((t) => (new Date(t.closed_at as string).getTime() - new Date(t.opened_at).getTime()) / 86400000);
+  const avgDaysToClose = daysToClose.length > 0 ? daysToClose.reduce((s, x) => s + x, 0) / daysToClose.length : null;
+
+  const totalTradesCount = openTrades.length + closedTrades.length;
+
+  const equityPoints = (() => {
+    if (initialBalance === null) return [];
+    const chronological = closedTrades
+      .filter((t) => t.closed_at)
+      .slice()
+      .sort((a, b) => new Date(a.closed_at as string).getTime() - new Date(b.closed_at as string).getTime());
+    let running = initialBalance;
+    const points = [{ date: 'התחלה', value: Math.round(running) }];
+    for (const t of chronological) {
+      running += t.realized_pnl_usd ?? 0;
+      points.push({ date: formatDate(t.closed_at), value: Math.round(running) });
+    }
+    return points;
+  })();
+
+  const calItems = closedTrades
+    .filter((t) => {
+      if (!t.closed_at) return false;
+      const d = new Date(t.closed_at);
+      return d.getFullYear() === calYear && d.getMonth() === calMonthIdx;
+    })
+    .map((t) => {
+      const cost = t.entry_price * t.shares_calculated;
+      const usd = t.realized_pnl_usd ?? 0;
+      return {
+        day: new Date(t.closed_at as string).getDate(),
+        symbol: t.symbol,
+        direction: t.direction,
+        usd,
+        pct: cost > 0 ? (usd / cost) * 100 : 0,
+      };
+    });
+
+  function goPrevMonth() {
+    if (calMonthIdx === 0) { setCalYear((y) => y - 1); setCalMonthIdx(11); }
+    else setCalMonthIdx((m) => m - 1);
+  }
+
+  function goNextMonth() {
+    if (calMonthIdx === 11) { setCalYear((y) => y + 1); setCalMonthIdx(0); }
+    else setCalMonthIdx((m) => m + 1);
+  }
+
+  if (checking) {
+    return <div className="wrap"><p style={{ padding: '40px', textAlign: 'center' }}>בודקים הרשאות...</p></div>;
+  }
+
+  if (!userEmail) {
+    return (
+      <div className="wrap">
+        <header>
+          <a href="/" className="brand">מסחר <span>אחראי</span> במניות</a>
+          <a href="/" className="nav-link">בית</a>
+        </header>
+        <p style={{ padding: '40px 0', textAlign: 'center' }}>צריך להתחבר קודם. <a href="/login" style={{ color: 'var(--teal)' }}>כניסה</a></p>
+      </div>
+    );
+  }
+
+  if (!isAdmin) {
+    return (
+      <div className="wrap">
+        <header>
+          <a href="/" className="brand">מסחר <span>אחראי</span> במניות</a>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <a href="/" className="nav-link">בית</a>
+            <button onClick={handleLogout} className="nav-link" style={{ background: 'none', border: 'none', cursor: 'pointer', font: 'inherit', padding: 0 }}>התנתקות</button>
+          </div>
+        </header>
+        <p style={{ padding: '40px 0', textAlign: 'center' }}>אין הרשאת ניהול לחשבון המחובר ({userEmail})</p>
+      </div>
+    );
+  }
+
+  function renderPopoverContent() {
+    const trade = [...openTrades, ...closedTrades].find(
+      (t) => t.id === closingId || t.id === editingId || t.id === addQtyId || t.id === sellQtyId
+    );
+    if (!trade) return null;
+    const isClosed = trade.closed_at !== null;
+
+    if (closingId === trade.id) {
+      return (
+        <>
+          <div className="qp-title">⚡ סגירה מהירה · {trade.symbol}</div>
+          <div className="qp-field"><label>מחיר סגירה</label><ClearableInput type="number" value={exitPrice} onChange={(e) => setExitPrice(e.target.value)} onClear={() => setExitPrice('')} placeholder="130.50" /></div>
+          <div className="qp-field"><label>תאריך סגירה</label><input type="date" value={exitDate} onChange={(e) => setExitDate(e.target.value)} /></div>
+          <div className="qp-row">
+            <button className="qp-confirm" onClick={() => handleCloseTrade(trade)} disabled={closing || !exitPrice}>{closing ? 'סוגרים...' : 'אישור סגירה'}</button>
+            <button className="qp-cancel" onClick={() => startEdit(trade)}>← חזרה</button>
+          </div>
+        </>
+      );
+    }
+
+    if (editingId === trade.id) {
+      return (
+        <>
+          <div className="qp-title">✎ עריכה · {trade.symbol}</div>
+          <div className="form-row" style={{ marginBottom: '10px' }}>
+            <div className="field" style={{ marginBottom: 0 }}><label>סימבול</label><ClearableInput type="text" value={editSymbol} onChange={(e) => setEditSymbol(e.target.value)} onClear={() => setEditSymbol('')} /></div>
+            <div className="field" style={{ marginBottom: 0 }}><label>מניות</label><ClearableInput type="number" value={editShares} onChange={(e) => setEditShares(e.target.value)} onClear={() => setEditShares('')} /></div>
+          </div>
+          <div className="form-row" style={{ marginBottom: '10px' }}>
+            <div className="field" style={{ marginBottom: 0 }}><label>מחיר כניסה</label><ClearableInput type="number" value={editEntry} onChange={(e) => setEditEntry(e.target.value)} onClear={() => setEditEntry('')} /></div>
+            <div className="field" style={{ marginBottom: 0 }}><label>סטופ לוס</label><ClearableInput type="number" value={editStop} onChange={(e) => setEditStop(e.target.value)} onClear={() => setEditStop('')} /></div>
+          </div>
+          {!isClosed && (
+            <div className="form-row" style={{ marginBottom: 0 }}>
+              <div className="field" style={{ marginBottom: 0 }}><label>עד איזה מחיר אפשר להיכנס</label><ClearableInput type="number" value={editMaxEntry} onChange={(e) => setEditMaxEntry(e.target.value)} onClear={() => setEditMaxEntry('')} placeholder="לא חובה" /></div>
+              <div className="field" style={{ marginBottom: 0 }}><label>יעד רווח</label><ClearableInput type="number" value={editTarget} onChange={(e) => setEditTarget(e.target.value)} onClear={() => setEditTarget('')} placeholder="לא חובה" /></div>
+            </div>
+          )}
+          {isClosed && (
+            <>
+              <div className="field"><label>מחיר יציאה</label><ClearableInput type="number" value={editExitPrice} onChange={(e) => setEditExitPrice(e.target.value)} onClear={() => setEditExitPrice('')} /></div>
+              <div className="form-row" style={{ marginBottom: 0 }}>
+                <div className="field" style={{ marginBottom: 0 }}><label>תאריך פתיחה</label><input type="date" value={editOpenDate} onChange={(e) => setEditOpenDate(e.target.value)} /></div>
+                <div className="field" style={{ marginBottom: 0 }}><label>תאריך סגירה</label><input type="date" value={editCloseDate} onChange={(e) => setEditCloseDate(e.target.value)} /></div>
+              </div>
+            </>
+          )}
+          <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
+            <button className="qp-confirm" onClick={() => saveEdit(trade, isClosed)} disabled={savingEdit}>{savingEdit ? 'שומרים...' : 'שמירת שינויים'}</button>
+            <button className="qp-cancel" onClick={cancelEdit}>ביטול</button>
+          </div>
+          <div className="qp-secondary">
+            {!isClosed && <button onClick={() => { setEditingId(null); setClosingId(trade.id); setExitPrice(''); setExitDate(''); }}>⚡ סגירה</button>}
+            {!isClosed && <button onClick={() => startAddQty(trade)}>הוספת כמות</button>}
+            {!isClosed && <button onClick={() => startSellQty(trade)}>מכירה חלקית</button>}
+            <button className="qp-danger" onClick={() => { handleDeleteTrade(trade); closeAllPopovers(); }}>מחיקת עסקה</button>
+          </div>
+        </>
+      );
+    }
+
+    if (addQtyId === trade.id) {
+      return (
+        <>
+          <div className="qp-title">+ הוספת כמות · {trade.symbol}</div>
+          <div className="qp-field"><label>מחיר כניסה נוסף</label><ClearableInput type="number" value={addQtyPrice} onChange={(e) => setAddQtyPrice(e.target.value)} onClear={() => setAddQtyPrice('')} placeholder="132.00" /></div>
+          <div className="qp-field"><label>כמות נוספת</label><ClearableInput type="number" value={addQtyShares} onChange={(e) => setAddQtyShares(e.target.value)} onClear={() => setAddQtyShares('')} placeholder="20" /></div>
+          <div style={{ display: 'flex', gap: '6px', margin: '-4px 0 8px' }}>
+            <button type="button" className="qp-cancel" style={{ flex: 1, fontSize: '11.5px', padding: '5px 8px' }} onClick={() => setAddQtyShares(String(Math.round(trade.shares_calculated / 2)))}>
+              חצי כמות (+{Math.round(trade.shares_calculated / 2)})
+            </button>
+            <button type="button" className="qp-cancel" style={{ flex: 1, fontSize: '11.5px', padding: '5px 8px' }} onClick={() => setAddQtyShares(String(trade.shares_calculated))}>
+              כמות מלאה (+{trade.shares_calculated})
+            </button>
+          </div>
+          <p style={{ fontSize: '11.5px', color: 'var(--text-tertiary)', margin: '4px 0 10px' }}>מחיר הכניסה יתעדכן לממוצע המשוקלל, והכמות תתווסף לעסקה הקיימת. נשלחת התראה למנויים כמו בעסקה חדשה.</p>
+          <div className="qp-row">
+            <button className="qp-confirm" onClick={() => handleAddQuantity(trade)} disabled={addingQty || !addQtyPrice || !addQtyShares}>{addingQty ? 'מוסיפים...' : 'אישור הוספה'}</button>
+            <button className="qp-cancel" onClick={() => startEdit(trade)}>← חזרה</button>
+          </div>
+        </>
+      );
+    }
+
+    if (sellQtyId === trade.id) {
+      return (
+        <>
+          <div className="qp-title">− מכירה חלקית · {trade.symbol}</div>
+          <div className="qp-field"><label>מחיר מכירה</label><ClearableInput type="number" value={sellQtyPrice} onChange={(e) => setSellQtyPrice(e.target.value)} onClear={() => setSellQtyPrice('')} placeholder="135.00" /></div>
+          <div className="qp-field"><label>כמות למכירה (מתוך {trade.shares_calculated})</label><ClearableInput type="number" value={sellQtyShares} onChange={(e) => setSellQtyShares(e.target.value)} onClear={() => setSellQtyShares('')} placeholder="10" /></div>
+          {sellQtyError && <p style={{ color: 'var(--loss)', fontSize: '12px', margin: '4px 0 10px' }}>{sellQtyError}</p>}
+          <div className="qp-row">
+            <button className="qp-confirm" onClick={() => handlePartialSell(trade)} disabled={sellingQty || !sellQtyPrice || !sellQtyShares}>{sellingQty ? 'מוכרים...' : 'אישור מכירה'}</button>
+            <button className="qp-cancel" onClick={() => startEdit(trade)}>← חזרה</button>
+          </div>
+        </>
+      );
+    }
+
+    return null;
+  }
+
+  function renderTradeTable(list: Trade[], isClosed: boolean, emptyText: string) {
+    if (list.length === 0) return <p className="trade-table-empty">{emptyText}</p>;
+    return (
+      <div className="trade-table-wrap">
+        <table className="trade-table has-checkbox">
+          <thead>
+            <tr>
+              <th>
+                <input
+                  type="checkbox"
+                  checked={list.length > 0 && list.every((t) => selectedIds.has(t.id))}
+                  onChange={() => toggleSelectAllInList(list)}
+                  style={{ width: '15px', height: '15px', cursor: 'pointer' }}
+                />
+              </th>
+              <th>סימבול</th>
+              <th>נפתחה ב-</th>
+              {isClosed && <th>נסגרה ב-</th>}
+              <th>כניסה</th>
+              <th>סטופ/יציאה</th>
+              {!isClosed && <th>כניסה עד מחיר</th>}
+              {!isClosed && <th>יעד רווח</th>}
+              {!isClosed && <th>נוכחי</th>}
+              <th>אחוז</th>
+              <th>דולר</th>
+              <th>מניות</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {list.map((trade) => {
+              const pct = pctPnl(trade, isClosed);
+              const usd = usdPnl(trade, isClosed);
+              return (
+                <tr key={trade.id}>
+                  <td>
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(trade.id)}
+                      onChange={() => toggleSelect(trade.id)}
+                      style={{ width: '15px', height: '15px', cursor: 'pointer' }}
+                    />
+                  </td>
+                  <td className="sym-cell">
+                    <span className="sym-cell-inner">
+                      <span className={`direction-mark ${trade.direction}`}>{trade.direction === 'long' ? 'L' : 'S'}</span>
+                      <span>{trade.symbol}</span>
+                      {trade.half_size && (
+                        <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--lavender)', background: 'var(--lavender-bg)', border: '1px solid var(--lavender)', borderRadius: '6px', padding: '1px 6px' }}>
+                          ½ חצי כמות
+                        </span>
+                      )}
+                    </span>
+                  </td>
+                  <td>{formatDate(trade.opened_at)}</td>
+                  {isClosed && <td>{formatDate(trade.closed_at)}</td>}
+                  <td>${trade.entry_price.toFixed(2)}</td>
+                  <td>{isClosed ? `$${trade.exit_price?.toFixed(2)}` : `$${trade.stop_loss}`}</td>
+                  {!isClosed && <td>{trade.max_entry_price !== null ? `$${trade.max_entry_price}` : '—'}</td>}
+                  {!isClosed && <td>{trade.target_price !== null ? `$${trade.target_price}` : '—'}</td>}
+                  {!isClosed && <td>${trade.current_price ?? trade.entry_price}</td>}
+                  <td style={{ color: pct === null ? undefined : pct >= 0 ? 'var(--profit)' : 'var(--loss)' }}>
+                    {pct === null ? '—' : `${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%`}
+                  </td>
+                  <td style={{ color: usd === null ? undefined : usd >= 0 ? 'var(--profit)' : 'var(--loss)' }}>
+                    {usd === null ? '—' : `${usd >= 0 ? '+' : '-'}$${Math.abs(usd).toFixed(0)}`}
+                  </td>
+                  <td>{trade.shares_calculated}</td>
+                  <td style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                    <button className="qa-btn edit" onClick={(e) => openEditPopover(trade, e)}>✎ עריכה</button>
+                    {!isClosed && (
+                      <button className="qa-btn edit" disabled={resendingId === trade.id} onClick={() => handleResendNotify(trade)}>
+                        {resendingId === trade.id ? '…' : '🔔 שליחת התראה'}
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
+
+  return (
+    <div className="wrap">
+      <header>
+        <Link href="/admin" className="brand">מסחר <span>אחראי</span> במניות</Link>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <Link href="/" className="nav-link">בית</Link>
+          <Link href="/admin" className="nav-link">← לניהול</Link>
+          <button onClick={handleLogout} className="nav-link" style={{ background: 'none', border: 'none', cursor: 'pointer', font: 'inherit', padding: 0 }}>התנתקות</button>
+        </div>
+      </header>
+
+      <PushNotificationButton />
+
+      <button className="btn-outline" style={{ width: '100%', marginBottom: '10px' }} onClick={handleRefreshAllPrices} disabled={refreshing}>
+        {refreshing ? 'מעדכנים מחירים בכל האתר...' : '🔄 עדכון מחירים בכל האתר'}
+      </button>
+      {refreshMessage && (
+        <p style={{ fontSize: '12px', color: refreshMessage.startsWith('שגיאה') ? 'var(--loss)' : 'var(--profit)', marginBottom: '10px', textAlign: 'center' }}>
+          {refreshMessage}
+        </p>
+      )}
+
+      <button className="add-btn" onClick={() => setShowAddForm(!showAddForm)}>+ עסקה חדשה</button>
+
+      {showAddForm && (
+        <div className="journal-form">
+          <div className="toggle-row">
+            <div className={`toggle-opt ${direction === 'long' ? 'long-active' : ''}`} onClick={() => setDirection('long')} style={{ cursor: 'pointer' }}>לונג</div>
+            <div className={`toggle-opt ${direction === 'short' ? 'short-active' : ''}`} onClick={() => setDirection('short')} style={{ cursor: 'pointer' }}>שורט</div>
+          </div>
+          <div className="toggle-row">
+            <div className={`toggle-opt ${sizeMode === 'full' ? 'size-active' : ''}`} onClick={() => setSizeMode('full')} style={{ cursor: 'pointer' }}>כמות מלאה</div>
+            <div className={`toggle-opt ${sizeMode === 'half' ? 'size-active' : ''}`} onClick={() => setSizeMode('half')} style={{ cursor: 'pointer' }}>חצי כמות</div>
+          </div>
+          <div className="field"><label>סימבול</label><ClearableInput type="text" value={symbol} onChange={(e) => setSymbol(e.target.value)} onClear={() => setSymbol('')} placeholder="MSFT" /></div>
+          <div className="form-row">
+            <div className="field"><label>מחיר כניסה</label><ClearableInput type="number" value={entryPrice} onChange={(e) => setEntryPrice(e.target.value)} onClear={() => setEntryPrice('')} placeholder="410.00" /></div>
+            <div className="field"><label>סטופ לוס</label><ClearableInput type="number" value={stopLoss} onChange={(e) => setStopLoss(e.target.value)} onClear={() => setStopLoss('')} placeholder="398.00" /></div>
+          </div>
+          <div className="field"><label>עד איזה מחיר אפשר להיכנס (לא חובה)</label><ClearableInput type="number" value={maxEntryPrice} onChange={(e) => setMaxEntryPrice(e.target.value)} onClear={() => setMaxEntryPrice('')} placeholder="415.00" /></div>
+          <div className="field"><label>יעד רווח (לא חובה)</label><ClearableInput type="number" value={targetPrice} onChange={(e) => setTargetPrice(e.target.value)} onClear={() => setTargetPrice('')} placeholder="450.00" /></div>
+          <div className="field"><label>סיכון כספי ($)</label><ClearableInput type="number" value={riskAmount} onChange={(e) => setRiskAmount(e.target.value)} onClear={() => setRiskAmount('')} placeholder="3000" /></div>
+          {entryPrice && stopLoss && riskAmount && (() => {
+            const entryNum = parseFloat(entryPrice);
+            const stopNum = parseFloat(stopLoss);
+            const riskNum = parseFloat(riskAmount) * (sizeMode === 'half' ? 0.5 : 1);
+            const span = Math.abs(entryNum - stopNum);
+            if (!span) return null;
+            const previewShares = Math.floor(riskNum / span);
+            return (
+              <p style={{ fontSize: '11.5px', color: 'var(--text-tertiary)', margin: '-6px 0 14px' }}>
+                {sizeMode === 'half' ? 'חצי כמות - ' : ''}יחושבו {previewShares} מניות (סיכון בפועל: ${riskNum.toLocaleString()})
+              </p>
+            );
+          })()}
+          <div className="field"><label>תאריך פתיחה (לא חובה - ברירת מחדל: היום)</label><input type="date" value={openDate} onChange={(e) => setOpenDate(e.target.value)} /></div>
+          <button className="btn-primary" onClick={handleAddTrade} disabled={saving}>{saving ? 'שומרים...' : 'פרסום לתיק'}</button>
+          {message && <p style={{ marginTop: '10px', fontSize: '13px', color: message.includes('שגיאה') ? 'var(--loss)' : 'var(--profit)' }}>{message}</p>}
+        </div>
+      )}
+
+      <div className="section-label">
+        <h2>צמיחת התיק</h2>
+        {editingBalance ? (
+          <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+            <ClearableInput
+              type="number"
+              value={balanceInput}
+              onChange={(e) => setBalanceInput(e.target.value)}
+              onClear={() => setBalanceInput('')}
+              placeholder="200000"
+              style={{ width: '110px', padding: '6px 8px', fontSize: '12.5px' }}
+            />
+            <button className="qp-confirm" style={{ padding: '6px 10px', fontSize: '12px' }} onClick={saveBalance} disabled={savingBalance}>{savingBalance ? '...' : 'שמירה'}</button>
+            <button className="qp-cancel" style={{ padding: '6px 10px', fontSize: '12px' }} onClick={() => setEditingBalance(false)}>ביטול</button>
+          </div>
+        ) : (
+          <button onClick={startEditBalance} className="count" style={{ background: 'none', border: 'none', cursor: 'pointer', font: 'inherit', display: 'flex', alignItems: 'center', gap: '4px' }} title="שינוי גודל התיק ההתחלתי">
+            תיק התחלתי ${initialBalance !== null ? initialBalance.toLocaleString() : '—'} ✎
+          </button>
+        )}
+      </div>
+      <div className="equity-card">
+        <EquityCurve points={equityPoints} showPercentDelta />
+      </div>
+
+      <div className="section-label"><h2>לוח שנה</h2></div>
+      <div className="equity-card" style={{ marginBottom: '28px' }}>
+        <CalendarHeatmap year={calYear} month={calMonthIdx} items={calItems} onPrevMonth={goPrevMonth} onNextMonth={goNextMonth} />
+      </div>
+
+      <div className="section-label">
+        <h2>תובנות התיק - כל הזמנים</h2>
+      </div>
+      <div className="insights-panel" style={{ marginBottom: '28px' }}>
+        <div className="insights-ring-row">
+          <StatsRing
+            percent={winRate ?? 0}
+            label={`${closedTradesForInsights.length} עסקאות סגורות`}
+            sublabel={`תיק התחלתי $${initialBalance !== null ? initialBalance.toLocaleString() : '—'}`}
+          />
+        </div>
+        <div className="insight-grid">
+          <div className="insight-tile">
+            <div className="iv">{avgDaysToClose !== null ? avgDaysToClose.toFixed(1) : '—'}</div>
+            <div className="il">ימי החזקה בממוצע</div>
+          </div>
+          <div className="insight-tile">
+            <div className="iv" style={{ color: avgPnlPct !== null ? (avgPnlPct >= 0 ? 'var(--profit)' : 'var(--loss)') : undefined }}>
+              {avgPnlPct !== null ? `${avgPnlPct >= 0 ? '+' : ''}${avgPnlPct.toFixed(2)}%` : '—'}
+            </div>
+            <div className="il">רווח/הפסד ממוצע לעסקה</div>
+          </div>
+          <div className="insight-tile">
+            <div className="iv">{riskReward !== null ? `1:${riskReward.toFixed(1)}` : '—'}</div>
+            <div className="il">יחס סיכון-סיכוי</div>
+          </div>
+          <div className="insight-tile">
+            <div className="iv">{totalTradesCount}</div>
+            <div className="il">סה&quot;כ עסקאות</div>
+          </div>
+        </div>
+      </div>
+
+      <details className="section-collapse" open>
+        <summary>
+          <h2>עסקאות פתוחות בתיק</h2>
+          <div className="summary-right"><span className="count">{openTrades.length}</span><span className="collapse-chevron">▾</span></div>
+        </summary>
+        {renderTradeTable(openTrades, false, 'אין כרגע עסקאות פתוחות')}
+      </details>
+
+      <div className="section-label" style={{ marginTop: '28px' }}><h2>עסקאות סגורות</h2></div>
+
+      <details className="section-collapse">
+        <summary>
+          <h2>נסגרו ברווח</h2>
+          <div className="summary-right"><span className="count">{closedProfitTrades.length}</span><span className="collapse-chevron">▾</span></div>
+        </summary>
+        {availableClosedMonths.length > 0 && (
+          <div className="month-select-wrap">
+            <select className="month-select" value={profitMonthFilter} onChange={(e) => setProfitMonthFilter(e.target.value)}>
+              <option value="all">כל החודשים</option>
+              {availableClosedMonths.map((m) => (
+                <option key={m} value={m}>{monthLabel(m)}</option>
+              ))}
+            </select>
+          </div>
+        )}
+        {renderTradeTable(closedProfitTrades, true, 'אין עסקאות שנסגרו ברווח בטווח הזה')}
+      </details>
+
+      <details className="section-collapse">
+        <summary>
+          <h2>נסגרו בהפסד</h2>
+          <div className="summary-right"><span className="count">{closedLossTrades.length}</span><span className="collapse-chevron">▾</span></div>
+        </summary>
+        {availableClosedMonths.length > 0 && (
+          <div className="month-select-wrap">
+            <select className="month-select" value={lossMonthFilter} onChange={(e) => setLossMonthFilter(e.target.value)}>
+              <option value="all">כל החודשים</option>
+              {availableClosedMonths.map((m) => (
+                <option key={m} value={m}>{monthLabel(m)}</option>
+              ))}
+            </select>
+          </div>
+        )}
+        {renderTradeTable(closedLossTrades, true, 'אין עסקאות שנסגרו בהפסד בטווח הזה')}
+      </details>
+
+      {(closingId || editingId || addQtyId || sellQtyId) && popoverPos && (
+        <>
+          <div className="qa-popover-backdrop" onClick={closeAllPopovers} />
+          <div className="qa-popover" style={{ top: popoverPos.top, left: popoverPos.left }}>
+            {renderPopoverContent()}
+          </div>
+        </>
+      )}
+
+      {selectedIds.size > 0 && (
+        <div style={{
+          position: 'fixed', bottom: 0, right: 0, left: 0, zIndex: 90,
+          background: 'var(--bg-void)', borderTop: '1px solid var(--border-hairline-strong)',
+          padding: '10px 16px calc(10px + env(safe-area-inset-bottom))', boxShadow: '0 -4px 16px rgba(60,35,20,0.18)',
+        }}>
+          <div style={{ display: 'flex', gap: '8px', maxWidth: '480px', margin: '0 auto' }}>
+            <button
+              onClick={handleBulkDelete}
+              style={{ flex: 1, background: 'var(--loss)', color: '#fff', border: 'none', borderRadius: '10px', padding: '13px', fontSize: '14.5px', fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}
+            >
+              מחיקת {selectedIds.size} עסקאות נבחרות
+            </button>
+            <button className="btn-outline" style={{ padding: '13px 18px' }} onClick={() => setSelectedIds(new Set())}>
+              ביטול
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
