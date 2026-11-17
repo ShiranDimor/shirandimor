@@ -107,6 +107,11 @@ export default function AdminMarketingPage() {
   const [revisionNotes, setRevisionNotes] = useState<Record<string, string>>({});
   const [revisingId, setRevisingId] = useState<string | null>(null);
   const [view, setView] = useState<StudioView>('approve');
+  // התראת הבקרה הלילית מקשרת ל-?tab=report
+  useEffect(() => {
+    const tab = new URLSearchParams(window.location.search).get('tab');
+    if (tab === 'report' || tab === 'list' || tab === 'tools') setView(tab);
+  }, []);
   const [openPostId, setOpenPostId] = useState<string | null>(null);
   const [revisionMessage, setRevisionMessage] = useState<Record<string, string>>({});
   const [publishError, setPublishError] = useState<Record<string, string>>({});
