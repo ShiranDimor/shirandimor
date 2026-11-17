@@ -20,7 +20,9 @@ export function env(name: string) {
   return raw.replace(/^["']+|["']+$/g, '').trim();
 }
 
-async function getAccessToken(): Promise<string | null> {
+// מיוצא כדי ש-lib/growEmailWatch.ts יוכל להשתמש באותו חיבור Google בדיוק (אותו client/refresh
+// token, עכשיו עם שני scopes - יומן ו-gmail.readonly) בלי לשכפל את לוגיקת חידוש הטוקן
+export async function getAccessToken(): Promise<string | null> {
   const clientId = env('GOOGLE_CALENDAR_CLIENT_ID');
   const clientSecret = env('GOOGLE_CALENDAR_CLIENT_SECRET');
   const refreshToken = env('GOOGLE_CALENDAR_REFRESH_TOKEN');
@@ -281,7 +283,9 @@ export async function moveFitCallEvent(id: string, start: Date, minutes: number)
 
 // ===== אבחון וחיבור מחדש של היומן =====
 
-export const GOOGLE_CALENDAR_SCOPE = 'https://www.googleapis.com/auth/calendar.events';
+// gmail.readonly נוסף כאן (לא client/refresh token נפרד) כי זה אותו חיבור Google בדיוק - ר'
+// lib/growEmailWatch.ts: בודק מיילים של Grow על תשלום, כדי לא להיות תלויים אך ורק ב-webhook שלהם
+export const GOOGLE_CALENDAR_SCOPE = 'https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/gmail.readonly';
 
 // בודק את החיבור צעד-צעד ומחזיר איפה בדיוק הוא נכשל - קודי שגיאה של גוגל בלבד, בלי ערכים סודיים.
 // token = חידוש ההרשאה נכשל (למשל invalid_grant = ההרשאה פגה או בוטלה, צריך לחבר מחדש);
