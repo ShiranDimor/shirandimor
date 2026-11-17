@@ -60,6 +60,13 @@ export default function AdminSubscribersPage() {
   const [grantTransactionId, setGrantTransactionId] = useState('');
   const [grantFirstMonthPrice, setGrantFirstMonthPrice] = useState(false);
 
+  // שחזור קבוצתי - כשיש כמה אנשים עם אותה תקלה (לדוגמה כולם עם הטבת "חודש ראשון ב-1 ש״ח"
+  // שה-webhook לא הגיע אליהם) - מדביקים רשימה שלמה בבת אחת במקום למלא טופס לכל אחד/ת
+  const [showBulkRecover, setShowBulkRecover] = useState(false);
+  const [bulkText, setBulkText] = useState('');
+  const [bulkRecovering, setBulkRecovering] = useState(false);
+  const [bulkResult, setBulkResult] = useState<{ total: number; recovered: number; alreadyActive: number; failed: number; results: { name: string; phone: string; email: string; status: string; mondaySynced?: boolean; error?: string }[] } | null>(null);
+
   // סיכום ההכנסה (היה פעם עמוד נפרד "/admin/revenue") - עבר לכאן כי זו אותה אוכלוסייה בדיוק
   // (מי שבקבוצת הסוחרים במאנדיי הוא/היא בהכרח מנוי/ה משלם/ת), אין טעם בשתי רשימות נפרדות
   const [revenueLoading, setRevenueLoading] = useState(false);
@@ -177,6 +184,44 @@ export default function AdminSubscribersPage() {
       loadApprovedSubs();
     } else {
       setGrantMessage('שגיאה: ' + (data?.error || 'לא הצלחנו להוסיף'));
+    }
+  }
+
+  // כל שורה בטקסט המודבק: "שם, טלפון, מייל" (או "שם, מייל" בלי טלפון) - מופרד בפסיקים
+  function parseBulkContacts(): { name: string; phone: string; email: string }[] {
+    return bulkText
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((line) => {
+        const parts = line.split(',').map((p) => p.trim());
+        if (parts.length >= 3) return { name: parts[0], phone: parts[1], email: parts[2] };
+        if (parts.length === 2) return { name: parts[0], phone: '', email: parts[1] };
+        return { name: line, phone: '', email: '' };
+      });
+  }
+
+  async function handleBulkRecover() {
+    const contacts = parseBulkContacts();
+    if (contacts.length === 0) return;
+    if (!window.confirm(`לעבד ${contacts.length} אנשי קשר - ליצור חשבון למי שחסר, לשלוח מייל כניסה, להתחיל רצף קליטה ולסנכרן למאנדיי? מי שכבר מנוי/ה פעיל/ה ידולג אוטומטית.`)) return;
+
+    setBulkRecovering(true);
+    setBulkResult(null);
+    const { data: { session } } = await supabase.auth.getSession();
+    const res = await fetch('/api/admin/grant-subscriber/bulk', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
+      body: JSON.stringify({ contacts, isFirstMonthPrice: true, amount: 1 }),
+    });
+    const data = await res.json().catch(() => null);
+    setBulkRecovering(false);
+
+    if (res.ok) {
+      setBulkResult(data);
+      loadApprovedSubs();
+    } else {
+      window.alert('שגיאה: ' + (data?.error || 'לא הצלחנו לעבד את הרשימה'));
     }
   }
 
@@ -536,6 +581,44 @@ export default function AdminSubscribersPage() {
 
           <button className="btn-primary" onClick={handleGrantSubscriber} disabled={granting}>{granting ? 'מוסיפים...' : 'הוספה כמנוי/ה'}</button>
           {grantMessage && <p style={{ marginTop: '10px', fontSize: '13px', color: grantMessage.startsWith('שגיאה') ? 'var(--loss)' : 'var(--profit)' }}>{grantMessage}</p>}
+        </div>
+      </details>
+
+      <details style={{ marginBottom: '20px' }} open={showBulkRecover}>
+        <summary style={{ cursor: 'pointer', fontSize: '13px', color: 'var(--text-secondary)' }} onClick={(e) => { e.preventDefault(); setShowBulkRecover((v) => !v); }}>
+          📋 שחזור קבוצתי - כמה אנשים עם אותה תקלה (למשל כולם עם &quot;חודש ראשון ב-1 ש&quot;ח&quot; שה-webhook לא הגיע אליהם)
+        </summary>
+        <div className="journal-form" style={{ marginTop: '10px' }}>
+          <p style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginBottom: '8px', lineHeight: 1.6 }}>
+            שורה לכל איש קשר: <code dir="ltr">שם, טלפון, מייל</code> (הטלפון אופציונלי). מי שכבר מנוי/ה פעיל/ה אצלנו ידולג אוטומטית - לא יקבל/תקבל שוב מייל כניסה. כל מי שחסר יקבל חשבון, מייל כניסה, רצף קליטה, וסנכרון למאנדיי בהטבת &quot;חודש ראשון ב-1 ש&quot;ח&quot;.
+          </p>
+          <textarea
+            className="tp-text-input"
+            style={{ marginBottom: '10px', minHeight: '120px' }}
+            placeholder={'מוקי הראל, 0542227522, mharel@argopro.com\nשם נוסף, 0501234567, example@mail.com'}
+            value={bulkText}
+            onChange={(e) => setBulkText(e.target.value)}
+          />
+          <button className="btn-primary" onClick={handleBulkRecover} disabled={bulkRecovering || !bulkText.trim()}>
+            {bulkRecovering ? 'מעבדים...' : `עיבוד ${parseBulkContacts().length || ''} אנשי קשר`}
+          </button>
+
+          {bulkResult && (
+            <div style={{ marginTop: '12px' }}>
+              <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '8px' }}>
+                מתוך {bulkResult.total}: <strong style={{ color: 'var(--profit)' }}>{bulkResult.recovered} שוחזרו</strong> · {bulkResult.alreadyActive} כבר היו פעילים (דולגו) · {bulkResult.failed > 0 && <span style={{ color: 'var(--loss)' }}>{bulkResult.failed} נכשלו</span>}
+              </p>
+              <div style={{ fontSize: '12px', color: 'var(--text-tertiary)', lineHeight: 1.8 }}>
+                {bulkResult.results.map((r, i) => (
+                  <div key={i}>
+                    {r.status === 'recovered' && `✅ ${r.name} - שוחזר/ה${r.mondaySynced === false ? ' (⚠️ סנכרון מאנדיי נכשל)' : ''}`}
+                    {r.status === 'already_active' && `➖ ${r.name} - כבר היה/הייתה מנוי/ה פעיל/ה, דולג`}
+                    {r.status === 'error' && `❌ ${r.name} - שגיאה: ${r.error}`}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </details>
 
