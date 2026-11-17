@@ -263,9 +263,9 @@ https://www.shirandimor.com/lives
     title: 'היום יש לייב - {live_title}',
     content: `{greeting}
 
-תזכורת - *היום ב-{time}* יש לנו לייב: {live_title}.
+🔗 *לינק ללייב היום ב-{time}*
 
-הכניסה דרך האתר:
+יש לנו לייב: {live_title} - נכנסים לאתר כדי לקבל את הלינק להצטרפות:
 https://www.shirandimor.com/lives
 
 נתראה בלייב 🤩
