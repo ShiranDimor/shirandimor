@@ -53,13 +53,19 @@ export function parseGrowPayload(raw: Record<string, unknown>): GrowPayment {
   };
 }
 
+// Monday.com מחזיר HTTP 200 גם כששאילתה/מוטציה נכשלת (למשל תווית שלא קיימת בעמודת סטטוס) -
+// השגיאה מגיעה בתוך data.errors, לא כסטטוס HTTP. בלי הבדיקה הזו, קריאה שנכשלה בפועל (ולכן אף
+// עמודה לא התעדכנה) נראית כמו הצלחה ל-.catch() שאחריה - וזה בדיוק מה שקרה בפועל (מוקי, אסף) -
+// התג הזיז קבוצה אבל עדכון העמודות נכשל בשקט כי התווית "נרשם בזכות הטבה" לא הייתה מוכרת עדיין
 async function mondayRequest(token: string, query: string, variables: Record<string, unknown>) {
   const res = await fetch('https://api.monday.com/v2', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: token },
     body: JSON.stringify({ query, variables }),
   });
-  return res.json();
+  const json = await res.json();
+  if (json?.errors) throw new Error(`Monday API error: ${JSON.stringify(json.errors)}`);
+  return json;
 }
 
 async function getGrowBoardSchema(token: string, boardId: string) {
@@ -175,14 +181,21 @@ export async function syncGrowPaymentToMonday(
     const existingItemId = await findItemIdByContact(token, boardId, phoneColumnId, emailColumnId, payment.phone, payment.email).catch(() => null);
 
     if (existingItemId) {
+      let columnsFailed = false;
+
       if (Object.keys(columnValues).length > 0) {
         await mondayRequest(
           token,
+          // create_labels_if_missing - אם "חודש ראשון ב-1 ש״ח" עדיין לא קיימת כאופציה בעמודת
+          // ההטבה, Monday ייצור אותה אוטומטית במקום לדחות את כל העדכון (כולל עלות ותאריך הרשמה)
           `mutation ($boardId: ID!, $itemId: ID!, $columnValues: JSON!) {
-            change_multiple_column_values (board_id: $boardId, item_id: $itemId, column_values: $columnValues) { id }
+            change_multiple_column_values (board_id: $boardId, item_id: $itemId, column_values: $columnValues, create_labels_if_missing: true) { id }
           }`,
           { boardId, itemId: existingItemId, columnValues: JSON.stringify(columnValues) }
-        ).catch((e) => console.error('Grow→Monday.com: נכשל עדכון עמודות למנוי קיים', e));
+        ).catch((e) => {
+          console.error('Grow→Monday.com: נכשל עדכון עמודות למנוי קיים', e);
+          columnsFailed = true;
+        });
       }
 
       if (subscriberGroupId) {
@@ -199,13 +212,14 @@ export async function syncGrowPaymentToMonday(
         { itemId: existingItemId, body: noteLines.join('\n') }
       ).catch((e) => console.error('Grow→Monday.com: נכשל הוספת עדכון למנוי קיים', e));
 
+      if (columnsFailed) return { ok: false, reason: 'columns_update_failed', itemId: existingItemId, created: false };
       return { ok: true, itemId: existingItemId, created: false };
     }
 
     const createData: any = await mondayRequest(
       token,
       `mutation ($boardId: ID!, $groupId: String, $itemName: String!, $columnValues: JSON) {
-        create_item (board_id: $boardId, group_id: $groupId, item_name: $itemName, column_values: $columnValues) { id }
+        create_item (board_id: $boardId, group_id: $groupId, item_name: $itemName, column_values: $columnValues, create_labels_if_missing: true) { id }
       }`,
       {
         boardId,
