@@ -33,16 +33,16 @@ export async function POST(request: Request, { params }: { params: { id: string 
   // כדי שהשליחה האמיתית לכולם תישאר זמינה בלי "שהתראה כבר נשלחה"
   const { searchParams } = new URL(request.url);
   if (searchParams.get('test') === '1') {
-    const result = await sendPushToUser(admin.id, { title: `🎥 מפגש חדש - ${live.title}`, body: dateLabel, url: '/lives' });
+    const result = await sendPushToUser(admin.id, { title: `🎥 ${live.title}`, body: dateLabel, url: '/lives' });
     return NextResponse.json({ ok: true, test: true, ...result });
   }
 
   let result;
   if (live.open_to_all) {
-    result = await sendPushToEveryone({ title: `🎥 מפגש חדש - ${live.title}`, body: dateLabel, url: '/lives' }, 'live', params.id);
+    result = await sendPushToEveryone({ title: `🎥 ${live.title}`, body: dateLabel, url: '/lives' }, 'live', params.id);
   } else {
-    const subsResult = await sendPushToActiveSubscribers({ title: `🎥 מפגש חדש - ${live.title}`, body: dateLabel, url: '/lives' }, 'live', params.id);
-    const nonSubsResult = await sendPushToNonSubscribers({ title: '🎥 נקבע מפגש חדש', body: 'פתוח למנויים - חודש ראשון ב-₪1 ←', url: '/subscribe' }, 'live', params.id);
+    const subsResult = await sendPushToActiveSubscribers({ title: `🎥 ${live.title}`, body: dateLabel, url: '/lives' }, 'live', params.id);
+    const nonSubsResult = await sendPushToNonSubscribers({ title: `🎥 יש לייב - ${live.title}`, body: `${dateLabel} · פתוח למנויים - חודש ראשון ב-1 ש"ח ←`, url: '/subscribe' }, 'live', params.id);
     result = {
       configured: subsResult.configured && nonSubsResult.configured,
       attempted: subsResult.attempted + nonSubsResult.attempted,
