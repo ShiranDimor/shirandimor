@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/instantLogin';
+import { sendLoginEmail, supabaseAdmin } from '@/lib/instantLogin';
 import { ensureActiveSubscriberAccount } from '@/lib/subscriberStatus';
+import { syncGrowPaymentToMonday } from '@/lib/grow';
+import { startSequence } from '@/lib/sequenceEngine';
 
 async function requireAdmin(request: Request) {
   const authHeader = request.headers.get('Authorization') || '';
@@ -15,9 +17,11 @@ async function requireAdmin(request: Request) {
   return user;
 }
 
-// POST - הענקת חשבון מנוי/ה ידנית (לא דרך מאנדיי) - לשימוש במקרים חד-פעמיים כמו הרשמה לניסיון
-// שאינה עוברת דרך תהליך התשלום/מאנדיי הרגיל. משתמש באותה ensureActiveSubscriberAccount שכל
-// שאר האתר משתמש בה, כדי שההתחברות (קישור למייל) תעבוד בדיוק כמו לכל מנוי אחר.
+// POST - הענקת חשבון מנוי/ה ידנית (לא דרך ה-webhook של Grow) - לשימוש במקרים חד-פעמיים כמו
+// הרשמה לניסיון, או שחזור תשלום אמיתי שה-webhook של Grow לא הגיע/נכשל לטפל בו (ר' קישור
+// "payment" למטה). עושה בדיוק את מה ש-app/api/webhooks/grow עושה: יוצר/מפעיל חשבון, שולח
+// מייל כניסה, מתחיל את רצף הקליטה אם זו הצטרפות אמיתית חדשה, ואם ניתן גם payment - מסנכרן
+// למאנדיי (מעביר כרטיס קיים ל"קבוצת סוחרים" + מעדכן עלות/תאריך/הטבה) בדיוק כמו תשלום אמיתי
 export async function POST(request: Request) {
   const admin = await requireAdmin(request);
   if (!admin) return NextResponse.json({ error: 'אין הרשאת ניהול' }, { status: 403 });
@@ -26,14 +30,35 @@ export async function POST(request: Request) {
   const name = typeof body?.name === 'string' ? body.name.trim() : '';
   const phone = typeof body?.phone === 'string' ? body.phone.trim() : '';
   const email = typeof body?.email === 'string' ? body.email.trim() : '';
+  const payment = body?.payment as { amount?: number; transactionId?: string; isFirstMonthPrice?: boolean } | undefined;
 
   if (!name || !email) {
     return NextResponse.json({ error: 'חסר שם או מייל' }, { status: 400 });
   }
 
   try {
-    await ensureActiveSubscriberAccount(email, phone, name);
-    return NextResponse.json({ ok: true });
+    const { userId, newlyActivated } = await ensureActiveSubscriberAccount(email, phone, name, undefined, Boolean(payment?.isFirstMonthPrice));
+
+    if (newlyActivated) {
+      await startSequence('welcome-subscriber', { userId }).catch((e) => console.error('grant-subscriber: נכשלה התחלת רצף הקליטה', e));
+    }
+
+    await sendLoginEmail(email).catch((e) => console.error('grant-subscriber: נכשלה שליחת מייל כניסה', e));
+
+    let mondaySynced: boolean | undefined;
+    if (payment) {
+      const result = await syncGrowPaymentToMonday({
+        phone: phone || null,
+        email,
+        fullName: name,
+        amount: payment.amount ?? null,
+        transactionId: payment.transactionId ?? null,
+        webhookKey: null,
+      }).catch((e) => ({ ok: false, reason: e instanceof Error ? e.message : 'threw' }));
+      mondaySynced = result.ok;
+    }
+
+    return NextResponse.json({ ok: true, newlyActivated, mondaySynced });
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : 'שגיאה ביצירת החשבון' }, { status: 500 });
   }

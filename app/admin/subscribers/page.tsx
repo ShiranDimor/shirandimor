@@ -53,6 +53,12 @@ export default function AdminSubscribersPage() {
   const [grantEmail, setGrantEmail] = useState('');
   const [granting, setGranting] = useState(false);
   const [grantMessage, setGrantMessage] = useState('');
+  // שדות תשלום אופציונליים - רק כששחזרים תשלום אמיתי מ-Grow שה-webhook לא הגיע/נכשל לטפל
+  // בו (לא שימוש ב"מתנה"/ניסיון). כשממולאים, זה גם מסנכרן למאנדיי בדיוק כמו תשלום אמיתי
+  const [showGrantPayment, setShowGrantPayment] = useState(false);
+  const [grantAmount, setGrantAmount] = useState('');
+  const [grantTransactionId, setGrantTransactionId] = useState('');
+  const [grantFirstMonthPrice, setGrantFirstMonthPrice] = useState(false);
 
   // סיכום ההכנסה (היה פעם עמוד נפרד "/admin/revenue") - עבר לכאן כי זו אותה אוכלוסייה בדיוק
   // (מי שבקבוצת הסוחרים במאנדיי הוא/היא בהכרח מנוי/ה משלם/ת), אין טעם בשתי רשימות נפרדות
@@ -147,20 +153,27 @@ export default function AdminSubscribersPage() {
     setGrantMessage('');
 
     const { data: { session } } = await supabase.auth.getSession();
+    const payment = showGrantPayment && (grantAmount.trim() || grantTransactionId.trim())
+      ? { amount: grantAmount.trim() ? Number(grantAmount.trim()) : undefined, transactionId: grantTransactionId.trim() || undefined, isFirstMonthPrice: grantFirstMonthPrice }
+      : undefined;
     const res = await fetch('/api/admin/grant-subscriber', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
-      body: JSON.stringify({ name: grantName.trim(), phone: grantPhone.trim(), email: grantEmail.trim() }),
+      body: JSON.stringify({ name: grantName.trim(), phone: grantPhone.trim(), email: grantEmail.trim(), payment }),
     });
     const data = await res.json().catch(() => null);
 
     setGranting(false);
 
     if (res.ok) {
-      setGrantMessage(`${grantName} נוסף/ה כמנוי/ה בהצלחה`);
+      setGrantMessage(`${grantName} נוסף/ה כמנוי/ה בהצלחה${payment ? (data?.mondaySynced ? ' וסונכרן/ה למאנדיי' : ' (⚠️ סנכרון מאנדיי נכשל - צריך להעביר ידנית ל"קבוצת סוחרים")') : ''}`);
       setGrantName('');
       setGrantPhone('');
       setGrantEmail('');
+      setGrantAmount('');
+      setGrantTransactionId('');
+      setGrantFirstMonthPrice(false);
+      setShowGrantPayment(false);
       loadApprovedSubs();
     } else {
       setGrantMessage('שגיאה: ' + (data?.error || 'לא הצלחנו להוסיף'));
@@ -502,6 +515,25 @@ export default function AdminSubscribersPage() {
             <div className="field"><label>טלפון</label><ClearableInput type="tel" value={grantPhone} onChange={(e) => setGrantPhone(e.target.value)} onClear={() => setGrantPhone('')} placeholder="0542000214" /></div>
             <div className="field"><label>מייל</label><ClearableInput type="email" value={grantEmail} onChange={(e) => setGrantEmail(e.target.value)} onClear={() => setGrantEmail('')} placeholder="name@example.com" /></div>
           </div>
+
+          <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12.5px', color: 'var(--text-secondary)', margin: '8px 0' }}>
+            <input type="checkbox" checked={showGrantPayment} onChange={(e) => setShowGrantPayment(e.target.checked)} />
+            זה שחזור תשלום אמיתי מ-Grow (לא מתנה/ניסיון) - יש לי פרטי תשלום
+          </label>
+
+          {showGrantPayment && (
+            <>
+              <div className="form-row">
+                <div className="field"><label>סכום ששולם (₪)</label><ClearableInput type="number" value={grantAmount} onChange={(e) => setGrantAmount(e.target.value)} onClear={() => setGrantAmount('')} placeholder="1" /></div>
+                <div className="field"><label>אסמכתא (אופציונלי)</label><ClearableInput type="text" value={grantTransactionId} onChange={(e) => setGrantTransactionId(e.target.value)} onClear={() => setGrantTransactionId('')} placeholder="534177134" /></div>
+              </div>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12.5px', color: 'var(--text-secondary)', marginBottom: '8px' }}>
+                <input type="checkbox" checked={grantFirstMonthPrice} onChange={(e) => setGrantFirstMonthPrice(e.target.checked)} />
+                חודש ראשון ב-1 ש&quot;ח (הטבה)
+              </label>
+            </>
+          )}
+
           <button className="btn-primary" onClick={handleGrantSubscriber} disabled={granting}>{granting ? 'מוסיפים...' : 'הוספה כמנוי/ה'}</button>
           {grantMessage && <p style={{ marginTop: '10px', fontSize: '13px', color: grantMessage.startsWith('שגיאה') ? 'var(--loss)' : 'var(--profit)' }}>{grantMessage}</p>}
         </div>

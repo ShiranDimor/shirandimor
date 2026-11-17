@@ -32,6 +32,7 @@ export async function POST(request: Request) {
     }
   } catch (e) {
     console.error('Grow webhook: לא ניתן לפענח את גוף הבקשה', e);
+    await alertAdmins('⚠️ Grow שלח בקשה שלא ניתן לפענח', 'תשלום יכול להיות אבוד - בדקי את לוח הבקרה של Grow ואת הלוגים');
     return NextResponse.json({ ok: false, error: 'invalid_body' }, { status: 400 });
   }
 
@@ -53,6 +54,7 @@ export async function POST(request: Request) {
   if (expectedKey) {
     if (payment.webhookKey !== expectedKey && headerKey !== expectedKey) {
       console.error('Grow webhook: מפתח אימות שגוי או חסר', { bodyKey: payment.webhookKey, headerKey });
+      await alertAdmins('⚠️ Grow webhook נדחה - מפתח אימות שגוי', `${payment.fullName || payment.phone || payment.email || 'מישהו/י'} - תשלום אפשרי לא טופל. בדקי שה-webhook ב-Grow מוגדר עם המפתח הנכון`);
       return NextResponse.json({ ok: false, error: 'unauthorized' }, { status: 401 });
     }
   } else {
@@ -63,6 +65,7 @@ export async function POST(request: Request) {
 
   if (!payment.phone && !payment.email) {
     console.error('Grow webhook: אין טלפון או מייל בבקשה', body);
+    await alertAdmins('⚠️ Grow שלח תשלום בלי טלפון/מייל', 'תשלום התקבל אבל אי אפשר לשייך אותו לאף איש קשר - צריך לבדוק ידנית ב-Grow מי שילם');
     return NextResponse.json({ ok: false, error: 'missing_contact' }, { status: 400 });
   }
 
