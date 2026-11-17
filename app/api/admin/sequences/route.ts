@@ -33,8 +33,8 @@ export async function GET(request: Request) {
 
   const userIds = Array.from(new Set(rows.map((r) => r.user_id).filter(Boolean))) as string[];
   const { data: profiles } = userIds.length
-    ? await supabaseAdmin.from('profiles').select('id, full_name, email, phone').in('id', userIds)
-    : { data: [] as { id: string; full_name: string | null; email: string | null; phone: string | null }[] };
+    ? await supabaseAdmin.from('profiles').select('id, full_name, email, phone, trial_price_used').in('id', userIds)
+    : { data: [] as { id: string; full_name: string | null; email: string | null; phone: string | null; trial_price_used: boolean | null }[] };
   const profileById = new Map((profiles || []).map((p) => [p.id, p]));
 
   // לידים (בלי user_id) - שם נשמר רק על שורת המינוי שלהם עצמה, לא על sequence_progress
@@ -44,30 +44,38 @@ export async function GET(request: Request) {
     : { data: [] as { phone: string | null; name: string | null }[] };
   const nameByPhone = new Map((leadSubs || []).filter((s) => s.name).map((s) => [s.phone, s.name]));
 
-  const enriched = rows.map((row) => {
-    const seqDef = SEQUENCES[row.sequence_key as SequenceKey];
-    const totalSteps = seqDef?.steps.length || 0;
-    const currentStep = seqDef?.steps[Math.min(row.last_step_sent, totalSteps - 1)];
-    const profile = row.user_id ? profileById.get(row.user_id) : null;
-    const name = profile?.full_name || (row.phone ? nameByPhone.get(row.phone) : null) || null;
+  const enriched = rows
+    // רלוונטי כאן (לבקשת שירן) רק מי שהצטרף/ה בהטבת "חודש ראשון ב-1 ש״ח" - לא מנויים/ות
+    // במחיר מלא. לא משפיע על הרצף עצמו (כולם עדיין מקבלים את ההודעות) - רק על מה שמוצג כאן
+    .filter((row) => {
+      if (row.sequence_key !== 'welcome-subscriber') return true;
+      const profile = row.user_id ? profileById.get(row.user_id) : null;
+      return Boolean(profile?.trial_price_used);
+    })
+    .map((row) => {
+      const seqDef = SEQUENCES[row.sequence_key as SequenceKey];
+      const totalSteps = seqDef?.steps.length || 0;
+      const currentStep = seqDef?.steps[Math.min(row.last_step_sent, totalSteps - 1)];
+      const profile = row.user_id ? profileById.get(row.user_id) : null;
+      const name = profile?.full_name || (row.phone ? nameByPhone.get(row.phone) : null) || null;
 
-    return {
-      id: row.id,
-      sequenceKey: row.sequence_key,
-      sequenceName: seqDef?.name || row.sequence_key,
-      name,
-      phone: profile?.phone || row.phone,
-      email: profile?.email || row.email,
-      startedAt: row.started_at,
-      lastStepSent: row.last_step_sent,
-      totalSteps,
-      currentStepTitle: row.last_step_sent > 0 ? currentStep?.title || null : null,
-      lastSentAt: row.last_sent_at,
-      stoppedAt: row.stopped_at,
-      stoppedReason: row.stopped_reason ? (STOP_REASON_LABELS[row.stopped_reason] || row.stopped_reason) : null,
-      active: !row.stopped_at,
-    };
-  });
+      return {
+        id: row.id,
+        sequenceKey: row.sequence_key,
+        sequenceName: seqDef?.name || row.sequence_key,
+        name,
+        phone: profile?.phone || row.phone,
+        email: profile?.email || row.email,
+        startedAt: row.started_at,
+        lastStepSent: row.last_step_sent,
+        totalSteps,
+        currentStepTitle: row.last_step_sent > 0 ? currentStep?.title || null : null,
+        lastSentAt: row.last_sent_at,
+        stoppedAt: row.stopped_at,
+        stoppedReason: row.stopped_reason ? (STOP_REASON_LABELS[row.stopped_reason] || row.stopped_reason) : null,
+        active: !row.stopped_at,
+      };
+    });
 
   return NextResponse.json({ rows: enriched });
 }
