@@ -73,7 +73,6 @@ export default function AdminLivesPage() {
   const [backfillingId, setBackfillingId] = useState<string | null>(null);
   const [togglingOpenToAllId, setTogglingOpenToAllId] = useState<string | null>(null);
   const [backfillMessage, setBackfillMessage] = useState<{ id: string; text: string } | null>(null);
-  const [sendingJoinLinkId, setSendingJoinLinkId] = useState<string | null>(null);
   const [sendingToEveryoneId, setSendingToEveryoneId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -220,33 +219,13 @@ export default function AdminLivesPage() {
       : 'השליחה נכשלה בפועל - יש לבדוק שההתראות עדיין מופעלות אצלך במכשיר');
   }
 
-  // שולח את הלינק האמיתי להצטרפות (join_info) כהתראת פוש אישית לכל מי שנרשם/ה - גם מנויים
-  // וגם לידים עם התראות פעילות. לחיצה על ההתראה אצלם/ן פותחת ישירות את גוגל מיט
-  async function handleSendJoinLink(live: Live) {
-    if (!live.join_info) { window.alert('קודם צריך להוסיף קישור הצטרפות (גוגל מיט) בעריכה'); return; }
-    if (!window.confirm(`לשלוח את לינק ההצטרפות לכל ${live.registrationsCount} הנרשמים ל"${live.title}"?`)) return;
-
-    setSendingJoinLinkId(live.id);
-    const res = await fetch(`/api/admin/lives/${live.id}/send-join-link`, { method: 'POST', headers: await authHeader() });
-    const data = await res.json().catch(() => ({}));
-    setSendingJoinLinkId(null);
-
-    if (!res.ok) { window.alert(`השליחה נכשלה: ${data.error || 'שגיאה לא ידועה'}`); return; }
-
-    let msg = `נשלח בפועל ל-${data.sent} מתוך ${data.totalRegistrants} נרשמים${data.failed ? ` · ${data.failed} נכשלו` : ''}`;
-    if (data.noPushCount > 0) {
-      msg += `\n\nבלי שום דרך אוטומטית להגיע אליהם (אין התראות פעילות) - צריך לפנות ידנית:\n${data.noPushNames.join(', ')}`;
-    }
-    window.alert(msg);
-  }
-
-  // שליחה רחבה (לא רק לנרשמים בפועל) עם הלינק האמיתי - פתוח לכולם: כולם מקבלים את הלינק.
+  // שליחת הלינק האמיתי להצטרפות (join_info) כהתראת פוש - פתוח לכולם: כולם מקבלים את הלינק.
   // סגור למנויים: רק מנויים מקבלים את הלינק, ומי שאינו מנוי מקבל/ת הזמנה להצטרף במקום
   async function handleNotifyEveryone(live: Live) {
     if (!live.join_info) { window.alert('קודם צריך להוסיף קישור הצטרפות (גוגל מיט) בעריכה'); return; }
     const confirmText = live.open_to_all
-      ? `לשלוח את לינק ההצטרפות האמיתי לכל מי שהפעיל/ה התראות באתר (מנויים ולא-מנויים כאחד) - לא רק מי שנרשם?`
-      : `לשלוח את לינק ההצטרפות האמיתי לכל המנויים, ולכל מי שאינו מנוי הודעה שיש לייב עם הזמנה להצטרף (חודש ראשון ב-₪1) - לא רק מי שנרשם?`;
+      ? `לשלוח את לינק ההצטרפות האמיתי לכל מי שהפעיל/ה התראות באתר (מנויים ולא-מנויים כאחד)?`
+      : `לשלוח את לינק ההצטרפות האמיתי לכל המנויים, ולכל מי שאינו מנוי הודעה שיש לייב עם הזמנה להצטרף (חודש ראשון ב-1 ש"ח)?`;
     if (!window.confirm(confirmText)) return;
 
     setSendingToEveryoneId(live.id);
@@ -397,16 +376,6 @@ export default function AdminLivesPage() {
             </button>
             <button type="button" className="btn-outline" style={{ padding: '8px 12px', fontSize: '12.5px' }} onClick={() => handleNotify(live.id, live.title)} disabled={notifyingId === live.id}>
               {notifyingId === live.id ? '…' : '📣 התראה'}
-            </button>
-            <button
-              type="button"
-              className="btn-outline"
-              style={{ padding: '8px 12px', fontSize: '12.5px' }}
-              onClick={() => handleSendJoinLink(live)}
-              disabled={sendingJoinLinkId === live.id}
-              title="שליחת לינק ההצטרפות בפועל לכל הנרשמים - גם מנויים וגם לידים עם התראות פעילות"
-            >
-              {sendingJoinLinkId === live.id ? '…' : '📍 שליחת לינק לנרשמים'}
             </button>
             <button
               type="button"
