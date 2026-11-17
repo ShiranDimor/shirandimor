@@ -4,9 +4,14 @@ import { ensureActiveSubscriberAccount } from '@/lib/subscriberStatus';
 import { syncGrowPaymentToMonday } from '@/lib/grow';
 import { startSequence } from '@/lib/sequenceEngine';
 
-async function requireAdmin(request: Request) {
+// true (לא אובייקט user אמיתי) כשהקריאה מאומתת דרך AGENT_ADMIN_SECRET (שרת-לשרת, בלי
+// סשן אדמין בדפדפן) - לשימוש חד-פעמי כשסוכן/ת (לא שירן בדפדפן) צריך/ה לתקן ידנית מקרה
+// דחוף (למשל תשלום Grow שהלך לאיבוד) בלי לחכות שהיא תפתח את העמוד ותלחץ בעצמה
+async function requireAdmin(request: Request): Promise<{ id: string } | true | null> {
   const authHeader = request.headers.get('Authorization') || '';
   const token = authHeader.replace('Bearer ', '');
+
+  if (process.env.AGENT_ADMIN_SECRET && token === process.env.AGENT_ADMIN_SECRET) return true;
 
   const { data: { user } } = await supabaseAdmin.auth.getUser(token);
   if (!user) return null;
