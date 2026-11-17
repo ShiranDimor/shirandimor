@@ -159,6 +159,31 @@ export async function startSequence(sequenceKey: SequenceKey, contact: Contact):
   await processDueStep(sequenceKey, steps, SEQUENCES[sequenceKey].steps.length, inserted as ProgressRow);
 }
 
+// שליחה ידנית חוזרת של צעד ספציפי - לשימוש מעמוד הניהול (אם מישהו/י מדווח/ת שלא קיבל/ה הודעה,
+// או שרוצים לשלוח לו/ה שוב). לא נוגע ב-last_step_sent/started_at - זו רק חזרה על תוכן, לא
+// התקדמות ברצף
+export async function resendStep(progressId: string, stepIndex: number): Promise<{ ok: boolean; error?: string }> {
+  const { data: row } = await supabaseAdmin
+    .from('sequence_progress')
+    .select('id, sequence_key, user_id, phone, email')
+    .eq('id', progressId)
+    .maybeSingle();
+  if (!row) return { ok: false, error: 'not_found' };
+
+  const steps = await getStepsForSequence(row.sequence_key as SequenceKey);
+  const step = steps.find((s) => s.step_index === stepIndex);
+  if (!step) return { ok: false, error: 'invalid_step' };
+
+  const contact: Contact = { userId: row.user_id, phone: row.phone, email: row.email };
+  const result = await sendStep(step.key, contact).catch((e) => {
+    console.error(`resendStep: נכשלה שליחה חוזרת`, progressId, e);
+    return null;
+  });
+
+  if (!result || result.attempted === 0) return { ok: false, error: 'no_valid_device' };
+  return { ok: true };
+}
+
 // נקרא פעם ביום (cron) - עובר על כל איש קשר בכל רצף שעוד לא הסתיים/נעצר, ובודק אם הגיע הזמן
 // לצעד הבא שלו/ה. בלי זה הרצף היה חייב לרוץ ברקע כל הזמן - פעם ביום מספיק כי ימי ה-offset
 // הם תמיד הפרש של כמה ימים שלמים, לא שעות מדויקות
