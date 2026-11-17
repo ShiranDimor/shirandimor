@@ -74,6 +74,7 @@ export default function AdminLivesPage() {
   const [togglingOpenToAllId, setTogglingOpenToAllId] = useState<string | null>(null);
   const [backfillMessage, setBackfillMessage] = useState<{ id: string; text: string } | null>(null);
   const [sendingJoinLinkId, setSendingJoinLinkId] = useState<string | null>(null);
+  const [sendingToEveryoneId, setSendingToEveryoneId] = useState<string | null>(null);
 
   useEffect(() => {
     checkAdmin();
@@ -239,6 +240,24 @@ export default function AdminLivesPage() {
     window.alert(msg);
   }
 
+  // שליחה רחבה (לא רק לנרשמים בפועל) עם הלינק האמיתי - פתוח לכולם: כולם מקבלים את הלינק.
+  // סגור למנויים: רק מנויים מקבלים את הלינק, ומי שאינו מנוי מקבל/ת הזמנה להצטרף במקום
+  async function handleNotifyEveryone(live: Live) {
+    if (!live.join_info) { window.alert('קודם צריך להוסיף קישור הצטרפות (גוגל מיט) בעריכה'); return; }
+    const confirmText = live.open_to_all
+      ? `לשלוח את לינק ההצטרפות האמיתי לכל מי שהפעיל/ה התראות באתר (מנויים ולא-מנויים כאחד) - לא רק מי שנרשם?`
+      : `לשלוח את לינק ההצטרפות האמיתי לכל המנויים, ולכל מי שאינו מנוי הודעה שיש לייב עם הזמנה להצטרף (חודש ראשון ב-₪1) - לא רק מי שנרשם?`;
+    if (!window.confirm(confirmText)) return;
+
+    setSendingToEveryoneId(live.id);
+    const res = await fetch(`/api/admin/lives/${live.id}/notify-everyone`, { method: 'POST', headers: await authHeader() });
+    const data = await res.json().catch(() => ({}));
+    setSendingToEveryoneId(null);
+
+    if (!res.ok) { window.alert(`השליחה נכשלה: ${data.error || 'שגיאה לא ידועה'}`); return; }
+    window.alert(`נשלח בפועל ל-${data.sent} מתוך ${data.attempted} מכשירים רשומים${data.failed ? ` · ${data.failed} נכשלו` : ''}`);
+  }
+
   async function toggleRegistrations(id: string) {
     if (expandedId === id) {
       setExpandedId(null);
@@ -388,6 +407,16 @@ export default function AdminLivesPage() {
               title="שליחת לינק ההצטרפות בפועל לכל הנרשמים - גם מנויים וגם לידים עם התראות פעילות"
             >
               {sendingJoinLinkId === live.id ? '…' : '📍 שליחת לינק לנרשמים'}
+            </button>
+            <button
+              type="button"
+              className="btn-outline"
+              style={{ padding: '8px 12px', fontSize: '12.5px' }}
+              onClick={() => handleNotifyEveryone(live)}
+              disabled={sendingToEveryoneId === live.id}
+              title={live.open_to_all ? 'שליחת הלינק האמיתי לכולם, לא רק למי שנרשם' : 'שליחת הלינק האמיתי למנויים, והזמנה להצטרף למי שאינו מנוי - לא רק למי שנרשם'}
+            >
+              {sendingToEveryoneId === live.id ? '…' : '📢 שליחה לכולם'}
             </button>
             <button
               className="row-delete-btn"
