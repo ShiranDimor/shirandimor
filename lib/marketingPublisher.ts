@@ -30,7 +30,11 @@ const SITE_URL = 'https://www.shirandimor.com';
 function facebookCaption(caption: string, postId: string, ctaPath: string | null): string {
   const path = ctaPath && ctaPath.startsWith('/') ? ctaPath : '/subscribe';
   const url = `${SITE_URL}${path}${path.includes('?') ? '&' : '?'}source=fb_${postId.slice(0, 8)}`;
-  return caption.includes('הקישור בביו') ? caption.replace(/הקישור בביו/g, `כאן: ${url}`) : `${caption}\n\n${url}`;
+  if (caption.includes('הקישור בביו')) return caption.replace(/הקישור בביו/g, `כאן: ${url}`);
+  // הניסוח של שירן: "כנסו ללינק 👇🏿" ובשורה הבאה Shirandimor.com - בפייסבוק הכתובת הופכת לקישור עם מעקב
+  const bareSite = /(^|\s)(?:https?:\/\/)?(?:www\.)?shirandimor\.com\/?(?=\s|$)/im;
+  if (bareSite.test(caption)) return caption.replace(bareSite, (_m, pre: string) => `${pre}${url}`);
+  return `${caption}\n\n${url}`;
 }
 
 type MarketingPostRow = {
