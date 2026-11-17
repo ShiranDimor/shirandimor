@@ -33,7 +33,9 @@ export default function AdminSequencesPage() {
 
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(false);
-  const [filter, setFilter] = useState<'all' | 'active' | 'stopped'>('all');
+  // ברירת מחדל "פעילים" - מי שכבר סיים את כל הרצף (או נעצר) לא נותר בתצוגה הרגילה, כדי שהעמוד
+  // יישאר ממוקד במי שבאמת עדיין בתהליך. אפשר עדיין לעבור ל"הכל"/"הסתיימו" אם צריך לבדוק משהו
+  const [filter, setFilter] = useState<'all' | 'active' | 'stopped'>('active');
   const [busy, setBusy] = useState('');
 
   useEffect(() => { checkAdmin(); }, []);
@@ -102,9 +104,9 @@ export default function AdminSequencesPage() {
       </p>
 
       <div style={{ display: 'flex', gap: '6px', marginBottom: '14px' }}>
-        <button className={filter === 'all' ? 'btn-primary' : 'btn-outline'} style={{ padding: '6px 14px', fontSize: '12.5px' }} onClick={() => setFilter('all')}>הכל</button>
         <button className={filter === 'active' ? 'btn-primary' : 'btn-outline'} style={{ padding: '6px 14px', fontSize: '12.5px' }} onClick={() => setFilter('active')}>פעילים</button>
         <button className={filter === 'stopped' ? 'btn-primary' : 'btn-outline'} style={{ padding: '6px 14px', fontSize: '12.5px' }} onClick={() => setFilter('stopped')}>הסתיימו/נעצרו</button>
+        <button className={filter === 'all' ? 'btn-primary' : 'btn-outline'} style={{ padding: '6px 14px', fontSize: '12.5px' }} onClick={() => setFilter('all')}>הכל</button>
         <button className="btn-outline" style={{ padding: '6px 14px', fontSize: '12.5px', marginRight: 'auto' }} onClick={loadRows} disabled={loading}>{loading ? '...' : '🔄 רענון'}</button>
       </div>
 
