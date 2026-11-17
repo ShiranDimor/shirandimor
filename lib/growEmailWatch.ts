@@ -23,13 +23,37 @@ function decodeBase64Url(data: string): string {
 
 type GmailPart = { mimeType?: string; body?: { data?: string }; parts?: GmailPart[] };
 
-function extractPlainTextBody(payload: GmailPart): string {
-  if (payload.mimeType === 'text/plain' && payload.body?.data) return decodeBase64Url(payload.body.data);
+function findPartByMimeType(payload: GmailPart, mimeType: string): string {
+  if (payload.mimeType === mimeType && payload.body?.data) return decodeBase64Url(payload.body.data);
   for (const part of payload.parts || []) {
-    const found = extractPlainTextBody(part);
+    const found = findPartByMimeType(part, mimeType);
     if (found) return found;
   }
   return '';
+}
+
+// המייל של Grow הוא HTML בלבד (אין חלק text/plain כלל) - אם לא נמצא טקסט רגיל, נופלים ל-HTML
+// ומסירים תגיות בצורה גסה. לא צריך המרה מושלמת, רק מספיק כדי שהביטויים הרגילים למטה ("שם:",
+// "טלפון:" וכו') עדיין יתפסו את הטקסט - בדיוק כמו שכלי ה-Gmail עצמו ממיר HTML לטקסט כשאין חלופה
+function htmlToPlainText(html: string): string {
+  return html
+    .replace(/<(script|style)[^>]*>[\s\S]*?<\/\1>/gi, ' ')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/(td|tr|p|div|h\d)>/gi, '\n')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&quot;/g, '"')
+    .replace(/&amp;/g, '&')
+    .replace(/[ \t]+/g, ' ')
+    .replace(/\n{2,}/g, '\n')
+    .trim();
+}
+
+function extractPlainTextBody(payload: GmailPart): string {
+  const plain = findPartByMimeType(payload, 'text/plain');
+  if (plain) return plain;
+  const html = findPartByMimeType(payload, 'text/html');
+  return html ? htmlToPlainText(html) : '';
 }
 
 // מפענח את גוף המייל - ר' דוגמה אמיתית שנבדקה (תשלום של מוקי הראל):
