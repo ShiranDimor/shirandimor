@@ -46,7 +46,8 @@ export async function POST(request: Request, { params }: { params: { id: string 
     if (!byContact.has(key)) byContact.set(key, r);
   }
 
-  const dateLabel = new Date(live.scheduled_at).toLocaleDateString('he-IL', { weekday: 'long', day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem' });
+  // שליחה הזו תמיד נעשית ביום הלייב עצמו (ר' בקשה מפורשת של שירן) - "היום בשעה" ולא תאריך מלא
+  const timeLabel = new Date(live.scheduled_at).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem' });
 
   let sent = 0;
   let failed = 0;
@@ -58,7 +59,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
       { userId: r.user_id, phone: r.phone, email: r.email },
       {
         title: `🎥 הלינק למפגש "${live.title}"`,
-        body: `${dateLabel} · לחיצה כאן פותחת ישירות את הפגישה בגוגל מיט`,
+        body: `היום ב-${timeLabel} · לחיצה כאן פותחת ישירות את הפגישה בגוגל מיט`,
         url: live.join_info,
         kind: 'live',
       }

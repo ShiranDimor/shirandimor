@@ -25,10 +25,11 @@ export async function POST(request: Request, { params }: { params: { id: string 
   if (error || !live) return NextResponse.json({ error: 'הלייב לא נמצא' }, { status: 404 });
   if (!live.join_info) return NextResponse.json({ error: 'אין קישור הצטרפות שמור למפגש הזה - יש להוסיף אותו קודם בעריכה' }, { status: 400 });
 
-  const dateLabel = new Date(live.scheduled_at).toLocaleDateString('he-IL', { weekday: 'long', day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem' });
+  // שליחה הזו תמיד נעשית ביום הלייב עצמו (ר' בקשה מפורשת של שירן) - "היום בשעה" ולא תאריך מלא
+  const timeLabel = new Date(live.scheduled_at).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem' });
   const linkPayload = {
     title: `🎥 הלינק למפגש "${live.title}"`,
-    body: `${dateLabel} · לחיצה כאן פותחת ישירות את הפגישה בגוגל מיט`,
+    body: `היום ב-${timeLabel} · לחיצה כאן פותחת ישירות את הפגישה בגוגל מיט`,
     url: live.join_info,
   };
 
@@ -38,7 +39,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
   } else {
     const subsResult = await sendPushToActiveSubscribers(linkPayload, 'live', params.id);
     const nonSubsResult = await sendPushToNonSubscribers(
-      { title: `🎥 יש לייב - "${live.title}"`, body: `${dateLabel} · פתוח למנויים בלבד - מוזמנ/ת להצטרף, חודש ראשון ב-₪1 ←`, url: '/subscribe' },
+      { title: `🎥 יש לייב - "${live.title}"`, body: `היום ב-${timeLabel} · פתוח למנויים בלבד - מוזמנ/ת להצטרף, חודש ראשון ב-1 ש"ח ←`, url: '/subscribe' },
       'live',
       params.id
     );
