@@ -2,12 +2,11 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/instantLogin';
 import { isActiveSubscriber } from '@/lib/subscriberStatus';
 import { hasActiveEntitlement } from '@/lib/entitlement';
-import { isContactInSubscribersGroupMonday, createLiveRegistrationLead } from '@/lib/tradingPlan/monday';
+import { isContactInSubscribersGroupMonday } from '@/lib/tradingPlan/monday';
 import { isPhoneBlocked } from '@/lib/blockedContacts';
 
 // POST - הרשמה ללייב. מנוי פעיל (מזוהה לפי טוקן) נרשם ישירות ומקבל את פרטי ההצטרפות.
-// מי שאינו מנוי משאיר פרטי קשר, נהפך לליד ב-Monday.com (בדיוק כמו טופס קבוצת העדכונים), ושירן
-// יוצרת איתו קשר ידנית עם פרטי ההצטרפות
+// מי שאינו מנוי משאיר פרטי קשר - נשמר ברשימת הנרשמים (/admin/lives), בלי יצירת ליד במאנדיי
 export async function POST(request: Request) {
   const body = await request.json().catch(() => ({}));
   const { liveId, name, phone, email } = body as { liveId?: string; name?: string; phone?: string; email?: string };
@@ -70,6 +69,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, isSubscriber: true, joinInfo: live.join_info });
   }
 
+  // לא פותחים יותר ליד במאנדיי על הרשמה ללייב (ר' בקשה מפורשת של שירן, 18.11) - הרשימה
+  // המלאה של הנרשמים כבר נגישה בעמוד /admin/lives, ושם היא גם מוחקת מי שלא רלוונטי
   await supabaseAdmin.from('live_registrations').insert({
     live_id: liveId,
     name,
@@ -77,14 +78,6 @@ export async function POST(request: Request) {
     email: email || null,
     is_subscriber: false,
   });
-
-  // כל מי שנרשם ואינו מנוי הופך לליד ב-Monday - גם ללייב שפתוח לכולם. בעבר לייב "פתוח לכולם"
-  // דילג על יצירת ליד (בהנחה שאין למה "לפנות" אליו), וזה גרם לעשרות נרשמים לא-מנויים להיעלם
-  // בלי שום עקבות - שירן ביקשה מפורשות שכל הרשמה תיפתח כליד, בלי יוצא מן הכלל
-  const leadResult = await createLiveRegistrationLead({ name, phone, email: email || null, liveTitle: live.title, liveScheduledAt: live.scheduled_at }).catch(() => ({ ok: false }));
-  if (leadResult.ok) {
-    await supabaseAdmin.from('live_registrations').update({ monday_synced: true }).eq('live_id', liveId).eq('phone', phone).eq('is_subscriber', false);
-  }
 
   if (live.open_to_all) {
     return NextResponse.json({ ok: true, isSubscriber: false, openToAll: true, joinInfo: live.join_info });

@@ -70,9 +70,7 @@ export default function AdminLivesPage() {
   const [loadingRegsId, setLoadingRegsId] = useState<string | null>(null);
   const [deletingRegId, setDeletingRegId] = useState<string | null>(null);
 
-  const [backfillingId, setBackfillingId] = useState<string | null>(null);
   const [togglingOpenToAllId, setTogglingOpenToAllId] = useState<string | null>(null);
-  const [backfillMessage, setBackfillMessage] = useState<{ id: string; text: string } | null>(null);
   const [sendingToEveryoneId, setSendingToEveryoneId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -270,28 +268,6 @@ export default function AdminLivesPage() {
     window.location.href = '/';
   }
 
-  // סנכרון למפרע ללייב הזה בלבד - יוצר ליד במאנדיי לכל מי שנרשם ואינו מנוי ועדיין לא סונכרן.
-  // ספציפי ללייב (לא לכל הלייבים) כדי לא "להעיר" לידים ללייבים ישנים שכבר עברו
-  async function handleBackfillLive(liveId: string) {
-    setBackfillingId(liveId);
-    setBackfillMessage(null);
-
-    const res = await fetch('/api/admin/backfill-live-leads', {
-      method: 'POST',
-      headers: await authHeader(),
-      body: JSON.stringify({ liveId }),
-    });
-    const data = await res.json().catch(() => ({}));
-
-    setBackfillMessage({
-      id: liveId,
-      text: res.ok
-        ? `נבדקו ${data.total} · נוצרו ${data.created} לידים חדשים${data.failed ? ` · ${data.failed} נכשלו` : ''}`
-        : 'שגיאה: ' + (data.error || 'לא הצלחנו לסנכרן'),
-    });
-    setBackfillingId(null);
-  }
-
   if (checking) {
     return <div className="wrap"><p style={{ padding: '40px', textAlign: 'center' }}>בודקים הרשאות...</p></div>;
   }
@@ -342,23 +318,10 @@ export default function AdminLivesPage() {
               {formatDateTime(live.scheduled_at)}
               {live.notification_sent_at && <span style={{ color: 'var(--profit)' }}> · ✓ התראה נשלחה</span>}
             </div>
-            {backfillMessage?.id === live.id && (
-              <div className="email" style={{ marginTop: '2px', color: backfillMessage.text.startsWith('שגיאה') ? 'var(--loss)' : 'var(--profit)' }}>{backfillMessage.text}</div>
-            )}
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '6px' }}>
             <button type="button" className="btn-outline" style={{ padding: '8px 12px', fontSize: '12.5px' }} onClick={() => toggleRegistrations(live.id)}>
               {expandedId === live.id ? 'הסתרת נרשמים' : `נרשמים (${live.registrationsCount})`}
-            </button>
-            <button
-              type="button"
-              className="btn-outline"
-              style={{ padding: '8px 12px', fontSize: '12.5px' }}
-              onClick={() => handleBackfillLive(live.id)}
-              disabled={backfillingId === live.id}
-              title="יוצר ליד במאנדיי לכל מי שנרשם למפגש הזה ואינו מנוי ועדיין לא סונכרן"
-            >
-              {backfillingId === live.id ? 'מסנכרן...' : '🔄 סנכרון לידים'}
             </button>
             <button
               type="button"
