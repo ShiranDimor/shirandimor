@@ -41,7 +41,7 @@ export async function GET(request: Request) {
 
     try {
       const { userId, newlyActivated } = await ensureActiveSubscriberAccount(
-        payment.email, payment.phone, payment.name, undefined, payment.amount === FIRST_MONTH_PRICE
+        payment.email, payment.phone, payment.name, undefined, payment.amount === FIRST_MONTH_PRICE, payment.amount
       );
 
       if (!newlyActivated) {
