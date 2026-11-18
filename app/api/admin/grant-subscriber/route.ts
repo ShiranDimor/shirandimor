@@ -44,7 +44,8 @@ export async function POST(request: Request) {
   try {
     const { userId, newlyActivated } = await ensureActiveSubscriberAccount(email, phone, name, undefined, Boolean(payment?.isFirstMonthPrice), payment?.amount);
 
-    if (newlyActivated) {
+    // רק מי שבהטבת חודש ראשון ב-1 ש"ח מקבל/ת את רצף הקליטה - מנוי/ה ותיק/ה (400 ש"ח) לא צריך/ה
+    if (newlyActivated && payment?.isFirstMonthPrice) {
       await startSequence('welcome-subscriber', { userId }).catch((e) => console.error('grant-subscriber: נכשלה התחלת רצף הקליטה', e));
     }
 
