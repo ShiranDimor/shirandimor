@@ -6,9 +6,6 @@ import { hasFullAccessContact } from '@/lib/subscriberStatus';
 const LEAD_GROUP_NAME = 'לידים חדשים';
 const SUBSCRIBER_GROUP_NAME = 'קבוצת סוחרים';
 const UPDATES_GROUP_NAME = 'קבוצת עדכונים';
-// קבוצה ייעודית למי שהפעיל/ה התראות פוש באתר בלי להיות מנוי/ה בתשלום - כל איש קשר כזה אמור
-// תמיד להיות ממוקם כאן בדיוק, לא משוכפל ולא נשאר במקום הישן שלו (ר' markAppDownloadOnMonday)
-const PUSH_ACTIVATED_NO_SUB_GROUP_NAME = 'הפעיל עדכונים באתר ללא מנוי';
 // קבוצת "נרשם וביטל" - מי שמגיע/ה לכאן מהקבוצה הזו (לשעבר הייתה לו/ה מנוי) מסומן/ת בשם הפריט
 // עצמו (לא רק בסטטוס) כדי שיהיה ברור בבירור בתצוגה הראשית שזה לא ליד "טרי" לגמרי
 const CANCELLED_SUBSCRIBER_GROUP_NAME = 'נרשם וביטל';
@@ -30,11 +27,10 @@ const JOIN_DATE_COLUMN_TITLE = 'תאריך הרשמה';
 const MONTHLY_COST_COLUMN_TITLE = 'עלות חודשית ששילם';
 // תווית שהוגדרה ידנית על ידי שירן בעמודת "סטטוס טיפול" עצמה במאנדיי - לא רק בעמודה הייעודית
 // "הוריד את האתר" - כדי שזה יהיה גלוי בתצוגה הראשית שהיא כבר משתמשת בה לטיפול בלידים, לא רק
-// בעמודה נפרדת שפחות נבדקת. נכתבת תמיד על הכרטיס בקבוצת PUSH_ACTIVATED_NO_SUB_GROUP_NAME,
-// בין אם זה כרטיס חדש ובין אם זה כרטיס קיים שהועבר לשם - ר' markAppDownloadOnMonday/Bulk
+// בעמודה נפרדת שפחות נבדקת. נכתבת על הכרטיס בלי להזיז אותו לקבוצה כלשהי (ר' בקשה מפורשת של
+// שירן, 18.11) - ר' markAppDownloadOnMonday/Bulk
 const PUSH_ACTIVATED_NO_SUB_STATUS_LABEL = 'הפעיל התראות ללא מנוי';
-// תווית סטטוס למי שהיה/הייתה בקבוצת PUSH_ACTIVATED_NO_SUB_GROUP_NAME וכיבה/תה בפועל את
-// ההתראות באתר (לא רק שהן נשברו ברקע) - ר' markPushDisabledOnMonday
+// תווית סטטוס למי שכיבה/תה בפועל את ההתראות באתר (לא רק שהן נשברו ברקע) - ר' markPushDisabledOnMonday
 const PUSH_DISABLED_STATUS_LABEL = 'כיבה את ההתראות באתר';
 const TRADING_PLAN_STATUS_LABEL = 'בנה תוכנית מסחר';
 export const TRADING_PLAN_ABANDONED_STATUS_LABEL = 'יצא באמצע התוכנית מסחר';
@@ -81,7 +77,6 @@ async function getBoardSchema(token: string, boardId: string) {
     subscriberGroupId: groups.find((g) => g.title === SUBSCRIBER_GROUP_NAME)?.id,
     updatesGroupId: groups.find((g) => g.title === UPDATES_GROUP_NAME)?.id,
     trialGroupId: groups.find((g) => g.title === TRIAL_GROUP_NAME)?.id,
-    pushActivatedNoSubGroupId: groups.find((g) => g.title === PUSH_ACTIVATED_NO_SUB_GROUP_NAME)?.id,
     cancelledSubscriberGroupId: groups.find((g) => g.title === CANCELLED_SUBSCRIBER_GROUP_NAME)?.id,
     phoneColumnId: columns.find((c) => c.type === 'phone')?.id,
     emailColumnId: columns.find((c) => c.type === 'email')?.id,
@@ -189,19 +184,15 @@ export async function classifyContactMonday(
   if (!token || !boardId) return 'unknown';
 
   try {
-    const { subscriberGroupId, updatesGroupId, trialGroupId, pushActivatedNoSubGroupId, phoneColumnId, emailColumnId } = await getBoardSchema(token, boardId);
-    if ((!subscriberGroupId && !updatesGroupId && !trialGroupId && !pushActivatedNoSubGroupId) || (!phoneColumnId && !emailColumnId)) return 'unknown';
+    const { subscriberGroupId, updatesGroupId, trialGroupId, phoneColumnId, emailColumnId, pushActivatedColumnId } = await getBoardSchema(token, boardId);
+    if ((!subscriberGroupId && !updatesGroupId && !trialGroupId) || (!phoneColumnId && !emailColumnId)) return 'unknown';
 
     const targetPhone = phone && phoneColumnId ? normalizePhone(phone) : null;
     const targetEmail = email && emailColumnId ? email.trim().toLowerCase() : null;
     if (!targetPhone && !targetEmail) return 'unknown';
 
     const columnIds = [phoneColumnId, emailColumnId].filter(Boolean) as string[];
-    // כוללים גם את "הפעיל עדכונים באתר ללא מנוי" (pushActivatedNoSubGroupId) - בלי זה מי שכבר
-    // הפעיל/ה התראות פוש בעבר נראה/ית "ליד חדש" לגמרי כשהוא/היא ממלא/ת טופס אחר (כמו שער
-    // ההרשמה הכללי), וזה פתח כרטיס "לידים חדשים" נוסף במקום להכיר בכרטיס הקיים - בדיוק המקרה
-    // שקרה בפועל עם ראובן בכר: כרטיס אחד בקבוצת העדכונים-ללא-מנוי, ועוד אחד כפול ב"לידים חדשים"
-    const groupIds = [subscriberGroupId, trialGroupId, updatesGroupId, pushActivatedNoSubGroupId].filter(Boolean) as string[];
+    const groupIds = [subscriberGroupId, trialGroupId, updatesGroupId].filter(Boolean) as string[];
 
     const matchesContact = (item: { column_values: { id: string; text: string | null }[] }) => {
       if (targetPhone && phoneColumnId) {
@@ -242,6 +233,15 @@ export async function classifyContactMonday(
 
         cursor = page?.cursor || null;
       } while (cursor);
+    }
+
+    // מי שהפעיל/ה התראות פוש בעבר (בכל קבוצה שהוא/היא נמצא/ת בה עכשיו - לא קבוצה ייעודית
+    // יותר, ר' עמודת pushActivatedColumnId) - בלי הבדיקה הזו מישהו כזה נראה/ית "ליד חדש"
+    // לגמרי כשהוא/היא ממלא/ת טופס אחר, וזה פתח כרטיס "לידים חדשים" כפול במקום להכיר בקיים -
+    // בדיוק המקרה שקרה בפועל עם ראובן בכר
+    if (pushActivatedColumnId) {
+      const match = await findItemByContactAnywhere(token, boardId, phoneColumnId, emailColumnId, targetPhone, targetEmail, [pushActivatedColumnId]);
+      if (match && match.columnValues[pushActivatedColumnId] === APP_DOWNLOAD_SOURCE_VALUE) return 'updates_group';
     }
 
     return 'lead_new';
@@ -652,8 +652,6 @@ export async function syncGenericLead(params: {
   }
 }
 
-const LIVE_REGISTRATION_CAMPAIGN_VALUE = 'הרשמה ללייב';
-const DUPLICATE_STATUS_LABEL = 'ליד כפול';
 // גם ערך עמודת ה"מקור/קמפיין" וגם תווית בעמודת "סטטוס טיפול" (נוספה ידנית בלוח על ידי שירן) -
 // מסמן שאיש הקשר הפעיל התראות פוש באתר, כדי שאפשר יהיה לסנן במאנדיי ולעקוב אחרי קצב המעבר
 const APP_DOWNLOAD_SOURCE_VALUE = 'הוריד את האתר';
@@ -661,7 +659,7 @@ const APP_DOWNLOAD_SOURCE_VALUE = 'הוריד את האתר';
 // מחפש איש קשר לפי טלפון/מייל בכל הלוח - לא מוגבל לקבוצה ספציפית, בניגוד ל-classifyContactMonday
 // שבודק רק 3 קבוצות ידועות (סוחרים/ניסיון/עדכונים). משמש כדי לדעת אם איש קשר קיים בכלל באיזשהו
 // מקום בלוח (כולל קבוצות כמו "לידים לא רלוונטיים"/"ביטלו" וכו') לפני שמחליטים אם לפתוח כרטיס חדש
-type MondayContactMatch = { id: string; name: string; groupId: string | null };
+type MondayContactMatch = { id: string; name: string; groupId: string | null; columnValues: Record<string, string | null> };
 
 async function findItemByContactAnywhere(
   token: string,
@@ -669,9 +667,10 @@ async function findItemByContactAnywhere(
   phoneColumnId: string | undefined,
   emailColumnId: string | undefined,
   targetPhone: string | null,
-  targetEmail: string | null
+  targetEmail: string | null,
+  extraColumnIds: string[] = []
 ): Promise<MondayContactMatch | null> {
-  const columnIds = [phoneColumnId, emailColumnId].filter(Boolean) as string[];
+  const columnIds = [phoneColumnId, emailColumnId, ...extraColumnIds].filter(Boolean) as string[];
   if (columnIds.length === 0 || (!targetPhone && !targetEmail)) return null;
 
   let cursor: string | null = null;
@@ -703,7 +702,10 @@ async function findItemByContactAnywhere(
       }
       return false;
     });
-    if (found) return { id: found.id, name: found.name, groupId: found.group?.id || null };
+    if (found) {
+      const columnValues = Object.fromEntries((found.column_values || []).map((cv) => [cv.id, cv.text]));
+      return { id: found.id, name: found.name, groupId: found.group?.id || null, columnValues };
+    }
 
     cursor = page?.cursor || null;
   } while (cursor);
@@ -726,10 +728,10 @@ async function renameMondayItem(token: string, boardId: string, itemId: string, 
 
 // מסמן שאיש קשר הפעיל התראות פוש באתר. מי שכבר יש לו/ה גישה מלאה בפועל (מנוי/ה פעיל/ה או
 // אדמין/ית, לפי hasFullAccessContact - למשל שירן עצמה, סיוון וטל) לא נחשב/ת ליד לעולם, בלי
-// קשר למה שקיים/לא קיים במאנדיי - לא נוגעים לו/ה בכלל. מי שאינו בעל/ת גישה מלאה תמיד מגיע/ה
-// לקבוצה הייעודית "הפעיל עדכונים באתר ללא מנוי" - בלי כפילויות: אם כבר יש לו/ה כרטיס במקום
-// אחר בלוח, הכרטיס הקיים *מועבר* לקבוצה הזו (לא נוצר כרטיס נוסף), ואם הגיע מקבוצת "נרשם וביטל"
-// מסומן גם בשם הפריט עצמו "(מנוי וביטל)" כדי שיהיה ברור שזה לא ליד טרי לגמרי
+// קשר למה שקיים/לא קיים במאנדיי - לא נוגעים לו/ה בכלל. מי שאינו בעל/ת גישה מלאה תמיד מסומן/ת
+// בעמודת הסטטוס (לא מועבר/ת לקבוצה ייעודית - ר' בקשה מפורשת של שירן, 18.11: יש כבר סטטוס
+// "הפעיל התראות ללא מנוי" שמוצג בבירור על הכרטיס בקבוצה שבה הוא/היא כבר נמצא/ת, אין צורך
+// להזיז קבוצה בכלל, וזה גם משאיר לה חופש לארגן את הלידים בקבוצות משלה בלי שהקוד "יגנוב" אותם)
 export async function markAppDownloadOnMonday(params: { name?: string | null; phone?: string | null; email?: string | null }): Promise<{ ok: boolean; matched: boolean; skippedFullAccess?: boolean; error?: string }> {
   const token = process.env.MONDAY_API_TOKEN;
   const boardId = process.env.MONDAY_BOARD_ID;
@@ -741,8 +743,7 @@ export async function markAppDownloadOnMonday(params: { name?: string | null; ph
   }
 
   try {
-    const { phoneColumnId, emailColumnId, campaignColumnId, statusColumnId, pushActivatedColumnId, pushActivatedNoSubGroupId, cancelledSubscriberGroupId } = await getBoardSchema(token, boardId);
-    if (!pushActivatedNoSubGroupId) return { ok: false, matched: false, error: 'missing_target_group' };
+    const { groupId, phoneColumnId, emailColumnId, campaignColumnId, statusColumnId, pushActivatedColumnId, cancelledSubscriberGroupId } = await getBoardSchema(token, boardId);
 
     const targetPhone = params.phone ? normalizePhone(params.phone) : null;
     const targetEmail = params.email ? params.email.trim().toLowerCase() : null;
@@ -764,14 +765,8 @@ export async function markAppDownloadOnMonday(params: { name?: string | null; ph
 
       await mondayRequest(
         token,
-        `mutation ($itemId: ID!, $groupId: String!) { move_item_to_group (item_id: $itemId, group_id: $groupId) { id } }`,
-        { itemId, groupId: pushActivatedNoSubGroupId }
-      );
-
-      await mondayRequest(
-        token,
         `mutation ($boardId: ID!, $itemId: ID!, $columnValues: JSON!) {
-          change_multiple_column_values (board_id: $boardId, item_id: $itemId, column_values: $columnValues) { id }
+          change_multiple_column_values (board_id: $boardId, item_id: $itemId, column_values: $columnValues, create_labels_if_missing: true) { id }
         }`,
         { boardId, itemId, columnValues: JSON.stringify(columnValues) }
       );
@@ -784,9 +779,9 @@ export async function markAppDownloadOnMonday(params: { name?: string | null; ph
       const createData: any = await mondayRequest(
         token,
         `mutation ($boardId: ID!, $groupId: String, $itemName: String!, $columnValues: JSON) {
-          create_item (board_id: $boardId, group_id: $groupId, item_name: $itemName, column_values: $columnValues) { id }
+          create_item (board_id: $boardId, group_id: $groupId, item_name: $itemName, column_values: $columnValues, create_labels_if_missing: true) { id }
         }`,
-        { boardId, groupId: pushActivatedNoSubGroupId, itemName: params.name || params.phone || params.email || 'ללא שם', columnValues: JSON.stringify(columnValues) }
+        { boardId, groupId, itemName: params.name || params.phone || params.email || 'ללא שם', columnValues: JSON.stringify(columnValues) }
       );
       itemId = createData?.data?.create_item?.id;
     }
@@ -809,32 +804,29 @@ export async function markAppDownloadOnMonday(params: { name?: string | null; ph
   }
 }
 
-// נקרא כשאיש קשר שהיה בקבוצת "הפעיל עדכונים באתר ללא מנוי" מכבה בפועל את ההתראות באתר (לא
-// שהן נשברו ברקע - כיבוי מודע) ואין לו/ה שום מכשיר תקף נוסף. מעביר את הכרטיס חזרה ל"לידים
-// חדשים" ומסמן בסטטוס שהוא/היא כיבה/תה - כדי שהקבוצה "הפעיל עדכונים" תשקף רק מי שעדיין
-// באמת מקבל/ת מאיתנו עדכונים, לא כל מי שאי פעם הפעיל. אם הכרטיס לא נמצא בכלל, או שהוא לא
-// נמצא *בדיוק* בקבוצת "הפעיל עדכונים" (למשל כבר מנוי/ה בקבוצת סוחרים) - לא נוגעים בו בכלל
-export async function markPushDisabledOnMonday(params: { phone?: string | null; email?: string | null }): Promise<{ ok: boolean; moved: boolean; error?: string }> {
+// נקרא כשאיש קשר שסומן בעבר כ"הפעיל התראות ללא מנוי" מכבה בפועל את ההתראות באתר (לא שהן
+// נשברו ברקע - כיבוי מודע) ואין לו/ה שום מכשיר תקף נוסף. לא מזיז קבוצה בכלל (ר' בקשה מפורשת
+// של שירן, 18.11) - רק מעדכן את הסטטוס, כדי שהכרטיס יישאר איפה שהוא/היא כבר נמצא/ת. הגילוי
+// אם זה בכלל רלוונטי לאיש הקשר הזה נעשה דרך העמודה הייעודית "הוריד את האתר"
+// (pushActivatedColumnId, לא "סטטוס טיפול" הרגילה שמשתנה ידנית כל הזמן) - לא לפי קבוצה
+export async function markPushDisabledOnMonday(params: { phone?: string | null; email?: string | null }): Promise<{ ok: boolean; updated: boolean; error?: string }> {
   const token = process.env.MONDAY_API_TOKEN;
   const boardId = process.env.MONDAY_BOARD_ID;
-  if (!token || !boardId) return { ok: false, moved: false, error: 'missing_monday_config' };
-  if (!params.phone && !params.email) return { ok: false, moved: false, error: 'missing_contact' };
+  if (!token || !boardId) return { ok: false, updated: false, error: 'missing_monday_config' };
+  if (!params.phone && !params.email) return { ok: false, updated: false, error: 'missing_contact' };
 
   try {
-    const { groupId, phoneColumnId, emailColumnId, statusColumnId, pushActivatedNoSubGroupId } = await getBoardSchema(token, boardId);
-    if (!groupId || !pushActivatedNoSubGroupId) return { ok: false, moved: false, error: 'missing_target_group' };
+    const { phoneColumnId, emailColumnId, statusColumnId, pushActivatedColumnId } = await getBoardSchema(token, boardId);
 
     const targetPhone = params.phone ? normalizePhone(params.phone) : null;
     const targetEmail = params.email ? params.email.trim().toLowerCase() : null;
 
-    const existing = await findItemByContactAnywhere(token, boardId, phoneColumnId, emailColumnId, targetPhone, targetEmail);
-    if (!existing || existing.groupId !== pushActivatedNoSubGroupId) return { ok: true, moved: false };
-
-    await mondayRequest(
-      token,
-      `mutation ($itemId: ID!, $groupId: String!) { move_item_to_group (item_id: $itemId, group_id: $groupId) { id } }`,
-      { itemId: existing.id, groupId }
+    const existing = await findItemByContactAnywhere(
+      token, boardId, phoneColumnId, emailColumnId, targetPhone, targetEmail,
+      pushActivatedColumnId ? [pushActivatedColumnId] : []
     );
+    const wasActivated = Boolean(existing && pushActivatedColumnId && existing.columnValues[pushActivatedColumnId] === APP_DOWNLOAD_SOURCE_VALUE);
+    if (!existing || !wasActivated) return { ok: true, updated: false };
 
     if (statusColumnId) {
       await mondayRequest(
@@ -851,52 +843,51 @@ export async function markPushDisabledOnMonday(params: { phone?: string | null; 
     await mondayRequest(
       token,
       `mutation ($itemId: ID!, $body: String!) { create_update (item_id: $itemId, body: $body) { id } }`,
-      { itemId: existing.id, body: 'כיבה/תה את ההתראות באתר - הכרטיס הועבר בחזרה ל"לידים חדשים"' }
+      { itemId: existing.id, body: 'כיבה/תה את ההתראות באתר' }
     ).catch((e) => console.error('Monday.com: נכשל הוספת הערה (כיבוי התראות)', e));
 
-    return { ok: true, moved: true };
+    return { ok: true, updated: true };
   } catch (e) {
     console.error('שגיאה בסימון כיבוי התראות ב-Monday.com', e);
-    return { ok: false, moved: false, error: e instanceof Error ? e.message : 'unknown_error' };
+    return { ok: false, updated: false, error: e instanceof Error ? e.message : 'unknown_error' };
   }
 }
 
-// רשימת כל אנשי הקשר שנמצאים *עכשיו* בקבוצת "הפעיל עדכונים באתר ללא מנוי" - לשימוש בניקוי
-// חד-פעמי (ר' /api/admin/push-subscriptions/cleanup-stale-monday): הקבוצה הזו רק גדלה עם הזמן
-// (כרטיס נוסף בכל הפעלה, אף פעם לא מוסר אוטומטית לפני markPushDisabledOnMonday), אז יכולים
-// להצטבר בה אנשי קשר שכבר לא רלוונטיים בפועל - צריך לדעת מי נמצא בה בכלל כדי לבדוק אחד-אחד
+// רשימת כל אנשי הקשר שמסומנים *עכשיו* כ"הפעיל התראות ללא מנוי" (לפי עמודת "הוריד את האתר"
+// הייעודית, לא קבוצה) - לשימוש בניקוי חד-פעמי (ר' /api/admin/push-subscriptions/cleanup-stale-monday):
+// סורק את כל הלוח (לא קבוצה אחת) כי איש הקשר יכול להיות בכל קבוצה עכשיו
 export async function listPushActivatedNoSubContacts(): Promise<{ id: string; name: string; phone: string | null; email: string | null }[]> {
   const token = process.env.MONDAY_API_TOKEN;
   const boardId = process.env.MONDAY_BOARD_ID;
   if (!token || !boardId) return [];
 
-  const { phoneColumnId, emailColumnId, pushActivatedNoSubGroupId } = await getBoardSchema(token, boardId);
-  if (!pushActivatedNoSubGroupId) return [];
+  const { phoneColumnId, emailColumnId, pushActivatedColumnId } = await getBoardSchema(token, boardId);
+  if (!pushActivatedColumnId) return [];
 
-  const columnIds = [phoneColumnId, emailColumnId].filter(Boolean) as string[];
+  const columnIds = [phoneColumnId, emailColumnId, pushActivatedColumnId].filter(Boolean) as string[];
   const results: { id: string; name: string; phone: string | null; email: string | null }[] = [];
   let cursor: string | null = null;
 
   do {
     const itemsData: any = await mondayRequest(
       token,
-      `query ($boardId: ID!, $groupId: String!, $cursor: String, $columnIds: [String!]) {
+      `query ($boardId: ID!, $cursor: String, $columnIds: [String!]) {
         boards (ids: [$boardId]) {
-          groups (ids: [$groupId]) {
-            items_page (limit: 100, cursor: $cursor) {
-              cursor
-              items { id name column_values (ids: $columnIds) { id text } }
-            }
+          items_page (limit: 100, cursor: $cursor) {
+            cursor
+            items { id name column_values (ids: $columnIds) { id text } }
           }
         }
       }`,
-      { boardId, groupId: pushActivatedNoSubGroupId, cursor, columnIds }
+      { boardId, cursor, columnIds }
     );
 
-    const page = itemsData?.data?.boards?.[0]?.groups?.[0]?.items_page;
+    const page = itemsData?.data?.boards?.[0]?.items_page;
     const items: { id: string; name: string; column_values: { id: string; text: string | null }[] }[] = page?.items || [];
 
     for (const item of items) {
+      const activated = item.column_values?.find((cv) => cv.id === pushActivatedColumnId)?.text;
+      if (activated !== APP_DOWNLOAD_SOURCE_VALUE) continue;
       const phone = phoneColumnId ? item.column_values?.find((cv) => cv.id === phoneColumnId)?.text || null : null;
       const email = emailColumnId ? item.column_values?.find((cv) => cv.id === emailColumnId)?.text || null : null;
       results.push({ id: item.id, name: item.name, phone, email });
@@ -919,8 +910,7 @@ export async function markAppDownloadOnMondayBulk(
   const boardId = process.env.MONDAY_BOARD_ID;
   if (!token || !boardId) return contacts.map(() => ({ ok: false, matched: false, error: 'missing_monday_config' }));
 
-  const { phoneColumnId, emailColumnId, campaignColumnId, statusColumnId, pushActivatedColumnId, pushActivatedNoSubGroupId, cancelledSubscriberGroupId } = await getBoardSchema(token, boardId);
-  if (!pushActivatedNoSubGroupId) return contacts.map(() => ({ ok: false, matched: false, error: 'missing_target_group' }));
+  const { groupId, phoneColumnId, emailColumnId, campaignColumnId, statusColumnId, pushActivatedColumnId, cancelledSubscriberGroupId } = await getBoardSchema(token, boardId);
 
   const columnIds = [phoneColumnId, emailColumnId].filter(Boolean) as string[];
   const allItems: { id: string; name: string; groupId: string | null; phone: string | null; email: string | null }[] = [];
@@ -982,14 +972,8 @@ export async function markAppDownloadOnMondayBulk(
 
         await mondayRequest(
           token,
-          `mutation ($itemId: ID!, $groupId: String!) { move_item_to_group (item_id: $itemId, group_id: $groupId) { id } }`,
-          { itemId, groupId: pushActivatedNoSubGroupId }
-        );
-
-        await mondayRequest(
-          token,
           `mutation ($boardId: ID!, $itemId: ID!, $columnValues: JSON!) {
-            change_multiple_column_values (board_id: $boardId, item_id: $itemId, column_values: $columnValues) { id }
+            change_multiple_column_values (board_id: $boardId, item_id: $itemId, column_values: $columnValues, create_labels_if_missing: true) { id }
           }`,
           { boardId, itemId, columnValues: JSON.stringify(columnValues) }
         );
@@ -1002,9 +986,9 @@ export async function markAppDownloadOnMondayBulk(
         const createData: any = await mondayRequest(
           token,
           `mutation ($boardId: ID!, $groupId: String, $itemName: String!, $columnValues: JSON) {
-            create_item (board_id: $boardId, group_id: $groupId, item_name: $itemName, column_values: $columnValues) { id }
+            create_item (board_id: $boardId, group_id: $groupId, item_name: $itemName, column_values: $columnValues, create_labels_if_missing: true) { id }
           }`,
-          { boardId, groupId: pushActivatedNoSubGroupId, itemName: params.name || params.phone || params.email || 'ללא שם', columnValues: JSON.stringify(columnValues) }
+          { boardId, groupId, itemName: params.name || params.phone || params.email || 'ללא שם', columnValues: JSON.stringify(columnValues) }
         );
         itemId = createData?.data?.create_item?.id;
       }
@@ -1017,75 +1001,6 @@ export async function markAppDownloadOnMondayBulk(
   }
 
   return results;
-}
-
-// יוצר תמיד כרטיס ליד חדש עבור מי שנרשם ללייב ואינו מנוי - בלי קשר לשאלה אם הלייב פתוח לכולם
-// או לא. אם הטלפון כבר מוכר במקום אחר בלוח, הכרטיס עדיין נוצר אבל מסומן כ"ליד כפול" - כדי
-// ששירן תדע לטפל בו אבל שום הרשמה לא תיעלם בשקט
-export async function createLiveRegistrationLead(params: {
-  name: string;
-  phone: string;
-  email?: string | null;
-  liveTitle: string;
-  liveScheduledAt: string;
-}): Promise<{ ok: boolean; reason?: string; itemId?: string }> {
-  const token = process.env.MONDAY_API_TOKEN;
-  const boardId = process.env.MONDAY_BOARD_ID;
-  if (!token || !boardId) return { ok: false, reason: 'not_configured' };
-
-  try {
-    const { groupId, phoneColumnId, emailColumnId, campaignColumnId, statusColumnId } = await getBoardSchema(token, boardId);
-    const normalized = normalizePhone(params.phone);
-
-    const existingItemId = phoneColumnId
-      ? await findItemIdByPhone(token, boardId, phoneColumnId, normalized).catch(() => null)
-      : null;
-
-    // חייבים timeZone מפורש - השרת רץ ב-UTC, ובלי זה לייב ב-20:00 בישראל היה מוצג כ-17:00
-    const liveDate = new Date(params.liveScheduledAt);
-    const liveDateLabel = `${liveDate.toLocaleDateString('he-IL', { timeZone: 'Asia/Jerusalem' })} ${liveDate.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem' })}`;
-    const campaignValue = `${LIVE_REGISTRATION_CAMPAIGN_VALUE} - ${liveDateLabel}`;
-
-    const columnValues: Record<string, unknown> = {};
-    if (phoneColumnId) columnValues[phoneColumnId] = { phone: params.phone.startsWith('0') ? `972${params.phone.slice(1)}` : params.phone, countryShortName: 'IL' };
-    if (emailColumnId && params.email) columnValues[emailColumnId] = { email: params.email, text: params.email };
-    if (campaignColumnId) columnValues[campaignColumnId] = campaignValue;
-
-    const createData: any = await mondayRequest(
-      token,
-      `mutation ($boardId: ID!, $groupId: String, $itemName: String!, $columnValues: JSON) {
-        create_item (board_id: $boardId, group_id: $groupId, item_name: $itemName, column_values: $columnValues) { id }
-      }`,
-      { boardId, groupId: groupId || null, itemName: params.name, columnValues: JSON.stringify(columnValues) }
-    );
-
-    const itemId = createData?.data?.create_item?.id;
-    if (!itemId) return { ok: false, reason: 'no_item_id' };
-
-    if (existingItemId && statusColumnId) {
-      await mondayRequest(
-        token,
-        `mutation ($boardId: ID!, $itemId: ID!, $columnId: String!, $value: String!) {
-          change_simple_column_value (board_id: $boardId, item_id: $itemId, column_id: $columnId, value: $value) { id }
-        }`,
-        { boardId, itemId, columnId: statusColumnId, value: DUPLICATE_STATUS_LABEL }
-      ).catch((e) => console.error('Monday.com: נכשל סימון "ליד כפול" (הרשמה ללייב)', e));
-    }
-
-    await mondayRequest(
-      token,
-      `mutation ($itemId: ID!, $body: String!) { create_update (item_id: $itemId, body: $body) { id } }`,
-      {
-        itemId,
-        body: `נייד: ${params.phone}${params.email ? `\nאימייל: ${params.email}` : ''}\nמקור: הרשמה ללייב "${params.liveTitle}" (${liveDateLabel}) באתר${existingItemId ? '\n⚠ כבר קיים ליד/מנוי אחר עם אותו נייד - סומן כ"ליד כפול"' : ''}`,
-      }
-    ).catch((e) => console.error('Monday.com: נכשל הוספת הערה (הרשמה ללייב)', e));
-
-    return { ok: true, itemId };
-  } catch (e) {
-    console.error('שגיאה בסנכרון הרשמה ללייב ל-Monday.com', e);
-    return { ok: false, reason: 'error' };
-  }
 }
 
 export type MondayEmailBackfillResult = {
