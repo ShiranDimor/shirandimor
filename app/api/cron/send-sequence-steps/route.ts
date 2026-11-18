@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server';
 import { runSequenceStepsForToday } from '@/lib/sequenceEngine';
 
-// רץ פעם ביום - שולח לכל איש קשר ברצפי הקליטה/טיפוח (ר' lib/sequences.ts) את הצעד הבא שמגיע
-// לו/ה היום, אם הגיע הזמן. צעד 0 (מיידי) נשלח ישירות מ-lib/sequenceEngine.ts (startSequence),
-// לא דרך הקרון הזה - ר' app/api/webhooks/grow ו-app/api/push/subscribe
+// רץ כל 15 דקות (pg_cron, לא ה-cron המובנה של Vercel - ר' הערה דומה ב-check-grow-emails) -
+// שולח לכל איש קשר ברצפי הקליטה/טיפוח (ר' lib/sequences.ts) את הצעד הבא שמגיע לו/ה, אם הגיע
+// הזמן. תדירות גבוהה נדרשת כדי לתפוס את חלון ההמתנה של 30 דקות לצעד הראשון (ר' lib/sequenceEngine.ts)
+// בזמן סביר - קרון יומי היה אומר שמישהו/י שמפעיל/ה התראות 31 דקות אחרי ההרשמה מחכה/ת עד למחרת
 export async function GET(request: Request) {
   const authHeader = request.headers.get('authorization');
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (authHeader !== `Bearer ${process.env.PG_CRON_SECRET}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

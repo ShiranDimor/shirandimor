@@ -1,8 +1,37 @@
 import { supabaseAdmin } from '@/lib/instantLogin';
 import { getEffectiveTemplate } from '@/lib/automations';
 import { SEQUENCES, SequenceKey } from '@/lib/sequences';
-import { sendPushToContact, normalizePhone, normalizeEmail } from '@/lib/webPush';
+import { sendPushToContact, sendPushToUsers, normalizePhone, normalizeEmail } from '@/lib/webPush';
 import { hasFullAccessContact } from '@/lib/subscriberStatus';
+
+// הצעד הראשון (day_offset=0) לא יוצא מיד עם ההצטרפות - שירן ביקשה מפורשות לחכות קצת כדי
+// שיהיה לאיש הקשר זמן להפעיל התראות באתר קודם (אחרת ההודעה הראשונה פשוט לא מגיעה לאף
+// מכשיר ונעצרת ל"ת, ר' מקרים אמיתיים - פאבל/ראובן/אסף, כולם הצטרפו בלי התראות פעילות עדיין)
+const FIRST_STEP_MIN_DELAY_MS = 30 * 60 * 1000;
+
+// מתריע לשירן כשרצף נעצר כי אין שום מכשיר תקף לשלוח אליו/ה - בלי זה מנוי/ה אמיתי/ת יכול/ה
+// לפספס לגמרי את כל תוכן הקליטה/טיפוח בשקט, בלי שום סימן לבעיה - ר' בקשה מפורשת של שירן
+async function alertPushInvalid(sequenceKey: SequenceKey, row: ProgressRow) {
+  try {
+    let name = row.phone || row.email || 'איש קשר';
+    if (row.user_id) {
+      const { data } = await supabaseAdmin.from('profiles').select('full_name').eq('id', row.user_id).maybeSingle();
+      name = data?.full_name || name;
+    } else if (row.phone || row.email) {
+      const { data } = await supabaseAdmin.from('push_subscriptions').select('name').or([row.phone ? `phone.eq.${row.phone}` : '', row.email ? `email.eq.${row.email}` : ''].filter(Boolean).join(',')).limit(1).maybeSingle();
+      name = data?.name || name;
+    }
+    const seqName = SEQUENCES[sequenceKey]?.name || sequenceKey;
+    const { data: admins } = await supabaseAdmin.from('profiles').select('id').eq('role', 'admin');
+    await sendPushToUsers((admins || []).map((a) => a.id), {
+      title: '⚠️ רצף נעצר - אין התראות פעילות',
+      body: `${name} - "${seqName}" נעצר כי אין מכשיר תקף לשלוח אליו/ה`,
+      url: '/admin/sequences',
+    });
+  } catch (e) {
+    console.error('שגיאה בשליחת התראה על רצף שנעצר (push_invalid)', e);
+  }
+}
 
 type Contact = { userId?: string | null; phone?: string | null; email?: string | null };
 
@@ -89,6 +118,9 @@ async function processDueStep(sequenceKey: SequenceKey, steps: StepRule[], total
     const step = steps.find((s) => s.step_index === nextIndex);
     if (!step) break;
     if (elapsed < step.day_offset) break; // הצעד הבא עוד לא הגיע הזמן שלו
+    // הצעד הראשון (day_offset=0) ממתין גם ל-FIRST_STEP_MIN_DELAY_MS בשעון קיר, לא רק לגרנולריות
+    // של יום - ר' בקשה מפורשת של שירן
+    if (step.day_offset === 0 && Date.now() - new Date(row.started_at).getTime() < FIRST_STEP_MIN_DELAY_MS) break;
 
     if (!step.enabled) {
       newLastSent = nextIndex;
@@ -104,6 +136,7 @@ async function processDueStep(sequenceKey: SequenceKey, steps: StepRule[], total
 
     if (!result || result.attempted === 0) {
       await stop(row.id, 'push_invalid');
+      await alertPushInvalid(sequenceKey, row);
       return;
     }
 
@@ -124,9 +157,9 @@ async function processDueStep(sequenceKey: SequenceKey, steps: StepRule[], total
 }
 
 // מתחיל רצף לאיש קשר - אם הרצף כבר התחיל בעבר לאיש הקשר הזה (אותו contactKey) לא עושים
-// כלום, בלי להתחיל אותו מחדש/לשלוח שוב. מיד אחרי היצירה בודק אם צעד יום-0 מופעל וצריך
-// לצאת עכשיו (לא מחכים ל-cron היומי בשביל זה) - דרך אותה פונקציה בדיוק שהקרון משתמש בה,
-// כדי שכיבוי צעד/רצף בעמוד הניהול יכבד גם את השליחה המיידית הזו, לא רק את הקרון
+// כלום, בלי להתחיל אותו מחדש/לשלוח שוב. הצעד הראשון בפועל יוצא רק דרך הקרון (כל 15 דקות),
+// אחרי שחולף FIRST_STEP_MIN_DELAY_MS - הקריאה כאן ל-processDueStep היא רק ליתר ביטחון
+// (למשל אם day_offset>0 כבר מגיע הזמן שלו מסיבה כלשהי), לא בשביל יום-0
 export async function startSequence(sequenceKey: SequenceKey, contact: Contact): Promise<void> {
   const key = contactKey(contact);
 
