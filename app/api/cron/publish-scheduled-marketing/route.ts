@@ -35,6 +35,17 @@ export async function GET(request: Request) {
   const published = [];
   for (const row of due || []) {
     if (Date.now() - startedAt > 40_000) break; // השאר לסבב הבא
+    // נעילה אטומית: אם שתי ריצות חופפות (קרון + הפעלה ידנית), רק אחת מפרסמת את הפוסט.
+    // בלי זה סטורי עלה פעמיים לאינסטגרם. נעילה ישנה מ-3 דקות נחשבת תקועה ומשתחררת.
+    const staleBefore = new Date(Date.now() - 3 * 60_000).toISOString();
+    const { data: claimed } = await supabaseAdmin
+      .from('marketing_posts')
+      .update({ publish_lock_at: new Date().toISOString() })
+      .eq('id', row.id)
+      .eq('status', 'scheduled')
+      .or(`publish_lock_at.is.null,publish_lock_at.lt.${staleBefore}`)
+      .select('id');
+    if (!claimed?.length) continue;
     try {
       const outcome = await publishMarketingPost(row.id);
       published.push({ id: row.id, ...outcome });
@@ -46,6 +57,8 @@ export async function GET(request: Request) {
         .update({ publish_error: message, publish_attempts: (row.publish_attempts || 0) + 1, updated_at: new Date().toISOString() })
         .eq('id', row.id);
       published.push({ id: row.id, allDone: false, error: message });
+    } finally {
+      await supabaseAdmin.from('marketing_posts').update({ publish_lock_at: null }).eq('id', row.id);
     }
   }
 
