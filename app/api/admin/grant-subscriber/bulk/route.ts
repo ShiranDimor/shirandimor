@@ -56,7 +56,10 @@ export async function POST(request: Request) {
         continue;
       }
 
-      await startSequence('welcome-subscriber', { userId }).catch((e) => console.error('grant-subscriber/bulk: נכשלה התחלת רצף הקליטה', e));
+      // רק מי שבהטבת חודש ראשון ב-1 ש"ח מקבל/ת את רצף הקליטה - מנוי/ה ותיק/ה (400 ש"ח) לא צריך/ה
+      if (isFirstMonthPrice) {
+        await startSequence('welcome-subscriber', { userId }).catch((e) => console.error('grant-subscriber/bulk: נכשלה התחלת רצף הקליטה', e));
+      }
       await sendLoginEmail(email).catch((e) => console.error('grant-subscriber/bulk: נכשלה שליחת מייל כניסה', e));
 
       const mondayResult = await syncGrowPaymentToMonday({

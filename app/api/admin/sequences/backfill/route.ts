@@ -63,12 +63,14 @@ export async function POST(request: Request) {
   let leadsAdded = 0;
   const errors: string[] = [];
 
-  // --- מנויים פעילים קיימים ---
+  // --- מנויים פעילים קיימים - רק מי שהצטרף/ה בהטבת "חודש ראשון ב-1 ש״ח". מנוי/ה ותיק/ה
+  // (400 ש"ח) לא אמור/ה לקבל את רצף הקליטה - ר' בקשה מפורשת של שירן ---
   const { data: subscribers } = await supabaseAdmin
     .from('profiles')
     .select('id, phone, email, subscription_started_at')
     .eq('role', 'subscriber')
     .eq('subscription_status', 'active')
+    .eq('trial_price_used', true)
     .not('subscription_started_at', 'is', null);
 
   for (const sub of subscribers || []) {

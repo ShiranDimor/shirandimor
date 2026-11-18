@@ -16,6 +16,7 @@ const STOP_REASON_LABELS: Record<string, string> = {
   push_invalid: 'נעצר - התראות נשברו',
   unsubscribed: 'נעצר - ביטל/ה מנוי',
   converted: 'נעצר - הפך/הפכה למנוי/ה (המרה)',
+  not_eligible: 'נעצר - לא הצטרף/ה בהטבת 1 ש״ח',
 };
 
 // GET - כל אנשי הקשר בכל הרצפים, עם באיזה שלב הם נמצאים, מתי נשלחה ההודעה האחרונה, ומה שמם/ה -

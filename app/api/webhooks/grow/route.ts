@@ -86,8 +86,10 @@ export async function POST(request: Request) {
       payment.email || '', payment.phone || '', payment.fullName || payment.email || payment.phone || '',
       undefined, payment.amount === FIRST_MONTH_PRICE, payment.amount
     );
-    // רק הצטרפות אמיתית חדשה (לא חיוב חודשי חוזר) מתחילה את רצף הקליטה - ר' lib/sequenceEngine.ts
-    if (newlyActivated) {
+    // רק הצטרפות אמיתית חדשה *בהטבת חודש ראשון ב-1 ש"ח* מתחילה את רצף הקליטה - ר' בקשה מפורשת
+    // של שירן: מי ששילם/ה 400 ש"ח זה מנוי/ה ותיק/ה (חידוש/תשלום רגיל), לא מצטרף/ת חדש/ה,
+    // ולא צריך/ה את הודעות ה"ברוכים הבאים" - ר' lib/sequenceEngine.ts
+    if (newlyActivated && payment.amount === FIRST_MONTH_PRICE) {
       await startSequence('welcome-subscriber', { userId }).catch((e) => console.error('Grow webhook: נכשלה התחלת רצף הקליטה', e));
     }
     if (payment.email) {

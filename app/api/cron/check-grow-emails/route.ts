@@ -49,7 +49,10 @@ export async function GET(request: Request) {
         continue;
       }
 
-      await startSequence('welcome-subscriber', { userId }).catch((e) => console.error('check-grow-emails: נכשלה התחלת רצף הקליטה', e));
+      // רק מי שבהטבת חודש ראשון ב-1 ש"ח מקבל/ת את רצף הקליטה - מנוי/ה ותיק/ה (400 ש"ח) לא צריך/ה
+      if (payment.amount === FIRST_MONTH_PRICE) {
+        await startSequence('welcome-subscriber', { userId }).catch((e) => console.error('check-grow-emails: נכשלה התחלת רצף הקליטה', e));
+      }
       await sendLoginEmail(payment.email).catch((e) => console.error('check-grow-emails: נכשלה שליחת מייל כניסה', e));
       await syncGrowPaymentToMonday({
         phone: payment.phone, email: payment.email, fullName: payment.name,
