@@ -74,6 +74,7 @@ export async function GET(request: Request) {
         lastSentAt: row.last_sent_at,
         stoppedAt: row.stopped_at,
         stoppedReason: row.stopped_reason ? (STOP_REASON_LABELS[row.stopped_reason] || row.stopped_reason) : null,
+        stoppedReasonCode: row.stopped_reason,
         active: !row.stopped_at,
       };
     });

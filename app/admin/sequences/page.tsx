@@ -18,6 +18,7 @@ type Row = {
   lastSentAt: string | null;
   stoppedAt: string | null;
   stoppedReason: string | null;
+  stoppedReasonCode: string | null;
   active: boolean;
 };
 
@@ -63,6 +64,16 @@ export default function AdminSequencesPage() {
       setRows(data.rows || []);
     }
     setLoading(false);
+  }
+
+  // פותח וואטסאפ עם הודעה מוכנה מראש, בלי שליחה אוטומטית - שירן בודקת ולוחצת שליחה בעצמה
+  // (אותו דפוס בדיוק כמו ב-/admin/subscribers)
+  function sendWhatsAppReminder(row: Row) {
+    if (!row.phone) return;
+    const firstName = (row.name || '').trim().split(' ')[0] || '';
+    const text = `היי${firstName ? ' ' + firstName : ''}, שמתי לב שההתראות באתר אצלך לא מופעלות - ככה מפספסים עדכונים חשובים. כדאי להיכנס לאתר וללחוץ על הפעמון כדי להפעיל אותן מחדש.\n\nתודה!\nשירן`;
+    const phoneDigits = row.phone.replace(/\D/g, '').replace(/^0/, '972');
+    window.open(`https://wa.me/${phoneDigits}?text=${encodeURIComponent(text)}`, '_blank');
   }
 
   async function handleResend(row: Row) {
@@ -133,10 +144,20 @@ export default function AdminSequencesPage() {
             <div>התחיל/ה: {formatDateTime(row.startedAt)} · נשלח לאחרונה: {formatDateTime(row.lastSentAt)}</div>
           </div>
 
-          <div style={{ marginTop: '10px' }}>
+          <div style={{ marginTop: '10px', display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
             <button className="btn-outline" style={{ padding: '6px 12px', fontSize: '12.5px' }} onClick={() => handleResend(row)} disabled={busy === row.id || row.lastStepSent < 1}>
               {busy === row.id ? '...' : '📤 שליחה חוזרת של ההודעה האחרונה'}
             </button>
+            {row.stoppedReasonCode === 'push_invalid' && row.phone && (
+              <button
+                className="btn-outline"
+                style={{ padding: '6px 12px', fontSize: '12.5px', color: '#25D366', borderColor: '#25D366' }}
+                onClick={() => sendWhatsAppReminder(row)}
+                title="שליחת תזכורת בוואטסאפ להפעיל התראות"
+              >
+                🔔 תזכורת בוואטסאפ
+              </button>
+            )}
           </div>
         </div>
       ))}
