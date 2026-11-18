@@ -84,19 +84,18 @@ export default function AdminPushSubscriptionsPage() {
     }
   }
 
-  // ניקוי חד-פעמי: עד עכשיו קבוצת "הפעיל עדכונים באתר ללא מנוי" במאנדיי רק גדלה עם הזמן -
-  // זה עובר על כל מי שנמצא/ת שם עכשיו ומעביר ל"לידים חדשים" את מי שכבר אין לו/ה שום מכשיר
-  // תקף אצלנו (ר' app/api/admin/push-subscriptions/cleanup-stale-monday). לא קשור לכפתור
-  // הסנכרון הרגיל למעלה - זה עובד בכיוון ההפוך (מוציא מהקבוצה, לא מכניס אליה)
+  // ניקוי חד-פעמי: מי שמסומן/ת כ"הפעיל/ה התראות ללא מנוי" (לפי עמודה ייעודית, לא קבוצה) אבל
+  // כבר אין לו/ה שום מכשיר תקף אצלנו - מעדכן את הסטטוס בהתאם (ר'
+  // app/api/admin/push-subscriptions/cleanup-stale-monday)
   async function handleCleanupStaleMonday() {
-    if (!window.confirm('לעבור על כל הכרטיסים בקבוצת "הפעיל עדכונים באתר ללא מנוי" במאנדיי, ולהעביר ל"לידים חדשים" כל מי שכבר אין לו/ה שום מכשיר תקף באתר?')) return;
+    if (!window.confirm('לעבור על כל מי שמסומן/ת "הפעיל/ה התראות ללא מנוי" במאנדיי, ולעדכן סטטוס למי שכבר אין לו/ה שום מכשיר תקף באתר?')) return;
     setCleaningUp(true);
     setCleanupMessage('');
     const res = await fetch('/api/admin/push-subscriptions/cleanup-stale-monday', { method: 'POST', headers: await authHeader() });
     const data = await res.json().catch(() => ({}));
     setCleaningUp(false);
     if (res.ok) {
-      setCleanupMessage(`נבדקו ${data.checked} כרטיסים - ${data.moved} הועברו ל"לידים חדשים", ${data.stillValid} עדיין תקפים ונשארו${data.errors?.length ? `, ${data.errors.length} נכשלו` : ''}.`);
+      setCleanupMessage(`נבדקו ${data.checked} כרטיסים - ${data.updated} עודכנו לסטטוס "כיבה את ההתראות", ${data.stillValid} עדיין תקפים ונשארו${data.errors?.length ? `, ${data.errors.length} נכשלו` : ''}.`);
     } else {
       setCleanupMessage(`שגיאה בניקוי: ${data.error || 'שגיאה לא ידועה'}`);
     }

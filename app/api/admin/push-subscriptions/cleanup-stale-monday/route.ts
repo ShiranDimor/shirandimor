@@ -19,17 +19,15 @@ async function requireAdmin(request: Request) {
   return user;
 }
 
-// POST - ניקוי חד-פעמי: קבוצת "הפעיל עדכונים באתר ללא מנוי" במאנדיי רק גדלה עם הזמן (ר'
-// markAppDownloadOnMonday) - עד עכשיו שום דבר לא העביר החוצה מי שכיבה/תה את ההתראות בפועל
-// (ר' markPushDisabledOnMonday, שמטפל בזה רק מעכשיו והלאה). עובר על כל מי שנמצא/ת בקבוצה
-// הזו *עכשיו*, בודק מול הטבלה שלנו אם יש לו/ה עדיין מכשיר תקף כלשהו, ומעביר ל"לידים חדשים"
-// את מי שאין לו/ה - בלי לגעת במי שעדיין באמת מקבל/ת מאיתנו עדכונים
+// POST - ניקוי חד-פעמי: מי שמסומן/ת כ"הפעיל/ה התראות ללא מנוי" (לפי עמודה ייעודית, לא קבוצה)
+// אבל כבר אין לו/ה שום מכשיר תקף בפועל (כיבה/תה בעבר, לפני שהיה לנו מנגנון שמטפל בזה בזמן
+// אמת) - מעדכן את הסטטוס בהתאם, בלי לגעת במי שעדיין באמת מקבל/ת מאיתנו עדכונים
 export async function POST(request: Request) {
   const admin = await requireAdmin(request);
   if (!admin) return NextResponse.json({ error: 'אין הרשאת ניהול' }, { status: 403 });
 
   const contacts = await listPushActivatedNoSubContacts();
-  if (contacts.length === 0) return NextResponse.json({ ok: true, checked: 0, moved: 0, stillValid: 0, errors: [] });
+  if (contacts.length === 0) return NextResponse.json({ ok: true, checked: 0, updated: 0, stillValid: 0, errors: [] });
 
   // כל המכשירים התקפים כרגע (לא רק לידים בלי חשבון - גם מחוברים/ות עם user_id, שהטלפון/מייל
   // שלהם נמצא בפרופיל ולא בשורת המינוי עצמה)
@@ -54,7 +52,7 @@ export async function POST(request: Request) {
     if (email) validEmails.add(normalizeEmail(email));
   }
 
-  let moved = 0;
+  let updated = 0;
   let stillValid = 0;
   const errors: string[] = [];
 
@@ -68,10 +66,10 @@ export async function POST(request: Request) {
       continue;
     }
 
-    const result = await markPushDisabledOnMonday({ phone: contact.phone, email: contact.email }).catch((e) => ({ ok: false, moved: false, error: e instanceof Error ? e.message : 'threw' }));
-    if (result.ok && result.moved) moved++;
+    const result = await markPushDisabledOnMonday({ phone: contact.phone, email: contact.email }).catch((e) => ({ ok: false, updated: false, error: e instanceof Error ? e.message : 'threw' }));
+    if (result.ok && result.updated) updated++;
     else if (!result.ok) errors.push(`${contact.name}: ${result.error || 'שגיאה לא ידועה'}`);
   }
 
-  return NextResponse.json({ ok: true, checked: contacts.length, moved, stillValid, errors });
+  return NextResponse.json({ ok: true, checked: contacts.length, updated, stillValid, errors });
 }
