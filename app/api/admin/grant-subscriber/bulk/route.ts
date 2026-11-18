@@ -49,7 +49,7 @@ export async function POST(request: Request) {
     }
 
     try {
-      const { userId, newlyActivated } = await ensureActiveSubscriberAccount(email, phone, name, undefined, isFirstMonthPrice);
+      const { userId, newlyActivated } = await ensureActiveSubscriberAccount(email, phone, name, undefined, isFirstMonthPrice, amount);
 
       if (!newlyActivated) {
         results.push({ name, phone, email, status: 'already_active' });

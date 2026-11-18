@@ -84,7 +84,7 @@ export async function POST(request: Request) {
   try {
     const { userId, newlyActivated } = await ensureActiveSubscriberAccount(
       payment.email || '', payment.phone || '', payment.fullName || payment.email || payment.phone || '',
-      undefined, payment.amount === FIRST_MONTH_PRICE
+      undefined, payment.amount === FIRST_MONTH_PRICE, payment.amount
     );
     // רק הצטרפות אמיתית חדשה (לא חיוב חודשי חוזר) מתחילה את רצף הקליטה - ר' lib/sequenceEngine.ts
     if (newlyActivated) {

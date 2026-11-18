@@ -261,6 +261,12 @@ export default function AdminDashboard() {
           <div className="at-count">מנויים ולידים שהפעילו</div>
         </Link>
 
+        <Link href="/admin/sequences" className="admin-tile">
+          <div className="at-icon">📬</div>
+          <div className="at-title">רצפי קליטה/טיפוח</div>
+          <div className="at-count">מי קיבל מה ומתי</div>
+        </Link>
+
         <Link href="/admin/notifications" className="admin-tile">
           <div className="at-icon">📜</div>
           <div className="at-title">היסטוריית התראות</div>

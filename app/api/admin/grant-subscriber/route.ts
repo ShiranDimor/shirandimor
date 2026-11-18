@@ -42,7 +42,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const { userId, newlyActivated } = await ensureActiveSubscriberAccount(email, phone, name, undefined, Boolean(payment?.isFirstMonthPrice));
+    const { userId, newlyActivated } = await ensureActiveSubscriberAccount(email, phone, name, undefined, Boolean(payment?.isFirstMonthPrice), payment?.amount);
 
     if (newlyActivated) {
       await startSequence('welcome-subscriber', { userId }).catch((e) => console.error('grant-subscriber: נכשלה התחלת רצף הקליטה', e));
