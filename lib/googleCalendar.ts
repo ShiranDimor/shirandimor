@@ -122,6 +122,9 @@ export async function createTrialBillingReminders(subscriberName: string, joinDa
           summary: title,
           start: { date: dateOnly(date) },
           end: { date: dateOnly(end) },
+          // בלי תזכורת בשעה מסוימת (לא ברירת המחדל של Google, שהייתה מציגה פופאפ בשעה קבועה) -
+          // ר' בקשה מפורשת של שירן, 19.11: רק פריט ביומן, בלי להתריע
+          reminders: { useDefault: false, overrides: [] },
         }),
       });
       if (!res.ok) {
