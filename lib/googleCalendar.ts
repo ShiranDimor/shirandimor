@@ -100,6 +100,52 @@ export async function createLiveCalendarEvent(
   }
 }
 
+// נקרא בכל הרשמה חדשה בהטבת "חודש ראשון ב-1 ש״ח" - שתי תזכורות יום-שלם ביומן שלה: היום (לשנות
+// את ההוראת הקבע בגרואו ל-400 ש"ח - ברירת המחדל שם ממשיכה לחייב 1 ש"ח אחרת), ובדיוק חודש אחרי
+// (לוודא שהחיוב של 400 ש"ח באמת יצא בפועל) - ר' בקשה מפורשת של שירן, 19.11
+export async function createTrialBillingReminders(subscriberName: string, joinDate: Date): Promise<{ today: boolean; nextMonth: boolean }> {
+  const accessToken = await getAccessToken();
+  if (!accessToken) return { today: false, nextMonth: false };
+
+  function dateOnly(d: Date) {
+    return d.toISOString().slice(0, 10);
+  }
+
+  async function createAllDayReminder(title: string, date: Date): Promise<boolean> {
+    const end = new Date(date);
+    end.setDate(end.getDate() + 1); // סוף-אירוע ביום-שלם הוא היום שאחרי (בלעדי) - כך ש-Google Calendar API מגדיר יום בודד
+    try {
+      const res = await fetch(EVENTS_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+        body: JSON.stringify({
+          summary: title,
+          start: { date: dateOnly(date) },
+          end: { date: dateOnly(end) },
+        }),
+      });
+      if (!res.ok) {
+        console.error('שגיאה ביצירת תזכורת חיוב ביומן', await res.text().catch(() => ''));
+        return false;
+      }
+      return true;
+    } catch (e) {
+      console.error('שגיאה ביצירת תזכורת חיוב ביומן', e);
+      return false;
+    }
+  }
+
+  const nextMonth = new Date(joinDate);
+  nextMonth.setMonth(nextMonth.getMonth() + 1);
+
+  const [today, nextMonthOk] = await Promise.all([
+    createAllDayReminder(`💳 לשנות הו"ק בגרואו ל-400 ש"ח - ${subscriberName}`, joinDate),
+    createAllDayReminder(`💳 לוודא שחויב/ה ב-400 ש"ח - ${subscriberName}`, nextMonth),
+  ]);
+
+  return { today, nextMonth: nextMonthOk };
+}
+
 // ===== שיחות התאמה מהעמוד לארגונים =====
 
 export type BusyInterval = { start: number; end: number };

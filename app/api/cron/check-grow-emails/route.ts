@@ -5,6 +5,7 @@ import { sendLoginEmail, supabaseAdmin } from '@/lib/instantLogin';
 import { syncGrowPaymentToMonday, FIRST_MONTH_PRICE } from '@/lib/grow';
 import { startSequence } from '@/lib/sequenceEngine';
 import { sendPushToUsers } from '@/lib/webPush';
+import { createTrialBillingReminders } from '@/lib/googleCalendar';
 
 export const maxDuration = 120;
 
@@ -52,6 +53,7 @@ export async function GET(request: Request) {
       // רק מי שבהטבת חודש ראשון ב-1 ש"ח מקבל/ת את רצף הקליטה - מנוי/ה ותיק/ה (400 ש"ח) לא צריך/ה
       if (payment.amount === FIRST_MONTH_PRICE) {
         await startSequence('welcome-subscriber', { userId }).catch((e) => console.error('check-grow-emails: נכשלה התחלת רצף הקליטה', e));
+        await createTrialBillingReminders(payment.name, new Date()).catch((e) => console.error('check-grow-emails: נכשלה יצירת תזכורות חיוב ביומן', e));
       }
       await sendLoginEmail(payment.email).catch((e) => console.error('check-grow-emails: נכשלה שליחת מייל כניסה', e));
       await syncGrowPaymentToMonday({

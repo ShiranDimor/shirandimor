@@ -3,6 +3,7 @@ import { sendLoginEmail, supabaseAdmin } from '@/lib/instantLogin';
 import { ensureActiveSubscriberAccount } from '@/lib/subscriberStatus';
 import { syncGrowPaymentToMonday } from '@/lib/grow';
 import { startSequence } from '@/lib/sequenceEngine';
+import { createTrialBillingReminders } from '@/lib/googleCalendar';
 
 // true (לא אובייקט user אמיתי) כשהקריאה מאומתת דרך AGENT_ADMIN_SECRET (שרת-לשרת, בלי
 // סשן אדמין בדפדפן) - לשימוש חד-פעמי כשסוכן/ת (לא שירן בדפדפן) צריך/ה לתקן ידנית מקרה
@@ -47,6 +48,7 @@ export async function POST(request: Request) {
     // רק מי שבהטבת חודש ראשון ב-1 ש"ח מקבל/ת את רצף הקליטה - מנוי/ה ותיק/ה (400 ש"ח) לא צריך/ה
     if (newlyActivated && payment?.isFirstMonthPrice) {
       await startSequence('welcome-subscriber', { userId }).catch((e) => console.error('grant-subscriber: נכשלה התחלת רצף הקליטה', e));
+      await createTrialBillingReminders(name, new Date()).catch((e) => console.error('grant-subscriber: נכשלה יצירת תזכורות חיוב ביומן', e));
     }
 
     await sendLoginEmail(email).catch((e) => console.error('grant-subscriber: נכשלה שליחת מייל כניסה', e));
