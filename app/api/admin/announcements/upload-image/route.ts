@@ -1,9 +1,12 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/instantLogin';
 
+// true (לא אובייקט user אמיתי) כשהקריאה מאומתת דרך AGENT_ADMIN_SECRET - ר' route.ts הראשי
 async function requireAdmin(request: Request) {
   const authHeader = request.headers.get('Authorization') || '';
   const token = authHeader.replace('Bearer ', '');
+
+  if (process.env.AGENT_ADMIN_SECRET && token === process.env.AGENT_ADMIN_SECRET) return true;
 
   const { data: { user } } = await supabaseAdmin.auth.getUser(token);
   if (!user) return null;
