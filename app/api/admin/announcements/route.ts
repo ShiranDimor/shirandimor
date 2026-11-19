@@ -1,9 +1,13 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/instantLogin';
 
+// true (לא אובייקט user אמיתי) כשהקריאה מאומתת דרך AGENT_ADMIN_SECRET (שרת-לשרת, בלי
+// סשן אדמין בדפדפן) - לשימוש חד-פעמי כשסוכן/ת צריך/ה לשמור טיוטה לאישור שירן בעצמה בלוח
 async function requireAdmin(request: Request) {
   const authHeader = request.headers.get('Authorization') || '';
   const token = authHeader.replace('Bearer ', '');
+
+  if (process.env.AGENT_ADMIN_SECRET && token === process.env.AGENT_ADMIN_SECRET) return true;
 
   const { data: { user } } = await supabaseAdmin.auth.getUser(token);
   if (!user) return null;
