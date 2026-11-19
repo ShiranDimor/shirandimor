@@ -4,6 +4,7 @@ import { ensureActiveSubscriberAccount } from '@/lib/subscriberStatus';
 import { sendLoginEmail, supabaseAdmin } from '@/lib/instantLogin';
 import { sendPushToUsers } from '@/lib/webPush';
 import { startSequence } from '@/lib/sequenceEngine';
+import { createTrialBillingReminders } from '@/lib/googleCalendar';
 
 // מתריע לשירן בפוש אם משהו בטיפול בתשלום נכשל בשקט - בלי זה מישהו יכול לשלם, להופיע במאנדיי,
 // ולא לקבל חשבון עובד באתר (או מייל כניסה) בלי שום סימן לבעיה עד שמישהו יפתח פניה בעצמו
@@ -91,6 +92,10 @@ export async function POST(request: Request) {
     // ולא צריך/ה את הודעות ה"ברוכים הבאים" - ר' lib/sequenceEngine.ts
     if (newlyActivated && payment.amount === FIRST_MONTH_PRICE) {
       await startSequence('welcome-subscriber', { userId }).catch((e) => console.error('Grow webhook: נכשלה התחלת רצף הקליטה', e));
+      // שתי תזכורות ביומן של שירן - היום (לשנות הו"ק בגרואו ל-400 ש"ח) ובעוד חודש (לוודא שהחיוב
+      // יצא) - ר' בקשה מפורשת של שירן, 19.11
+      await createTrialBillingReminders(payment.fullName || payment.email || payment.phone || 'מנוי/ה חדש/ה', new Date())
+        .catch((e) => console.error('Grow webhook: נכשלה יצירת תזכורות חיוב ביומן', e));
     }
     if (payment.email) {
       await sendLoginEmail(payment.email);
