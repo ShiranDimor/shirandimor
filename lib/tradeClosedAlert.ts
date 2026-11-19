@@ -1,4 +1,3 @@
-import { getActiveSubscriberContacts } from '@/lib/subscriberStatus';
 import { sendPushToActiveSubscribers, sendPushToNonSubscribers } from '@/lib/webPush';
 
 // מייל "עסקה נסגרה" לכל המנויים הפעילים + לשירן - נשלח בכל סגירה מלאה של עסקה בתיק האמיתי
@@ -93,23 +92,10 @@ async function sendEmails(apiKey: string, recipients: string[], subject: string,
   );
 }
 
-// שולח מייל "עסקה נסגרה" על כל עסקה שנסגרה - לכל המנויים הפעילים + לשירן (או רק לכתובת הבדיקה כל עוד לא הופעל)
+// שולח התראה על כל עסקה שנסגרה - רק פוש/האתר, לא מייל (בוטל לבקשת שירן, 19.11 - ר'
+// sendSampleTradeClosedAlerts אם עדיין צריך לראות את תבנית המייל לצורך בדיקה)
 export async function notifyTradesClosed(trades: ClosedTradeInfo[]) {
   if (trades.length === 0) return;
-  const apiKey = process.env.RESEND_API_KEY;
-  if (!apiKey) {
-    console.error('RESEND_API_KEY לא מוגדר - לא ניתן לשלוח מייל סגירת עסקה');
-    return;
-  }
-
-  const recipients = TRADE_CLOSED_BROADCAST_LIVE
-    ? Array.from(new Set([...(await getActiveSubscriberContacts()).emails, OWNER_EMAIL]))
-    : [SUBSCRIBER_BROADCAST_TEST_RECIPIENT];
-
-  for (const t of trades) {
-    const { subject, text, html } = buildTradeClosedContent(t);
-    await sendEmails(apiKey, recipients, subject, text, html);
-  }
 
   if (TRADE_CLOSED_BROADCAST_LIVE) {
     for (const t of trades) {
