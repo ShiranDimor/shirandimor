@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import TradeCard from '@/components/mentoring/TradeCard';
+import TradeForm from '@/components/mentoring/TradeForm';
 import SessionCard from '@/components/mentoring/SessionCard';
 import {
   TASK_STATUS_META, VERDICT_META, daysLeft, fmtDate, fmtR, fmtUsd, journalStats, videoEmbedSrc,
@@ -173,6 +174,7 @@ export default function AdminMentoringPage() {
   const [tasks, setTasks] = useState<MentoringTask[]>([]);
   const [tab, setTab] = useState<Tab>('queue');
   const [sessionForm, setSessionForm] = useState<{ open: boolean; edit: MentoringSession | null }>({ open: false, edit: null });
+  const [editingTrade, setEditingTrade] = useState<MentoringTrade | null>(null);
   const [returnNotes, setReturnNotes] = useState<Record<string, string>>({});
   const [newEmail, setNewEmail] = useState('');
   const [addMsg, setAddMsg] = useState('');
@@ -266,6 +268,16 @@ export default function AdminMentoringPage() {
       showFlash(status === 'approved' ? 'המשימה אושרה ✓' : 'הוחזרה לתיקון');
       loadStudents();
     }
+  }
+
+  async function deleteTrade(t: MentoringTrade) {
+    if (!confirm(`למחוק את העסקה${t.is_example ? ' לדוגמה' : ''}? אי אפשר לשחזר.`)) return;
+    const { error } = await supabase.from('mentoring_trades').delete().eq('id', t.id);
+    if (error) { showFlash('המחיקה נכשלה'); return; }
+    setTrades((prev) => prev.filter((x) => x.id !== t.id));
+    if (t.chart_paths?.length) supabase.storage.from('mentoring').remove(t.chart_paths).then(() => {});
+    showFlash('העסקה נמחקה');
+    loadStudents();
   }
 
   async function deleteTask(k: MentoringTask) {
@@ -372,15 +384,33 @@ export default function AdminMentoringPage() {
 
           {tab === 'journal' && (
             <>
+              {editingTrade && (
+                <TradeForm
+                  userId={editingTrade.student_id}
+                  initial={editingTrade}
+                  onCancel={() => setEditingTrade(null)}
+                  onSaved={(updated) => {
+                    setTrades((prev) => prev.map((x) => (x.id === updated.id ? updated : x)));
+                    setEditingTrade(null);
+                    showFlash('העסקה עודכנה ✓');
+                  }}
+                />
+              )}
               {trades.length === 0 && <div className="mt-empty">עוד אין עסקאות ביומן.</div>}
               {trades.map((t) => (
                 <TradeCard key={t.id} trade={t} footer={
+                  <>
+                  <div className="mt-actions">
+                    <button className="mt-btn-ghost" onClick={() => { setEditingTrade(t); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>✏️ עריכת העסקה</button>
+                    <button className="mt-btn-ghost" style={{ color: 'var(--loss)' }} onClick={() => deleteTrade(t)}>🗑 מחיקה</button>
+                  </div>
                   <ReviewBox trade={t} onSaved={(updated) => {
                     setTrades((prev) => prev.map((x) => (x.id === updated.id ? updated : x)));
                     notify('trade_reviewed', t.student_id, `${t.instrument} ${fmtDate(t.traded_at)}`);
                     showFlash('נשמר ✓');
                     loadStudents();
                   }} />
+                  </>
                 } />
               ))}
             </>

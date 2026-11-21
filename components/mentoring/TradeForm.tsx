@@ -30,7 +30,11 @@ export default function TradeForm({
   const [tradeStyle, setTradeStyle] = useState<TradeStyle>(initial?.trade_style || defaultStyle || 'swing');
   const [tradedAt, setTradedAt] = useState(initial?.traded_at || today);
   const [closedAt, setClosedAt] = useState(initial?.closed_at || '');
-  const [instrument, setInstrument] = useState(initial?.instrument || defaultInstrument || 'MNQ');
+  const FUTURES = ['MNQ', 'NQ', 'MES', 'ES', 'MGC'];
+  const initialInstrument = initial?.instrument || defaultInstrument || 'MNQ';
+  // מניה נשמרת עם הסימול שלה (MSFT וכו'); 'STOCK' = מניה בלי סימול
+  const [instrument, setInstrument] = useState(FUTURES.includes(initialInstrument) ? initialInstrument : 'STOCK');
+  const [stockSymbol, setStockSymbol] = useState(!FUTURES.includes(initialInstrument) && initialInstrument !== 'STOCK' ? initialInstrument : '');
   const [direction, setDirection] = useState<'long' | 'short'>(initial?.direction || 'long');
   const [contracts, setContracts] = useState(str(initial?.contracts ?? 1));
   const [entry, setEntry] = useState(str(initial?.entry_price));
@@ -80,7 +84,7 @@ export default function TradeForm({
       traded_at: tradedAt,
       // תוך-יומי נסגר באותו יום; סווינג - תאריך היציאה שהוזן, או ריק כל עוד העסקה פתוחה
       closed_at: num(exit) == null ? null : tradeStyle === 'intraday' ? tradedAt : (closedAt || today),
-      instrument,
+      instrument: instrument === 'STOCK' ? (stockSymbol.trim().toUpperCase() || 'STOCK') : instrument,
       direction,
       contracts: num(contracts) || 1,
       entry_price: num(entry),
@@ -139,6 +143,10 @@ export default function TradeForm({
           <button key={i.code} type="button" className={`mt-pill${instrument === i.code ? ' on' : ''}`} onClick={() => setInstrument(i.code)}>{i.label}</button>
         ))}
       </div>
+
+      {instrument === 'STOCK' && (
+        <input className="mt-input" style={{ marginTop: 8, direction: 'ltr', textAlign: 'right', textTransform: 'uppercase' }} value={stockSymbol} onChange={(e) => setStockSymbol(e.target.value)} placeholder="סימול המניה, למשל MSFT" />
+      )}
 
       <div className="mt-row3" style={{ marginTop: 4 }}>
         <div><label className="mt-label">{sizeLabel}</label><input className="mt-input" type="number" inputMode="decimal" value={contracts} onChange={(e) => setContracts(e.target.value)} /></div>
