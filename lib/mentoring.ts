@@ -27,6 +27,7 @@ export type MentoringSession = {
   title: string;
   held_at: string;
   video_url: string | null;
+  start_seconds: number;
   summary: string | null;
   key_points: string[];
   seen_by_student: boolean;
@@ -154,25 +155,27 @@ export function journalStats(trades: MentoringTrade[]) {
 
 // ממירים כל צורת לינק נפוצה (יוטיוב לא-רשום - ברירת המחדל, כמו בספריית השיעורים; דרייב; לום;
 // וימאו) לכתובת הטמעה. בדרייב הקובץ חייב להיות משותף, וגם אז הטמעה בנייד לא תמיד עובדת
-export function videoEmbedSrc(url: string | null | undefined): string | null {
+// startSeconds - מאיפה ההקלטה מתחילה (למשל לדלג על דקות של בעיות טכניות לפני שהשיעור התחיל)
+export function videoEmbedSrc(url: string | null | undefined, startSeconds = 0): string | null {
   if (!url) return null;
   const trimmed = url.trim();
+  const s = Math.max(0, Math.floor(startSeconds || 0));
   try {
     const u = new URL(trimmed);
     if (u.hostname.includes('drive.google.com')) {
       const m = u.pathname.match(/\/file\/d\/([\w-]+)/);
       const id = m ? m[1] : u.searchParams.get('id');
-      return id ? `https://drive.google.com/file/d/${id}/preview` : null;
+      return id ? `https://drive.google.com/file/d/${id}/preview${s ? `?t=${s}` : ''}` : null;
     }
-    if (u.hostname.includes('youtu.be')) return `https://www.youtube-nocookie.com/embed/${u.pathname.slice(1)}?rel=0`;
+    if (u.hostname.includes('youtu.be')) return `https://www.youtube-nocookie.com/embed/${u.pathname.slice(1)}?rel=0${s ? `&start=${s}` : ''}`;
     if (u.hostname.includes('youtube.com')) {
       const v = u.searchParams.get('v') || u.pathname.match(/\/(embed|shorts|live)\/([\w-]{11})/)?.[2];
-      return v ? `https://www.youtube-nocookie.com/embed/${v}?rel=0` : null;
+      return v ? `https://www.youtube-nocookie.com/embed/${v}?rel=0${s ? `&start=${s}` : ''}` : null;
     }
-    if (u.hostname.includes('loom.com')) return trimmed.replace('/share/', '/embed/');
+    if (u.hostname.includes('loom.com')) return trimmed.replace('/share/', '/embed/') + (s ? `?t=${s}` : '');
     if (u.hostname.includes('vimeo.com')) {
       const id = u.pathname.split('/').filter(Boolean).find((p) => /^\d+$/.test(p));
-      return id ? `https://player.vimeo.com/video/${id}` : null;
+      return id ? `https://player.vimeo.com/video/${id}${s ? `#t=${s}s` : ''}` : null;
     }
   } catch {
     return null;

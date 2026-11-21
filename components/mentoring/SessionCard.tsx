@@ -13,7 +13,7 @@ export default function SessionCard({
   footer?: ReactNode;
 }) {
   const [open, setOpen] = useState(!!defaultOpen);
-  const embed = videoEmbedSrc(session.video_url);
+  const embed = videoEmbedSrc(session.video_url, session.start_seconds);
 
   function toggle() {
     const next = !open;

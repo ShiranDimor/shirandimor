@@ -68,6 +68,7 @@ function SessionForm({ studentId, nextNumber, initial, onSaved, onCancel }: {
   const [title, setTitle] = useState(initial?.title || '');
   const [heldAt, setHeldAt] = useState(initial?.held_at || new Date().toISOString().slice(0, 10));
   const [video, setVideo] = useState(initial?.video_url || '');
+  const [startMin, setStartMin] = useState(initial?.start_seconds ? String(Math.round(initial.start_seconds / 60)) : '');
   const [summary, setSummary] = useState(initial?.summary || '');
   const [points, setPoints] = useState((initial?.key_points || []).join('\n'));
   const [notifyStudent, setNotifyStudent] = useState(true);
@@ -84,6 +85,7 @@ function SessionForm({ studentId, nextNumber, initial, onSaved, onCancel }: {
       title: title.trim(),
       held_at: heldAt,
       video_url: video.trim() || null,
+      start_seconds: Math.max(0, Math.round((parseFloat(startMin) || 0) * 60)),
       summary: summary.trim() || null,
       key_points: points.split('\n').map((p) => p.trim()).filter(Boolean),
       ...(notifyStudent ? { seen_by_student: false } : {}),
@@ -109,6 +111,8 @@ function SessionForm({ studentId, nextNumber, initial, onSaved, onCancel }: {
       <label className="mt-label">לינק להקלטה (YouTube לא-רשום, כמו בספריית השיעורים)</label>
       <input className="mt-input" style={{ direction: 'ltr' }} value={video} onChange={(e) => setVideo(e.target.value)} placeholder="https://youtu.be/..." />
       <div className="mt-sub" style={{ marginTop: 6, lineHeight: 1.5 }}>ביוטיוב: להעלות כ&quot;לא רשום&quot; (Unlisted) - הסרטון מוטמע רק באזור הפרטי שלו/ה. לינק דרייב עובד רק אם הקובץ משותף, ובנייד לא תמיד נטען.</div>
+      <label className="mt-label">להתחיל את ההקלטה מדקה (לדלג על ההתחלה)</label>
+      <input className="mt-input" type="number" inputMode="numeric" value={startMin} onChange={(e) => setStartMin(e.target.value)} placeholder="0" style={{ maxWidth: 120 }} />
       <label className="mt-label">סיכום קצר</label>
       <textarea className="mt-textarea" value={summary} onChange={(e) => setSummary(e.target.value)} placeholder="על מה עבדנו בשיעור" />
       <label className="mt-label">נקודות מפתח (שורה לכל נקודה)</label>
