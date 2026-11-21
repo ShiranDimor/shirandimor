@@ -9,7 +9,7 @@ import JournalView from '@/components/mentoring/JournalView';
 import SessionCard from '@/components/mentoring/SessionCard';
 import {
   TASK_STATUS_META, VERDICT_META, daysLeft, fmtDate, fmtR, fmtUsd, journalStats, videoEmbedSrc,
-  type MentoringEvent, type MentoringSession, type MentoringStudent, type MentoringTask, type MentoringTrade, type Verdict,
+  type MentoringEvent, type MentoringMessage, type MentoringSession, type MentoringStudent, type MentoringTask, type MentoringTrade, type Verdict,
 } from '@/lib/mentoring';
 
 // ניהול הליווי האישי: תור "לניתוח" (עסקאות חדשות + משימות שסומנו כבוצעו), יומן מלא, הקלטות
@@ -31,6 +31,11 @@ async function notify(event: MentoringEvent, studentId: string, detail?: string)
 // הודעה חופשית לתלמיד/ה: פוש לנייד (מופיע גם בפעמון באתר) ו/או מייל
 function MessageBox({ studentId, firstName }: { studentId: string; firstName: string }) {
   const [open, setOpen] = useState(false);
+  const [history, setHistory] = useState<MentoringMessage[]>([]);
+  useEffect(() => {
+    supabase.from('mentoring_messages').select('*').eq('student_id', studentId).order('created_at', { ascending: false }).limit(30)
+      .then(({ data }) => setHistory((data || []) as MentoringMessage[]));
+  }, [studentId]);
   const [title, setTitle] = useState('');
   const [message, setMessage] = useState('');
   const [push, setPush] = useState(true);
@@ -54,11 +59,12 @@ function MessageBox({ studentId, firstName }: { studentId: string; firstName: st
     if (push) parts.push(data.pushSent > 0 ? 'נשלח לנייד ✓' : data.pushAttempted > 0 ? 'הפוש לא נמסר' : 'אין לו התראות מופעלות במכשיר');
     if (email) parts.push(data.emailSent ? 'נשלח למייל ✓' : 'המייל לא נשלח');
     setResult(parts.join(' · '));
+    if (data.message) setHistory((h) => [data.message as MentoringMessage, ...h]);
     if (data.pushSent > 0 || data.emailSent) { setMessage(''); setTitle(''); }
   }
 
   if (!open) {
-    return <button className="mt-add" style={{ marginBottom: 16 }} onClick={() => setOpen(true)}>🔔 שליחת הודעה ל{firstName || 'תלמיד/ה'}</button>;
+    return <button className="mt-add" style={{ marginBottom: 16 }} onClick={() => setOpen(true)}>🔔 שליחת הודעה ל{firstName || 'תלמיד/ה'}{history.length ? <span className="mj-sub" style={{ fontWeight: 400 }}> · {history.length} נשלחו</span> : null}</button>;
   }
   return (
     <div className="mt-form">
@@ -74,6 +80,20 @@ function MessageBox({ studentId, firstName }: { studentId: string; firstName: st
         <button className="mt-btn-small" onClick={send} disabled={sending || !message.trim() || (!push && !email)}>{sending ? 'שולחת...' : 'שליחה'}</button>
         <button className="mt-btn-ghost" onClick={() => { setOpen(false); setResult(''); }}>סגירה</button>
       </div>
+      {history.length > 0 && (
+        <div style={{ marginTop: 16, borderTop: '1px solid var(--border-hairline)', paddingTop: 12 }}>
+          <div className="mj-label">הודעות שנשלחו</div>
+          <div className="mt-msgs">
+            {history.map((m) => (
+              <div key={m.id} className="mt-msg">
+                <div className="mt-msg-h"><b>{m.title}</b><span className="mj-sub">{new Date(m.created_at).toLocaleString('he-IL', { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' })}</span></div>
+                <p>{m.body}</p>
+                <div className="mj-sub">{m.sent_push ? '📱 נמסר לנייד' : '📱 לא נמסר לנייד'} · {m.sent_email ? '✉️ נשלח למייל' : '✉️ בלי מייל'} · {m.seen_by_student ? '👁 נקרא' : 'עוד לא נקרא'}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -121,6 +141,7 @@ function SessionForm({ studentId, nextNumber, initial, onSaved, onCancel }: {
   const [heldAt, setHeldAt] = useState(initial?.held_at || new Date().toISOString().slice(0, 10));
   const [video, setVideo] = useState(initial?.video_url || '');
   const [startMin, setStartMin] = useState(initial?.start_seconds ? String(Math.round(initial.start_seconds / 60)) : '');
+  const [slides, setSlides] = useState(initial?.slides_url || '');
   const [summary, setSummary] = useState(initial?.summary || '');
   const [points, setPoints] = useState((initial?.key_points || []).join('\n'));
   const [notifyStudent, setNotifyStudent] = useState(true);
@@ -138,6 +159,7 @@ function SessionForm({ studentId, nextNumber, initial, onSaved, onCancel }: {
       held_at: heldAt,
       video_url: video.trim() || null,
       start_seconds: Math.max(0, Math.round((parseFloat(startMin) || 0) * 60)),
+      slides_url: slides.trim() || null,
       summary: summary.trim() || null,
       key_points: points.split('\n').map((p) => p.trim()).filter(Boolean),
       ...(notifyStudent ? { seen_by_student: false } : {}),
@@ -163,6 +185,8 @@ function SessionForm({ studentId, nextNumber, initial, onSaved, onCancel }: {
       <label className="mt-label">לינק להקלטה (YouTube לא-רשום, כמו בספריית השיעורים)</label>
       <input className="mt-input" style={{ direction: 'ltr' }} value={video} onChange={(e) => setVideo(e.target.value)} placeholder="https://youtu.be/..." />
       <div className="mt-sub" style={{ marginTop: 6, lineHeight: 1.5 }}>ביוטיוב: להעלות כ&quot;לא רשום&quot; (Unlisted) - הסרטון מוטמע רק באזור הפרטי שלו/ה. לינק דרייב עובד רק אם הקובץ משותף, ובנייד לא תמיד נטען.</div>
+      <label className="mt-label">לינק למצגת (גמא / דרייב / PDF)</label>
+      <input className="mt-input" style={{ direction: 'ltr' }} value={slides} onChange={(e) => setSlides(e.target.value)} placeholder="https://gamma.app/..." />
       <label className="mt-label">להתחיל את ההקלטה מדקה (לדלג על ההתחלה)</label>
       <input className="mt-input" type="number" inputMode="numeric" value={startMin} onChange={(e) => setStartMin(e.target.value)} placeholder="0" style={{ maxWidth: 120 }} />
       <label className="mt-label">סיכום קצר</label>
@@ -440,6 +464,7 @@ export default function AdminMentoringPage() {
               {editingTrade && (
                 <TradeForm
                   userId={editingTrade.student_id}
+                  riskLimit={student.risk_usd != null ? Number(student.risk_usd) : null}
                   initial={editingTrade}
                   onCancel={() => setEditingTrade(null)}
                   onSaved={(updated) => {
@@ -452,6 +477,8 @@ export default function AdminMentoringPage() {
               {trades.length === 0 ? <div className="mt-empty">עוד אין עסקאות ביומן.</div> : (
                 <JournalView
                   trades={trades}
+                  riskLimit={student.risk_usd != null ? Number(student.risk_usd) : null}
+                  goalMonthly={student.goal_monthly_usd != null ? Number(student.goal_monthly_usd) : null}
                   renderFooter={(t, close) => (
                     <>
                       <div className="mt-actions">
@@ -537,6 +564,18 @@ export default function AdminMentoringPage() {
                 <div><label className="mt-label">סיום</label><input className="mt-input" type="date" defaultValue={student.ends_at || ''} onBlur={(e) => updateStudent({ ends_at: e.target.value || null })} /></div>
                 <div><label className="mt-label">מס׳ שיעורים</label><input className="mt-input" type="number" defaultValue={student.total_sessions} onBlur={(e) => updateStudent({ total_sessions: parseInt(e.target.value, 10) || 6 })} /></div>
               </div>
+              <div style={{ borderTop: '1px solid var(--border-hairline)', margin: '16px 0 4px', paddingTop: 12 }}><b style={{ fontSize: 14 }}>נקודת הפתיחה (מוצג לתלמיד/ה)</b></div>
+              <div className="mt-row">
+                <div><label className="mt-label">ברוקר היום</label><input className="mt-input" defaultValue={student.broker || ''} placeholder="מיטב" onBlur={(e) => updateStudent({ broker: e.target.value.trim() || null })} /></div>
+                <div><label className="mt-label">ברוקר שעוברים אליו</label><input className="mt-input" defaultValue={student.planned_broker || ''} placeholder="קולמקס" onBlur={(e) => updateStudent({ planned_broker: e.target.value.trim() || null })} /></div>
+              </div>
+              <div className="mt-row3">
+                <div><label className="mt-label">תיק לסווינג (₪)</label><input className="mt-input" type="number" defaultValue={student.capital_ils ?? ''} onBlur={(e) => updateStudent({ capital_ils: e.target.value ? Number(e.target.value) : null })} /></div>
+                <div><label className="mt-label">סיכון לעסקה ($)</label><input className="mt-input" type="number" defaultValue={student.risk_usd ?? ''} onBlur={(e) => updateStudent({ risk_usd: e.target.value ? Number(e.target.value) : null })} /></div>
+                <div><label className="mt-label">מטרה חודשית ($)</label><input className="mt-input" type="number" defaultValue={student.goal_monthly_usd ?? ''} onBlur={(e) => updateStudent({ goal_monthly_usd: e.target.value ? Number(e.target.value) : null })} /></div>
+              </div>
+              <label className="mt-label">על מה עובדים (חששות / קשיים)</label>
+              <textarea className="mt-textarea" style={{ minHeight: 56 }} defaultValue={student.concerns || ''} onBlur={(e) => updateStudent({ concerns: e.target.value.trim() || null })} />
               <label className="mt-label">מטרה מרכזית (מוצגת לתלמיד/ה)</label>
               <input className="mt-input" defaultValue={student.goal || ''} placeholder="למשל: 20 עסקאות רצופות לפי התוכנית" onBlur={(e) => updateStudent({ goal: e.target.value.trim() || null })} />
               <label className="mt-label">סגנון ברירת מחדל ביומן</label>

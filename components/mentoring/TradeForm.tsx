@@ -17,9 +17,10 @@ function str(v: number | null | undefined) {
 }
 
 export default function TradeForm({
-  userId, defaultInstrument, defaultStyle, initial, onSaved, onCancel,
+  userId, defaultInstrument, defaultStyle, riskLimit, initial, onSaved, onCancel,
 }: {
   userId: string;
+  riskLimit?: number | null;
   defaultInstrument?: string;
   defaultStyle?: TradeStyle;
   initial?: MentoringTrade | null;
@@ -58,6 +59,11 @@ export default function TradeForm({
   }), [instrument, direction, contracts, entry, stop, exit]);
 
   const instrumentMeta = INSTRUMENTS.find((i) => i.code === instrument);
+  // מחשבון גודל פוזיציה לפי הסיכון הקבוע: סיכון ÷ (מרחק לסטופ × שווי נקודה) = כמות
+  const perUnitRisk = num(entry) != null && num(stop) != null ? Math.abs((num(entry) as number) - (num(stop) as number)) * (instrumentMeta?.pointValue ?? 1) : null;
+  const suggested = riskLimit && perUnitRisk ? Math.floor(riskLimit / perUnitRisk) : null;
+  const actualRisk = perUnitRisk != null ? Math.round(perUnitRisk * (num(contracts) || 1)) : null;
+  const overRisk = !!riskLimit && actualRisk != null && actualRisk > riskLimit * 1.1;
   const sizeLabel = instrument === 'STOCK' ? 'כמות מניות' : 'חוזים';
 
   async function save() {
@@ -163,6 +169,20 @@ export default function TradeForm({
       {tradeStyle === 'swing' && num(exit) == null && (
         <div className="mt-sub" style={{ marginTop: 8 }}>עסקה פתוחה - אפשר לשמור עכשיו ולהוסיף את היציאה כשתיסגר (עריכה בכרטיס העסקה)</div>
       )}
+
+      {riskLimit && perUnitRisk ? (
+        <div className={`mt-sizer${overRisk ? ' over' : ''}`} aria-live="polite">
+          <span>
+            {overRisk ? '⚠️ ' : '🛡️ '}
+            סיכון בעסקה: <b>${actualRisk}</b> מתוך <b>${riskLimit}</b>
+            {suggested != null && <> · לפי הסטופ: <b>{suggested}</b> {instrument === 'STOCK' ? 'מניות' : 'חוזים'}</>}
+          </span>
+          {suggested != null && suggested > 0 && String(suggested) !== contracts && (
+            <button type="button" className="mt-btn-ghost" style={{ padding: '5px 10px', fontSize: 12 }} onClick={() => setContracts(String(suggested))}>להשתמש ב-{suggested}</button>
+          )}
+          {suggested === 0 && <span style={{ color: 'var(--loss)' }}>הסטופ רחוק מדי לסיכון שקבעת - אפילו יחידה אחת חורגת</span>}
+        </div>
+      ) : null}
 
       <div className="mt-calc" aria-live="polite">
         <div><span>רווח/הפסד</span><b style={{ color: calc.pnl == null ? undefined : calc.pnl >= 0 ? 'var(--profit)' : 'var(--loss)' }}>{fmtUsd(calc.pnl)}</b></div>

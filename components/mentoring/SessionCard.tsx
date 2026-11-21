@@ -27,7 +27,7 @@ export default function SessionCard({
         <span className="mt-lesson-num done">{session.lesson_number}</span>
         <div style={{ minWidth: 0 }}>
           <div style={{ fontWeight: 600, fontSize: 14 }}>{session.title}</div>
-          <div className="mt-sub">{fmtDate(session.held_at)}{session.video_url ? ' · 🎬 הקלטה' : ''}{isNew ? ' · חדש' : ''}</div>
+          <div className="mt-sub">{fmtDate(session.held_at)}{session.video_url ? ' · 🎬 הקלטה' : ''}{session.slides_url ? ' · 📑 מצגת' : ''}{isNew ? ' · חדש' : ''}</div>
         </div>
         <span className="mt-sub" style={{ marginInlineStart: 'auto' }}>{open ? '▲' : '▼'}</span>
       </button>
@@ -46,6 +46,10 @@ export default function SessionCard({
 
           {session.video_url && embed && (
             <a href={session.video_url} target="_blank" rel="noopener noreferrer" className="mt-sub" style={{ display: 'block', marginTop: -4, marginBottom: 10 }}>הווידאו לא נטען? לפתיחה בחלון חדש ↗</a>
+          )}
+
+          {session.slides_url && (
+            <a href={session.slides_url} target="_blank" rel="noopener noreferrer" className="mt-btn-small" style={{ display: 'inline-flex', gap: 6, textDecoration: 'none', marginBottom: 12 }}>📑 המצגת של השיעור</a>
           )}
 
           {session.summary && <div className="mt-text" style={{ marginTop: 0 }}>{session.summary}</div>}
