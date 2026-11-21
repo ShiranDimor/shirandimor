@@ -10,7 +10,7 @@ import TaskAttachments from '@/components/mentoring/TaskAttachments';
 import SessionCard from '@/components/mentoring/SessionCard';
 import {
   TASK_STATUS_META, VERDICT_META, daysLeft, fmtDate, fmtR, fmtUsd, journalStats, videoEmbedSrc,
-  type MentoringEvent, type MentoringMessage, type MentoringSession, type MentoringStudent, type MentoringTask, type MentoringTrade, type Verdict,
+  type MentoringEvent, type MentoringMessage, type MentoringSession, type MentoringStudent, type MentoringTask, type MentoringTrade, type TaskStatus, type Verdict,
 } from '@/lib/mentoring';
 
 // ניהול הליווי האישי: תור "לניתוח" (עסקאות חדשות + משימות שסומנו כבוצעו), יומן מלא, הקלטות
@@ -119,6 +119,55 @@ function MessageBox({ studentId, firstName }: { studentId: string; firstName: st
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// עריכת משימה קיימת (גם אחרי אישור): כותרת, פירוט, תאריך יעד, סטטוס והמשוב שלך
+function TaskEditor({ task, onSaved, onCancel }: { task: MentoringTask; onSaved: (k: MentoringTask, notifyStudent: boolean) => void; onCancel: () => void }) {
+  const [title, setTitle] = useState(task.title);
+  const [details, setDetails] = useState(task.details || '');
+  const [due, setDue] = useState(task.due_date || '');
+  const [status, setStatus] = useState<TaskStatus>(task.status);
+  const [note, setNote] = useState(task.coach_note || '');
+  const [notifyStudent, setNotifyStudent] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  async function save() {
+    if (!title.trim()) return;
+    setSaving(true);
+    const { data } = await supabase.from('mentoring_tasks').update({
+      title: title.trim(), details: details.trim() || null, due_date: due || null, status, coach_note: note.trim() || null,
+      ...(notifyStudent ? { seen_by_student: false } : {}),
+    }).eq('id', task.id).select().single();
+    setSaving(false);
+    if (data) onSaved(data as MentoringTask, notifyStudent);
+  }
+
+  return (
+    <div className="mt-card-body" style={{ borderTop: 'none' }}>
+      <label className="mt-label" style={{ marginTop: 0 }}>משימה</label>
+      <input className="mt-input" value={title} onChange={(e) => setTitle(e.target.value)} />
+      <label className="mt-label">פירוט</label>
+      <textarea className="mt-textarea" value={details} onChange={(e) => setDetails(e.target.value)} />
+      <div className="mt-row">
+        <div><label className="mt-label">תאריך יעד</label><input className="mt-input" type="date" value={due} onChange={(e) => setDue(e.target.value)} /></div>
+        <div>
+          <label className="mt-label">סטטוס</label>
+          <select className="mt-select" value={status} onChange={(e) => setStatus(e.target.value as TaskStatus)}>
+            {(Object.keys(TASK_STATUS_META) as TaskStatus[]).map((st) => <option key={st} value={st}>{TASK_STATUS_META[st].label}</option>)}
+          </select>
+        </div>
+      </div>
+      <label className="mt-label">המשוב שלי</label>
+      <textarea className="mt-textarea" style={{ minHeight: 56 }} value={note} onChange={(e) => setNote(e.target.value)} placeholder="משוב לתלמיד/ה (לא חובה)" />
+      <label style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 10, fontSize: 13 }}>
+        <input type="checkbox" checked={notifyStudent} onChange={(e) => setNotifyStudent(e.target.checked)} /> לשלוח לתלמיד/ה התראה על העדכון
+      </label>
+      <div className="mt-actions">
+        <button className="mt-btn-small" onClick={save} disabled={saving || !title.trim()}>{saving ? 'שומרת...' : 'שמירה'}</button>
+        <button className="mt-btn-ghost" onClick={onCancel}>ביטול</button>
+      </div>
     </div>
   );
 }
@@ -275,6 +324,7 @@ export default function AdminMentoringPage() {
   const [tab, setTab] = useState<Tab>('queue');
   const [sessionForm, setSessionForm] = useState<{ open: boolean; edit: MentoringSession | null }>({ open: false, edit: null });
   const [editingTrade, setEditingTrade] = useState<MentoringTrade | null>(null);
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [returnNotes, setReturnNotes] = useState<Record<string, string>>({});
   const [newEmail, setNewEmail] = useState('');
   const [addMsg, setAddMsg] = useState('');
@@ -559,6 +609,23 @@ export default function AdminMentoringPage() {
               <TaskForm studentId={student.user_id} sessions={sessions} onSaved={(k) => { setTasks((prev) => [k, ...prev]); notify('task_added', student.user_id, k.title); showFlash('המשימה נוספה ✓'); }} />
               {tasks.map((k) => {
                 const meta = TASK_STATUS_META[k.status];
+                if (editingTaskId === k.id) {
+                  return (
+                    <div key={k.id} className="mt-card">
+                      <TaskEditor
+                        task={k}
+                        onCancel={() => setEditingTaskId(null)}
+                        onSaved={(updated, notifyStudent) => {
+                          setTasks((prev) => prev.map((x) => (x.id === updated.id ? updated : x)));
+                          setEditingTaskId(null);
+                          if (notifyStudent) notify('task_reviewed', k.student_id, updated.title);
+                          showFlash('המשימה עודכנה ✓');
+                          loadStudents();
+                        }}
+                      />
+                    </div>
+                  );
+                }
                 return (
                   <div key={k.id} className="mt-card">
                     <div className="mt-card-head" style={{ cursor: 'default', alignItems: 'flex-start' }}>
@@ -572,6 +639,7 @@ export default function AdminMentoringPage() {
                       </div>
                       <div style={{ display: 'grid', gap: 6, justifyItems: 'end' }}>
                         <span className="mt-status" style={{ color: meta.color }}>{meta.label}</span>
+                        <button className="mt-btn-ghost" style={{ padding: '4px 10px', fontSize: 11 }} onClick={() => setEditingTaskId(k.id)}>עריכה</button>
                         <button className="mt-btn-ghost" style={{ padding: '4px 10px', fontSize: 11 }} onClick={() => deleteTask(k)}>מחיקה</button>
                       </div>
                     </div>
