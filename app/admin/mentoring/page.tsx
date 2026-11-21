@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import TradeCard from '@/components/mentoring/TradeCard';
 import TradeForm from '@/components/mentoring/TradeForm';
+import JournalView from '@/components/mentoring/JournalView';
 import SessionCard from '@/components/mentoring/SessionCard';
 import {
   TASK_STATUS_META, VERDICT_META, daysLeft, fmtDate, fmtR, fmtUsd, journalStats, videoEmbedSrc,
@@ -396,23 +397,25 @@ export default function AdminMentoringPage() {
                   }}
                 />
               )}
-              {trades.length === 0 && <div className="mt-empty">עוד אין עסקאות ביומן.</div>}
-              {trades.map((t) => (
-                <TradeCard key={t.id} trade={t} footer={
-                  <>
-                  <div className="mt-actions">
-                    <button className="mt-btn-ghost" onClick={() => { setEditingTrade(t); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>✏️ עריכת העסקה</button>
-                    <button className="mt-btn-ghost" style={{ color: 'var(--loss)' }} onClick={() => deleteTrade(t)}>🗑 מחיקה</button>
-                  </div>
-                  <ReviewBox trade={t} onSaved={(updated) => {
-                    setTrades((prev) => prev.map((x) => (x.id === updated.id ? updated : x)));
-                    notify('trade_reviewed', t.student_id, `${t.instrument} ${fmtDate(t.traded_at)}`);
-                    showFlash('נשמר ✓');
-                    loadStudents();
-                  }} />
-                  </>
-                } />
-              ))}
+              {trades.length === 0 ? <div className="mt-empty">עוד אין עסקאות ביומן.</div> : (
+                <JournalView
+                  trades={trades}
+                  renderFooter={(t, close) => (
+                    <>
+                      <div className="mt-actions">
+                        <button className="mt-btn-ghost" onClick={() => { close(); setEditingTrade(t); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>✏️ עריכת העסקה</button>
+                        <button className="mt-btn-ghost" style={{ color: 'var(--loss)' }} onClick={() => { close(); deleteTrade(t); }}>🗑 מחיקה</button>
+                      </div>
+                      <ReviewBox trade={t} onSaved={(updated) => {
+                        setTrades((prev) => prev.map((x) => (x.id === updated.id ? updated : x)));
+                        notify('trade_reviewed', t.student_id, `${t.instrument} ${fmtDate(t.traded_at)}`);
+                        showFlash('נשמר ✓');
+                        loadStudents();
+                      }} />
+                    </>
+                  )}
+                />
+              )}
             </>
           )}
 

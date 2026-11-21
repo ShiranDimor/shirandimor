@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { supabase, getResilientUser } from '@/lib/supabase';
-import TradeCard from '@/components/mentoring/TradeCard';
+import JournalView from '@/components/mentoring/JournalView';
 import TradeForm from '@/components/mentoring/TradeForm';
 import SessionCard from '@/components/mentoring/SessionCard';
 import {
@@ -235,16 +235,7 @@ export default function MyMentoringPage() {
 
       {tab === 'journal' && (
         <>
-          {stats.count > 0 && (
-            <div className="mt-stats">
-              <div className="mt-stat"><b>{stats.count}</b><span>עסקאות</span></div>
-              <div className="mt-stat"><b>{stats.winRate == null ? '—' : `${stats.winRate}%`}</b><span>הצלחה</span></div>
-              <div className="mt-stat"><b style={{ color: stats.net >= 0 ? 'var(--profit)' : 'var(--loss)' }}>{fmtUsd(stats.net)}</b><span>נטו</span></div>
-              <div className="mt-stat"><b style={{ color: (stats.planPct ?? 0) >= 80 ? 'var(--profit)' : 'var(--lavender)' }}>{stats.planPct == null ? '—' : `${stats.planPct}%`}</b><span>לפי תוכנית</span></div>
-            </div>
-          )}
-
-          {!readOnly && (showForm || editing) ? (
+          {!readOnly && (showForm || editing) && (
             <TradeForm
               userId={userId}
               defaultInstrument={student.instruments || 'MNQ'}
@@ -257,32 +248,31 @@ export default function MyMentoringPage() {
                 if (isNew) notify('trade_submitted', `${t.instrument} ${t.direction === 'long' ? 'לונג' : 'שורט'} · ${fmtUsd(t.pnl_usd)} · ${fmtR(t.r_multiple)}`);
               }}
             />
-          ) : readOnly ? (
-            // בתצוגת אדמין מראים את הכפתור כמו שהתלמיד/ה רואה אותו, אבל לא פעיל
-            <button className="mt-add" disabled style={{ opacity: 0.6, cursor: 'default' }}>＋ הוספת עסקה ליומן · כאן מתחיל/ה התלמיד/ה</button>
+          )}
+
+          {trades.length === 0 && !showForm ? (
+            <>
+              {!readOnly && <button className="mt-add" onClick={() => setShowForm(true)}>＋ הוספת עסקה ליומן</button>}
+              <div className="mt-empty">היומן עוד ריק.<br />כל עסקה שתיכנס לכאן - שירן עוברת עליה ומשאירה הערה.</div>
+            </>
           ) : (
-            <button className="mt-add" onClick={() => setShowForm(true)}>＋ הוספת עסקה ליומן</button>
-          )}
-
-          {trades.length === 0 && !showForm && (
-            <div className="mt-empty">היומן עוד ריק.<br />כל עסקה שתיכנס לכאן - שירן עוברת עליה ומשאירה הערה.</div>
-          )}
-
-          {trades.map((t) => (
-            <TradeCard
-              key={t.id}
-              trade={t}
-              isNew={newIds.has(t.id)}
-              defaultOpen={newIds.has(t.id) && !!t.coach_comment}
-              onOpen={() => markTradeSeen(t)}
-              footer={!readOnly && (!t.reviewed_at || t.exit_price == null) ? (
-                <div className="mt-actions">
-                  <button className="mt-btn-ghost" onClick={() => { setEditing(t); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>{t.exit_price == null ? 'עדכון / סגירת עסקה' : 'עריכה'}</button>
-                  {!t.reviewed_at && <button className="mt-btn-ghost" onClick={() => deleteTrade(t)}>מחיקה</button>}
-                </div>
+            <JournalView
+              trades={trades}
+              newIds={newIds}
+              onOpenTrade={(t) => markTradeSeen(t)}
+              top={!(showForm || editing) ? (
+                readOnly
+                  ? <button className="mt-add" disabled style={{ opacity: 0.6, cursor: 'default', marginBottom: 0 }}>＋ הוספת עסקה ליומן · כאן מתחיל/ה התלמיד/ה</button>
+                  : <button className="mt-add" style={{ marginBottom: 0 }} onClick={() => setShowForm(true)}>＋ הוספת עסקה ליומן</button>
               ) : null}
+              renderFooter={(t, close) => (!readOnly && !t.is_example && (!t.reviewed_at || t.exit_price == null) ? (
+                <div className="mt-actions">
+                  <button className="mt-btn-ghost" onClick={() => { close(); setEditing(t); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>{t.exit_price == null ? 'עדכון / סגירת עסקה' : 'עריכה'}</button>
+                  {!t.reviewed_at && <button className="mt-btn-ghost" onClick={() => { close(); deleteTrade(t); }}>מחיקה</button>}
+                </div>
+              ) : null)}
             />
-          ))}
+          )}
         </>
       )}
 
