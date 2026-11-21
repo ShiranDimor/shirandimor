@@ -62,12 +62,12 @@ function recipientKey(row: SubscriptionRow): string {
 // עם הסימבול, ללא-מנויים בגרסה מטושטשת) - בלי לשחזר את זה בדיעבד מכמה טבלאות שונות.
 // sourceId (כשיש) הוא ה-id של השורה המקורית (שיעור/לייב/מודעה) - כדי שמחיקת הפריט המקורי
 // תוכל למחוק גם את רשומת היומן המתאימה, ולא תישאר "רפאים" בפעמון אחרי שהתוכן כבר לא קיים
-export type NotificationAudience = 'subscribers' | 'non_subscribers' | 'everyone' | 'admin';
+export type NotificationAudience = 'subscribers' | 'non_subscribers' | 'everyone' | 'admin' | 'user';
 
-async function logNotification(kind: NotificationKind, audience: NotificationAudience, payload: PushPayload, sourceId?: string): Promise<string | null> {
+async function logNotification(kind: NotificationKind, audience: NotificationAudience, payload: PushPayload, sourceId?: string, targetUserId?: string): Promise<string | null> {
   const { data } = await supabaseAdmin
     .from('notification_log')
-    .insert({ kind, audience, title: payload.title, body: payload.body, url: payload.url || null, source_id: sourceId || null })
+    .insert({ kind, audience, title: payload.title, body: payload.body, url: payload.url || null, source_id: sourceId || null, target_user_id: targetUserId || null })
     .select('id')
     .single();
   return data?.id || null;
@@ -227,6 +227,17 @@ export async function sendPushToEveryone(payload: PushPayload, kind: Notificatio
 // שולח התראות מערכת פנימיות (כמו בדיקת-תקינות-פוש) לשירן/אדמינים אחרים - עם רישום ביומן
 // ההתראות (notification_log), כדי שזה יופיע ב-/admin/notifications ולא רק כפוש חולף בטלפון
 // שאפשר לפספס/למחוק ולאבד לצמיתות
+// התראה אישית למשתמש/ת אחד/ת (למשל תלמיד/ת ליווי) שמתנהגת בדיוק כמו עדכון רגיל: נרשמת ביומן
+// ההתראות (audience='user' + target_user_id) כדי שתופיע גם בפעמון שבאתר אצל אותו/ה משתמש/ת
+// בלבד (ר' /api/notifications/feed), ונשלחת כפוש עם kind+logId כמו broadcast רגיל
+export async function sendPersonalPush(userId: string, payload: PushPayload, kind: NotificationKind, sourceId?: string): Promise<SendResult> {
+  const logId = await logNotification(kind, 'user', payload, sourceId, userId);
+  const { data: rows } = await supabaseAdmin.from('push_subscriptions').select('id, endpoint, p256dh, auth, user_id').eq('user_id', userId).is('invalid_at', null);
+  const result = await sendToRows(rows || [], { ...payload, kind, logId: logId || undefined });
+  await recordSendResult(logId, result);
+  return result;
+}
+
 export async function sendPushToAdmins(payload: PushPayload, kind: NotificationKind, sourceId?: string): Promise<SendResult> {
   const logId = await logNotification(kind, 'admin', payload, sourceId);
   const { data: admins } = await supabaseAdmin.from('profiles').select('id').eq('role', 'admin');

@@ -76,7 +76,7 @@ function SessionForm({ studentId, nextNumber, initial, onSaved, onCancel }: {
 
   async function save() {
     if (!title.trim()) { setError('חסרה כותרת'); return; }
-    if (video.trim() && !videoEmbedSrc(video)) { setError('לא זיהיתי את הלינק - הדביקי לינק של Google Drive / YouTube'); return; }
+    if (video.trim() && !videoEmbedSrc(video)) { setError('לא זיהיתי את הלינק - הדביקי לינק של YouTube (או Google Drive)'); return; }
     setSaving(true);
     const row = {
       student_id: studentId,
@@ -106,9 +106,9 @@ function SessionForm({ studentId, nextNumber, initial, onSaved, onCancel }: {
       </div>
       <label className="mt-label">כותרת</label>
       <input className="mt-input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="למשל: ניהול סיכון וגודל פוזיציה ב-MNQ" />
-      <label className="mt-label">לינק להקלטה (Google Drive / YouTube לא-רשום)</label>
-      <input className="mt-input" style={{ direction: 'ltr' }} value={video} onChange={(e) => setVideo(e.target.value)} placeholder="https://drive.google.com/file/d/..." />
-      <div className="mt-sub" style={{ marginTop: 6, lineHeight: 1.5 }}>בדרייב: שתפי את הקובץ עם המייל של התלמיד/ה, או &quot;כל מי שיש לו את הקישור&quot; - אחרת הווידאו לא ייפתח לו/ה.</div>
+      <label className="mt-label">לינק להקלטה (YouTube לא-רשום, כמו בספריית השיעורים)</label>
+      <input className="mt-input" style={{ direction: 'ltr' }} value={video} onChange={(e) => setVideo(e.target.value)} placeholder="https://youtu.be/..." />
+      <div className="mt-sub" style={{ marginTop: 6, lineHeight: 1.5 }}>ביוטיוב: להעלות כ&quot;לא רשום&quot; (Unlisted) - הסרטון מוטמע רק באזור הפרטי שלו/ה. לינק דרייב עובד רק אם הקובץ משותף, ובנייד לא תמיד נטען.</div>
       <label className="mt-label">סיכום קצר</label>
       <textarea className="mt-textarea" value={summary} onChange={(e) => setSummary(e.target.value)} placeholder="על מה עבדנו בשיעור" />
       <label className="mt-label">נקודות מפתח (שורה לכל נקודה)</label>
@@ -450,6 +450,11 @@ export default function AdminMentoringPage() {
               </div>
               <label className="mt-label">מטרה מרכזית (מוצגת לתלמיד/ה)</label>
               <input className="mt-input" defaultValue={student.goal || ''} placeholder="למשל: 20 עסקאות רצופות לפי התוכנית" onBlur={(e) => updateStudent({ goal: e.target.value.trim() || null })} />
+              <label className="mt-label">סגנון ברירת מחדל ביומן</label>
+              <select className="mt-select" defaultValue={student.default_style || 'swing'} onChange={(e) => updateStudent({ default_style: e.target.value as 'swing' | 'intraday' })}>
+                <option value="swing">סווינג</option>
+                <option value="intraday">תוך-יומי</option>
+              </select>
               <label className="mt-label">כלי ברירת מחדל ביומן</label>
               <select className="mt-select" defaultValue={student.instruments || 'MNQ'} onChange={(e) => updateStudent({ instruments: e.target.value })}>
                 {['MNQ', 'NQ', 'MES', 'ES', 'MGC', 'STOCK'].map((i) => <option key={i} value={i}>{i === 'STOCK' ? 'מניות' : i}</option>)}

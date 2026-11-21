@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from 'react';
 import { supabase } from '@/lib/supabase';
-import { VERDICT_META, fmtDate, fmtR, fmtUsd, type MentoringTrade } from '@/lib/mentoring';
+import { STYLE_LABEL, VERDICT_META, fmtDate, fmtR, fmtUsd, isOpenTrade, type MentoringTrade } from '@/lib/mentoring';
 
 // צילומי הגרף ב-bucket פרטי - מייצרים כתובות חתומות לשעה, רק כשהכרטיס נפתח
 function useSignedUrls(paths: string[], enabled: boolean) {
@@ -47,11 +47,11 @@ export default function TradeCard({
         <div>
           <div className="mt-sym">{trade.instrument === 'STOCK' ? 'מניה' : trade.instrument} <span className="mt-sub">× {trade.contracts}</span></div>
           <div className="mt-sub">
-            {fmtDate(trade.traded_at)}{trade.setup ? ` · ${trade.setup}` : ''}{showStudentName ? ` · ${showStudentName}` : ''}
+            {STYLE_LABEL[trade.trade_style] || 'סווינג'} · {fmtDate(trade.traded_at)}{trade.closed_at && trade.closed_at !== trade.traded_at ? `–${fmtDate(trade.closed_at)}` : ''}{trade.setup ? ` · ${trade.setup}` : ''}{showStudentName ? ` · ${showStudentName}` : ''}
           </div>
         </div>
         <div className="mt-pnl" style={{ color: pnlColor }}>
-          {fmtUsd(trade.pnl_usd)}
+          {isOpenTrade(trade) ? <span style={{ color: 'var(--sky)', fontSize: 12.5 }}>● פתוחה</span> : fmtUsd(trade.pnl_usd)}
           <small>
             {fmtR(trade.r_multiple)}
             {verdict ? ` · ${verdict.icon}` : trade.reviewed_at ? '' : ' · ⏳'}

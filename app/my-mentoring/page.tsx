@@ -248,6 +248,7 @@ export default function MyMentoringPage() {
             <TradeForm
               userId={userId}
               defaultInstrument={student.instruments || 'MNQ'}
+              defaultStyle={student.default_style || 'swing'}
               initial={editing}
               onCancel={() => { setShowForm(false); setEditing(null); }}
               onSaved={(t, isNew) => {
@@ -271,10 +272,10 @@ export default function MyMentoringPage() {
               isNew={newIds.has(t.id)}
               defaultOpen={newIds.has(t.id) && !!t.coach_comment}
               onOpen={() => markTradeSeen(t)}
-              footer={!readOnly && !t.reviewed_at ? (
+              footer={!readOnly && (!t.reviewed_at || t.exit_price == null) ? (
                 <div className="mt-actions">
-                  <button className="mt-btn-ghost" onClick={() => { setEditing(t); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>עריכה</button>
-                  <button className="mt-btn-ghost" onClick={() => deleteTrade(t)}>מחיקה</button>
+                  <button className="mt-btn-ghost" onClick={() => { setEditing(t); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>{t.exit_price == null ? 'עדכון / סגירת עסקה' : 'עריכה'}</button>
+                  {!t.reviewed_at && <button className="mt-btn-ghost" onClick={() => deleteTrade(t)}>מחיקה</button>}
                 </div>
               ) : null}
             />

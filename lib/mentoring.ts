@@ -4,6 +4,10 @@
 // עם RLS: כל תלמיד/ה רואה רק את שלו/ה, ו-trigger בבסיס הנתונים מונע מתלמיד/ה לשנות
 // הערות/ציונים/אישורים של שירן. צילומי גרף נשמרים ב-bucket פרטי 'mentoring' תחת <user_id>/
 
+export type TradeStyle = 'swing' | 'intraday';
+
+export const STYLE_LABEL: Record<TradeStyle, string> = { swing: 'סווינג', intraday: 'תוך-יומי' };
+
 export type MentoringStudent = {
   user_id: string;
   track_label: string;
@@ -12,6 +16,7 @@ export type MentoringStudent = {
   ends_at: string | null;
   goal: string | null;
   instruments: string | null;
+  default_style: TradeStyle;
   active: boolean;
 };
 
@@ -34,6 +39,8 @@ export type MentoringTrade = {
   id: string;
   student_id: string;
   traded_at: string;
+  closed_at: string | null;
+  trade_style: TradeStyle;
   instrument: string;
   direction: 'long' | 'short';
   contracts: number;
@@ -124,6 +131,10 @@ export function computeTradeNumbers(t: {
   return { pnl, r };
 }
 
+export function isOpenTrade(t: Pick<MentoringTrade, 'exit_price'>): boolean {
+  return t.exit_price == null;
+}
+
 export function journalStats(trades: MentoringTrade[]) {
   const withPnl = trades.filter((t) => t.pnl_usd != null);
   const wins = withPnl.filter((t) => (t.pnl_usd as number) > 0).length;
@@ -141,8 +152,8 @@ export function journalStats(trades: MentoringTrade[]) {
   };
 }
 
-// הקלטות מגוגל מיט נשמרות בדרייב של שירן. ממירים כל צורת לינק נפוצה (דרייב, יוטיוב, לום)
-// לכתובת הטמעה. בדרייב - הקובץ צריך להיות משותף עם המייל של התלמיד/ה או "כל מי שיש לו קישור"
+// ממירים כל צורת לינק נפוצה (יוטיוב לא-רשום - ברירת המחדל, כמו בספריית השיעורים; דרייב; לום;
+// וימאו) לכתובת הטמעה. בדרייב הקובץ חייב להיות משותף, וגם אז הטמעה בנייד לא תמיד עובדת
 export function videoEmbedSrc(url: string | null | undefined): string | null {
   if (!url) return null;
   const trimmed = url.trim();
@@ -153,10 +164,10 @@ export function videoEmbedSrc(url: string | null | undefined): string | null {
       const id = m ? m[1] : u.searchParams.get('id');
       return id ? `https://drive.google.com/file/d/${id}/preview` : null;
     }
-    if (u.hostname.includes('youtu.be')) return `https://www.youtube.com/embed/${u.pathname.slice(1)}`;
+    if (u.hostname.includes('youtu.be')) return `https://www.youtube-nocookie.com/embed/${u.pathname.slice(1)}?rel=0`;
     if (u.hostname.includes('youtube.com')) {
       const v = u.searchParams.get('v') || u.pathname.match(/\/(embed|shorts|live)\/([\w-]{11})/)?.[2];
-      return v ? `https://www.youtube.com/embed/${v}` : null;
+      return v ? `https://www.youtube-nocookie.com/embed/${v}?rel=0` : null;
     }
     if (u.hostname.includes('loom.com')) return trimmed.replace('/share/', '/embed/');
     if (u.hostname.includes('vimeo.com')) {

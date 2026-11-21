@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import {
-  INSTRUMENTS, SETUP_OPTIONS, EMOTION_OPTIONS, computeTradeNumbers, fmtR, fmtUsd, type MentoringTrade,
+  INSTRUMENTS, SETUP_OPTIONS, EMOTION_OPTIONS, STYLE_LABEL, computeTradeNumbers, fmtR, fmtUsd, type MentoringTrade, type TradeStyle,
 } from '@/lib/mentoring';
 
 function num(v: string): number | null {
@@ -17,16 +17,19 @@ function str(v: number | null | undefined) {
 }
 
 export default function TradeForm({
-  userId, defaultInstrument, initial, onSaved, onCancel,
+  userId, defaultInstrument, defaultStyle, initial, onSaved, onCancel,
 }: {
   userId: string;
   defaultInstrument?: string;
+  defaultStyle?: TradeStyle;
   initial?: MentoringTrade | null;
   onSaved: (trade: MentoringTrade, isNew: boolean) => void;
   onCancel: () => void;
 }) {
   const today = new Date().toISOString().slice(0, 10);
+  const [tradeStyle, setTradeStyle] = useState<TradeStyle>(initial?.trade_style || defaultStyle || 'swing');
   const [tradedAt, setTradedAt] = useState(initial?.traded_at || today);
+  const [closedAt, setClosedAt] = useState(initial?.closed_at || '');
   const [instrument, setInstrument] = useState(initial?.instrument || defaultInstrument || 'MNQ');
   const [direction, setDirection] = useState<'long' | 'short'>(initial?.direction || 'long');
   const [contracts, setContracts] = useState(str(initial?.contracts ?? 1));
@@ -73,7 +76,10 @@ export default function TradeForm({
 
     const row = {
       student_id: userId,
+      trade_style: tradeStyle,
       traded_at: tradedAt,
+      // תוך-יומי נסגר באותו יום; סווינג - תאריך היציאה שהוזן, או ריק כל עוד העסקה פתוחה
+      closed_at: num(exit) == null ? null : tradeStyle === 'intraday' ? tradedAt : (closedAt || today),
       instrument,
       direction,
       contracts: num(contracts) || 1,
@@ -107,13 +113,19 @@ export default function TradeForm({
     <div className="mt-form">
       <h3>{initial ? 'עריכת עסקה' : 'עסקה חדשה ביומן'}</h3>
 
+      <div className="mt-pills" style={{ marginBottom: 4 }}>
+        {(Object.keys(STYLE_LABEL) as TradeStyle[]).map((st) => (
+          <button key={st} type="button" className={`mt-pill${tradeStyle === st ? ' on' : ''}`} onClick={() => setTradeStyle(st)}>{STYLE_LABEL[st]}</button>
+        ))}
+      </div>
+
       <div className="mt-row">
         <div>
-          <label className="mt-label" style={{ marginTop: 0 }}>תאריך</label>
+          <label className="mt-label">{tradeStyle === 'swing' ? 'תאריך כניסה' : 'תאריך'}</label>
           <input className="mt-input" type="date" value={tradedAt} max={today} onChange={(e) => setTradedAt(e.target.value)} />
         </div>
         <div>
-          <label className="mt-label" style={{ marginTop: 0 }}>כיוון</label>
+          <label className="mt-label">כיוון</label>
           <div className="mt-pills">
             <button type="button" className={`mt-pill${direction === 'long' ? ' on green' : ''}`} onClick={() => setDirection('long')}>לונג ↑</button>
             <button type="button" className={`mt-pill${direction === 'short' ? ' on red' : ''}`} onClick={() => setDirection('short')}>שורט ↓</button>
@@ -135,8 +147,14 @@ export default function TradeForm({
       </div>
       <div className="mt-row">
         <div><label className="mt-label">יעד מתוכנן</label><input className="mt-input" type="number" inputMode="decimal" value={target} onChange={(e) => setTarget(e.target.value)} /></div>
-        <div><label className="mt-label">יציאה בפועל</label><input className="mt-input" type="number" inputMode="decimal" value={exit} onChange={(e) => setExit(e.target.value)} /></div>
+        <div><label className="mt-label">יציאה בפועל</label><input className="mt-input" type="number" inputMode="decimal" value={exit} onChange={(e) => setExit(e.target.value)} placeholder={tradeStyle === 'swing' ? 'ריק = עדיין פתוחה' : ''} /></div>
       </div>
+      {tradeStyle === 'swing' && num(exit) != null && (
+        <div><label className="mt-label">תאריך יציאה</label><input className="mt-input" type="date" value={closedAt || today} min={tradedAt} max={today} onChange={(e) => setClosedAt(e.target.value)} /></div>
+      )}
+      {tradeStyle === 'swing' && num(exit) == null && (
+        <div className="mt-sub" style={{ marginTop: 8 }}>עסקה פתוחה - אפשר לשמור עכשיו ולהוסיף את היציאה כשתיסגר (עריכה בכרטיס העסקה)</div>
+      )}
 
       <div className="mt-calc" aria-live="polite">
         <div><span>רווח/הפסד</span><b style={{ color: calc.pnl == null ? undefined : calc.pnl >= 0 ? 'var(--profit)' : 'var(--loss)' }}>{fmtUsd(calc.pnl)}</b></div>
@@ -154,7 +172,7 @@ export default function TradeForm({
       <label className="mt-label">למה נכנסתי? *</label>
       <textarea className="mt-textarea" value={entryReason} onChange={(e) => setEntryReason(e.target.value)} placeholder="מה ראיתי בגרף שגרם לי להיכנס" />
 
-      <label className="mt-label">למה יצאתי?</label>
+      <label className="mt-label">{tradeStyle === 'swing' && num(exit) == null ? 'איך אני מנהל/ת את העסקה? (סטופ נגרר, יעדים)' : 'למה יצאתי?'}</label>
       <textarea className="mt-textarea" style={{ minHeight: 56 }} value={exitReason} onChange={(e) => setExitReason(e.target.value)} placeholder="סטופ / יעד / יציאה ידנית - ולמה" />
 
       <label className="mt-label">עמדתי בתוכנית? *</label>

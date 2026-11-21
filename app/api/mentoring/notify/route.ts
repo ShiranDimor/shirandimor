@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/instantLogin';
-import { sendPushToUser, sendPushToAdmins } from '@/lib/webPush';
+import { sendPersonalPush, sendPushToAdmins } from '@/lib/webPush';
 import type { MentoringEvent } from '@/lib/mentoring';
 
 // התראות של אזור הליווי האישי, בשני הכיוונים:
-// שירן (אדמין) ← תלמיד/ה: פוש + מייל כשיש הערה על עסקה, שיעור חדש, משימה חדשה או משוב על משימה.
+// שירן (אדמין) ← תלמיד/ה: מייל + פוש לנייד שנרשם גם בפעמון באתר (כמו עדכון רגיל) כשיש הערה על עסקה, שיעור חדש, משימה חדשה או משוב על משימה.
 // תלמיד/ה ← שירן: פוש לאדמינים + מייל כשנכנסה עסקה חדשה ליומן או שמשימה סומנה כבוצעה.
 // הכתיבה עצמה לטבלאות קורית בצד הלקוח (עם RLS) - הנתיב הזה רק מודיע, ותמיד best-effort.
 
@@ -51,7 +51,7 @@ export async function POST(request: Request) {
     const firstName = (student?.full_name || '').trim().split(' ')[0];
 
     const [push, mail] = await Promise.all([
-      sendPushToUser(studentId, { title: msg.title, body: detail ? `${msg.body} · ${detail}` : msg.body, url: '/my-mentoring' }).catch(() => null),
+      sendPersonalPush(studentId, { title: msg.title, body: detail ? `${msg.body} · ${detail}` : msg.body, url: '/my-mentoring' }, event === 'session_added' ? 'lesson' : 'announcement').catch(() => null),
       sendEmail(
         student?.email || '',
         msg.subject,
