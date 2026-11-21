@@ -216,6 +216,21 @@ function SessionForm({ studentId, nextNumber, initial, onSaved, onCancel }: {
   const [video, setVideo] = useState(initial?.video_url || '');
   const [startMin, setStartMin] = useState(initial?.start_seconds ? String(Math.round(initial.start_seconds / 60)) : '');
   const [slides, setSlides] = useState(initial?.slides_url || '');
+  const [uploadingSlides, setUploadingSlides] = useState(false);
+  const slidesIsFile = slides.startsWith('storage:');
+
+  // העלאת קובץ המצגת (PDF) ל-bucket הפרטי - נשמר כ-"storage:<path>" ונפתח לתלמיד/ה בכתובת חתומה
+  async function uploadSlides(file: File | undefined) {
+    if (!file) return;
+    if (file.type !== 'application/pdf') { setError('אפשר להעלות רק קובץ PDF'); return; }
+    if (file.size > 50 * 1024 * 1024) { setError('הקובץ גדול מ-50MB'); return; }
+    setError(''); setUploadingSlides(true);
+    const path = `${studentId}/slides/lesson-${num || nextNumber}-${Date.now()}.pdf`;
+    const { error: upErr } = await supabase.storage.from('mentoring').upload(path, file, { contentType: 'application/pdf' });
+    setUploadingSlides(false);
+    if (upErr) { setError('העלאת המצגת נכשלה, נסי שוב'); return; }
+    setSlides(`storage:${path}`);
+  }
   const [summary, setSummary] = useState(initial?.summary || '');
   const [points, setPoints] = useState((initial?.key_points || []).join('\n'));
   const [notifyStudent, setNotifyStudent] = useState(true);
@@ -259,8 +274,24 @@ function SessionForm({ studentId, nextNumber, initial, onSaved, onCancel }: {
       <label className="mt-label">לינק להקלטה (YouTube לא-רשום, כמו בספריית השיעורים)</label>
       <input className="mt-input" style={{ direction: 'ltr' }} value={video} onChange={(e) => setVideo(e.target.value)} placeholder="https://youtu.be/..." />
       <div className="mt-sub" style={{ marginTop: 6, lineHeight: 1.5 }}>ביוטיוב: להעלות כ&quot;לא רשום&quot; (Unlisted) - הסרטון מוטמע רק באזור הפרטי שלו/ה. לינק דרייב עובד רק אם הקובץ משותף, ובנייד לא תמיד נטען.</div>
-      <label className="mt-label">לינק למצגת (גמא / דרייב / PDF)</label>
-      <input className="mt-input" style={{ direction: 'ltr' }} value={slides} onChange={(e) => setSlides(e.target.value)} placeholder="https://gamma.app/..." />
+      <label className="mt-label">מצגת השיעור</label>
+      {slidesIsFile ? (
+        <div className="mt-sizer" style={{ marginTop: 0 }}>
+          <span>📑 קובץ PDF מצורף ✓</span>
+          <label className="mt-btn-ghost" style={{ padding: '5px 10px', fontSize: 12, cursor: 'pointer' }}>
+            החלפה<input type="file" accept="application/pdf" hidden onChange={(e) => uploadSlides(e.target.files?.[0])} />
+          </label>
+          <button type="button" className="mt-btn-ghost" style={{ padding: '5px 10px', fontSize: 12 }} onClick={() => setSlides('')}>הסרה</button>
+        </div>
+      ) : (
+        <>
+          <label className="mt-attach-add" style={{ marginBottom: 8 }}>
+            <input type="file" accept="application/pdf" hidden disabled={uploadingSlides} onChange={(e) => uploadSlides(e.target.files?.[0])} />
+            {uploadingSlides ? 'מעלה...' : '📎 העלאת קובץ PDF'}
+          </label>
+          <input className="mt-input" style={{ direction: 'ltr' }} value={slides} onChange={(e) => setSlides(e.target.value)} placeholder="או לינק: https://..." />
+        </>
+      )}
       <label className="mt-label">להתחיל את ההקלטה מדקה (לדלג על ההתחלה)</label>
       <input className="mt-input" type="number" inputMode="numeric" value={startMin} onChange={(e) => setStartMin(e.target.value)} placeholder="0" style={{ maxWidth: 120 }} />
       <label className="mt-label">סיכום קצר</label>

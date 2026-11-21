@@ -1,7 +1,27 @@
 'use client';
 
 import { useState, type ReactNode } from 'react';
+import { supabase } from '@/lib/supabase';
 import { fmtDate, videoEmbedSrc, type MentoringSession } from '@/lib/mentoring';
+
+// מצגת: קובץ שהועלה לאתר ("storage:<path>" ב-bucket הפרטי) נפתח דרך כתובת חתומה; אחרת - לינק רגיל
+function SlidesButton({ value }: { value: string }) {
+  const [busy, setBusy] = useState(false);
+  const isFile = value.startsWith('storage:');
+  const cls = 'mt-btn-small';
+  const style = { display: 'inline-flex', gap: 6, textDecoration: 'none', marginBottom: 12 } as const;
+  if (!isFile) return <a href={value} target="_blank" rel="noopener noreferrer" className={cls} style={style}>📑 המצגת של השיעור</a>;
+  async function open() {
+    setBusy(true);
+    // חלון נפתח מיד (בתוך הלחיצה) כדי שדפדפני נייד לא יחסמו אותו, והכתובת נטענת אליו
+    const win = window.open('', '_blank');
+    const { data } = await supabase.storage.from('mentoring').createSignedUrl(value.slice('storage:'.length), 3600);
+    setBusy(false);
+    if (data?.signedUrl) { if (win) win.location.href = data.signedUrl; else window.location.href = data.signedUrl; }
+    else win?.close();
+  }
+  return <button type="button" className={cls} style={style} onClick={open} disabled={busy}>{busy ? 'פותח...' : '📑 המצגת של השיעור (PDF)'}</button>;
+}
 
 export default function SessionCard({
   session, isNew, defaultOpen, onOpen, footer,
@@ -49,7 +69,7 @@ export default function SessionCard({
           )}
 
           {session.slides_url && (
-            <a href={session.slides_url} target="_blank" rel="noopener noreferrer" className="mt-btn-small" style={{ display: 'inline-flex', gap: 6, textDecoration: 'none', marginBottom: 12 }}>📑 המצגת של השיעור</a>
+            <SlidesButton value={session.slides_url} />
           )}
 
           {session.summary && <div className="mt-text" style={{ marginTop: 0 }}>{session.summary}</div>}
