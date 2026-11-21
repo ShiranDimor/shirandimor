@@ -257,7 +257,10 @@ export default function MyMentoringPage() {
                 if (isNew) notify('trade_submitted', `${t.instrument} ${t.direction === 'long' ? 'לונג' : 'שורט'} · ${fmtUsd(t.pnl_usd)} · ${fmtR(t.r_multiple)}`);
               }}
             />
-          ) : !readOnly && (
+          ) : readOnly ? (
+            // בתצוגת אדמין מראים את הכפתור כמו שהתלמיד/ה רואה אותו, אבל לא פעיל
+            <button className="mt-add" disabled style={{ opacity: 0.6, cursor: 'default' }}>＋ הוספת עסקה ליומן · כאן מתחיל/ה התלמיד/ה</button>
+          ) : (
             <button className="mt-add" onClick={() => setShowForm(true)}>＋ הוספת עסקה ליומן</button>
           )}
 
