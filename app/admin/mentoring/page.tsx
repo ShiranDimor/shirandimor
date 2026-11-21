@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase';
 import TradeCard from '@/components/mentoring/TradeCard';
 import TradeForm from '@/components/mentoring/TradeForm';
 import JournalView from '@/components/mentoring/JournalView';
+import TaskAttachments from '@/components/mentoring/TaskAttachments';
 import SessionCard from '@/components/mentoring/SessionCard';
 import {
   TASK_STATUS_META, VERDICT_META, daysLeft, fmtDate, fmtR, fmtUsd, journalStats, videoEmbedSrc,
@@ -472,6 +473,7 @@ export default function AdminMentoringPage() {
                     <div style={{ fontWeight: 600 }}>✅ {k.title}</div>
                     <div className="mt-sub">סומנה כבוצעה {fmtDate(k.done_at)}</div>
                     {k.student_note && <div className="mt-text"><b>{studentName.split(' ')[0]}: </b>{k.student_note}</div>}
+                    <TaskAttachments taskId={k.id} ownerId={k.student_id} paths={k.attachment_paths || []} />
                     <textarea className="mt-textarea" style={{ marginTop: 8, minHeight: 48 }} placeholder="משוב (חובה אם מחזירים לתיקון)" value={returnNotes[k.id] ?? ''} onChange={(e) => setReturnNotes((p) => ({ ...p, [k.id]: e.target.value }))} />
                     <div className="mt-actions">
                       <button className="mt-btn-small" onClick={() => reviewTask(k, 'approved')}>אישור ✓</button>
@@ -565,6 +567,7 @@ export default function AdminMentoringPage() {
                         {k.details && <div className="mt-text" style={{ marginTop: 4 }}>{k.details}</div>}
                         <div className="mt-sub" style={{ marginTop: 4 }}>{k.due_date ? `עד ${fmtDate(k.due_date)} · ` : ''}{k.seen_by_student ? '👁 נצפתה' : 'עוד לא נצפתה'}</div>
                         {k.student_note && <div className="mt-text"><b>{studentName.split(' ')[0]}: </b>{k.student_note}</div>}
+                    <TaskAttachments taskId={k.id} ownerId={k.student_id} paths={k.attachment_paths || []} />
                         {k.coach_note && <div className="mt-text"><b>המשוב שלי: </b>{k.coach_note}</div>}
                       </div>
                       <div style={{ display: 'grid', gap: 6, justifyItems: 'end' }}>

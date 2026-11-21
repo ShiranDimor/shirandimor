@@ -1705,3 +1705,11 @@ html.a11y-underline-links a { text-decoration: underline !important; }
 .mt-msg-h { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
 .mt-msg-h b { font-size: 14px; }
 .mt-msg p { font-size: 14px; line-height: 1.65; white-space: pre-wrap; margin-bottom: 4px; }
+.mt-attach { margin-top: 10px; }
+.mt-attach-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; margin-bottom: 8px; }
+.mt-attach-item { position: relative; aspect-ratio: 4 / 3; border-radius: 10px; overflow: hidden; border: 1px solid var(--border-hairline-strong); background: var(--bg-void); }
+.mt-attach-item img { width: 100%; height: 100%; object-fit: cover; cursor: zoom-in; display: block; }
+.mt-attach-ph { width: 100%; height: 100%; background: var(--bg-surface-raised); }
+.mt-attach-x { position: absolute; top: 4px; left: 4px; width: 22px; height: 22px; border-radius: 50%; border: none; background: rgba(0,0,0,.65); color: #fff; font-size: 11px; cursor: pointer; }
+.mt-attach-add { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 999px; border: 1.5px dashed rgba(255,45,120,.5); background: rgba(255,45,120,.06); font-size: 13px; cursor: pointer; }
+.mt-attach-add.busy { opacity: .6; cursor: default; }

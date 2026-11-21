@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { supabase, getResilientUser } from '@/lib/supabase';
 import JournalView from '@/components/mentoring/JournalView';
 import StudentProfileCard from '@/components/mentoring/StudentProfileCard';
+import TaskAttachments from '@/components/mentoring/TaskAttachments';
 import TradeForm from '@/components/mentoring/TradeForm';
 import SessionCard from '@/components/mentoring/SessionCard';
 import {
@@ -369,6 +370,13 @@ export default function MyMentoringPage() {
                       />
                     )}
                     {k.student_note && k.status !== 'open' && k.status !== 'returned' && <div className="mt-text"><b>ההערה שלי: </b>{k.student_note}</div>}
+                    <TaskAttachments
+                      taskId={k.id}
+                      ownerId={k.student_id}
+                      paths={k.attachment_paths || []}
+                      editable={!readOnly && k.status !== 'approved'}
+                      onChange={(paths) => setTasks((prev) => prev.map((x) => (x.id === k.id ? { ...x, attachment_paths: paths } : x)))}
+                    />
                   </div>
                   <span className="mt-status" style={{ color: meta.color }}>{meta.label}</span>
                 </div>
