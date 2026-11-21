@@ -194,7 +194,7 @@ export default function MyMentoringPage() {
   else if (!trades.some((t) => !t.is_example)) nextStep = { text: <><b>התחלה טובה:</b> הוסף/י את העסקה הראשונה ליומן - כל עסקה שנכנסת, אני עוברת עליה</>, tab: 'journal' };
 
   return (
-    <div className="wrap">
+    <div className="wrap mt-page">
       <header>
         <Link href="/" className="brand">מסחר <span>אחראי</span> במניות</Link>
         <Link href={readOnly ? `/admin/mentoring?student=${userId}` : '/account'} className="nav-link">{readOnly ? '← חזרה לניהול' : '← האזור האישי'}</Link>

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from 'react';
 import { supabase } from '@/lib/supabase';
-import { STYLE_LABEL, VERDICT_META, fmtDate, fmtR, fmtUsd, isOpenTrade, type MentoringTrade } from '@/lib/mentoring';
+import { STYLE_LABEL, VERDICT_META, fmtDate, fmtR, fmtUsd, isOpenTrade, pointValue, type MentoringTrade } from '@/lib/mentoring';
 
 // צילומי הגרף ב-bucket פרטי - מייצרים כתובות חתומות לשעה, רק כשהכרטיס נפתח
 function useSignedUrls(paths: string[], enabled: boolean) {
@@ -16,6 +16,49 @@ function useSignedUrls(paths: string[], enabled: boolean) {
     return () => { cancelled = true; };
   }, [paths.join('|'), enabled]); // eslint-disable-line react-hooks/exhaustive-deps
   return urls;
+}
+
+const FUTURES = ['MNQ', 'NQ', 'MES', 'ES', 'MGC'];
+
+function fmtPrice(n: number) {
+  return n.toLocaleString('en-US', { maximumFractionDigits: 2 });
+}
+
+// "מפת העסקה" - כל המחירים על קו אחד: אזור הסיכון (סטופ←כניסה) באדום, אזור היעד (כניסה←יעד)
+// בירוק, והיציאה בפועל כנקודה. רואים במבט אחד את התוכנית מול הביצוע
+function TradeMap({ t }: { t: MentoringTrade }) {
+  const pts = [t.stop_price, t.entry_price, t.target_price, t.exit_price].filter((v): v is number => v != null);
+  if (t.entry_price == null || pts.length < 2) return null;
+  const min = Math.min(...pts);
+  const max = Math.max(...pts);
+  const span = max - min || 1;
+  const pad = 6; // אחוזים בכל צד כדי שהתוויות לא ייחתכו
+  const pos = (v: number) => pad + ((v - min) / span) * (100 - pad * 2);
+  const seg = (a: number, b: number) => ({ left: `${pos(Math.min(a, b))}%`, width: `${Math.abs(pos(a) - pos(b))}%` });
+  const win = t.pnl_usd != null && t.pnl_usd > 0;
+
+  const marks: { v: number; label: string; cls: string; up: boolean }[] = [];
+  if (t.stop_price != null) marks.push({ v: t.stop_price, label: 'סטופ', cls: 'stop', up: false });
+  marks.push({ v: t.entry_price, label: 'כניסה', cls: 'entry', up: true });
+  if (t.target_price != null) marks.push({ v: t.target_price, label: 'יעד', cls: 'target', up: false });
+  if (t.exit_price != null) marks.push({ v: t.exit_price, label: 'יציאה', cls: win ? 'exit win' : 'exit loss', up: true });
+
+  return (
+    <div className="mt-map" aria-label="מפת העסקה">
+      <div className="mt-map-track">
+        {t.stop_price != null && <div className="mt-map-risk" style={seg(t.stop_price, t.entry_price)} />}
+        {t.target_price != null && <div className="mt-map-reward" style={seg(t.entry_price, t.target_price)} />}
+        {marks.map((m) => (
+          <div key={m.label} className={`mt-map-mark ${m.cls}`} style={{ left: `${pos(m.v)}%` }}>
+            <div className={`mt-map-label ${m.up ? 'up' : 'down'}`}>
+              <span>{m.label}</span>
+              <b>{fmtPrice(m.v)}</b>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 export default function TradeCard({
@@ -32,7 +75,16 @@ export default function TradeCard({
   const [zoom, setZoom] = useState<string | null>(null);
   const urls = useSignedUrls(trade.chart_paths || [], open);
   const verdict = trade.coach_verdict ? VERDICT_META[trade.coach_verdict] : null;
-  const pnlColor = trade.pnl_usd == null ? 'var(--text-secondary)' : trade.pnl_usd > 0 ? 'var(--profit)' : trade.pnl_usd < 0 ? 'var(--loss)' : 'var(--text-secondary)';
+  const isOpen = isOpenTrade(trade);
+  const tone = isOpen ? 'open' : trade.pnl_usd == null ? 'flat' : trade.pnl_usd > 0 ? 'win' : trade.pnl_usd < 0 ? 'loss' : 'flat';
+  const symbol = trade.instrument === 'STOCK' ? 'מניה' : trade.instrument;
+
+  const riskUsd = trade.entry_price != null && trade.stop_price != null
+    ? Math.round(Math.abs(trade.entry_price - trade.stop_price) * (trade.contracts || 1) * pointValue(trade.instrument))
+    : null;
+  const plannedRR = trade.entry_price != null && trade.stop_price != null && trade.target_price != null && trade.entry_price !== trade.stop_price
+    ? Math.round((Math.abs(trade.target_price - trade.entry_price) / Math.abs(trade.entry_price - trade.stop_price)) * 10) / 10
+    : null;
 
   function toggle() {
     const next = !open;
@@ -41,40 +93,79 @@ export default function TradeCard({
   }
 
   return (
-    <div className={`mt-card${isNew ? ' new' : ''}`}>
-      <button className="mt-card-head" onClick={toggle} aria-expanded={open}>
-        <span className={`mt-dir ${trade.direction}`}>{trade.direction === 'long' ? 'לונג' : 'שורט'}</span>
-        {trade.is_example && <span className="mt-status" style={{ color: 'var(--lavender)' }}>דוגמה</span>}
-        <div>
-          <div className="mt-sym">{trade.instrument === 'STOCK' ? 'מניה' : trade.instrument} <span className="mt-sub">× {trade.contracts}</span></div>
+    <div className={`mt-trade tone-${tone}${isNew ? ' new' : ''}${open ? ' open' : ''}`}>
+      <button className="mt-trade-head" onClick={toggle} aria-expanded={open}>
+        <div className="mt-trade-id">
+          <div className="mt-trade-sym">
+            {symbol}
+            <span className={`mt-dir ${trade.direction}`}>{trade.direction === 'long' ? 'לונג' : 'שורט'}</span>
+            {trade.is_example && <span className="mt-tag-example">דוגמה</span>}
+            {isNew && <span className="mt-tag-new">חדש</span>}
+          </div>
           <div className="mt-sub">
-            {STYLE_LABEL[trade.trade_style] || 'סווינג'} · {fmtDate(trade.traded_at)}{trade.closed_at && trade.closed_at !== trade.traded_at ? `–${fmtDate(trade.closed_at)}` : ''}{trade.setup ? ` · ${trade.setup}` : ''}{showStudentName ? ` · ${showStudentName}` : ''}
+            {STYLE_LABEL[trade.trade_style] || 'סווינג'} · {fmtDate(trade.traded_at)}
+            {trade.closed_at && trade.closed_at !== trade.traded_at ? ` – ${fmtDate(trade.closed_at)}` : ''}
+            {trade.setup ? ` · ${trade.setup}` : ''}
+            {showStudentName ? ` · ${showStudentName}` : ''}
           </div>
         </div>
-        <div className="mt-pnl" style={{ color: pnlColor }}>
-          {isOpenTrade(trade) ? <span style={{ color: 'var(--sky)', fontSize: 12.5 }}>● פתוחה</span> : fmtUsd(trade.pnl_usd)}
-          <small>
-            {fmtR(trade.r_multiple)}
-            {verdict ? ` · ${verdict.icon}` : trade.reviewed_at ? '' : ' · ⏳'}
-            {isNew ? ' · חדש' : ''}
-          </small>
+        <div className="mt-trade-result">
+          {isOpen ? (
+            <b className="mt-result-open">● פתוחה</b>
+          ) : (
+            <>
+              <b>{fmtUsd(trade.pnl_usd)}</b>
+              <span>{fmtR(trade.r_multiple)}</span>
+            </>
+          )}
+        </div>
+        <div className="mt-trade-status" title={verdict ? verdict.label : trade.reviewed_at ? 'נבדקה' : 'מחכה לניתוח'}>
+          {verdict ? verdict.icon : trade.reviewed_at ? '✓' : '⏳'}
         </div>
       </button>
 
       {open && (
-        <div className="mt-card-body">
-          <div className="mt-grid2">
-            <div className="mt-kv"><span>כניסה</span>{trade.entry_price ?? '—'}</div>
-            <div className="mt-kv"><span>יציאה</span>{trade.exit_price ?? '—'}</div>
-            <div className="mt-kv"><span>סטופ</span>{trade.stop_price ?? '—'}</div>
-            <div className="mt-kv"><span>יעד</span>{trade.target_price ?? '—'}</div>
-            <div className="mt-kv"><span>עמידה בתוכנית</span>{trade.followed_plan == null ? '—' : trade.followed_plan ? '✅ כן' : '❌ לא'}</div>
-            <div className="mt-kv"><span>משמעת · רגש</span>{trade.discipline_score ? `${trade.discipline_score}/5` : '—'}{trade.emotion ? ` · ${trade.emotion}` : ''}</div>
+        <div className="mt-trade-body">
+          <TradeMap t={trade} />
+
+          <div className="mt-tiles">
+            <div className="mt-tile">
+              <span>סיכון</span>
+              <b>{riskUsd != null ? `$${riskUsd}` : '—'}</b>
+              <small>{trade.contracts} {FUTURES.includes(trade.instrument) ? 'חוזים' : 'מניות'}</small>
+            </div>
+            <div className="mt-tile">
+              <span>יחס מתוכנן</span>
+              <b>{plannedRR != null ? `1:${plannedRR}` : '—'}</b>
+              <small>בפועל {fmtR(trade.r_multiple)}</small>
+            </div>
+            <div className={`mt-tile ${trade.followed_plan === false ? 'bad' : trade.followed_plan ? 'good' : ''}`}>
+              <span>לפי התוכנית</span>
+              <b>{trade.followed_plan == null ? '—' : trade.followed_plan ? 'כן' : 'לא'}</b>
+              <small>{trade.emotion || ' '}</small>
+            </div>
+            <div className="mt-tile">
+              <span>משמעת</span>
+              <div className="mt-dots" aria-label={`${trade.discipline_score || 0} מתוך 5`}>
+                {[1, 2, 3, 4, 5].map((n) => <i key={n} className={n <= (trade.discipline_score || 0) ? 'on' : ''} />)}
+              </div>
+              <small>{trade.discipline_score ? `${trade.discipline_score}/5` : '—'}</small>
+            </div>
           </div>
 
-          {trade.entry_reason && <div className="mt-text"><b>למה נכנסתי: </b>{trade.entry_reason}</div>}
-          {trade.exit_reason && <div className="mt-text"><b>למה יצאתי: </b>{trade.exit_reason}</div>}
-          {trade.lesson_learned && <div className="mt-text"><b>מה לקחתי מזה: </b>{trade.lesson_learned}</div>}
+          {(trade.entry_reason || trade.exit_reason || trade.lesson_learned) && (
+            <div className="mt-notes">
+              {trade.entry_reason && (
+                <div className="mt-note"><div className="mt-note-h">↗ למה נכנסתי</div><p>{trade.entry_reason}</p></div>
+              )}
+              {trade.exit_reason && (
+                <div className="mt-note"><div className="mt-note-h">↘ {isOpen ? 'ניהול העסקה' : 'למה יצאתי'}</div><p>{trade.exit_reason}</p></div>
+              )}
+              {trade.lesson_learned && (
+                <div className="mt-note"><div className="mt-note-h">✦ מה לקחתי מזה</div><p>{trade.lesson_learned}</p></div>
+              )}
+            </div>
+          )}
 
           {urls.length > 0 && (
             <div className="mt-charts">
@@ -86,13 +177,18 @@ export default function TradeCard({
           )}
 
           {trade.coach_comment ? (
-            <div className="mt-coach">
-              <div className="mt-coach-head">
-                <span>💬 שירן</span>
-                {verdict && <span className="mt-status" style={{ color: verdict.color }}>{verdict.icon} {verdict.label}</span>}
-                <span className="mt-sub" style={{ marginInlineStart: 'auto' }}>{fmtDate(trade.reviewed_at)}</span>
+            <div className="mt-feedback">
+              <div className="mt-feedback-head">
+                <span className="mt-avatar">ש</span>
+                <div>
+                  <b>המשוב של שירן</b>
+                  <div className="mt-sub">{fmtDate(trade.reviewed_at)}</div>
+                </div>
+                {verdict && <span className="mt-verdict" style={{ color: verdict.color, borderColor: verdict.color }}>{verdict.icon} {verdict.label}</span>}
               </div>
-              <p>{trade.coach_comment}</p>
+              <div className="mt-feedback-text">
+                {trade.coach_comment.split('\n').filter((l) => l.trim()).map((l, i) => <p key={i}>{l}</p>)}
+              </div>
             </div>
           ) : (
             <div className="mt-waiting">⏳ מחכה לניתוח של שירן</div>

@@ -1532,3 +1532,73 @@ html.a11y-underline-links a { text-decoration: underline !important; }
 .mt-wide { max-width: 760px; }
 .mt-student-chips { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; margin-bottom: 14px; }
 .mt-student-chip { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+
+/* ===== כרטיס עסקה בליווי - גרסה אנליטית ===== */
+@media (min-width: 768px) { .wrap.mt-page { max-width: 680px; } }
+.mt-trade { position: relative; background: var(--bg-surface); border: 1px solid var(--border-hairline-strong); border-radius: 16px; margin-bottom: 12px; overflow: hidden; }
+.mt-trade::before { content: ''; position: absolute; inset-block: 0; inset-inline-start: 0; width: 4px; background: var(--border-hairline-strong); }
+.mt-trade.tone-win::before { background: var(--profit); }
+.mt-trade.tone-loss::before { background: var(--loss); }
+.mt-trade.tone-open::before { background: var(--sky); }
+.mt-trade.new { border-color: rgba(255,45,120,.5); box-shadow: 0 0 0 3px rgba(255,45,120,.07); }
+.mt-trade-head { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 14px; width: 100%; padding: 14px 18px; background: none; border: none; color: inherit; font-family: inherit; text-align: right; cursor: pointer; }
+.mt-trade-sym { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; font-family: var(--font-mono); font-weight: 700; font-size: 16px; margin-bottom: 3px; }
+.mt-tag-example, .mt-tag-new { font-family: var(--font-body); font-size: 10.5px; font-weight: 600; padding: 2px 8px; border-radius: 999px; }
+.mt-tag-example { color: var(--lavender); background: var(--lavender-bg); }
+.mt-tag-new { color: #fff; background: var(--teal); }
+.mt-trade-result { text-align: left; direction: ltr; line-height: 1.15; }
+.mt-trade-result b { display: block; font-family: var(--font-mono); font-size: 18px; }
+.mt-trade-result span { font-family: var(--font-mono); font-size: 12px; color: var(--text-tertiary); }
+.tone-win .mt-trade-result b { color: var(--profit); }
+.tone-loss .mt-trade-result b { color: var(--loss); }
+.mt-result-open { color: var(--sky); font-size: 14px !important; font-family: var(--font-body) !important; }
+.mt-trade-status { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; background: var(--bg-surface-raised); font-size: 16px; }
+.mt-trade-body { padding: 4px 18px 18px; }
+
+.mt-map { direction: ltr; padding: 30px 4px 30px; margin: 4px 0 6px; }
+.mt-map-track { position: relative; height: 8px; border-radius: 999px; background: var(--border-hairline); }
+.mt-map-risk, .mt-map-reward { position: absolute; top: 0; height: 100%; }
+.mt-map-risk { background: linear-gradient(90deg, rgba(255,92,92,.35), rgba(255,92,92,.75)); border-radius: 999px; }
+.mt-map-reward { background: linear-gradient(90deg, rgba(61,220,132,.35), rgba(61,220,132,.75)); border-radius: 999px; }
+.mt-map-mark { position: absolute; top: 50%; width: 14px; height: 14px; margin-left: -7px; margin-top: -7px; border-radius: 50%; border: 2px solid var(--bg-surface); }
+.mt-map-mark.stop { background: var(--loss); }
+.mt-map-mark.entry { background: var(--text-primary); }
+.mt-map-mark.target { background: var(--bg-surface); border: 2px dashed var(--profit); }
+.mt-map-mark.exit { width: 18px; height: 18px; margin-left: -9px; margin-top: -9px; box-shadow: 0 0 0 4px rgba(255,255,255,.06); }
+.mt-map-mark.exit.win { background: var(--profit); }
+.mt-map-mark.exit.loss { background: var(--loss); }
+.mt-map-label { position: absolute; left: 50%; transform: translateX(-50%); text-align: center; white-space: nowrap; line-height: 1.15; }
+.mt-map-label.up { bottom: 20px; }
+.mt-map-label.down { top: 20px; }
+.mt-map-label span { display: block; font-family: var(--font-body); font-size: 10px; color: var(--text-tertiary); }
+.mt-map-label b { font-family: var(--font-mono); font-size: 12px; font-weight: 600; }
+
+.mt-tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 10px 0 14px; }
+.mt-tile { background: var(--bg-void); border: 1px solid var(--border-hairline); border-radius: 12px; padding: 10px; text-align: center; min-width: 0; }
+.mt-tile span { display: block; font-size: 10.5px; color: var(--text-tertiary); margin-bottom: 4px; }
+.mt-tile b { display: block; font-family: var(--font-mono); font-size: 16px; }
+.mt-tile small { display: block; font-size: 10.5px; color: var(--text-tertiary); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mt-tile.good b { color: var(--profit); }
+.mt-tile.bad b { color: var(--loss); }
+.mt-dots { display: flex; justify-content: center; gap: 4px; height: 20px; align-items: center; }
+.mt-dots i { width: 8px; height: 8px; border-radius: 50%; background: var(--border-hairline-strong); }
+.mt-dots i.on { background: var(--lavender); }
+
+.mt-notes { display: grid; gap: 8px; }
+.mt-note { border-inline-start: 2px solid var(--border-hairline-strong); padding: 2px 12px 2px 0; padding-inline-start: 12px; padding-inline-end: 0; }
+.mt-note-h { font-size: 11.5px; font-weight: 600; color: var(--text-tertiary); margin-bottom: 3px; }
+.mt-note p { font-size: 13.5px; line-height: 1.65; color: var(--text-secondary); white-space: pre-wrap; }
+
+.mt-feedback { margin-top: 16px; border-radius: 14px; background: var(--bg-void); border: 1px solid rgba(255,182,72,.25); overflow: hidden; }
+.mt-feedback-head { display: flex; align-items: center; gap: 10px; padding: 12px 14px; background: linear-gradient(90deg, rgba(255,45,120,.10), rgba(255,182,72,.06)); }
+.mt-feedback-head b { font-size: 13.5px; }
+.mt-avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--grad-brand); color: var(--bg-void); display: grid; place-items: center; font-weight: 800; flex-shrink: 0; }
+.mt-verdict { margin-inline-start: auto; font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 999px; border: 1px solid; white-space: nowrap; }
+.mt-feedback-text { padding: 12px 16px 14px; display: grid; gap: 8px; }
+.mt-feedback-text p { font-size: 14px; line-height: 1.7; }
+
+@media (max-width: 420px) {
+  .mt-tiles { grid-template-columns: repeat(2, 1fr); }
+  .mt-trade-head { padding: 12px 14px; gap: 10px; }
+  .mt-trade-body { padding: 4px 14px 14px; }
+}
