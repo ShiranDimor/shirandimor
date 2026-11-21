@@ -60,7 +60,11 @@ export async function POST(request: Request) {
       wantPush ? sendPersonalPush(studentId, { title: heading, body: text.slice(0, 180), url: '/my-mentoring' }, 'announcement').catch(() => null) : null,
       wantEmail ? sendEmail(student?.email || '', heading, `היי${firstName ? ' ' + firstName : ''},\n\n${text}\n\nלאזור הליווי האישי שלך:\n${url}\n\nשירן`, 'shiran@shirandimor.com') : false,
     ]);
-    return NextResponse.json({ ok: true, pushSent: push?.sent ?? 0, pushAttempted: push?.attempted ?? 0, emailSent: mail });
+    // נשמרת ברשימת ההודעות - מוצגת לתלמיד/ה בלשונית "הודעות" ולשירן בניהול
+    const { data: saved } = await supabaseAdmin.from('mentoring_messages').insert({
+      student_id: studentId, title: heading, body: text, sent_push: (push?.sent ?? 0) > 0, sent_email: !!mail,
+    }).select().single();
+    return NextResponse.json({ ok: true, pushSent: push?.sent ?? 0, pushAttempted: push?.attempted ?? 0, emailSent: mail, message: saved });
   }
 
   if (isAdmin && STUDENT_MESSAGES[event]) {

@@ -68,7 +68,7 @@ export function tradeTone(trade: MentoringTrade) {
   return trade.pnl_usd > 0 ? 'win' : trade.pnl_usd < 0 ? 'loss' : 'flat';
 }
 
-export function TradeDetail({ trade, footer }: { trade: MentoringTrade; footer?: ReactNode }) {
+export function TradeDetail({ trade, footer, riskLimit }: { trade: MentoringTrade; footer?: ReactNode; riskLimit?: number | null }) {
   const [zoom, setZoom] = useState<string | null>(null);
   const urls = useSignedUrls(trade.chart_paths || [], true);
   const verdict = trade.coach_verdict ? VERDICT_META[trade.coach_verdict] : null;
@@ -85,8 +85,8 @@ export function TradeDetail({ trade, footer }: { trade: MentoringTrade; footer?:
           <TradeMap t={trade} />
 
           <div className="mt-tiles">
-            <div className="mt-tile">
-              <span>סיכון</span>
+            <div className={`mt-tile${riskLimit && riskUsd != null && riskUsd > riskLimit * 1.1 ? ' bad' : ''}`}>
+              <span>סיכון{riskLimit ? ` (מתוך $${riskLimit})` : ''}</span>
               <b>{riskUsd != null ? `$${riskUsd}` : '—'}</b>
               <small>{trade.contracts} {FUTURES.includes(trade.instrument) ? 'חוזים' : 'מניות'}</small>
             </div>

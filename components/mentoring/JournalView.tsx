@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { TradeDetail, tradeTone } from '@/components/mentoring/TradeCard';
-import { VERDICT_META, fmtDate, fmtR, fmtUsd, isOpenTrade, journalStats, type MentoringTrade } from '@/lib/mentoring';
+import { VERDICT_META, fmtDate, fmtR, fmtUsd, isOpenTrade, isOverRisk, journalStats, type MentoringTrade } from '@/lib/mentoring';
 
 // היומן כדשבורד: שורת נתונים, עקומת R מצטברת, תובנות אוטומטיות, סינון, ורשימה קומפקטית לפי
 // חודשים. לחיצה על עסקה פותחת חלון עם כל הפרטים והמשוב. בנוי לעשרות ומאות עסקאות.
@@ -107,7 +107,7 @@ function EquityCurve({ trades }: { trades: MentoringTrade[] }) {
   );
 }
 
-function TradeSheet({ trade, onClose, footer }: { trade: MentoringTrade; onClose: () => void; footer?: ReactNode }) {
+function TradeSheet({ trade, onClose, footer, riskLimit }: { trade: MentoringTrade; onClose: () => void; footer?: ReactNode; riskLimit?: number | null }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
     document.addEventListener('keydown', onKey);
@@ -137,7 +137,7 @@ function TradeSheet({ trade, onClose, footer }: { trade: MentoringTrade; onClose
           <button className="mj-close" onClick={onClose} aria-label="סגירה">✕</button>
         </div>
         <div className="mj-sheet-body">
-          <TradeDetail trade={trade} footer={footer} />
+          <TradeDetail trade={trade} footer={footer} riskLimit={riskLimit} />
         </div>
       </div>
     </div>,
@@ -146,9 +146,11 @@ function TradeSheet({ trade, onClose, footer }: { trade: MentoringTrade; onClose
 }
 
 export default function JournalView({
-  trades, newIds, onOpenTrade, renderFooter, top,
+  trades, newIds, onOpenTrade, renderFooter, top, riskLimit, goalMonthly,
 }: {
   trades: MentoringTrade[];
+  riskLimit?: number | null;
+  goalMonthly?: number | null;
   newIds?: Set<string>;
   onOpenTrade?: (t: MentoringTrade) => void;
   renderFooter?: (t: MentoringTrade, close: () => void) => ReactNode;
@@ -162,6 +164,11 @@ export default function JournalView({
   const totalR = useMemo(() => real.reduce((s, t) => s + (rValue(t) || 0), 0), [real]);
   const insights = useMemo(() => buildInsights(real), [real]);
   const pendingCount = real.filter((t) => !t.reviewed_at).length;
+  // התקדמות החודש מול המטרה - לפי עסקאות שנסגרו החודש
+  const monthKey = new Date().toISOString().slice(0, 7);
+  const monthNet = Math.round(real.filter((t) => !isOpenTrade(t) && (t.closed_at || t.traded_at).startsWith(monthKey)).reduce((s, t) => s + (t.pnl_usd || 0), 0));
+  const goalPct = goalMonthly ? Math.max(0, Math.min(100, Math.round((monthNet / goalMonthly) * 100))) : 0;
+  const overRiskCount = riskLimit ? real.filter((t) => isOverRisk(t, riskLimit)).length : 0;
   const openCount = trades.filter((t) => isOpenTrade(t)).length;
 
   const counts: Record<Filter, number> = {
@@ -211,6 +218,17 @@ export default function JournalView({
         <div><span>ממוצע לעסקה</span><b className="num">{rTxt(stats.avgR)}</b></div>
         <div><span>לפי התוכנית</span><b className={`num ${(stats.planPct ?? 0) >= 80 ? 'up' : ''}`}>{stats.planPct == null ? '—' : `${stats.planPct}%`}</b></div>
       </div>
+
+      {goalMonthly ? (
+        <div className="mj-goal">
+          <div className="mj-goal-top">
+            <span>המטרה החודשית · {MONTHS[new Date().getMonth()]}</span>
+            <span><b className={`num ${monthNet > 0 ? 'up' : monthNet < 0 ? 'down' : ''}`}>{fmtUsd(monthNet)}</b> מתוך <span className="num">${goalMonthly.toLocaleString('en-US')}</span></span>
+          </div>
+          <div className="mj-goal-bar" role="progressbar" aria-valuenow={goalPct} aria-valuemin={0} aria-valuemax={100}><i style={{ width: `${goalPct}%` }} /></div>
+          {overRiskCount > 0 && <div className="mj-sub" style={{ marginTop: 8, color: 'var(--loss)' }}>⚠️ {overRiskCount} {overRiskCount === 1 ? 'עסקה חרגה' : 'עסקאות חרגו'} מהסיכון של ${riskLimit} לעסקה</div>}
+        </div>
+      ) : null}
 
       {(real.length >= 2 || insights.length > 0) && (
         <div className="mj-analytics">
@@ -265,6 +283,7 @@ export default function JournalView({
                       <span className="mj-meta">
                         {t.setup && <span>{t.setup}</span>}
                         {t.followed_plan === false && <span className="bad">מחוץ לתוכנית</span>}
+                        {isOverRisk(t, riskLimit) && <span className="risk">סיכון חורג</span>}
                         {t.emotion && ['FOMO', 'נקמה', 'לחוץ/ה', 'בטוח/ה מדי'].includes(t.emotion) && <span className="warn">{t.emotion}</span>}
                         {t.is_example && <span className="lv">דוגמה</span>}
                       </span>
@@ -286,7 +305,7 @@ export default function JournalView({
 
       {trades.length > 0 && visible.length === 0 && <div className="mt-empty">אין עסקאות בסינון הזה.</div>}
 
-      {openTrade && <TradeSheet trade={openTrade} onClose={() => setOpenId(null)} footer={renderFooter?.(openTrade, () => setOpenId(null))} />}
+      {openTrade && <TradeSheet trade={openTrade} riskLimit={riskLimit} onClose={() => setOpenId(null)} footer={renderFooter?.(openTrade, () => setOpenId(null))} />}
     </div>
   );
 }

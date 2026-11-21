@@ -17,6 +17,12 @@ export type MentoringStudent = {
   goal: string | null;
   instruments: string | null;
   default_style: TradeStyle;
+  broker: string | null;
+  planned_broker: string | null;
+  capital_ils: number | null;
+  concerns: string | null;
+  risk_usd: number | null;
+  goal_monthly_usd: number | null;
   active: boolean;
 };
 
@@ -28,8 +34,20 @@ export type MentoringSession = {
   held_at: string;
   video_url: string | null;
   start_seconds: number;
+  slides_url: string | null;
   summary: string | null;
   key_points: string[];
+  seen_by_student: boolean;
+  created_at: string;
+};
+
+export type MentoringMessage = {
+  id: string;
+  student_id: string;
+  title: string;
+  body: string;
+  sent_push: boolean;
+  sent_email: boolean;
   seen_by_student: boolean;
   created_at: string;
 };
@@ -131,6 +149,18 @@ export function computeTradeNumbers(t: {
     r = Math.round((points / Math.abs(entry - stop)) * 100) / 100;
   }
   return { pnl, r };
+}
+
+// הסיכון בפועל בדולרים: מרחק כניסה-סטופ × כמות × שווי נקודה
+export function tradeRiskUsd(t: Pick<MentoringTrade, 'entry_price' | 'stop_price' | 'contracts' | 'instrument'>): number | null {
+  if (t.entry_price == null || t.stop_price == null) return null;
+  return Math.round(Math.abs(t.entry_price - t.stop_price) * (t.contracts || 1) * pointValue(t.instrument));
+}
+
+// חריגה מהסיכון שהתלמיד/ה קבע/ה (עם 10% מרווח לעיגולים)
+export function isOverRisk(t: Pick<MentoringTrade, 'entry_price' | 'stop_price' | 'contracts' | 'instrument'>, limit: number | null | undefined): boolean {
+  const r = tradeRiskUsd(t);
+  return !!limit && r != null && r > limit * 1.1;
 }
 
 export function isOpenTrade(t: Pick<MentoringTrade, 'exit_price'>): boolean {

@@ -4,11 +4,12 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { supabase, getResilientUser } from '@/lib/supabase';
 import JournalView from '@/components/mentoring/JournalView';
+import StudentProfileCard from '@/components/mentoring/StudentProfileCard';
 import TradeForm from '@/components/mentoring/TradeForm';
 import SessionCard from '@/components/mentoring/SessionCard';
 import {
   TASK_STATUS_META, daysLeft, fmtDate, fmtR, fmtUsd, journalStats,
-  type MentoringEvent, type MentoringSession, type MentoringStudent, type MentoringTask, type MentoringTrade,
+  type MentoringEvent, type MentoringMessage, type MentoringSession, type MentoringStudent, type MentoringTask, type MentoringTrade,
 } from '@/lib/mentoring';
 
 // אזור הליווי האישי של התלמיד/ה - נכנסים אליו מכרטיס מודגש בראש /account (אותו חשבון, אותה
@@ -16,7 +17,7 @@ import {
 // עסקה), שיעורים (הקלטות + סיכום) ומשימות. אדמין יכולה לפתוח ?student=<id> ולראות בדיוק מה
 // התלמיד/ה רואה (צפייה בלבד)
 
-type Tab = 'journal' | 'lessons' | 'tasks';
+type Tab = 'journal' | 'lessons' | 'tasks' | 'messages';
 
 async function notify(event: MentoringEvent, detail?: string) {
   const { data: { session } } = await supabase.auth.getSession();
@@ -57,6 +58,7 @@ export default function MyMentoringPage() {
   const [sessions, setSessions] = useState<MentoringSession[]>([]);
   const [trades, setTrades] = useState<MentoringTrade[]>([]);
   const [tasks, setTasks] = useState<MentoringTask[]>([]);
+  const [messages, setMessages] = useState<MentoringMessage[]>([]);
   const [tab, setTab] = useState<Tab>('journal');
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<MentoringTrade | null>(null);
@@ -86,11 +88,14 @@ export default function MyMentoringPage() {
     if (!st) { setLoading(false); return; }
     setStudent(st as MentoringStudent);
 
-    const [{ data: se }, { data: tr }, { data: ta }] = await Promise.all([
+    const [{ data: se }, { data: tr }, { data: ta }, { data: ms }] = await Promise.all([
       supabase.from('mentoring_sessions').select('*').eq('student_id', targetId).order('lesson_number', { ascending: true }),
       supabase.from('mentoring_trades').select('*').eq('student_id', targetId).order('traded_at', { ascending: false }).order('created_at', { ascending: false }),
       supabase.from('mentoring_tasks').select('*').eq('student_id', targetId).order('created_at', { ascending: false }),
+      supabase.from('mentoring_messages').select('*').eq('student_id', targetId).order('created_at', { ascending: false }),
     ]);
+    const M = (ms || []) as MentoringMessage[];
+    setMessages(M);
     const S = (se || []) as MentoringSession[];
     const T = (tr || []) as MentoringTrade[];
     const K = (ta || []) as MentoringTask[];
@@ -100,11 +105,13 @@ export default function MyMentoringPage() {
       ...S.filter((s) => !s.seen_by_student).map((s) => s.id),
       ...T.filter((t) => !t.seen_by_student).map((t) => t.id),
       ...K.filter((k) => !k.seen_by_student).map((k) => k.id),
+      ...M.filter((m) => !m.seen_by_student).map((m) => m.id),
     ]);
     setNewIds(fresh);
 
     // לשונית פתיחה חכמה - מה שהכי דחוף עכשיו
-    if (T.some((t) => !t.seen_by_student)) setTab('journal');
+    if (M.some((m) => !m.seen_by_student)) setTab('messages');
+    else if (T.some((t) => !t.seen_by_student)) setTab('journal');
     else if (K.some((k) => k.status === 'returned' || (!k.seen_by_student && k.status === 'open'))) setTab('tasks');
     else if (S.some((s) => !s.seen_by_student)) setTab('lessons');
 
@@ -122,6 +129,14 @@ export default function MyMentoringPage() {
     setSessions((prev) => prev.map((x) => (x.id === s.id ? { ...x, seen_by_student: true } : x)));
     await supabase.from('mentoring_sessions').update({ seen_by_student: true }).eq('id', s.id);
   }
+  useEffect(() => {
+    if (tab !== 'messages' || readOnly) return;
+    const unseen = messages.filter((m) => !m.seen_by_student);
+    if (!unseen.length) return;
+    setMessages((prev) => prev.map((m) => ({ ...m, seen_by_student: true })));
+    supabase.from('mentoring_messages').update({ seen_by_student: true }).in('id', unseen.map((m) => m.id)).then(() => {});
+  }, [tab]); // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     if (tab !== 'tasks' || readOnly) return;
     const unseen = tasks.filter((k) => !k.seen_by_student);
@@ -153,6 +168,7 @@ export default function MyMentoringPage() {
   const stats = useMemo(() => journalStats(trades), [trades]);
   const unseenComments = trades.filter((t) => !t.seen_by_student).length;
   const unseenSessions = sessions.filter((s) => !s.seen_by_student).length;
+  const unseenMessages = messages.filter((m) => !m.seen_by_student).length;
   const activeTasks = tasks.filter((k) => k.status === 'open' || k.status === 'returned');
   const returnedTasks = tasks.filter((k) => k.status === 'returned');
 
@@ -187,7 +203,8 @@ export default function MyMentoringPage() {
   const nextLesson = sessions.length + 1;
 
   let nextStep: { text: React.ReactNode; tab: Tab } | null = null;
-  if (unseenComments) nextStep = { text: <><b>שירן הגיבה על {unseenComments === 1 ? 'עסקה' : `${unseenComments} עסקאות`}</b> - שווה לקרוא לפני העסקה הבאה</>, tab: 'journal' };
+  if (unseenMessages) nextStep = { text: <><b>הודעה חדשה משירן</b> - {messages.find((m) => !m.seen_by_student)?.title}</>, tab: 'messages' };
+  else if (unseenComments) nextStep = { text: <><b>שירן הגיבה על {unseenComments === 1 ? 'עסקה' : `${unseenComments} עסקאות`}</b> - שווה לקרוא לפני העסקה הבאה</>, tab: 'journal' };
   else if (returnedTasks.length) nextStep = { text: <><b>משימה חזרה לתיקון</b> - {returnedTasks[0].title}</>, tab: 'tasks' };
   else if (unseenSessions) nextStep = { text: <><b>הקלטת השיעור עלתה</b> - יחד עם סיכום ונקודות מפתח</>, tab: 'lessons' };
   else if (activeTasks.length) nextStep = { text: <><b>המשימה הבאה שלך:</b> {activeTasks[activeTasks.length - 1].title}{activeTasks[activeTasks.length - 1].due_date ? ` (עד ${fmtDate(activeTasks[activeTasks.length - 1].due_date)})` : ''}</>, tab: 'tasks' };
@@ -221,7 +238,7 @@ export default function MyMentoringPage() {
         </div>
       )}
 
-      <div className="mt-tabs" role="tablist">
+      <div className={`mt-tabs${messages.length ? ' four' : ''}`} role="tablist">
         <button role="tab" aria-selected={tab === 'journal'} className={`mt-tab${tab === 'journal' ? ' active' : ''}`} onClick={() => setTab('journal')}>
           יומן{unseenComments > 0 && <span className="mt-badge">{unseenComments}</span>}
         </button>
@@ -231,6 +248,11 @@ export default function MyMentoringPage() {
         <button role="tab" aria-selected={tab === 'tasks'} className={`mt-tab${tab === 'tasks' ? ' active' : ''}`} onClick={() => setTab('tasks')}>
           משימות{activeTasks.length > 0 && <span className="mt-badge">{activeTasks.length}</span>}
         </button>
+        {messages.length > 0 && (
+          <button role="tab" aria-selected={tab === 'messages'} className={`mt-tab${tab === 'messages' ? ' active' : ''}`} onClick={() => setTab('messages')}>
+            הודעות{unseenMessages > 0 && <span className="mt-badge">{unseenMessages}</span>}
+          </button>
+        )}
       </div>
 
       {tab === 'journal' && (
@@ -240,6 +262,7 @@ export default function MyMentoringPage() {
               userId={userId}
               defaultInstrument={student.instruments || 'MNQ'}
               defaultStyle={student.default_style || 'swing'}
+              riskLimit={student.risk_usd != null ? Number(student.risk_usd) : null}
               initial={editing}
               onCancel={() => { setShowForm(false); setEditing(null); }}
               onSaved={(t, isNew) => {
@@ -259,6 +282,8 @@ export default function MyMentoringPage() {
             <JournalView
               trades={trades}
               newIds={newIds}
+              riskLimit={student.risk_usd != null ? Number(student.risk_usd) : null}
+              goalMonthly={student.goal_monthly_usd != null ? Number(student.goal_monthly_usd) : null}
               onOpenTrade={(t) => markTradeSeen(t)}
               top={!(showForm || editing) ? (
                 readOnly
@@ -276,8 +301,24 @@ export default function MyMentoringPage() {
         </>
       )}
 
+      {tab === 'messages' && (
+        <div className="mt-msgs">
+          {messages.map((m) => (
+            <div key={m.id} className={`mt-msg${newIds.has(m.id) ? ' new' : ''}`}>
+              <div className="mt-msg-h">
+                <span className="mt-avatar" style={{ width: 28, height: 28, fontSize: 13 }}>ש</span>
+                <b>{m.title}</b>
+                <span className="mj-sub" style={{ marginInlineStart: 'auto' }}>{new Date(m.created_at).toLocaleString('he-IL', { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+              </div>
+              <p>{m.body}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
       {tab === 'lessons' && (
         <>
+          <StudentProfileCard student={student} />
           {sessions.map((s) => (
             <SessionCard key={s.id} session={s} isNew={newIds.has(s.id)} defaultOpen={newIds.has(s.id)} onOpen={() => markSessionSeen(s)} />
           ))}
