@@ -28,14 +28,38 @@ async function notify(event: MentoringEvent, studentId: string, detail?: string)
   }).catch(() => {});
 }
 
+const WELCOME_TITLE = 'ברוך הבא לאזור הליווי האישי שלך 🎯';
+
+function welcomeText(firstName: string) {
+  return `היי${firstName ? ' ' + firstName : ''},
+פתחתי לך באתר אזור ליווי אישי. נכנסים אליו מהאזור האישי הרגיל באתר (shirandimor.com/account), מהכרטיס "הליווי האישי שלי" בראש העמוד. זו אותה כניסה של הקבוצה, בלי סיסמה נוספת.
+
+מה מחכה לך שם:
+📓 יומן מסחר - כל עסקה שלך (גם בדמו) נכנסת לשם, ואני עוברת על כל אחת ומשאירה לך משוב.
+🎬 שיעורים - ההקלטה של כל שיעור עם סיכום ונקודות מפתח. השיעור הראשון כבר שם.
+✅ משימות - מה עושים בין שיעור לשיעור. כשסיימת, מסמנים ✓ ואני עוברת על זה.
+🛡️ מחשבון סיכון - כשאתה ממלא עסקה, הוא מראה כמה אתה מסכן מתוך ה-50$ שקבענו, וכמה מניות או חוזים לקנות.
+📈 התקדמות - גרף, תובנות ופס התקדמות מול המטרה של 1,000$ בחודש.
+
+מה אני מבקשת ממך השבוע: להיכנס, לעבור על הסיכום של השיעור הראשון ועל המשימות. יש שם גם עסקה לדוגמה שמראה איך ממלאים את היומן.
+כל שאלה - תכתוב לי, לא מחכים לשיעור הבא.
+
+שירן`;
+}
+
 // הודעה חופשית לתלמיד/ה: פוש לנייד (מופיע גם בפעמון באתר) ו/או מייל
 function MessageBox({ studentId, firstName }: { studentId: string; firstName: string }) {
   const [open, setOpen] = useState(false);
   const [history, setHistory] = useState<MentoringMessage[]>([]);
   useEffect(() => {
     supabase.from('mentoring_messages').select('*').eq('student_id', studentId).order('created_at', { ascending: false }).limit(30)
-      .then(({ data }) => setHistory((data || []) as MentoringMessage[]));
-  }, [studentId]);
+      .then(({ data }) => {
+        const list = (data || []) as MentoringMessage[];
+        setHistory(list);
+        // הודעה ראשונה לתלמיד/ה - ממלאים מראש הודעת פתיחה שמסבירה מה יש באזור הליווי
+        if (!list.length) { setTitle(WELCOME_TITLE); setMessage(welcomeText(firstName)); }
+      });
+  }, [studentId]); // eslint-disable-line react-hooks/exhaustive-deps
   const [title, setTitle] = useState('');
   const [message, setMessage] = useState('');
   const [push, setPush] = useState(true);
@@ -70,7 +94,7 @@ function MessageBox({ studentId, firstName }: { studentId: string; firstName: st
     <div className="mt-form">
       <h3>הודעה ל{firstName || 'תלמיד/ה'}</h3>
       <input className="mt-input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="כותרת (לא חובה) · ברירת מחדל: הודעה משירן" maxLength={80} />
-      <textarea className="mt-textarea" style={{ marginTop: 8, minHeight: 90 }} value={message} onChange={(e) => setMessage(e.target.value)} placeholder="מה רוצה להגיד לו?" />
+      <textarea className="mt-textarea" style={{ marginTop: 8, minHeight: message.length > 300 ? 320 : 90 }} value={message} onChange={(e) => setMessage(e.target.value)} placeholder="מה רוצה להגיד לו?" />
       <div className="mt-pills" style={{ marginTop: 10 }}>
         <button type="button" className={`mt-pill${push ? ' on' : ''}`} onClick={() => setPush(!push)}>📱 התראה לנייד</button>
         <button type="button" className={`mt-pill${email ? ' on' : ''}`} onClick={() => setEmail(!email)}>✉️ מייל</button>
