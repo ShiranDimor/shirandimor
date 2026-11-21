@@ -191,7 +191,7 @@ export default function MyMentoringPage() {
   else if (returnedTasks.length) nextStep = { text: <><b>משימה חזרה לתיקון</b> - {returnedTasks[0].title}</>, tab: 'tasks' };
   else if (unseenSessions) nextStep = { text: <><b>הקלטת השיעור עלתה</b> - יחד עם סיכום ונקודות מפתח</>, tab: 'lessons' };
   else if (activeTasks.length) nextStep = { text: <><b>המשימה הבאה שלך:</b> {activeTasks[activeTasks.length - 1].title}{activeTasks[activeTasks.length - 1].due_date ? ` (עד ${fmtDate(activeTasks[activeTasks.length - 1].due_date)})` : ''}</>, tab: 'tasks' };
-  else if (!trades.length) nextStep = { text: <><b>התחלה טובה:</b> הוסף/י את העסקה הראשונה ליומן - כל עסקה שנכנסת, אני עוברת עליה</>, tab: 'journal' };
+  else if (!trades.some((t) => !t.is_example)) nextStep = { text: <><b>התחלה טובה:</b> הוסף/י את העסקה הראשונה ליומן - כל עסקה שנכנסת, אני עוברת עליה</>, tab: 'journal' };
 
   return (
     <div className="wrap">
@@ -235,7 +235,7 @@ export default function MyMentoringPage() {
 
       {tab === 'journal' && (
         <>
-          {trades.length > 0 && (
+          {stats.count > 0 && (
             <div className="mt-stats">
               <div className="mt-stat"><b>{stats.count}</b><span>עסקאות</span></div>
               <div className="mt-stat"><b>{stats.winRate == null ? '—' : `${stats.winRate}%`}</b><span>הצלחה</span></div>
