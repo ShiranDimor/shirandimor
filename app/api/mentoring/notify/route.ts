@@ -37,12 +37,31 @@ export async function POST(request: Request) {
   const { data: { user } } = await supabaseAdmin.auth.getUser(token);
   if (!user) return NextResponse.json({ error: 'לא מחובר/ת' }, { status: 401 });
 
-  const { event, studentId, detail } = (await request.json().catch(() => ({}))) as { event?: MentoringEvent; studentId?: string; detail?: string };
+  const { event, studentId, detail, title, message, channels } = (await request.json().catch(() => ({}))) as {
+    event?: MentoringEvent; studentId?: string; detail?: string;
+    title?: string; message?: string; channels?: { push?: boolean; email?: boolean };
+  };
   if (!event) return NextResponse.json({ error: 'חסר סוג אירוע' }, { status: 400 });
 
   const { data: caller } = await supabaseAdmin.from('profiles').select('role, full_name, email').eq('id', user.id).single();
   const isAdmin = caller?.role === 'admin';
   const url = 'https://shirandimor.com/my-mentoring';
+
+  // הודעה חופשית משירן לתלמיד/ה - פוש לנייד (נרשם גם בפעמון באתר) ו/או מייל
+  if (isAdmin && event === 'custom') {
+    const text = (message || '').trim();
+    if (!studentId || !text) return NextResponse.json({ error: 'חסר תלמיד/ה או תוכן' }, { status: 400 });
+    const heading = (title || '').trim() || 'הודעה משירן';
+    const wantPush = channels?.push !== false;
+    const wantEmail = channels?.email !== false;
+    const { data: student } = await supabaseAdmin.from('profiles').select('full_name, email').eq('id', studentId).single();
+    const firstName = (student?.full_name || '').trim().split(' ')[0];
+    const [push, mail] = await Promise.all([
+      wantPush ? sendPersonalPush(studentId, { title: heading, body: text.slice(0, 180), url: '/my-mentoring' }, 'announcement').catch(() => null) : null,
+      wantEmail ? sendEmail(student?.email || '', heading, `היי${firstName ? ' ' + firstName : ''},\n\n${text}\n\nלאזור הליווי האישי שלך:\n${url}\n\nשירן`, 'shiran@shirandimor.com') : false,
+    ]);
+    return NextResponse.json({ ok: true, pushSent: push?.sent ?? 0, pushAttempted: push?.attempted ?? 0, emailSent: mail });
+  }
 
   if (isAdmin && STUDENT_MESSAGES[event]) {
     if (!studentId) return NextResponse.json({ error: 'חסר תלמיד/ה' }, { status: 400 });

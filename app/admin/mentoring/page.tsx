@@ -28,6 +28,56 @@ async function notify(event: MentoringEvent, studentId: string, detail?: string)
   }).catch(() => {});
 }
 
+// הודעה חופשית לתלמיד/ה: פוש לנייד (מופיע גם בפעמון באתר) ו/או מייל
+function MessageBox({ studentId, firstName }: { studentId: string; firstName: string }) {
+  const [open, setOpen] = useState(false);
+  const [title, setTitle] = useState('');
+  const [message, setMessage] = useState('');
+  const [push, setPush] = useState(true);
+  const [email, setEmail] = useState(true);
+  const [sending, setSending] = useState(false);
+  const [result, setResult] = useState('');
+
+  async function send() {
+    if (!message.trim() || (!push && !email)) return;
+    setSending(true); setResult('');
+    const { data: { session } } = await supabase.auth.getSession();
+    const res = await fetch('/api/mentoring/notify', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${session?.access_token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ event: 'custom', studentId, title, message, channels: { push, email } }),
+    }).catch(() => null);
+    const data = res ? await res.json().catch(() => ({})) : {};
+    setSending(false);
+    if (!res?.ok) { setResult('השליחה נכשלה, נסי שוב'); return; }
+    const parts: string[] = [];
+    if (push) parts.push(data.pushSent > 0 ? 'נשלח לנייד ✓' : data.pushAttempted > 0 ? 'הפוש לא נמסר' : 'אין לו התראות מופעלות במכשיר');
+    if (email) parts.push(data.emailSent ? 'נשלח למייל ✓' : 'המייל לא נשלח');
+    setResult(parts.join(' · '));
+    if (data.pushSent > 0 || data.emailSent) { setMessage(''); setTitle(''); }
+  }
+
+  if (!open) {
+    return <button className="mt-add" style={{ marginBottom: 16 }} onClick={() => setOpen(true)}>🔔 שליחת הודעה ל{firstName || 'תלמיד/ה'}</button>;
+  }
+  return (
+    <div className="mt-form">
+      <h3>הודעה ל{firstName || 'תלמיד/ה'}</h3>
+      <input className="mt-input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="כותרת (לא חובה) · ברירת מחדל: הודעה משירן" maxLength={80} />
+      <textarea className="mt-textarea" style={{ marginTop: 8, minHeight: 90 }} value={message} onChange={(e) => setMessage(e.target.value)} placeholder="מה רוצה להגיד לו?" />
+      <div className="mt-pills" style={{ marginTop: 10 }}>
+        <button type="button" className={`mt-pill${push ? ' on' : ''}`} onClick={() => setPush(!push)}>📱 התראה לנייד</button>
+        <button type="button" className={`mt-pill${email ? ' on' : ''}`} onClick={() => setEmail(!email)}>✉️ מייל</button>
+      </div>
+      {result && <p className="mt-sub" style={{ marginTop: 10, color: result.includes('✓') ? 'var(--profit)' : 'var(--lavender)' }}>{result}</p>}
+      <div className="mt-actions">
+        <button className="mt-btn-small" onClick={send} disabled={sending || !message.trim() || (!push && !email)}>{sending ? 'שולחת...' : 'שליחה'}</button>
+        <button className="mt-btn-ghost" onClick={() => { setOpen(false); setResult(''); }}>סגירה</button>
+      </div>
+    </div>
+  );
+}
+
 function ReviewBox({ trade, onSaved }: { trade: MentoringTrade; onSaved: (t: MentoringTrade, taskTitle: string | null) => void }) {
   const [verdict, setVerdict] = useState<Verdict | null>(trade.coach_verdict);
   const [comment, setComment] = useState(trade.coach_comment || '');
@@ -336,6 +386,8 @@ export default function AdminMentoringPage() {
             </div>
             <Link href={`/my-mentoring?student=${student.user_id}`} className="mt-btn-ghost" style={{ textDecoration: 'none', whiteSpace: 'nowrap' }}>👁 איך זה נראה לו/ה</Link>
           </div>
+
+          <MessageBox studentId={student.user_id} firstName={(student.full_name || '').trim().split(' ')[0]} />
 
           <div className="mt-pills" style={{ marginBottom: 16 }}>
             {([

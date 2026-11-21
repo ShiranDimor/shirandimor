@@ -210,4 +210,5 @@ export function fmtR(n: number | null | undefined): string {
 
 export type MentoringEvent =
   | 'trade_reviewed' | 'session_added' | 'task_added' | 'task_reviewed' // שירן ← לתלמיד/ה
+  | 'custom' // הודעה חופשית משירן
   | 'trade_submitted' | 'task_done'; // תלמיד/ה ← לשירן
