@@ -44,6 +44,7 @@ export default function TradeCard({
     <div className={`mt-card${isNew ? ' new' : ''}`}>
       <button className="mt-card-head" onClick={toggle} aria-expanded={open}>
         <span className={`mt-dir ${trade.direction}`}>{trade.direction === 'long' ? 'לונג' : 'שורט'}</span>
+        {trade.is_example && <span className="mt-status" style={{ color: 'var(--lavender)' }}>דוגמה</span>}
         <div>
           <div className="mt-sym">{trade.instrument === 'STOCK' ? 'מניה' : trade.instrument} <span className="mt-sub">× {trade.contracts}</span></div>
           <div className="mt-sub">

@@ -59,6 +59,7 @@ export type MentoringTrade = {
   discipline_score: number | null;
   lesson_learned: string | null;
   chart_paths: string[];
+  is_example?: boolean;
   coach_comment: string | null;
   coach_verdict: Verdict | null;
   reviewed_at: string | null;
@@ -136,7 +137,9 @@ export function isOpenTrade(t: Pick<MentoringTrade, 'exit_price'>): boolean {
   return t.exit_price == null;
 }
 
-export function journalStats(trades: MentoringTrade[]) {
+export function journalStats(allTrades: MentoringTrade[]) {
+  // עסקאות לדוגמה (שירן מוסיפה כדי להראות איך ממלאים) לא נספרות בסטטיסטיקה
+  const trades = allTrades.filter((t) => !t.is_example);
   const withPnl = trades.filter((t) => t.pnl_usd != null);
   const wins = withPnl.filter((t) => (t.pnl_usd as number) > 0).length;
   const net = withPnl.reduce((s, t) => s + (t.pnl_usd as number), 0);
