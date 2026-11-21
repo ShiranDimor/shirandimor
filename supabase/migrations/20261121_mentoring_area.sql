@@ -1,0 +1,7 @@
+-- אזור הליווי האישי - כבר הוחל על פרויקט ה-Supabase (shirandimor) ב-21.11.2026.
+-- הקובץ כאן לתיעוד בלבד.
+-- טבלאות: mentoring_students, mentoring_sessions, mentoring_trades, mentoring_tasks
+-- RLS: תלמיד/ה רואה רק את שלו/ה (student_id = auth.uid()), אדמין הכל (is_admin()).
+-- triggers: mentoring_guard_student_edits (trades/tasks) ו-mentoring_guard_session_edits (sessions)
+--   מונעים מתלמיד/ה לשנות הערות/ציונים/אישורים/תוכן שיעור - רק סימון "ראיתי" וסטטוס open/done.
+-- storage: bucket פרטי 'mentoring' לצילומי גרף, נתיב <user_id>/..., עד 8MB, תמונות בלבד.
