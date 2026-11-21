@@ -96,6 +96,7 @@ export type MentoringTask = {
   session_id: string | null;
   trade_id: string | null;
   status: TaskStatus;
+  attachment_paths: string[];
   student_note: string | null;
   coach_note: string | null;
   seen_by_student: boolean;
