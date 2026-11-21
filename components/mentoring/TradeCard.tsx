@@ -61,24 +61,18 @@ function TradeMap({ t }: { t: MentoringTrade }) {
   );
 }
 
-export default function TradeCard({
-  trade, isNew, defaultOpen, onOpen, footer, showStudentName,
-}: {
-  trade: MentoringTrade;
-  isNew?: boolean;
-  defaultOpen?: boolean;
-  onOpen?: () => void;
-  footer?: ReactNode;
-  showStudentName?: string;
-}) {
-  const [open, setOpen] = useState(!!defaultOpen);
+// גוף העסקה המלא (מפה, משבצות, הערות, צילומים, משוב) - משמש גם בכרטיס הנפתח וגם בחלון העסקה ביומן
+export function tradeTone(trade: MentoringTrade) {
+  if (isOpenTrade(trade)) return 'open';
+  if (trade.pnl_usd == null) return 'flat';
+  return trade.pnl_usd > 0 ? 'win' : trade.pnl_usd < 0 ? 'loss' : 'flat';
+}
+
+export function TradeDetail({ trade, footer }: { trade: MentoringTrade; footer?: ReactNode }) {
   const [zoom, setZoom] = useState<string | null>(null);
-  const urls = useSignedUrls(trade.chart_paths || [], open);
+  const urls = useSignedUrls(trade.chart_paths || [], true);
   const verdict = trade.coach_verdict ? VERDICT_META[trade.coach_verdict] : null;
   const isOpen = isOpenTrade(trade);
-  const tone = isOpen ? 'open' : trade.pnl_usd == null ? 'flat' : trade.pnl_usd > 0 ? 'win' : trade.pnl_usd < 0 ? 'loss' : 'flat';
-  const symbol = trade.instrument === 'STOCK' ? 'מניה' : trade.instrument;
-
   const riskUsd = trade.entry_price != null && trade.stop_price != null
     ? Math.round(Math.abs(trade.entry_price - trade.stop_price) * (trade.contracts || 1) * pointValue(trade.instrument))
     : null;
@@ -86,46 +80,8 @@ export default function TradeCard({
     ? Math.round((Math.abs(trade.target_price - trade.entry_price) / Math.abs(trade.entry_price - trade.stop_price)) * 10) / 10
     : null;
 
-  function toggle() {
-    const next = !open;
-    setOpen(next);
-    if (next) onOpen?.();
-  }
-
   return (
-    <div className={`mt-trade tone-${tone}${isNew ? ' new' : ''}${open ? ' open' : ''}`}>
-      <button className="mt-trade-head" onClick={toggle} aria-expanded={open}>
-        <div className="mt-trade-id">
-          <div className="mt-trade-sym">
-            {symbol}
-            <span className={`mt-dir ${trade.direction}`}>{trade.direction === 'long' ? 'לונג' : 'שורט'}</span>
-            {trade.is_example && <span className="mt-tag-example">דוגמה</span>}
-            {isNew && <span className="mt-tag-new">חדש</span>}
-          </div>
-          <div className="mt-sub">
-            {STYLE_LABEL[trade.trade_style] || 'סווינג'} · {fmtDate(trade.traded_at)}
-            {trade.closed_at && trade.closed_at !== trade.traded_at ? ` – ${fmtDate(trade.closed_at)}` : ''}
-            {trade.setup ? ` · ${trade.setup}` : ''}
-            {showStudentName ? ` · ${showStudentName}` : ''}
-          </div>
-        </div>
-        <div className="mt-trade-result">
-          {isOpen ? (
-            <b className="mt-result-open">● פתוחה</b>
-          ) : (
-            <>
-              <b>{fmtUsd(trade.pnl_usd)}</b>
-              <span>{fmtR(trade.r_multiple)}</span>
-            </>
-          )}
-        </div>
-        <div className="mt-trade-status" title={verdict ? verdict.label : trade.reviewed_at ? 'נבדקה' : 'מחכה לניתוח'}>
-          {verdict ? verdict.icon : trade.reviewed_at ? '✓' : '⏳'}
-        </div>
-      </button>
-
-      {open && (
-        <div className="mt-trade-body">
+    <>
           <TradeMap t={trade} />
 
           <div className="mt-tiles">
@@ -195,13 +151,73 @@ export default function TradeCard({
           )}
 
           {footer}
-        </div>
-      )}
-
       {zoom && (
         <div className="mt-lightbox" onClick={() => setZoom(null)} role="dialog" aria-label="צילום גרף מוגדל">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={zoom} alt="צילום גרף" />
+        </div>
+      )}
+    </>
+  );
+}
+
+export default function TradeCard({
+  trade, isNew, defaultOpen, onOpen, footer, showStudentName,
+}: {
+  trade: MentoringTrade;
+  isNew?: boolean;
+  defaultOpen?: boolean;
+  onOpen?: () => void;
+  footer?: ReactNode;
+  showStudentName?: string;
+}) {
+  const [open, setOpen] = useState(!!defaultOpen);
+  const verdict = trade.coach_verdict ? VERDICT_META[trade.coach_verdict] : null;
+  const isOpen = isOpenTrade(trade);
+  const tone = tradeTone(trade);
+  const symbol = trade.instrument === 'STOCK' ? 'מניה' : trade.instrument;
+
+  function toggle() {
+    const next = !open;
+    setOpen(next);
+    if (next) onOpen?.();
+  }
+
+  return (
+    <div className={`mt-trade tone-${tone}${isNew ? ' new' : ''}${open ? ' open' : ''}`}>
+      <button className="mt-trade-head" onClick={toggle} aria-expanded={open}>
+        <div className="mt-trade-id">
+          <div className="mt-trade-sym">
+            {symbol}
+            <span className={`mt-dir ${trade.direction}`}>{trade.direction === 'long' ? 'לונג' : 'שורט'}</span>
+            {trade.is_example && <span className="mt-tag-example">דוגמה</span>}
+            {isNew && <span className="mt-tag-new">חדש</span>}
+          </div>
+          <div className="mt-sub">
+            {STYLE_LABEL[trade.trade_style] || 'סווינג'} · {fmtDate(trade.traded_at)}
+            {trade.closed_at && trade.closed_at !== trade.traded_at ? ` – ${fmtDate(trade.closed_at)}` : ''}
+            {trade.setup ? ` · ${trade.setup}` : ''}
+            {showStudentName ? ` · ${showStudentName}` : ''}
+          </div>
+        </div>
+        <div className="mt-trade-result">
+          {isOpen ? (
+            <b className="mt-result-open">● פתוחה</b>
+          ) : (
+            <>
+              <b>{fmtUsd(trade.pnl_usd)}</b>
+              <span>{fmtR(trade.r_multiple)}</span>
+            </>
+          )}
+        </div>
+        <div className="mt-trade-status" title={verdict ? verdict.label : trade.reviewed_at ? 'נבדקה' : 'מחכה לניתוח'}>
+          {verdict ? verdict.icon : trade.reviewed_at ? '✓' : '⏳'}
+        </div>
+      </button>
+
+      {open && (
+        <div className="mt-trade-body">
+          <TradeDetail trade={trade} footer={footer} />
         </div>
       )}
     </div>
