@@ -19,6 +19,8 @@ export default function AdminDashboard() {
   const [revenueTotal, setRevenueTotal] = useState(0);
   const [salesLeadsInProgress, setSalesLeadsInProgress] = useState(0);
   const [salesLeadsAttention, setSalesLeadsAttention] = useState(0);
+  // ליווי אישי - כמה עסקאות/משימות של תלמידים מחכות לניתוח
+  const [mentoringPending, setMentoringPending] = useState(0);
 
   const [sendingSummary, setSendingSummary] = useState(false);
   const [summaryMessage, setSummaryMessage] = useState('');
@@ -184,6 +186,12 @@ export default function AdminDashboard() {
     setRevenueTotal(revenueRes?.totalAmount || 0);
     setSalesLeadsInProgress(salesLeadsRes?.inProgress || 0);
     setSalesLeadsAttention((salesLeadsRes?.followupsOverdue || 0) + (salesLeadsRes?.followupsToday || 0));
+
+    const [mTrades, mTasks] = await Promise.all([
+      supabase.from('mentoring_trades').select('id', { count: 'exact', head: true }).is('reviewed_at', null),
+      supabase.from('mentoring_tasks').select('id', { count: 'exact', head: true }).eq('status', 'done'),
+    ]);
+    setMentoringPending((mTrades.count || 0) + (mTasks.count || 0));
   }
 
   async function handleLogout() {
@@ -247,6 +255,12 @@ export default function AdminDashboard() {
           <div className="at-icon">✅</div>
           <div className="at-title">מנויים מאושרים</div>
           <div className="at-count">{approvedCount} פעילים · ₪{revenueTotal.toLocaleString('he-IL')}</div>
+        </Link>
+
+        <Link href="/admin/mentoring" className={`admin-tile ${mentoringPending > 0 ? 'attention' : ''}`}>
+          <div className="at-icon">🎓</div>
+          <div className="at-title">ליווי אישי</div>
+          <div className="at-count">{mentoringPending > 0 ? `${mentoringPending} מחכים לניתוח` : 'יומנים, הקלטות ומשימות'}</div>
         </Link>
 
         <Link href="/admin/trading-plan" className={`admin-tile ${abandonedUnread > 0 ? 'attention' : ''}`}>

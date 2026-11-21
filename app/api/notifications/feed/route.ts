@@ -21,9 +21,12 @@ export async function GET(request: Request) {
   const deviceEndpoint = searchParams.get('endpoint');
 
   let isSubscriber = false;
+  // התראות אישיות (audience='user', למשל הערות בליווי האישי) מוצגות רק לבעל/ת החשבון עצמו/ה
+  let viewerId: string | null = null;
   if (token) {
     const { data: { user } } = await supabaseAdmin.auth.getUser(token);
     if (user) {
+      viewerId = user.id;
       const { data: profile } = await supabaseAdmin.from('profiles').select('role, subscription_status, subscription_paid_until').eq('id', user.id).maybeSingle();
       isSubscriber = hasActiveEntitlement(profile);
     }
@@ -32,16 +35,18 @@ export async function GET(request: Request) {
   if (!isSubscriber && deviceEndpoint) {
     const { data: sub } = await supabaseAdmin.from('push_subscriptions').select('user_id').eq('endpoint', deviceEndpoint).maybeSingle();
     if (sub?.user_id) {
+      viewerId = viewerId || sub.user_id;
       const { data: profile } = await supabaseAdmin.from('profiles').select('role, subscription_status, subscription_paid_until').eq('id', sub.user_id).maybeSingle();
       isSubscriber = hasActiveEntitlement(profile);
     }
   }
 
   const audiences = isSubscriber ? ['subscribers', 'everyone'] : ['non_subscribers', 'everyone'];
+  const audienceFilter = `audience.in.(${audiences.join(',')})${viewerId ? `,and(audience.eq.user,target_user_id.eq.${viewerId})` : ''}`;
   const { data, error } = await supabaseAdmin
     .from('notification_log')
     .select('id, kind, title, body, url, created_at')
-    .in('audience', audiences)
+    .or(audienceFilter)
     .order('created_at', { ascending: false })
     .limit(20);
 

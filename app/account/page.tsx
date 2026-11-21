@@ -24,6 +24,8 @@ export default function AccountPage() {
   const [checking, setChecking] = useState(true);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [journalCount, setJournalCount] = useState<number | null>(null);
+  // תלמיד/ת ליווי אישי - מקבל/ת כרטיס כניסה מודגש לאזור הליווי, באותו חשבון ובלי התחברות נוספת
+  const [mentoring, setMentoring] = useState<{ comments: number; sessions: number; tasks: number; returned: number } | null>(null);
 
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -49,6 +51,17 @@ export default function AccountPage() {
     setProfile(profileData || { full_name: null, email: user.email || null, role: 'subscriber' });
     setJournalCount(count ?? 0);
     setChecking(false);
+
+    const { data: mentoringRow } = await supabase.from('mentoring_students').select('user_id').eq('user_id', user.id).maybeSingle();
+    if (mentoringRow) {
+      const [c, s, t, r] = await Promise.all([
+        supabase.from('mentoring_trades').select('id', { count: 'exact', head: true }).eq('student_id', user.id).eq('seen_by_student', false),
+        supabase.from('mentoring_sessions').select('id', { count: 'exact', head: true }).eq('student_id', user.id).eq('seen_by_student', false),
+        supabase.from('mentoring_tasks').select('id', { count: 'exact', head: true }).eq('student_id', user.id).eq('status', 'open'),
+        supabase.from('mentoring_tasks').select('id', { count: 'exact', head: true }).eq('student_id', user.id).eq('status', 'returned'),
+      ]);
+      setMentoring({ comments: c.count ?? 0, sessions: s.count ?? 0, tasks: t.count ?? 0, returned: r.count ?? 0 });
+    }
   }
 
   async function handleSetPassword() {
@@ -116,6 +129,29 @@ export default function AccountPage() {
           </div>
         )}
       </div>
+
+      {mentoring && (
+        <Link href="/my-mentoring" className="mt-entry">
+          <div className="mt-entry-inner">
+            <div className="mt-entry-top">
+              <div>
+                <div className="mt-entry-kicker">✦ רק שלך</div>
+                <div className="mt-entry-title">הליווי האישי שלי</div>
+              </div>
+              <span className="mt-entry-arrow" aria-hidden>←</span>
+            </div>
+            <div className="mt-entry-chips">
+              {mentoring.comments > 0 && <span className="mt-chip hot"><span className="mt-dot" />{mentoring.comments === 1 ? 'הערה חדשה משירן' : `${mentoring.comments} הערות חדשות משירן`}</span>}
+              {mentoring.returned > 0 && <span className="mt-chip hot">משימה חזרה לתיקון</span>}
+              {mentoring.sessions > 0 && <span className="mt-chip warm">🎬 הקלטה חדשה</span>}
+              {mentoring.tasks > 0 && <span className="mt-chip">✅ {mentoring.tasks === 1 ? 'משימה פתוחה' : `${mentoring.tasks} משימות פתוחות`}</span>}
+              {!mentoring.comments && !mentoring.returned && !mentoring.sessions && !mentoring.tasks && (
+                <><span className="mt-chip">📓 יומן מסחר</span><span className="mt-chip">🎬 הקלטות השיעורים</span><span className="mt-chip">✅ משימות</span></>
+              )}
+            </div>
+          </div>
+        </Link>
+      )}
 
       <PushNotificationButton />
 
