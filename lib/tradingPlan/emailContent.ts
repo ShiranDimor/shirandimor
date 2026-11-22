@@ -269,7 +269,7 @@ export function buildAbandonedEmailHtml(r: AbandonedRow, reminderNumber: 1 | 2 =
         <p style="font-size:13.5px;color:#C9C4C9;line-height:1.7;">זה הרבה יותר פשוט ממה שזה נראה: כמה דקות כל כמה ימים, לא יותר. עם קצת עקביות, התיק יכול להיראות אחרי כמה חודשים לגמרי אחרת.</p>
         `}
 
-        <a href="https://pay.grow.link/ODUwNDc~e1145301cbce2cc9d1e0395611428e83-NDIxNTkxMw" style="display:block;text-align:center;background:transparent;color:#FF2D78;text-decoration:none;font-weight:700;padding:12px;border-radius:10px;border:2px solid #FF2D78;margin-top:10px;">
+        <a href="https://www.shirandimor.com/subscribe?source=email_plan" style="display:block;text-align:center;background:transparent;color:#FF2D78;text-decoration:none;font-weight:700;padding:12px;border-radius:10px;border:2px solid #FF2D78;margin-top:10px;">
           הצטרפות ל&quot;מדברים עסקאות&quot; ←
         </a>
 
