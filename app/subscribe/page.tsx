@@ -19,6 +19,26 @@ type EligibilityStatus = 'checking' | 'eligible' | 'already-active' | 'used-tria
 
 export default function SubscribePage() {
   const [status, setStatus] = useState<EligibilityStatus>('checking');
+  // שם+נייד אופציונליים לפני המעבר ל-Grow: 3 מכל 4 שלוחצים על ₪1 לא משלימים, ובלי פרטים אין
+  // לשירן למי לחזור. נשלח כליד למאנדיי דרך /api/lead (שמדלג על מי שכבר מנוי ומוסיף הערה לכרטיס
+  // קיים במקום לשכפל). keepalive כדי שהבקשה תצא גם כשהדף עובר ל-Grow באותו רגע
+  const [leadName, setLeadName] = useState('');
+  const [leadPhone, setLeadPhone] = useState('');
+
+  function onPayClick() {
+    trackFunnelEvent('payment_link_click');
+    const phone = leadPhone.replace(/\D/g, '');
+    if (phone.length >= 9) {
+      try {
+        fetch('/api/lead', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: leadName.trim() || 'ללא שם', phone: leadPhone.trim(), source: 'דף ₪1 - עבר לתשלום ב-Grow' }),
+          keepalive: true,
+        }).catch(() => {});
+      } catch { /* לא חוסמים את המעבר לתשלום */ }
+    }
+  }
 
   useEffect(() => {
     captureSourceFromUrl();
@@ -135,7 +155,17 @@ export default function SubscribePage() {
           <div><strong style={{ color: 'var(--text-primary)' }}>3.</strong> לא מתאים? הודעה אחת אליי בוואטסאפ או במייל לפני החיוב הבא, ולא תחויבו ב-₪400.</div>
         </div>
 
-        <a href={GROW_LINK} className="btn-primary" style={{ display: 'block', textAlign: 'center', textDecoration: 'none' }} onClick={() => trackFunnelEvent('payment_link_click')}>
+        <div style={{ marginBottom: '12px' }}>
+          <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '6px', textAlign: 'center' }}>
+            רוצים שאחזור אליכם אם משהו בתשלום לא מסתדר? <span style={{ color: 'var(--text-tertiary)' }}>(לא חובה)</span>
+          </div>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <input style={{ flex: 1, minWidth: 0, background: 'var(--bg-surface)', border: '1px solid var(--border-hairline-strong)', borderRadius: '8px', padding: '11px 12px', color: 'var(--text-primary)', fontFamily: 'var(--font-body)', fontSize: '16px' }} placeholder="שם" value={leadName} onChange={(e) => setLeadName(e.target.value)} autoComplete="name" />
+            <input style={{ flex: 1, minWidth: 0, background: 'var(--bg-surface)', border: '1px solid var(--border-hairline-strong)', borderRadius: '8px', padding: '11px 12px', color: 'var(--text-primary)', fontFamily: 'var(--font-body)', fontSize: '16px' }} placeholder="נייד" inputMode="tel" dir="ltr" value={leadPhone} onChange={(e) => setLeadPhone(e.target.value)} autoComplete="tel" />
+          </div>
+        </div>
+
+        <a href={GROW_LINK} className="btn-primary" style={{ display: 'block', textAlign: 'center', textDecoration: 'none' }} onClick={onPayClick}>
           התחלה - חודש ראשון ב-₪1 ←
         </a>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', marginTop: '10px' }}>
