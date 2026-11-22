@@ -9,18 +9,25 @@ import { hasFullAccessContact } from '@/lib/subscriberStatus';
 // מכשיר ונעצרת ל"ת, ר' מקרים אמיתיים - פאבל/ראובן/אסף, כולם הצטרפו בלי התראות פעילות עדיין)
 const FIRST_STEP_MIN_DELAY_MS = 30 * 60 * 1000;
 
+// שם קריא לאיש הקשר של שורת רצף, לתצוגה בהתראות אדמין - אם יש חשבון מחובר (user_id) דרך
+// הפרופיל, אחרת מנסה למצוא שם ששמור כבר על מנוי פוש קיים (טלפון/מייל), ובלי זה פשוט הטלפון/מייל
+async function resolveContactName(row: ProgressRow): Promise<string> {
+  let name = row.phone || row.email || 'איש קשר';
+  if (row.user_id) {
+    const { data } = await supabaseAdmin.from('profiles').select('full_name').eq('id', row.user_id).maybeSingle();
+    name = data?.full_name || name;
+  } else if (row.phone || row.email) {
+    const { data } = await supabaseAdmin.from('push_subscriptions').select('name').or([row.phone ? `phone.eq.${row.phone}` : '', row.email ? `email.eq.${row.email}` : ''].filter(Boolean).join(',')).limit(1).maybeSingle();
+    name = data?.name || name;
+  }
+  return name;
+}
+
 // מתריע לשירן כשרצף נעצר כי אין שום מכשיר תקף לשלוח אליו/ה - בלי זה מנוי/ה אמיתי/ת יכול/ה
 // לפספס לגמרי את כל תוכן הקליטה/טיפוח בשקט, בלי שום סימן לבעיה - ר' בקשה מפורשת של שירן
 async function alertPushInvalid(sequenceKey: SequenceKey, row: ProgressRow) {
   try {
-    let name = row.phone || row.email || 'איש קשר';
-    if (row.user_id) {
-      const { data } = await supabaseAdmin.from('profiles').select('full_name').eq('id', row.user_id).maybeSingle();
-      name = data?.full_name || name;
-    } else if (row.phone || row.email) {
-      const { data } = await supabaseAdmin.from('push_subscriptions').select('name').or([row.phone ? `phone.eq.${row.phone}` : '', row.email ? `email.eq.${row.email}` : ''].filter(Boolean).join(',')).limit(1).maybeSingle();
-      name = data?.name || name;
-    }
+    const name = await resolveContactName(row);
     const seqName = SEQUENCES[sequenceKey]?.name || sequenceKey;
     const { data: admins } = await supabaseAdmin.from('profiles').select('id').eq('role', 'admin');
     await sendPushToUsers((admins || []).map((a) => a.id), {
@@ -31,6 +38,51 @@ async function alertPushInvalid(sequenceKey: SequenceKey, row: ProgressRow) {
   } catch (e) {
     console.error('שגיאה בשליחת התראה על רצף שנעצר (push_invalid)', e);
   }
+}
+
+// מתריע לשירן כשרצף שנעצר על push_invalid התחדש לבד - בדיוק כדי שלא תצטרך לבדוק/לזכור
+// ולוודא בעצמה מי עדיין תקוע/ה: ר' בקשה מפורשת של שירן "אני פשוט רוצה שזה יעבוד"
+async function alertPushRecovered(sequenceKey: SequenceKey, row: ProgressRow) {
+  try {
+    const name = await resolveContactName(row);
+    const seqName = SEQUENCES[sequenceKey]?.name || sequenceKey;
+    const { data: admins } = await supabaseAdmin.from('profiles').select('id').eq('role', 'admin');
+    await sendPushToUsers((admins || []).map((a) => a.id), {
+      title: '✅ רצף התחדש לבד',
+      body: `${name} הפעיל/ה התראות - "${seqName}" ממשיך מאיפה שנעצר, בלי שצריך לעשות כלום`,
+      url: '/admin/sequences',
+    });
+  } catch (e) {
+    console.error('שגיאה בשליחת התראה על רצף שהתחדש (push recovered)', e);
+  }
+}
+
+// אותה בדיקה בדיוק כמו ההתאמה ב-sendPushToContact (lib/webPush.ts) - לפי user_id אם יש, אחרת
+// טלפון/מייל מנורמלים על שורות ליד בלי חשבון - אבל רק בודקת שיש מכשיר תקף, בלי לשלוח כלום.
+// חייבת להישאר זהה להתאמה שם, אחרת אפשר "לחדש" רצף למי שבפועל sendPushToContact לא ימצא בשבילו/ה שום מכשיר
+async function hasValidPushContact(contact: Contact): Promise<boolean> {
+  if (contact.userId) {
+    const { count } = await supabaseAdmin
+      .from('push_subscriptions')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', contact.userId)
+      .is('invalid_at', null);
+    return (count || 0) > 0;
+  }
+
+  const targetPhone = normalizePhone(contact.phone);
+  const targetEmail = normalizeEmail(contact.email);
+  if (!targetPhone && !targetEmail) return false;
+
+  const { data: rows } = await supabaseAdmin
+    .from('push_subscriptions')
+    .select('phone, email')
+    .is('user_id', null)
+    .is('invalid_at', null);
+
+  return (rows || []).some(
+    (r) => (!!targetPhone && normalizePhone(r.phone) === targetPhone) || (!!targetEmail && normalizeEmail(r.email) === targetEmail)
+  );
 }
 
 type Contact = { userId?: string | null; phone?: string | null; email?: string | null };
@@ -217,10 +269,36 @@ export async function resendStep(progressId: string, stepIndex: number): Promise
   return { ok: true };
 }
 
-// נקרא פעם ביום (cron) - עובר על כל איש קשר בכל רצף שעוד לא הסתיים/נעצר, ובודק אם הגיע הזמן
-// לצעד הבא שלו/ה. בלי זה הרצף היה חייב לרוץ ברקע כל הזמן - פעם ביום מספיק כי ימי ה-offset
-// הם תמיד הפרש של כמה ימים שלמים, לא שעות מדויקות
-export async function runSequenceStepsForToday(): Promise<{ processed: number }> {
+// בודק מי שנעצר על push_invalid וכבר כן הפעיל/ה התראות בינתיים (למשל הצטרף/ה בלי להפעיל,
+// וכמה ימים אחר כך כן הפעיל/ה) - ומחדש לו/ה את הרצף לבד, בלי שמישהו/י יצטרך לשים לב ולדחוף
+// ידנית. ר' בקשה מפורשת של שירן: "אני פשוט רוצה שזה יעבוד... שלא אצטרך לוודא". לא שולח כלום
+// בעצמו - רק מנקה stopped_at/stopped_reason, וה-processDueStep הרגיל (באותה הרצה, מיד אחר כך)
+// הוא זה ששולח בפועל את הצעד שפספס, עם כל הבדיקות הרגילות שלו
+async function resumeRecoveredPushInvalid(): Promise<{ resumed: number }> {
+  const { data: rows } = await supabaseAdmin
+    .from('sequence_progress')
+    .select('id, sequence_key, contact_key, user_id, phone, email, started_at, last_step_sent')
+    .eq('stopped_reason', 'push_invalid');
+
+  let resumed = 0;
+  for (const row of (rows || []) as ProgressRow[]) {
+    const contact: Contact = { userId: row.user_id, phone: row.phone, email: row.email };
+    const ok = await hasValidPushContact(contact).catch(() => false);
+    if (!ok) continue;
+
+    await supabaseAdmin.from('sequence_progress').update({ stopped_at: null, stopped_reason: null }).eq('id', row.id);
+    resumed++;
+    await alertPushRecovered(row.sequence_key as SequenceKey, row).catch((e) => console.error('שגיאה בהתראת החזרה לרצף', e));
+  }
+
+  return { resumed };
+}
+
+// נקרא כל 15 דקות (cron) - קודם מחדש מי שהתאוששו מ-push_invalid (ר' resumeRecoveredPushInvalid),
+// ואז עובר על כל איש קשר בכל רצף שעוד לא הסתיים/נעצר, ובודק אם הגיע הזמן לצעד הבא שלו/ה
+export async function runSequenceStepsForToday(): Promise<{ processed: number; resumed: number }> {
+  const { resumed } = await resumeRecoveredPushInvalid();
+
   let processed = 0;
 
   for (const sequenceKey of Object.keys(SEQUENCES) as SequenceKey[]) {
@@ -241,5 +319,5 @@ export async function runSequenceStepsForToday(): Promise<{ processed: number }>
     }
   }
 
-  return { processed };
+  return { processed, resumed };
 }
