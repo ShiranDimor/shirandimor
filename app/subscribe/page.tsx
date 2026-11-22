@@ -157,14 +157,14 @@ export default function SubscribePage() {
             אז מורידים אי-ודאות - מה קורה בדף הבא, מתי מקבלים גישה, ואיך יוצאים. לשמור מדויק מול
             מדיניות הביטול ב-lib/supportBot.ts (ביטול = הודעת וואטסאפ/מייל לשירן, לא כפתור) */}
         <div style={{ background: 'var(--bg-elevated, rgba(255,255,255,0.04))', borderRadius: '12px', padding: '12px 14px', marginBottom: '14px', fontSize: '12.5px', lineHeight: 1.7, color: 'var(--text-secondary)' }}>
-          <div><strong style={{ color: 'var(--text-primary)' }}>1.</strong> משאירים שם ונייד, כדי שאוכל לשלוח לכם עדכונים.</div>
+          <div><strong style={{ color: 'var(--text-primary)' }}>1.</strong> משאירים שם ונייד, כדי שתקבלו ממני עדכונים בזמן אמת.</div>
           <div><strong style={{ color: 'var(--text-primary)' }}>2.</strong> בדף הבא (Grow, מאובטח) משלמים ₪1, ומיד מגיע למייל קישור כניסה עם גישה מלאה.</div>
           <div><strong style={{ color: 'var(--text-primary)' }}>3.</strong> לא מתאים? הודעה אחת אליי בוואטסאפ או במייל לפני החיוב הבא, ולא תחויבו ב-₪400.</div>
         </div>
 
         <div style={{ marginBottom: '12px' }}>
-          <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '6px', textAlign: 'center' }}>
-            לאן לשלוח לך עדכונים?
+          <div style={{ fontSize: '13px', lineHeight: 1.6, color: 'var(--text-secondary)', marginBottom: '8px', textAlign: 'center' }}>
+            <strong style={{ color: 'var(--text-primary)' }}>לפני התשלום, הכי חשוב לי שתקבלו ממני עדכונים בזמן אמת.</strong><br />משאירים שם ונייד, ואני דואגת שזה יקרה.
           </div>
           <div style={{ display: 'flex', gap: '8px' }}>
             <input style={{ flex: 1, minWidth: 0, background: 'var(--bg-surface)', border: '1px solid var(--border-hairline-strong)', borderRadius: '8px', padding: '11px 12px', color: 'var(--text-primary)', fontFamily: 'var(--font-body)', fontSize: '16px' }} placeholder="שם" value={leadName} onChange={(e) => setLeadName(e.target.value)} autoComplete="name" />
