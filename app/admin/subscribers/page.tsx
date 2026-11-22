@@ -14,6 +14,7 @@ type ApprovedSub = {
   subscription_started_at: string | null;
   subscription_paid_until: string | null;
   hasPushSub: boolean;
+  terms_accepted_at: string | null;
 };
 
 type RevenueItem = { name: string | null; email: string | null; phone: string | null; joinDate: string | null; price: number };
@@ -366,7 +367,7 @@ export default function AdminSubscribersPage() {
   async function loadApprovedSubs() {
     const { data } = await supabase
       .from('profiles')
-      .select('id, email, phone, full_name, subscription_status, subscription_started_at, subscription_paid_until')
+      .select('id, email, phone, full_name, subscription_status, subscription_started_at, subscription_paid_until, terms_accepted_at')
       .eq('role', 'subscriber')
       .neq('subscription_status', 'cancelled') // מי שכבר בוטל סופית (role נשאר subscriber בכוונה, ר' lib/entitlement.ts) לא שייך לרשימת המנויים הפעילים
       .eq('excluded_from_subscriber_list', false) // מנויים שהוענקו ידנית מחוץ למאנדיי (למשל בני משפחה) - לא נספרים כאן כדי שהמספר יישאר תואם לקבוצת הסוחרים במאנדיי, אבל נשארים מנויים מלאים בכל מקום אחר
@@ -691,6 +692,12 @@ export default function AdminSubscribersPage() {
                   style={{ fontSize: '11px', color: sub.hasPushSub ? 'var(--profit)' : 'var(--loss)' }}
                 >
                   {sub.hasPushSub ? '🔔' : '🔕'}
+                </span>{' '}
+                <span
+                  title={sub.terms_accepted_at ? `אישר/ה את התקנון ב-${new Date(sub.terms_accepted_at).toLocaleDateString('he-IL')}` : 'עדיין לא אישר/ה את התקנון'}
+                  style={{ fontSize: '11px', color: sub.terms_accepted_at ? 'var(--profit)' : 'var(--orange)' }}
+                >
+                  {sub.terms_accepted_at ? '📝' : '⏳'}
                 </span>
               </div>
               <div className="email">{sub.email}</div>

@@ -8,6 +8,7 @@ import SiteDisclaimer from '@/components/SiteDisclaimer';
 import AccessibilityWidget from '@/components/AccessibilityWidget';
 import CookieConsent from '@/components/CookieConsent';
 import BottomNav from '@/components/BottomNav';
+import TermsGate from '@/components/TermsGate';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -34,6 +35,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <AccessibilityWidget />
         <CookieConsent />
         <BottomNav />
+        <TermsGate />
         <Analytics />
         <MetaPixel />
       </body>
