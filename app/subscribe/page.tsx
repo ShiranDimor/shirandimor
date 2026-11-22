@@ -19,25 +19,32 @@ type EligibilityStatus = 'checking' | 'eligible' | 'already-active' | 'used-tria
 
 export default function SubscribePage() {
   const [status, setStatus] = useState<EligibilityStatus>('checking');
-  // שם+נייד אופציונליים לפני המעבר ל-Grow: 3 מכל 4 שלוחצים על ₪1 לא משלימים, ובלי פרטים אין
-  // לשירן למי לחזור. נשלח כליד למאנדיי דרך /api/lead (שמדלג על מי שכבר מנוי ומוסיף הערה לכרטיס
-  // קיים במקום לשכפל). keepalive כדי שהבקשה תצא גם כשהדף עובר ל-Grow באותו רגע
+  // שלב 1 לפני התשלום: שם+נייד (חובה), ורק אחריו המעבר ל-Grow והאשראי, שהוא השלב המרתיע.
+  // 3 מכל 4 שלחצו על ₪1 לא השלימו תשלום (נוב׳ 2026), ובלי פרטים לא היה לשירן למי לחזור.
+  // הפרטים נשלחים כליד למאנדיי דרך /api/lead (מדלג על מי שכבר מנוי, ומוסיף הערה לכרטיס קיים
+  // במקום לשכפל) עם מקור "בדרך לתשלום" - ליד כזה שלא הפך למנוי = מישהו שנתקע בתשלום
   const [leadName, setLeadName] = useState('');
   const [leadPhone, setLeadPhone] = useState('');
+  const [sending, setSending] = useState(false);
+  const phoneOk = leadPhone.replace(/\D/g, '').length >= 9;
+  const canContinue = leadName.trim().length >= 2 && phoneOk && !sending;
 
-  function onPayClick() {
+  async function continueToPayment() {
+    if (!canContinue) return;
+    setSending(true);
     trackFunnelEvent('payment_link_click');
-    const phone = leadPhone.replace(/\D/g, '');
-    if (phone.length >= 9) {
-      try {
+    try {
+      await Promise.race([
         fetch('/api/lead', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: leadName.trim() || 'ללא שם', phone: leadPhone.trim(), source: 'דף ₪1 - עבר לתשלום ב-Grow' }),
+          body: JSON.stringify({ name: leadName.trim(), phone: leadPhone.trim(), source: 'דף ₪1 - בדרך לתשלום' }),
           keepalive: true,
-        }).catch(() => {});
-      } catch { /* לא חוסמים את המעבר לתשלום */ }
-    }
+        }),
+        new Promise((r) => setTimeout(r, 2500)), // לא מעכבים את המעבר לתשלום אם מאנדיי איטי
+      ]);
+    } catch { /* לא חוסמים את המעבר לתשלום */ }
+    window.location.href = GROW_LINK;
   }
 
   useEffect(() => {
@@ -150,14 +157,14 @@ export default function SubscribePage() {
             אז מורידים אי-ודאות - מה קורה בדף הבא, מתי מקבלים גישה, ואיך יוצאים. לשמור מדויק מול
             מדיניות הביטול ב-lib/supportBot.ts (ביטול = הודעת וואטסאפ/מייל לשירן, לא כפתור) */}
         <div style={{ background: 'var(--bg-elevated, rgba(255,255,255,0.04))', borderRadius: '12px', padding: '12px 14px', marginBottom: '14px', fontSize: '12.5px', lineHeight: 1.7, color: 'var(--text-secondary)' }}>
-          <div><strong style={{ color: 'var(--text-primary)' }}>1.</strong> בדף הבא (Grow, מאובטח) ממלאים פרטים ומשלמים ₪1.</div>
-          <div><strong style={{ color: 'var(--text-primary)' }}>2.</strong> מיד אחרי התשלום מגיע למייל קישור כניסה לאתר, עם גישה מלאה.</div>
+          <div><strong style={{ color: 'var(--text-primary)' }}>1.</strong> משאירים שם ונייד, כדי שאוכל לשלוח לכם עדכונים.</div>
+          <div><strong style={{ color: 'var(--text-primary)' }}>2.</strong> בדף הבא (Grow, מאובטח) משלמים ₪1, ומיד מגיע למייל קישור כניסה עם גישה מלאה.</div>
           <div><strong style={{ color: 'var(--text-primary)' }}>3.</strong> לא מתאים? הודעה אחת אליי בוואטסאפ או במייל לפני החיוב הבא, ולא תחויבו ב-₪400.</div>
         </div>
 
         <div style={{ marginBottom: '12px' }}>
           <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '6px', textAlign: 'center' }}>
-            רוצים שאחזור אליכם אם משהו בתשלום לא מסתדר? <span style={{ color: 'var(--text-tertiary)' }}>(לא חובה)</span>
+            לאן לשלוח לך עדכונים?
           </div>
           <div style={{ display: 'flex', gap: '8px' }}>
             <input style={{ flex: 1, minWidth: 0, background: 'var(--bg-surface)', border: '1px solid var(--border-hairline-strong)', borderRadius: '8px', padding: '11px 12px', color: 'var(--text-primary)', fontFamily: 'var(--font-body)', fontSize: '16px' }} placeholder="שם" value={leadName} onChange={(e) => setLeadName(e.target.value)} autoComplete="name" />
@@ -165,9 +172,9 @@ export default function SubscribePage() {
           </div>
         </div>
 
-        <a href={GROW_LINK} className="btn-primary" style={{ display: 'block', textAlign: 'center', textDecoration: 'none' }} onClick={onPayClick}>
-          התחלה - חודש ראשון ב-₪1 ←
-        </a>
+        <button type="button" className="btn-primary" style={{ display: 'block', width: '100%', textAlign: 'center', opacity: canContinue ? 1 : 0.5, cursor: canContinue ? 'pointer' : 'default' }} onClick={continueToPayment} disabled={!canContinue}>
+          {sending ? 'רגע...' : 'המשך לתשלום - חודש ראשון ב-₪1 ←'}
+        </button>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', marginTop: '10px' }}>
           <span style={{ fontSize: '10px' }}>🔒</span>
           <span style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>תשלום מאובטח ע"י Grow</span>
