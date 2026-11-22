@@ -95,7 +95,11 @@ export default function AdminSequencesPage() {
   if (!userEmail) return <div className="wrap"><p style={{ padding: '40px 0', textAlign: 'center' }}>צריך להתחבר קודם. <a href="/login" style={{ color: 'var(--teal)' }}>כניסה</a></p></div>;
   if (!isAdmin) return <div className="wrap"><p style={{ padding: '40px 0', textAlign: 'center' }}>אין הרשאת ניהול לחשבון המחובר ({userEmail})</p></div>;
 
-  const filtered = rows.filter((r) => filter === 'all' || (filter === 'active' ? r.active : !r.active));
+  // "הסתיים" (לא נעצר על בעיה - פשוט עבר את כל הצעדים בהצלחה) לא מוצג בשום תצוגה - אין שם שום
+  // דבר לבדוק או לטפל בו, זה רק רעש. השורה עצמה נשארת בדאטה-בייס (לא נמחקת) כי היא זו שמונעת
+  // מאותו איש קשר להתחיל את הרצף מחדש מההתחלה אם יפעיל/תפעיל התראות שוב בעתיד - ר' startSequence
+  const relevant = rows.filter((r) => r.stoppedReasonCode !== 'completed');
+  const filtered = relevant.filter((r) => filter === 'all' || (filter === 'active' ? r.active : !r.active));
 
   return (
     <div className="wrap">
