@@ -23,6 +23,8 @@ const ALLOWED_EVENTS = [
   'social_landing_view',
 ] as const;
 
+const BOT_UA = /facebookexternalhit|facebookcatalog|facebot|meta-external|\bbot\b|bot\/|crawler|spider|preview|headless|lighthouse|python-requests|curl\/|wget/i;
+
 // POST - רישום אירוע המרה בדאטהבייס (בנוסף ל-Vercel Analytics) - כדי שאפשר יהיה להציג
 // את משפך ההמרה ישירות באזור הניהול, בלי תלות בתוכנית של Vercel.
 // אם מצורפים phone/email ומזוהה מנוי פעיל - האירוע לא נספר, כדי שהמשפך ישקף תנועה
@@ -38,9 +40,27 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'אירוע לא מוכר' }, { status: 400 });
   }
 
+  // בוטים לא נספרים: פייסבוק/אינסטגרם שולחים סורק לבדוק כל לינק שמתפרסם (תצוגה מקדימה), והוא
+  // נרשם כצרור "כניסות מפוסט" 17-50 שניות אחרי שהפוסט עולה - זה ניפח את דוחות הכניסות מהסושיאל
+  const ua = request.headers.get('user-agent') || '';
+  if (!ua || BOT_UA.test(ua)) return NextResponse.json({ ok: true, skipped: 'bot' });
+
   if (phone || email) {
     const isSubscriber = (await isActiveSubscriber(phone, email)) || (await isContactInSubscribersGroupMonday(phone, email));
     if (isSubscriber) return NextResponse.json({ ok: true, skipped: true });
+  }
+
+  // סורקים שמריצים JavaScript עם דפדפן "רגיל" לא נתפסים לפי user-agent, אבל מגיעים בצרורות
+  // של 3-6 כניסות לאותו לינק באותן שניות. כניסה מהסושיאל עם אותו מקור תוך 5 שניות = אותו צרור
+  if (event === 'social_landing_view') {
+    const since = new Date(Date.now() - 5000).toISOString();
+    const q = supabaseAdmin
+      .from('funnel_events')
+      .select('id', { count: 'exact', head: true })
+      .eq('event_name', event)
+      .gte('created_at', since);
+    const { count } = await (source ? q.eq('source', source) : q.is('source', null));
+    if (count) return NextResponse.json({ ok: true, skipped: 'burst' });
   }
 
   try {

@@ -175,7 +175,13 @@ export default function SubscribePage() {
         <button type="button" className="btn-primary" style={{ display: 'block', width: '100%', textAlign: 'center', opacity: canContinue ? 1 : 0.5, cursor: canContinue ? 'pointer' : 'default' }} onClick={continueToPayment} disabled={!canContinue}>
           {sending ? 'רגע...' : 'המשך לתשלום - חודש ראשון ב-₪1 ←'}
         </button>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', marginTop: '10px' }}>
+        {/* שורת ביטחון צמודה לכפתור - ברגע ההחלטה, לא רק בפסקה למעלה. לשמור מדויק מול מדיניות הביטול */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '6px 14px', marginTop: '10px', fontSize: '12px', color: 'var(--text-secondary)' }}>
+          <span>✓ ללא התחייבות</span>
+          <span>✓ ביטול בהודעה אחת</span>
+          <span>✓ גישה מלאה מיד</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', marginTop: '8px' }}>
           <span style={{ fontSize: '10px' }}>🔒</span>
           <span style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>תשלום מאובטח ע"י Grow</span>
         </div>
