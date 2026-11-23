@@ -150,7 +150,7 @@ export default function SubscribePage() {
         </div>
 
         <p style={{ fontSize: '11.5px', color: 'var(--text-tertiary)', lineHeight: 1.6, textAlign: 'center', marginBottom: '14px' }}>
-          <strong style={{ color: 'var(--text-primary)' }}>למה ₪1, ולא ₪0 או ₪400 ישר?</strong> כי בחינם (₪0) נרשמים גם בוטים, גם מי שסוגר טאב אחרי חמש שניות, וגם אותו בחור מאיראן שבטוח רוצה ללמוד ניהול סיכונים. ₪1 מוכיח שיש בן אדם אמיתי מהצד השני, עם כרטיס אשראי אמיתי - ובתמורה מקבלים גישה מלאה וזהה לכל מנוי אחר, לחודש שלם, לא גרסה מצומצמת. בסוף החודש, אם לא בוטל - ממשיכים אוטומטית ב-₪400, בדיוק כמו כל מנוי חודשי רגיל. ביטול בהודעה אחת, בכל רגע לפני החיוב הבא - בלי שיחת מכירות, בלי שאלות, בלי דרמה.
+          <strong style={{ color: 'var(--text-primary)' }}>למה ₪1, ולא ₪0 או ₪400 ישר?</strong> כי בחינם (₪0) נרשמים גם בוטים, גם מי שסוגר טאב אחרי חמש שניות, וגם אותו בחור מאיראן שבטוח רוצה ללמוד ניהול סיכונים. ₪1 מוכיח שיש בן אדם אמיתי מהצד השני, עם כרטיס אשראי אמיתי - ובתמורה מקבלים <strong style={{ color: 'var(--profit)' }}>גישה מלאה וזהה לכל מנוי אחר, לחודש שלם</strong>, לא גרסה מצומצמת. בסוף החודש, אם לא בוטל - ממשיכים אוטומטית ב-₪400, בדיוק כמו כל מנוי חודשי רגיל. <strong style={{ color: 'var(--profit)' }}>ביטול בהודעה אחת, בכל רגע לפני החיוב הבא</strong> - בלי שיחת מכירות, בלי שאלות, בלי דרמה.
         </p>
 
         {/* שלושה צעדים קצרים ממש לפני הכפתור: 3 מכל 4 שלחצו על ₪1 לא השלימו תשלום (נוב׳ 2026),
@@ -158,8 +158,8 @@ export default function SubscribePage() {
             מדיניות הביטול ב-lib/supportBot.ts (ביטול = הודעת וואטסאפ/מייל לשירן, לא כפתור) */}
         <div style={{ background: 'var(--bg-elevated, rgba(255,255,255,0.04))', borderRadius: '12px', padding: '12px 14px', marginBottom: '14px', fontSize: '12.5px', lineHeight: 1.7, color: 'var(--text-secondary)' }}>
           <div><strong style={{ color: 'var(--text-primary)' }}>1.</strong> משאירים שם ונייד, כדי שתקבלו ממני עדכונים בזמן אמת.</div>
-          <div><strong style={{ color: 'var(--text-primary)' }}>2.</strong> בדף הבא (Grow, מאובטח) משלמים ₪1, ומיד מגיע למייל קישור כניסה עם גישה מלאה.</div>
-          <div><strong style={{ color: 'var(--text-primary)' }}>3.</strong> לא מתאים? הודעה אחת אליי בוואטסאפ או במייל לפני החיוב הבא, ולא תחויבו ב-₪400.</div>
+          <div><strong style={{ color: 'var(--text-primary)' }}>2.</strong> בדף הבא (Grow, מאובטח) משלמים <strong style={{ color: 'var(--profit)' }}>₪1</strong>, ומיד מגיע למייל קישור כניסה עם <strong style={{ color: 'var(--profit)' }}>גישה מלאה</strong>.</div>
+          <div><strong style={{ color: 'var(--text-primary)' }}>3.</strong> לא מתאים? הודעה אחת אליי בוואטסאפ או במייל לפני החיוב הבא, <strong style={{ color: 'var(--profit)' }}>ולא תחויבו ב-₪400</strong>.</div>
         </div>
 
         <div style={{ marginBottom: '12px' }}>
@@ -176,7 +176,7 @@ export default function SubscribePage() {
           {sending ? 'רגע...' : 'המשך לתשלום - חודש ראשון ב-₪1 ←'}
         </button>
         {/* שורת ביטחון צמודה לכפתור - ברגע ההחלטה, לא רק בפסקה למעלה. לשמור מדויק מול מדיניות הביטול */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '6px 14px', marginTop: '10px', fontSize: '12px', color: 'var(--text-secondary)' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '6px 14px', marginTop: '12px', fontSize: '13px', fontWeight: 700, color: 'var(--profit)' }}>
           <span>✓ ללא התחייבות</span>
           <span>✓ ביטול בהודעה אחת</span>
           <span>✓ גישה מלאה מיד</span>
