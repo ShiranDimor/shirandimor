@@ -62,7 +62,7 @@ export default function SubscribePage() {
 
       const { data: profile } = await supabase
         .from('profiles')
-        .select('role, subscription_status, subscription_paid_until, trial_price_used')
+        .select('role, subscription_status, subscription_paid_until, trial_price_used, full_name, phone, email')
         .eq('id', user.id)
         .maybeSingle();
 
@@ -70,6 +70,19 @@ export default function SubscribePage() {
         setStatus('already-active');
       } else if (profile?.trial_price_used) {
         setStatus('used-trial');
+        // ליד אוטומטי במאנדיי - שירן ביקשה מפורשות לדעת כשמישהו שכבר ניצל/ה את ה-1 ש"ח חוזר/ת
+        // לאתר, כדי שתוכל לחזור אליו/ה. /api/lead מוסיף הערה לכרטיס הקיים שלו/ה (לא כפול) -
+        // לא שולח שם/נייד חדשים (כבר ידועים מהפרופיל), רק מתעד את החזרה הזו במקור ברור
+        fetch('/api/lead', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: profile.full_name || user.email,
+            phone: profile.phone || '',
+            email: profile.email || user.email || '',
+            source: 'חזר/ה ל-/subscribe אחרי שכבר ניצל/ה בעבר את הטבת 1 ש״ח',
+          }),
+        }).catch(() => {});
       } else {
         setStatus('eligible');
       }
