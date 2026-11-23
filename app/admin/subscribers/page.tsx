@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import ClearableInput from '@/components/ClearableInput';
+import { hasActiveEntitlement } from '@/lib/entitlement';
 
 type ApprovedSub = {
   id: string;
@@ -19,6 +20,17 @@ type ApprovedSub = {
 };
 
 type RevenueItem = { name: string | null; email: string | null; phone: string | null; joinDate: string | null; price: number };
+
+// מי שהתחיל/ה בהטבת "חודש ראשון ב-1 ש״ח" אבל כרגע אין לו/ה גישה פעילה - ביטל/ה לפני
+// שהחיוב ל-400 ש"ח בכלל קרה (לא רק מי שביטל/ה אחרי חודשים כמנוי/ה משלם/ת רגיל/ה)
+type ChurnedTrial = {
+  id: string;
+  full_name: string | null;
+  email: string | null;
+  phone: string | null;
+  subscription_started_at: string | null;
+  subscription_cancelled_at: string | null;
+};
 
 function normalizePhoneLocal(raw: string | null | undefined): string {
   return (raw || '').replace(/\D/g, '').slice(-9);
@@ -79,6 +91,24 @@ export default function AdminSubscribersPage() {
   const [revenueItems, setRevenueItems] = useState<RevenueItem[]>([]);
   const [revenueMissingCost, setRevenueMissingCost] = useState<string[]>([]);
   const [revenueError, setRevenueError] = useState('');
+
+  const [churnedTrials, setChurnedTrials] = useState<ChurnedTrial[]>([]);
+  const [churnedTrialsLoading, setChurnedTrialsLoading] = useState(false);
+
+  // מי שניצל/ה את הטבת ה-1 ש"ח (trial_price_used) אבל אין לו/ה גישה פעילה כרגע - ביטל/ה
+  // לפני שהחיוב החודשי הרגיל (400 ש"ח) בכלל קרה. שירן ביקשה מפורשות לראות את זה במקום
+  // לעקוב ידנית אחרי כל תזכורת-יומן בנפרד
+  async function loadChurnedTrials() {
+    setChurnedTrialsLoading(true);
+    const { data } = await supabase
+      .from('profiles')
+      .select('id, full_name, email, phone, role, subscription_status, subscription_paid_until, subscription_started_at, subscription_cancelled_at')
+      .eq('trial_price_used', true)
+      .order('subscription_started_at', { ascending: false });
+
+    setChurnedTrials((data || []).filter((p) => !hasActiveEntitlement(p)));
+    setChurnedTrialsLoading(false);
+  }
 
   function formatMonthLabel(month: string) {
     if (!month) return '';
@@ -410,6 +440,7 @@ export default function AdminSubscribersPage() {
     if (profile?.role === 'admin') {
       loadApprovedSubs();
       loadRevenue();
+      loadChurnedTrials();
     }
   }
 
@@ -523,6 +554,31 @@ export default function AdminSubscribersPage() {
           <p>⚠️ בלי "עלות חודשית" שמורה עדיין (נספרו כ-400 בינתיים): {revenueMissingCost.join(', ')}</p>
         </div>
       )}
+
+      <details className="section-collapse" style={{ marginBottom: '20px' }}>
+        <summary>
+          <div><h2>🚪 התחילו ב-1 ש״ח ולא המשיכו</h2></div>
+          <div className="summary-right">
+            <span className="count">{churnedTrials.length}</span>
+            <span className="collapse-chevron">▾</span>
+          </div>
+        </summary>
+        <p style={{ fontSize: '12px', color: 'var(--text-tertiary)', margin: '10px 0' }}>
+          מי שהצטרף/ה בהטבת החודש הראשון (1 ש״ח) וביטל/ה לפני שהחיוב הרגיל ל-400 ש״ח קרה.
+        </p>
+        {churnedTrialsLoading && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>טוענים...</p>}
+        {!churnedTrialsLoading && churnedTrials.length === 0 && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>אין כרגע אף אחד/ת כזה/כזו</p>}
+        {!churnedTrialsLoading && churnedTrials.map((p) => (
+          <div key={p.id} style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-hairline)', borderRadius: '10px', padding: '10px 12px', marginBottom: '8px', fontSize: '12.5px' }}>
+            <div style={{ fontWeight: 700 }}>{p.full_name || 'ללא שם'}</div>
+            <div style={{ color: 'var(--text-tertiary)', marginTop: '2px' }}>{p.email}{p.phone ? ` · ${p.phone}` : ''}</div>
+            <div style={{ color: 'var(--text-tertiary)', marginTop: '2px' }}>
+              הצטרף/ה: {p.subscription_started_at ? new Date(p.subscription_started_at).toLocaleDateString('he-IL') : '—'}
+              {p.subscription_cancelled_at && ` · ביטל/ה: ${new Date(p.subscription_cancelled_at).toLocaleDateString('he-IL')}`}
+            </div>
+          </div>
+        ))}
+      </details>
 
       <div className="section-label">
         <h2>מנויים מאושרים</h2>
