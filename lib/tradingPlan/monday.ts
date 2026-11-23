@@ -1172,7 +1172,7 @@ export async function auditWhatsappGroupPush(
     const d: any = cursor
       ? await mondayRequest(token, `query ($c: String!, $ids: [String!]) { next_items_page(limit: 200, cursor: $c) { cursor items { id name column_values(ids: $ids) { id text } } } }`, { c: cursor, ids })
       : await mondayRequest(token, `query ($b: ID!, $g: String!, $ids: [String!]) { boards(ids: [$b]) { groups(ids: [$g]) { items_page(limit: 200) { cursor items { id name column_values(ids: $ids) { id text } } } } } }`, { b: boardId, g: group.id, ids });
-    const page = cursor ? d.data.next_items_page : d.data.boards[0].groups[0].items_page;
+    const page: any = cursor ? d.data.next_items_page : d.data.boards[0].groups[0].items_page;
     for (const it of page.items as { id: string; name: string; column_values: { id: string; text: string | null }[] }[]) {
       const v = (id?: string) => (id ? it.column_values.find((c) => c.id === id)?.text || '' : '');
       items.push({ id: it.id, name: it.name, phone: v(phoneColumnId) ? normalizePhone(v(phoneColumnId)) : '', email: v(emailColumnId).trim().toLowerCase(), status: v(statusColumnId) });
