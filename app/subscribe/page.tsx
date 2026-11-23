@@ -31,22 +31,52 @@ export default function SubscribePage() {
   const [sending, setSending] = useState(false);
   const phoneOk = leadPhone.replace(/\D/g, '').length >= 9;
   const canContinue = leadName.trim().length >= 2 && phoneOk && !sending;
+  // מי שלא מחובר/ת (אי אפשר לבדוק לפי session, ר' checkEligibility) אבל הנייד שהקליד/ה כאן
+  // כבר ניצל/ה בעבר את הטבת ה-1 ש"ח - לא שולחים אותו/ה ל-Grow בשקט (יכול להיראות כמו תקלה/
+  // הונאה כשמצפים ל-1 ש"ח ופתאום רואים 400), מציגים הודעה קצרה וכפתור ברור לתשלום הרגיל
+  const [showRepeatNotice, setShowRepeatNotice] = useState(false);
 
   async function continueToPayment() {
     if (!canContinue) return;
     setSending(true);
     trackFunnelEvent('payment_link_click');
+
+    let usedBefore = false;
+    try {
+      const res = await Promise.race([
+        fetch('/api/subscribe/check-trial-used', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phone: leadPhone.trim() }),
+        }),
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error('timeout')), 2500)),
+      ]);
+      const data = await res.json();
+      usedBefore = Boolean(data.usedTrialBefore);
+    } catch { /* ספק רשת/תקלה - לא חוסמים תשלום בגללה, ממשיכים כרגיל ל-1 ש"ח */ }
+
     try {
       await Promise.race([
         fetch('/api/lead', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: leadName.trim(), phone: leadPhone.trim(), source: 'דף ₪1 - בדרך לתשלום' }),
+          body: JSON.stringify({
+            name: leadName.trim(),
+            phone: leadPhone.trim(),
+            source: usedBefore ? 'דף ₪1 - זוהה/תה כמי שכבר ניצל/ה את ההטבה בעבר' : 'דף ₪1 - בדרך לתשלום',
+          }),
           keepalive: true,
         }),
         new Promise((r) => setTimeout(r, 2500)), // לא מעכבים את המעבר לתשלום אם מאנדיי איטי
       ]);
     } catch { /* לא חוסמים את המעבר לתשלום */ }
+
+    if (usedBefore) {
+      setSending(false);
+      setShowRepeatNotice(true);
+      return;
+    }
+
     window.location.href = GROW_LINK;
   }
 
@@ -195,9 +225,24 @@ export default function SubscribePage() {
           </div>
         </div>
 
-        <button type="button" className="btn-primary" style={{ display: 'block', width: '100%', textAlign: 'center', opacity: canContinue ? 1 : 0.5, cursor: canContinue ? 'pointer' : 'default' }} onClick={continueToPayment} disabled={!canContinue}>
-          {sending ? 'רגע...' : 'המשך לתשלום - חודש ראשון ב-₪1 ←'}
-        </button>
+        {showRepeatNotice ? (
+          <div style={{ background: 'var(--bg-elevated, rgba(255,255,255,0.04))', borderRadius: '12px', padding: '14px', textAlign: 'center' }}>
+            <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: '12px' }}>
+              רגע - נראה שכבר הייתם איתנו בעבר וניצלתם את הטבת החודש הראשון. זו לא טעות - פשוט ממשיכים ישר לתשלום הרגיל.
+            </p>
+            <a
+              href={GROW_LINK_FULL_PRICE}
+              className="btn-primary"
+              style={{ display: 'block', textAlign: 'center', textDecoration: 'none' }}
+            >
+              להמשך לתשלום - ₪400 לחודש ←
+            </a>
+          </div>
+        ) : (
+          <button type="button" className="btn-primary" style={{ display: 'block', width: '100%', textAlign: 'center', opacity: canContinue ? 1 : 0.5, cursor: canContinue ? 'pointer' : 'default' }} onClick={continueToPayment} disabled={!canContinue}>
+            {sending ? 'רגע...' : 'המשך לתשלום - חודש ראשון ב-₪1 ←'}
+          </button>
+        )}
         {/* שורת ביטחון צמודה לכפתור - ברגע ההחלטה, לא רק בפסקה למעלה. לשמור מדויק מול מדיניות הביטול */}
         <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '6px 14px', marginTop: '12px', fontSize: '13px', fontWeight: 700, color: 'var(--profit)' }}>
           <span>✓ ללא התחייבות</span>
