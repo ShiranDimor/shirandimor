@@ -86,20 +86,29 @@ export async function syncMetaLeadsToMonday(dryRun = false) {
 
   // כל הכרטיסים בלוח עם הערכים הנוכחיים של העמודות הרלוונטיות
   const wanted = [phoneCol, knowledgeCol, formNameCol, platformCol, campaignCol].filter(Boolean) as string[];
-  const items: { id: string; values: Record<string, string> }[] = [];
+  const items: { id: string; group: string; created: string; values: Record<string, string> }[] = [];
   let cursor: string | null = null;
   do {
     const d: any = await monday(
-      `query ($b: ID!, $c: String, $ids: [String!]) { boards(ids: [$b]) { items_page(limit: 200, cursor: $c) { cursor items { id column_values(ids: $ids) { id text } } } } }`,
+      `query ($b: ID!, $c: String, $ids: [String!]) { boards(ids: [$b]) { items_page(limit: 200, cursor: $c) { cursor items { id created_at group { title } column_values(ids: $ids) { id text } } } } }`,
       { b: BOARD_ID, c: cursor, ids: wanted }
     );
     const page = d.boards[0].items_page;
     for (const it of page.items) {
-      items.push({ id: it.id, values: Object.fromEntries(it.column_values.map((v: { id: string; text: string | null }) => [v.id, v.text || ''])) });
+      items.push({ id: it.id, group: it.group?.title || '', created: it.created_at || '', values: Object.fromEntries(it.column_values.map((v: { id: string; text: string | null }) => [v.id, v.text || ''])) });
     }
     cursor = page.cursor;
   } while (cursor);
-  const byPhone = new Map(items.filter((i) => phoneCol && i.values[phoneCol]).map((i) => [norm(i.values[phoneCol!]), i]));
+  // אותו נייד יכול להופיע בכמה קבוצות (לידים כפולים, לא רלוונטיים, הסר...). משלימים רק את הכרטיס
+  // הפעיל: עדיפות לקבוצת "לידים חדשים", ואחריה לכרטיס שנוצר אחרון
+  const rank = (i: { group: string; created: string }) => (i.group.trim() === 'לידים חדשים' ? '1' : '0') + i.created;
+  const byPhone = new Map<string, (typeof items)[number]>();
+  for (const i of items) {
+    if (!phoneCol || !i.values[phoneCol]) continue;
+    const k = norm(i.values[phoneCol]);
+    const cur = byPhone.get(k);
+    if (!cur || rank(i) > rank(cur)) byPhone.set(k, i);
+  }
 
   const updates: { itemId: string; changes: Record<string, string> }[] = [];
   let notInMonday = 0;
@@ -122,7 +131,9 @@ export async function syncMetaLeadsToMonday(dryRun = false) {
     setIfEmpty(formNameCol, form.name);
     setIfEmpty(platformCol, PLATFORM_LABEL[lead.platform || ''] || lead.platform);
     // שם המודעה = איזה סרטון הביא את הליד. מחליפים רק את הערך הכללי שהאוטומציה של מאנדיי שמה
-    if (campaignCol && lead.ad_name && (!item.values[campaignCol] || item.values[campaignCol] === GENERIC_CAMPAIGN_VALUE)) {
+    const curCampaign = campaignCol ? item.values[campaignCol] || '' : '';
+    const isGenericCampaign = !curCampaign || curCampaign === GENERIC_CAMPAIGN_VALUE || (curCampaign.includes('סרטונים') && curCampaign.includes('12.2026') && !curCampaign.includes('·'));
+    if (campaignCol && lead.ad_name && isGenericCampaign) {
       changes[campaignCol] = `${GENERIC_CAMPAIGN_VALUE} · ${lead.ad_name}`;
     }
     if (Object.keys(changes).length) updates.push({ itemId: item.id, changes });
