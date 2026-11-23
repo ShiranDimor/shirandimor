@@ -1146,3 +1146,63 @@ export async function moveContactToSubscribersGroupOnMonday(params: { name?: str
     return { ok: false, matched: false, error: e instanceof Error ? e.message : 'unknown_error' };
   }
 }
+
+// ביקורת על קבוצת "בווטסאפ אבל לא מנוי": מי מהם הפעיל בפועל התראות באתר (מינוי פוש תקין, לא
+// מסומן invalid). למי שכן - מסמנים "הפעיל התראות ללא מנוי" בסטטוס טיפול (ו"הוריד את האתר"),
+// כמו שקורה אוטומטית למי שמפעיל התראות. לפי שירן: מי שבקבוצת הווטסאפ ולא הפעיל התראות לא
+// מקבל את העדכונים בזמן אמת - אז חשוב לראות את הפער. dryRun = רק מחזיר את הספירה והרשימות
+export async function auditWhatsappGroupPush(
+  pushContacts: { phone: string | null; email: string | null }[],
+  dryRun: boolean
+) {
+  const token = process.env.MONDAY_API_TOKEN;
+  const boardId = process.env.MONDAY_BOARD_ID;
+  if (!token || !boardId) throw new Error('MONDAY_API_TOKEN / MONDAY_BOARD_ID לא מוגדרים');
+  const { allGroups, phoneColumnId, emailColumnId, statusColumnId, pushActivatedColumnId } = await getBoardSchema(token, boardId);
+  const group = allGroups.find((g) => g.title.includes('אבל לא מנוי'));
+  if (!group) throw new Error('לא נמצאה הקבוצה "בווטסאפ אבל לא מנוי"');
+
+  const phones = new Set(pushContacts.map((c) => (c.phone ? normalizePhone(c.phone) : '')).filter((p) => p.length === 9));
+  const emails = new Set(pushContacts.map((c) => (c.email || '').trim().toLowerCase()).filter((e) => e.includes('@')));
+
+  const ids = [phoneColumnId, emailColumnId, statusColumnId].filter(Boolean) as string[];
+  const items: { id: string; name: string; phone: string; email: string; status: string }[] = [];
+  let cursor: string | null = null;
+  do {
+    const d: any = cursor
+      ? await mondayRequest(token, `query ($c: String!, $ids: [String!]) { next_items_page(limit: 200, cursor: $c) { cursor items { id name column_values(ids: $ids) { id text } } } }`, { c: cursor, ids })
+      : await mondayRequest(token, `query ($b: ID!, $g: String!, $ids: [String!]) { boards(ids: [$b]) { groups(ids: [$g]) { items_page(limit: 200) { cursor items { id name column_values(ids: $ids) { id text } } } } } }`, { b: boardId, g: group.id, ids });
+    const page = cursor ? d.data.next_items_page : d.data.boards[0].groups[0].items_page;
+    for (const it of page.items as { id: string; name: string; column_values: { id: string; text: string | null }[] }[]) {
+      const v = (id?: string) => (id ? it.column_values.find((c) => c.id === id)?.text || '' : '');
+      items.push({ id: it.id, name: it.name, phone: v(phoneColumnId) ? normalizePhone(v(phoneColumnId)) : '', email: v(emailColumnId).trim().toLowerCase(), status: v(statusColumnId) });
+    }
+    cursor = page.cursor;
+  } while (cursor);
+
+  const activated = items.filter((i) => (i.phone && phones.has(i.phone)) || (i.email && emails.has(i.email)));
+  const notActivated = items.filter((i) => !activated.includes(i));
+  const toUpdate = activated.filter((i) => i.status !== PUSH_ACTIVATED_NO_SUB_STATUS_LABEL);
+
+  if (!dryRun) {
+    for (const i of toUpdate) {
+      const cv: Record<string, unknown> = {};
+      if (statusColumnId) cv[statusColumnId] = { label: PUSH_ACTIVATED_NO_SUB_STATUS_LABEL };
+      if (pushActivatedColumnId) cv[pushActivatedColumnId] = { label: APP_DOWNLOAD_SOURCE_VALUE };
+      await mondayRequest(token, `mutation ($b: ID!, $i: ID!, $v: JSON!) { change_multiple_column_values(board_id: $b, item_id: $i, column_values: $v, create_labels_if_missing: true) { id } }`, { b: boardId, i: i.id, v: JSON.stringify(cv) });
+    }
+  }
+
+  return {
+    group: group.title,
+    total: items.length,
+    activated: activated.length,
+    notActivated: notActivated.length,
+    updated: dryRun ? 0 : toUpdate.length,
+    wouldUpdate: toUpdate.length,
+    notActivatedNoContact: notActivated.filter((i) => !i.phone && !i.email).length,
+    activatedNames: activated.map((i) => i.name),
+    notActivatedNames: notActivated.map((i) => i.name),
+    dryRun,
+  };
+}
