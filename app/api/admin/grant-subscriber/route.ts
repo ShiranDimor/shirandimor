@@ -43,10 +43,11 @@ export async function POST(request: Request) {
   }
 
   try {
-    const { userId, newlyActivated } = await ensureActiveSubscriberAccount(email, phone, name, undefined, Boolean(payment?.isFirstMonthPrice), payment?.amount);
+    const { userId, newlyActivated, repeatTrialAbuse } = await ensureActiveSubscriberAccount(email, phone, name, undefined, Boolean(payment?.isFirstMonthPrice), payment?.amount);
 
-    // רק מי שבהטבת חודש ראשון ב-1 ש"ח מקבל/ת את רצף הקליטה - מנוי/ה ותיק/ה (400 ש"ח) לא צריך/ה
-    if (newlyActivated && payment?.isFirstMonthPrice) {
+    // רק מי שבהטבת חודש ראשון ב-1 ש"ח מקבל/ת את רצף הקליטה - מנוי/ה ותיק/ה (400 ש"ח) לא צריך/ה,
+    // וגם לא מי שכבר ניצל/ה את ההטבה בעבר (repeatTrialAbuse) - ר' lib/subscriberStatus.ts
+    if (newlyActivated && payment?.isFirstMonthPrice && !repeatTrialAbuse) {
       await startSequence('welcome-subscriber', { userId }).catch((e) => console.error('grant-subscriber: נכשלה התחלת רצף הקליטה', e));
       await createTrialBillingReminders(name, new Date()).catch((e) => console.error('grant-subscriber: נכשלה יצירת תזכורות חיוב ביומן', e));
     }

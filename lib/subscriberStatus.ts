@@ -1,5 +1,6 @@
 import { supabaseAdmin } from '@/lib/instantLogin';
 import { entitlementOrFilter } from '@/lib/entitlement';
+import { sendPushToUsers } from '@/lib/webPush';
 
 function normalizePhone(raw: string | null | undefined): string {
   if (!raw) return '';
@@ -87,10 +88,30 @@ export async function findCompletedTradingPlanIdByContact(phone: string | null |
 // משותף בין אימות מנוי ידני (verify-membership), סנכרון תשלום מ-Grow, וסנכרון מנויים ממאנדיי.
 // startedAt אופציונלי - מאפשר להעביר את תאריך ההצטרפות האמיתי (למשל ממאנדיי) במקום "עכשיו",
 // כי תאריך ההצטרפות קובע את יום החיוב החודשי וחשוב לדיוק בחישובים כמו צפי הכנסה
+// מתריע לשירן שמישהו/י שכבר ניצל/ה בעבר את הטבת "חודש ראשון ב-1 ש"ח" (trial_price_used) שילם/ה
+// 1 ש"ח שוב - אי אפשר לחסום את התשלום עצמו (קורה ב-Grow, מחוץ למערכת שלנו), רק לסמן ולהתריע
+// כדי שתטפל ידנית (למשל לתקן את המחיר ב-Grow או ליצור קשר)
+async function alertRepeatTrialAbuse(userId: string, fullName: string): Promise<void> {
+  try {
+    const { data: admins } = await supabaseAdmin.from('profiles').select('id').eq('role', 'admin');
+    await sendPushToUsers((admins || []).map((a) => a.id), {
+      title: '⚠️ ניסיון ניצול חוזר של הטבת 1 ש״ח',
+      body: `${fullName} כבר ניצל/ה את ההטבה בעבר ועכשיו שילם/ה 1 ש"ח שוב - צריך לבדוק ידנית`,
+      url: `/admin/subscribers/${userId}`,
+    });
+  } catch (e) {
+    console.error('שגיאה בשליחת התראה על ניצול חוזר של הטבת 1 ש"ח', e);
+  }
+}
+
 // isFirstMonthPrice - true כשהתשלום שהפעיל את הקריאה הזו הוא בדיוק מחיר החודש הראשון (1 ש"ח).
 // מסמן trial_price_used=true על הפרופיל לצמיתות (לא מתאפס גם אם המנוי בוטל אח"כ) - כדי
-// שאפשר יהיה בעתיד לזהות מי כבר ניצל את המחיר הסמלי ולא להציע לו אותו שוב ב-/subscribe
-export async function ensureActiveSubscriberAccount(email: string, phone: string, fullName: string, startedAt?: string, isFirstMonthPrice = false, monthlyPrice?: number | null): Promise<{ userId: string; newlyActivated: boolean }> {
+// שאפשר יהיה בעתיד לזהות מי כבר ניצל את המחיר הסמלי ולא להציע לו אותו שוב ב-/subscribe.
+// repeatTrialAbuse בתוצאה - true כש-trial_price_used כבר היה true *לפני* התשלום הזה וגם
+// התשלום הזה עצמו הוא 1 ש"ח - כלומר ניצול חוזר, לא הטבה ראשונה אמיתית. שירן ביקשה מפורשות
+// שנעקוב אחרי זה (ר' profiles.trial_abuse_detected_at) - הקריאה/ות למקום הזה אחראיות לדלג
+// על רצף הקליטה/תזכורות היומן כשזה true, לא רק ensureActiveSubscriberAccount עצמו
+export async function ensureActiveSubscriberAccount(email: string, phone: string, fullName: string, startedAt?: string, isFirstMonthPrice = false, monthlyPrice?: number | null): Promise<{ userId: string; newlyActivated: boolean; repeatTrialAbuse: boolean }> {
   const subscriptionStartedAt = startedAt || new Date().toISOString();
   const normalizedPhoneForPlaceholder = normalizePhone(phone);
   // Grow לא תמיד מעביר מייל בתשלום (למשל אם טופס הסליקה אסף רק טלפון) - בלי מייל אין אפשרות
@@ -103,14 +124,14 @@ export async function ensureActiveSubscriberAccount(email: string, phone: string
   // טלפון קודם, מייל רק כגיבוי: לכל אדם יש נייד אחד ויחיד, אבל אותו אדם יכול להופיע עם כמה
   // מיילים שונים (למשל שילם פעם עם מייל אחר) - התאמה לפי מייל קודם הייתה מפספסת את זה ויוצרת
   // בטעות חשבון מנוי כפול
-  let matched: { id: string; role: string; subscription_status: string | null; email: string | null } | null = null;
+  let matched: { id: string; role: string; subscription_status: string | null; email: string | null; trial_price_used: boolean | null } | null = null;
   const normalizedNewPhone = normalizePhone(phone);
   if (normalizedNewPhone) {
-    const { data: withPhone } = await supabaseAdmin.from('profiles').select('id, role, subscription_status, phone, email').not('phone', 'is', null);
+    const { data: withPhone } = await supabaseAdmin.from('profiles').select('id, role, subscription_status, phone, email, trial_price_used').not('phone', 'is', null);
     matched = (withPhone || []).find((p) => normalizePhone(p.phone) === normalizedNewPhone) || null;
   }
   if (!matched && email) {
-    const { data: existing } = await supabaseAdmin.from('profiles').select('id, role, subscription_status, email').eq('email', email).maybeSingle();
+    const { data: existing } = await supabaseAdmin.from('profiles').select('id, role, subscription_status, email, trial_price_used').eq('email', email).maybeSingle();
     matched = existing;
   }
 
@@ -128,6 +149,12 @@ export async function ensureActiveSubscriberAccount(email: string, phone: string
       updates.subscription_cancelled_at = null;
     }
     if (isFirstMonthPrice) updates.trial_price_used = true;
+
+    const repeatTrialAbuse = isFirstMonthPrice && matched.trial_price_used === true;
+    if (repeatTrialAbuse) {
+      updates.trial_abuse_detected_at = new Date().toISOString();
+      await alertRepeatTrialAbuse(matched.id, fullName);
+    }
     // undefined = "לא נמסר כאן" (למשל אימות ידני/Grow שלא יודעים עליו) - לא דורסים מחיר קיים.
     // null/מספר ממאנדיי כן נכתבים, כולל 0 (מנוי בחינם) - ר' הערה דומה ב-lib/revenueSnapshot.ts
     if (monthlyPrice !== undefined) updates.monthly_price = monthlyPrice;
@@ -145,7 +172,7 @@ export async function ensureActiveSubscriberAccount(email: string, phone: string
     }
 
     await supabaseAdmin.from('profiles').update(updates).eq('id', matched.id);
-    return { userId: matched.id, newlyActivated };
+    return { userId: matched.id, newlyActivated, repeatTrialAbuse };
   }
 
   // role/subscription_status מועברים כבר כאן ב-metadata, כדי שהטריגר שיוצר את הפרופיל (handle_new_user)
@@ -180,7 +207,7 @@ export async function ensureActiveSubscriberAccount(email: string, phone: string
       monthly_price: monthlyPrice ?? null,
     });
 
-  return { userId, newlyActivated: true };
+  return { userId, newlyActivated: true, repeatTrialAbuse: false };
 }
 
 export { normalizePhone, normalizeEmail };

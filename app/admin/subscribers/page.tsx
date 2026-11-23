@@ -15,6 +15,7 @@ type ApprovedSub = {
   subscription_paid_until: string | null;
   hasPushSub: boolean;
   terms_accepted_at: string | null;
+  trial_abuse_detected_at: string | null;
 };
 
 type RevenueItem = { name: string | null; email: string | null; phone: string | null; joinDate: string | null; price: number };
@@ -367,7 +368,7 @@ export default function AdminSubscribersPage() {
   async function loadApprovedSubs() {
     const { data } = await supabase
       .from('profiles')
-      .select('id, email, phone, full_name, subscription_status, subscription_started_at, subscription_paid_until, terms_accepted_at')
+      .select('id, email, phone, full_name, subscription_status, subscription_started_at, subscription_paid_until, terms_accepted_at, trial_abuse_detected_at')
       .eq('role', 'subscriber')
       .neq('subscription_status', 'cancelled') // מי שכבר בוטל סופית (role נשאר subscriber בכוונה, ר' lib/entitlement.ts) לא שייך לרשימת המנויים הפעילים
       .eq('excluded_from_subscriber_list', false) // מנויים שהוענקו ידנית מחוץ למאנדיי (למשל בני משפחה) - לא נספרים כאן כדי שהמספר יישאר תואם לקבוצת הסוחרים במאנדיי, אבל נשארים מנויים מלאים בכל מקום אחר
@@ -699,6 +700,17 @@ export default function AdminSubscribersPage() {
                 >
                   {sub.terms_accepted_at ? '📝' : '⏳'}
                 </span>
+                {sub.trial_abuse_detected_at && (
+                  <>
+                    {' '}
+                    <span
+                      title={`ניסה/תה לנצל שוב את הטבת 1 ש"ח ב-${new Date(sub.trial_abuse_detected_at).toLocaleDateString('he-IL')} - כבר השתמש/ה בה בעבר`}
+                      style={{ fontSize: '11px', color: 'var(--loss)' }}
+                    >
+                      🚩
+                    </span>
+                  </>
+                )}
               </div>
               <div className="email">{sub.email}</div>
               {sub.phone && <div className="email" style={{ marginTop: '2px' }}>{sub.phone}</div>}

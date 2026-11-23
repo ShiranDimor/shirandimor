@@ -41,7 +41,7 @@ export async function GET(request: Request) {
     if (!payment.email) continue; // ensureActiveSubscriberAccount דורש אימייל אמיתי כדי שההתחברות תעבוד
 
     try {
-      const { userId, newlyActivated } = await ensureActiveSubscriberAccount(
+      const { userId, newlyActivated, repeatTrialAbuse } = await ensureActiveSubscriberAccount(
         payment.email, payment.phone, payment.name, undefined, payment.amount === FIRST_MONTH_PRICE, payment.amount
       );
 
@@ -50,8 +50,9 @@ export async function GET(request: Request) {
         continue;
       }
 
-      // רק מי שבהטבת חודש ראשון ב-1 ש"ח מקבל/ת את רצף הקליטה - מנוי/ה ותיק/ה (400 ש"ח) לא צריך/ה
-      if (payment.amount === FIRST_MONTH_PRICE) {
+      // רק מי שבהטבת חודש ראשון ב-1 ש"ח מקבל/ת את רצף הקליטה - מנוי/ה ותיק/ה (400 ש"ח) לא צריך/ה,
+      // וגם לא מי שכבר ניצל/ה את ההטבה בעבר (repeatTrialAbuse) - ר' lib/subscriberStatus.ts
+      if (payment.amount === FIRST_MONTH_PRICE && !repeatTrialAbuse) {
         await startSequence('welcome-subscriber', { userId }).catch((e) => console.error('check-grow-emails: נכשלה התחלת רצף הקליטה', e));
         await createTrialBillingReminders(payment.name, new Date()).catch((e) => console.error('check-grow-emails: נכשלה יצירת תזכורות חיוב ביומן', e));
       }

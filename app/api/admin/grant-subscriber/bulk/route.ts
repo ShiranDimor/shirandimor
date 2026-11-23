@@ -50,15 +50,16 @@ export async function POST(request: Request) {
     }
 
     try {
-      const { userId, newlyActivated } = await ensureActiveSubscriberAccount(email, phone, name, undefined, isFirstMonthPrice, amount);
+      const { userId, newlyActivated, repeatTrialAbuse } = await ensureActiveSubscriberAccount(email, phone, name, undefined, isFirstMonthPrice, amount);
 
       if (!newlyActivated) {
         results.push({ name, phone, email, status: 'already_active' });
         continue;
       }
 
-      // רק מי שבהטבת חודש ראשון ב-1 ש"ח מקבל/ת את רצף הקליטה - מנוי/ה ותיק/ה (400 ש"ח) לא צריך/ה
-      if (isFirstMonthPrice) {
+      // רק מי שבהטבת חודש ראשון ב-1 ש"ח מקבל/ת את רצף הקליטה - מנוי/ה ותיק/ה (400 ש"ח) לא צריך/ה,
+      // וגם לא מי שכבר ניצל/ה את ההטבה בעבר (repeatTrialAbuse) - ר' lib/subscriberStatus.ts
+      if (isFirstMonthPrice && !repeatTrialAbuse) {
         await startSequence('welcome-subscriber', { userId }).catch((e) => console.error('grant-subscriber/bulk: נכשלה התחלת רצף הקליטה', e));
         await createTrialBillingReminders(name, new Date()).catch((e) => console.error('grant-subscriber/bulk: נכשלה יצירת תזכורות חיוב ביומן', e));
       }

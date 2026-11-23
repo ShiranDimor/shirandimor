@@ -83,14 +83,15 @@ export async function POST(request: Request) {
   // מתמודד עם מייל חסר בעצמו (מתאים לפי טלפון, ואם צריך ליצור חשבון חדש - עם placeholder זמני)
   let siteAccount: 'ok' | 'error' = 'ok';
   try {
-    const { userId, newlyActivated } = await ensureActiveSubscriberAccount(
+    const { userId, newlyActivated, repeatTrialAbuse } = await ensureActiveSubscriberAccount(
       payment.email || '', payment.phone || '', payment.fullName || payment.email || payment.phone || '',
       undefined, payment.amount === FIRST_MONTH_PRICE, payment.amount
     );
     // רק הצטרפות אמיתית חדשה *בהטבת חודש ראשון ב-1 ש"ח* מתחילה את רצף הקליטה - ר' בקשה מפורשת
     // של שירן: מי ששילם/ה 400 ש"ח זה מנוי/ה ותיק/ה (חידוש/תשלום רגיל), לא מצטרף/ת חדש/ה,
-    // ולא צריך/ה את הודעות ה"ברוכים הבאים" - ר' lib/sequenceEngine.ts
-    if (newlyActivated && payment.amount === FIRST_MONTH_PRICE) {
+    // ולא צריך/ה את הודעות ה"ברוכים הבאים" - ר' lib/sequenceEngine.ts. גם מי שכבר ניצל/ה את
+    // ההטבה בעבר ועכשיו משלם/ת 1 ש"ח שוב (repeatTrialAbuse) לא מקבל/ת את זה שוב - ר' lib/subscriberStatus.ts
+    if (newlyActivated && payment.amount === FIRST_MONTH_PRICE && !repeatTrialAbuse) {
       await startSequence('welcome-subscriber', { userId }).catch((e) => console.error('Grow webhook: נכשלה התחלת רצף הקליטה', e));
       // שתי תזכורות ביומן של שירן - היום (לשנות הו"ק בגרואו ל-400 ש"ח) ובעוד חודש (לוודא שהחיוב
       // יצא) - ר' בקשה מפורשת של שירן, 19.11
