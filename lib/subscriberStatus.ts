@@ -150,7 +150,11 @@ export async function ensureActiveSubscriberAccount(email: string, phone: string
     }
     if (isFirstMonthPrice) updates.trial_price_used = true;
 
-    const repeatTrialAbuse = isFirstMonthPrice && matched.trial_price_used === true;
+    // קריטי: רק אם זו בפועל הפעלה מחדש אמיתית (newlyActivated) - אחרת כל קריאה חוזרת לפונקציה
+    // הזו על אותו תשלום ממש (ר' webhook שמגיע פעמיים/קרון check-grow-emails שסורק אותו מייל
+    // תשלום שוב כל רבע שעה במשך עד 3 ימים, ר' lib/growEmailWatch.ts) הייתה מזהה "ניצול חוזר"
+    // מחדש בכל פעם ומתריעה לשירן שוב ושוב על אותו אירוע עצמו - זה באמת קרה בפועל (23.11)
+    const repeatTrialAbuse = newlyActivated && isFirstMonthPrice && matched.trial_price_used === true;
     if (repeatTrialAbuse) {
       updates.trial_abuse_detected_at = new Date().toISOString();
       await alertRepeatTrialAbuse(matched.id, fullName);
