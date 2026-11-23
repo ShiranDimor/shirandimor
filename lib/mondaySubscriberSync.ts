@@ -33,7 +33,7 @@ export async function syncMondaySubscribersToSite(): Promise<MondaySubscriberSyn
       const { data: existing } = await supabaseAdmin.from('profiles').select('id, role').eq('email', email).maybeSingle();
       const startedAt = sub.joinDate ? new Date(sub.joinDate).toISOString() : undefined;
 
-      await ensureActiveSubscriberAccount(email, sub.phone || '', sub.name || email, startedAt);
+      await ensureActiveSubscriberAccount(email, sub.phone || '', sub.name || email, startedAt, false, undefined, false);
 
       if (!existing) created += 1;
       else if (existing.role !== 'admin' && existing.role !== 'subscriber') updated += 1;
@@ -171,7 +171,7 @@ export async function syncSubscribersBidirectional(): Promise<BidirectionalSyncR
     const emailToUse = s.email || `p${normPhone}@${PLACEHOLDER_EMAIL_DOMAIN}`;
 
     try {
-      await ensureActiveSubscriberAccount(emailToUse, s.phone || '', s.name || 'מנוי חדש', s.joinDate || undefined, false, monthlyPrice);
+      await ensureActiveSubscriberAccount(emailToUse, s.phone || '', s.name || 'מנוי חדש', s.joinDate || undefined, false, monthlyPrice, false);
       createdNames.push(s.name || s.email || s.phone || '');
       if (usingPlaceholder) placeholderEmailNames.push(s.name || s.phone || '');
       if (normPhone) existingActivePhones.add(normPhone);

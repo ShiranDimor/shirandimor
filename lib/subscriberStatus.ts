@@ -128,7 +128,12 @@ async function alertEmailMismatchNotApplied(userId: string, fullName: string, cu
 // התשלום הזה עצמו הוא 1 ש"ח - כלומר ניצול חוזר, לא הטבה ראשונה אמיתית. שירן ביקשה מפורשות
 // שנעקוב אחרי זה (ר' profiles.trial_abuse_detected_at) - הקריאה/ות למקום הזה אחראיות לדלג
 // על רצף הקליטה/תזכורות היומן כשזה true, לא רק ensureActiveSubscriberAccount עצמו
-export async function ensureActiveSubscriberAccount(email: string, phone: string, fullName: string, startedAt?: string, isFirstMonthPrice = false, monthlyPrice?: number | null): Promise<{ userId: string; newlyActivated: boolean; repeatTrialAbuse: boolean }> {
+// trustIdentity - true (ברירת מחדל) לכל קריאה שמבוססת על מקור אמין לזהות (תשלום Grow בפועל,
+// פעולת אדמין ידנית/שירן, התחברות אמיתית של המשתמש/ת עצמו/ה) - שם עדכון מייל שונה הוא תיקון
+// לגיטימי ותמיד נכתב. false רק לקריאות מסנכרון מאנדיי (ר' lib/mondaySubscriberSync.ts) - שם
+// הנתון מגיע מכרטיס מאנדיי שאולי לא עדכני/מדויק, אז דריסת מייל קיים (לא placeholder) על מנוי/ה
+// שכבר פעיל/ה דורשת זהירות נוספת (ר' alertEmailMismatchNotApplied) - זה מה שקרה בפועל לשלומי אביוני
+export async function ensureActiveSubscriberAccount(email: string, phone: string, fullName: string, startedAt?: string, isFirstMonthPrice = false, monthlyPrice?: number | null, trustIdentity = true): Promise<{ userId: string; newlyActivated: boolean; repeatTrialAbuse: boolean }> {
   const subscriptionStartedAt = startedAt || new Date().toISOString();
   const normalizedPhoneForPlaceholder = normalizePhone(phone);
   // Grow לא תמיד מעביר מייל בתשלום (למשל אם טופס הסליקה אסף רק טלפון) - בלי מייל אין אפשרות
@@ -190,7 +195,7 @@ export async function ensureActiveSubscriberAccount(email: string, phone: string
     // הכניסה שלו/ה סתם כי קריאה כלשהי (למשל סנכרון מאנדיי) העבירה מייל אחר - ר' alertEmailMismatchNotApplied
     const existingEmailIsPlaceholder = matched.email?.includes('@no-email.shirandimor') ?? false;
     if (email && matched.email?.toLowerCase() !== email.toLowerCase()) {
-      if (newlyActivated || existingEmailIsPlaceholder) {
+      if (newlyActivated || existingEmailIsPlaceholder || trustIdentity) {
         updates.email = email;
         await supabaseAdmin.auth.admin.updateUserById(matched.id, { email, email_confirm: true }).catch((e) => {
           console.error('שגיאה בעדכון מייל התחברות לפרופיל קיים', matched!.id, e);
