@@ -40,9 +40,13 @@ async function mediaInsights(mediaId: string, token: string): Promise<{ metrics:
 }
 
 export async function syncInstagramInsights(limit = 25) {
-  const igUser = process.env.META_IG_USER_ID;
-  if (!igUser) throw new Error('META_IG_USER_ID חסר');
   const token = await pageToken();
+  let igUser = process.env.META_IG_USER_ID;
+  if (!igUser) {
+    const page = await graph(`${process.env.META_PAGE_ID}?fields=instagram_business_account`, token);
+    igUser = page?.instagram_business_account?.id;
+    if (!igUser) throw new Error('לא נמצא חשבון אינסטגרם מקושר לעמוד');
+  }
 
   const profile = await graph(`${igUser}?fields=followers_count,media_count`, token);
   const media = await graph(`${igUser}/media?fields=id,caption,media_type,media_product_type,permalink,timestamp&limit=${limit}`, token);
