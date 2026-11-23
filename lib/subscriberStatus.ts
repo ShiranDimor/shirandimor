@@ -104,6 +104,23 @@ async function alertRepeatTrialAbuse(userId: string, fullName: string): Promise<
   }
 }
 
+// מתריע לשירן כשההתאמה לפי טלפון מצאה מייל שונה על פרופיל שכבר *פעיל* עם מייל אמיתי (לא
+// פלייסהולדר) - לא מחליפים מייל כניסה בשקט במצב הזה (ר' הבאג שבאמת קרה ב-23.11: סנכרון מאנדיי
+// "חשב" בטעות ששלומי הוא מנוי חדש ודרס לו את מייל הכניסה האמיתי במייל אחר שהיה על הכרטיס
+// שלו במאנדיי) - רק מתריעים כדי שתבדקי ידנית אם זה תיקון אמיתי או טעות
+async function alertEmailMismatchNotApplied(userId: string, fullName: string, currentEmail: string, attemptedEmail: string): Promise<void> {
+  try {
+    const { data: admins } = await supabaseAdmin.from('profiles').select('id').eq('role', 'admin');
+    await sendPushToUsers((admins || []).map((a) => a.id), {
+      title: '⚠️ אי-התאמת מייל לא הוחלה אוטומטית',
+      body: `${fullName}: מייל הכניסה הנוכחי (${currentEmail}) לא הוחלף ב-${attemptedEmail} - נמצא לפי התאמת טלפון על חשבון שכבר פעיל. לבדוק ידנית אם צריך לתקן`,
+      url: `/admin/subscribers/${userId}`,
+    });
+  } catch (e) {
+    console.error('שגיאה בשליחת התראה על אי-התאמת מייל', e);
+  }
+}
+
 // isFirstMonthPrice - true כשהתשלום שהפעיל את הקריאה הזו הוא בדיוק מחיר החודש הראשון (1 ש"ח).
 // מסמן trial_price_used=true על הפרופיל לצמיתות (לא מתאפס גם אם המנוי בוטל אח"כ) - כדי
 // שאפשר יהיה בעתיד לזהות מי כבר ניצל את המחיר הסמלי ולא להציע לו אותו שוב ב-/subscribe.
@@ -167,12 +184,20 @@ export async function ensureActiveSubscriberAccount(email: string, phone: string
     // מאנדיי, או מייל ישן) - אם המייל שהתקבל עכשיו שונה, מעדכנים גם אותו, וגם את חשבון
     // ההתחברות (auth.users) כדי שהשניים יישארו מסונכרנים. בלי זה, קוד/קישור כניסה שנשלח
     // בהמשך ל"מייל שונה" הזה היה יוצר בטעות חשבון נפרד חדש (role="lead") ולא מגיע בכלל
-    // לפרופיל המנוי הקיים - בדיוק התקלה שגרמה למנוי ששילם לא להצליח להירשם
+    // לפרופיל המנוי הקיים - בדיוק התקלה שגרמה למנוי ששילם לא להצליח להירשם.
+    // אבל: רק כשזה *באמת* תיקון לגיטימי - המייל הקיים הוא פלייסהולדר, או שמדובר בהפעלה מחדש
+    // אמיתית (newlyActivated). מי שכבר פעיל/ה עם מייל אמיתי לא אמור/ה לקבל דריסה שקטה של מייל
+    // הכניסה שלו/ה סתם כי קריאה כלשהי (למשל סנכרון מאנדיי) העבירה מייל אחר - ר' alertEmailMismatchNotApplied
+    const existingEmailIsPlaceholder = matched.email?.includes('@no-email.shirandimor') ?? false;
     if (email && matched.email?.toLowerCase() !== email.toLowerCase()) {
-      updates.email = email;
-      await supabaseAdmin.auth.admin.updateUserById(matched.id, { email, email_confirm: true }).catch((e) => {
-        console.error('שגיאה בעדכון מייל התחברות לפרופיל קיים', matched!.id, e);
-      });
+      if (newlyActivated || existingEmailIsPlaceholder) {
+        updates.email = email;
+        await supabaseAdmin.auth.admin.updateUserById(matched.id, { email, email_confirm: true }).catch((e) => {
+          console.error('שגיאה בעדכון מייל התחברות לפרופיל קיים', matched!.id, e);
+        });
+      } else {
+        await alertEmailMismatchNotApplied(matched.id, fullName, matched.email || '', email);
+      }
     }
 
     await supabaseAdmin.from('profiles').update(updates).eq('id', matched.id);
