@@ -8,6 +8,7 @@ const BOARD_ID = process.env.MONDAY_BOARD_ID;
 // טופס הקמפיין "מדברים עסקאות ₪1 - כוונה גבוהה 12.2026". אפשר להוסיף טפסים נוספים ב-META_LEAD_FORM_IDS (מופרד בפסיקים)
 const FORM_IDS = (process.env.META_LEAD_FORM_IDS || '1138706495712728').split(',').map((s) => s.trim()).filter(Boolean);
 const GENERIC_CAMPAIGN_VALUE = 'סרטונים 12.2026';
+const CREATE_FROM = new Date('2026-11-24T00:00:00Z');
 
 type Lead = {
   id: string;
@@ -112,6 +113,7 @@ export async function syncMetaLeadsToMonday(dryRun = false) {
 
   const updates: { itemId: string; changes: Record<string, string> }[] = [];
   let notInMonday = 0;
+  const missing: { name: string; phone: string; email?: string; knowledge: string; ad?: string }[] = [];
   const recent: { name: string; created: string; ad?: string; monday: string | null }[] = [];
   for (const lead of leads) {
     const fields = Object.fromEntries(lead.field_data.map((f) => [f.name, f.values?.[0] || '']));
@@ -120,7 +122,20 @@ export async function syncMetaLeadsToMonday(dryRun = false) {
     if (dryRun && Date.now() - new Date(lead.created_time).getTime() < 3 * 86400_000) {
       recent.push({ name: fields.full_name || '', created: lead.created_time, ad: lead.ad_name, monday: item ? item.group : null });
     }
-    if (!item) { notInMonday++; continue; }
+    if (!item) {
+      notInMonday++;
+      // האוטומציה של מאנדיי לפעמים לא יוצרת כרטיס (קרה ב-24.11). ליד חדש בלי כרטיס אחרי 30 דקות -
+      // יוצרים לו כרטיס ב"לידים חדשים" בעצמנו. רק לידים מ-24.11 והלאה, כדי לא לפתוח מחדש ישנים
+      const age = Date.now() - new Date(lead.created_time).getTime();
+      if (new Date(lead.created_time) >= CREATE_FROM && age > 30 * 60_000 && fields.phone_number) {
+        const form = forms.get(lead.formId)!;
+        const answers = form.questions
+          .filter((q) => fields[q.key] && !['full_name', 'phone_number', 'email', 'first_name', 'last_name'].includes(q.key))
+          .map((q) => q.options.get(fields[q.key]) || fields[q.key]);
+        missing.push({ name: fields.full_name || fields.phone_number, phone: fields.phone_number, email: fields.email, knowledge: answers.join(' · '), ad: lead.ad_name });
+      }
+      continue;
+    }
     const form = forms.get(lead.formId)!;
 
     // תשובות לשאלות שאינן שם/נייד/מייל - בטקסט שהליד ראה
@@ -144,6 +159,26 @@ export async function syncMetaLeadsToMonday(dryRun = false) {
     if (Object.keys(changes).length) updates.push({ itemId: item.id, changes });
   }
 
+  let created = 0;
+  if (!dryRun && missing.length) {
+    const g = await monday(`query ($b: ID!) { boards(ids: [$b]) { groups { id title } } }`, { b: BOARD_ID });
+    const groupId = g.boards[0].groups.find((x: { title: string }) => x.title.trim() === 'לידים חדשים')?.id;
+    const emailCol = columns.find((c) => c.type === 'email')?.id;
+    for (const m of missing) {
+      const digits = m.phone.replace(/\D/g, '');
+      const vals: Record<string, unknown> = {};
+      if (phoneCol) vals[phoneCol] = { phone: digits.startsWith('0') ? `972${digits.slice(1)}` : digits, countryShortName: 'IL' };
+      if (emailCol && m.email) vals[emailCol] = { email: m.email, text: m.email };
+      if (knowledgeCol && m.knowledge) vals[knowledgeCol] = m.knowledge;
+      if (campaignCol) vals[campaignCol] = m.ad ? `${GENERIC_CAMPAIGN_VALUE} · ${m.ad}` : GENERIC_CAMPAIGN_VALUE;
+      await monday(
+        `mutation ($b: ID!, $g: String, $n: String!, $v: JSON) { create_item(board_id: $b, group_id: $g, item_name: $n, column_values: $v) { id } }`,
+        { b: BOARD_ID, g: groupId || null, n: m.name, v: JSON.stringify(vals) }
+      );
+      created++;
+    }
+  }
+
   if (!dryRun) {
     for (const u of updates) {
       await monday(
@@ -157,6 +192,8 @@ export async function syncMetaLeadsToMonday(dryRun = false) {
     leads: leads.length,
     updated: updates.length,
     notInMonday,
+    created,
+    toCreate: missing.map((m) => m.name),
     columns: { knowledgeCol: !!knowledgeCol, formNameCol: !!formNameCol, platformCol: !!platformCol, campaignCol: !!campaignCol, leadIdCol: !!leadIdCol },
     questions: [...forms.values()].map((f) => ({ form: f.name, questions: f.questions.map((q) => q.label) })),
     dryRun,
