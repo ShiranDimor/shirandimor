@@ -112,9 +112,14 @@ export async function syncMetaLeadsToMonday(dryRun = false) {
 
   const updates: { itemId: string; changes: Record<string, string> }[] = [];
   let notInMonday = 0;
+  const recent: { name: string; created: string; ad?: string; monday: string | null }[] = [];
   for (const lead of leads) {
     const fields = Object.fromEntries(lead.field_data.map((f) => [f.name, f.values?.[0] || '']));
     const item = byPhone.get(norm(fields.phone_number));
+    // רשימת הלידים האחרונים (רק בהרצת בדיקה) - כדי לראות מי הגיע ואם יש לו כרטיס במאנדיי
+    if (dryRun && Date.now() - new Date(lead.created_time).getTime() < 3 * 86400_000) {
+      recent.push({ name: fields.full_name || '', created: lead.created_time, ad: lead.ad_name, monday: item ? item.group : null });
+    }
     if (!item) { notInMonday++; continue; }
     const form = forms.get(lead.formId)!;
 
@@ -155,5 +160,6 @@ export async function syncMetaLeadsToMonday(dryRun = false) {
     columns: { knowledgeCol: !!knowledgeCol, formNameCol: !!formNameCol, platformCol: !!platformCol, campaignCol: !!campaignCol, leadIdCol: !!leadIdCol },
     questions: [...forms.values()].map((f) => ({ form: f.name, questions: f.questions.map((q) => q.label) })),
     dryRun,
+    ...(dryRun ? { recent } : {}),
   };
 }
