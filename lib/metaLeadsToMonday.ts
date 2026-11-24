@@ -72,6 +72,11 @@ export async function syncMetaLeadsToMonday(dryRun = false) {
     for (const l of data.data || []) leads.push({ ...l, formId });
   }
 
+  // למאנדיי יש מכסת קריאות יומית (נגמרה ב-24.11 וחסמה גם לידים מהאתר). פונים למאנדיי רק אם
+  // הגיע ליד ב-6 השעות האחרונות - אחרת אין מה להשלים
+  const fresh = leads.some((l) => Date.now() - new Date(l.created_time).getTime() < 6 * 3600_000);
+  if (!fresh && !dryRun) return { leads: leads.length, skipped: 'no fresh leads', dryRun };
+
   const board = await monday(
     `query ($b: ID!) { boards(ids: [$b]) { columns { id title type } } }`,
     { b: BOARD_ID }
