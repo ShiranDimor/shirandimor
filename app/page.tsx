@@ -117,7 +117,9 @@ export default function HomePage() {
         <p>לייבים פעמיים בשבוע שבהם אני סוחרת תוך-יומי בזמן אמת ומלמדת תוך כדי, ועוד עסקאות סווינג שאני משתפת לאורך השבוע ישר דרך האתר. כל אחד בקצב ובטווח שמתאים לו - בלי הבטחות תשואה, ובלי שזה יהפוך למשרה שנייה.</p>
 
         <Link href="/subscribe" className="quick-link-accent">מדברים עסקאות - חודש ראשון ב-₪1 ←</Link>
-        <p style={{ fontSize: '11px', color: 'var(--text-tertiary)', textAlign: 'center', margin: '-4px 0 16px' }}>לאחר מכן ₪400/חודש · בלי התחייבות, ביטול קל בכל רגע</p>
+        {/* מועד אחרון אמיתי להטבה (החלטת שירן 26.11.2026) - לעדכן/להסיר אחרי 31.12 */}
+        <p style={{ fontSize: '13px', fontWeight: 700, color: 'var(--loss)', textAlign: 'center', margin: '-4px 0 6px' }}>ההטבה של חודש ראשון ב-₪1 בתוקף עד 31.12.2026</p>
+        <p style={{ fontSize: '11px', color: 'var(--text-tertiary)', textAlign: 'center', margin: '0 0 16px' }}>לאחר מכן ₪400/חודש · בלי התחייבות, ביטול קל בכל רגע</p>
 
         <div id="hero-notify">
           <PushNotificationButton variant="hero" autoOpenLeadForm={autoOpenNotifications} />
