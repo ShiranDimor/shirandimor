@@ -191,6 +191,8 @@ export default function SubscribePage() {
         </div>
         <div className="amount">₪1<span>/חודש ראשון</span></div>
         <div style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginBottom: '4px' }}>לא הנחה - אימות בלבד</div>
+        {/* מועד אחרון אמיתי להטבה (החלטת שירן 26.11.2026) - לעדכן/להסיר אחרי 31.12 */}
+        <div style={{ fontSize: '12.5px', color: 'var(--loss)', fontWeight: 700, marginBottom: '6px' }}>ההטבה בתוקף עד 31.12.2026</div>
         <div className="period">לאחר מכן ₪400/חודש · ללא התחייבות וללא תקופת מינימום</div>
 
         <div className="perk-list">
