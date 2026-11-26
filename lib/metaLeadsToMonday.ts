@@ -58,7 +58,14 @@ export async function syncMetaLeadsToMonday(dryRun = false) {
   // שאלות הטופס: מפתח תשובה (למשל "some") -> הטקסט שהליד ראה בטופס, ושם הטופס
   const forms = new Map<string, { name: string; questions: { key: string; label: string; options: Map<string, string> }[] }>();
   const leads: (Lead & { formId: string })[] = [];
-  for (const formId of FORM_IDS) {
+  // מלבד הטפסים הקבועים - כל טופס פעיל בעמוד ששמו מתחיל ב"מדברים עסקאות ₪1" (כשמשכפלים טופס
+  // לשינוי, למשל מסך הסיום ב-26.11, הוא מקבל מזהה חדש - וכך הוא נקלט אוטומטית בלי לעדכן הגדרות)
+  const formIds = new Set(FORM_IDS);
+  try {
+    const list = await graph(`${process.env.META_PAGE_ID}/leadgen_forms?fields=id,name,status&limit=50`, token);
+    for (const f of list.data || []) if (f.status === 'ACTIVE' && String(f.name || '').startsWith('מדברים עסקאות ₪1')) formIds.add(f.id);
+  } catch { /* נשארים עם הרשימה הקבועה */ }
+  for (const formId of formIds) {
     const f = await graph(`${formId}?fields=name,questions`, token);
     forms.set(formId, {
       name: f.name,
