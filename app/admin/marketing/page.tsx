@@ -266,7 +266,29 @@ export default function AdminMarketingPage() {
     const res = await fetch('/api/admin/marketing/posts', { headers: await authHeaders() });
     if (res.ok) {
       const data = await res.json();
-      setPosts(data.posts || []);
+      const list: Post[] = data.posts || [];
+      setPosts(list);
+      setLoadingPosts(false);
+      // התמונות נטענות בנפרד ובמנות (הרשימה המלאה עם base64 חרגה ממגבלת גודל התגובה).
+      // רק לפוסטים שעוד לא פורסמו או שפורסמו בשבועיים האחרונים - הארכיון הישן בלי תמונות
+      const cutoff = Date.now() - 14 * 86400_000;
+      const need = list
+        .filter((p) => p.status !== 'published' || (p.scheduled_at && new Date(p.scheduled_at).getTime() > cutoff))
+        .sort((a, b) => (a.scheduled_at || '') < (b.scheduled_at || '') ? -1 : 1)
+        .map((p) => p.id);
+      const headers = await authHeaders();
+      for (let i = 0; i < need.length; i += 4) {
+        const chunk = need.slice(i, i + 4);
+        const r = await fetch(`/api/admin/marketing/posts?heavy=${chunk.join(',')}`, { headers }).catch(() => null);
+        if (!r || !r.ok) continue;
+        const heavy: { id: string; image_base64: string | null; extra_images: string[] | null; story_image_base64: string | null }[] = (await r.json()).posts || [];
+        const byId = new Map(heavy.map((h) => [h.id, h]));
+        setPosts((prev) => prev.map((p) => {
+          const h = byId.get(p.id);
+          return h ? { ...p, image_base64: h.image_base64, extra_images: h.extra_images || [], story_image_base64: h.story_image_base64 } : p;
+        }));
+      }
+      return;
     }
     setLoadingPosts(false);
   }

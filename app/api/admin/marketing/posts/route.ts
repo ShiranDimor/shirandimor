@@ -18,15 +18,33 @@ async function requireAdmin(request: Request) {
 const PLATFORMS: MarketingPlatform[] = ['instagram', 'facebook', 'both'];
 const CONTENT_TYPES: MarketingContentType[] = ['feed_post', 'reel', 'story'];
 
+const LIGHT_COLUMNS =
+  'id, platform, content_type, topic, hook, caption, hashtags, video_script, visual_idea, status, scheduled_at, published_at, created_at, updated_at, source_type, source_id, external_post_id, story_published_at, story_external_post_id, ig_post_id, ig_permalink, ig_published_at, ig_story_id, ig_story_published_at, slides_html, slides_rendered_at, publish_error, publish_attempts, revision_history, last_revision_summary, video_url, video_source_url, ig_container_id, cta_path, ig_story_container_id, publish_lock_at';
+
 // GET - כל הטיוטות/פוסטים, לתצוגת התור בניהול
 export async function GET(request: Request) {
   const admin = await requireAdmin(request);
   if (!admin) return NextResponse.json({ error: 'אין הרשאת ניהול' }, { status: 403 });
 
-  const { data, error } = await supabaseAdmin.from('marketing_posts').select('*').order('created_at', { ascending: false });
+  // בלי שדות התמונות הכבדים (base64) - כל הפוסטים יחד עברו את מגבלת גודל התגובה של Vercel והלוח
+  // הופיע ריק (28.11). את התמונות הלקוח טוען בנפרד, במנות קטנות, דרך ?heavy=<ids>
+  const url = new URL(request.url);
+  const heavyIds = (url.searchParams.get('heavy') || '').split(',').filter(Boolean).slice(0, 8);
+  if (heavyIds.length) {
+    const { data, error } = await supabaseAdmin
+      .from('marketing_posts')
+      .select('id, image_base64, extra_images, story_image_base64')
+      .in('id', heavyIds);
+    if (error) return NextResponse.json({ error: 'שגיאה בשליפה' }, { status: 500 });
+    return NextResponse.json({ posts: data });
+  }
+
+  const { data, error } = await supabaseAdmin.from('marketing_posts').select(LIGHT_COLUMNS).order('created_at', { ascending: false });
   if (error) return NextResponse.json({ error: 'שגיאה בשליפה' }, { status: 500 });
 
-  return NextResponse.json({ posts: data });
+  return NextResponse.json({
+    posts: (data || []).map((p: Record<string, unknown>) => ({ ...p, image_base64: null, extra_images: [], story_image_base64: null })),
+  });
 }
 
 // POST - יצירת טיוטה/ות חדשות בעזרת AI לפי בריף + פרופיל הקול השמור
