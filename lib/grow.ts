@@ -1,3 +1,4 @@
+import { lookupJoinSource, JOIN_SOURCE_COLUMN_TITLE } from '@/lib/joinSource';
 const LEAD_GROUP_NAME = 'לידים חדשים';
 const SUBSCRIBER_GROUP_NAME = 'קבוצת סוחרים';
 const MONTHLY_COST_COLUMN_TITLE = 'עלות חודשית ששילם';
@@ -88,6 +89,7 @@ async function getGrowBoardSchema(token: string, boardId: string) {
     monthlyCostColumnId: columns.find((c) => c.title === MONTHLY_COST_COLUMN_TITLE)?.id,
     regDateColumnId: columns.find((c) => c.title === REGISTRATION_DATE_COLUMN_TITLE && c.type === 'date')?.id,
     benefitColumnId: columns.find((c) => c.title === BENEFIT_COLUMN_TITLE)?.id,
+    joinSourceColumnId: columns.find((c) => c.title === JOIN_SOURCE_COLUMN_TITLE)?.id,
   };
 }
 
@@ -158,7 +160,7 @@ export async function syncGrowPaymentToMonday(
   if (!payment.phone && !payment.email) return { ok: false, reason: 'no_contact' };
 
   try {
-    const { subscriberGroupId, phoneColumnId, emailColumnId, monthlyCostColumnId, regDateColumnId, benefitColumnId } =
+    const { subscriberGroupId, phoneColumnId, emailColumnId, monthlyCostColumnId, regDateColumnId, benefitColumnId, joinSourceColumnId } =
       await getGrowBoardSchema(token, boardId);
 
     const isFirstMonthPrice = payment.amount === FIRST_MONTH_PRICE;
@@ -167,6 +169,8 @@ export async function syncGrowPaymentToMonday(
     if (monthlyCostColumnId && payment.amount != null) columnValues[monthlyCostColumnId] = String(payment.amount);
     if (regDateColumnId) columnValues[regDateColumnId] = { date: todayDateValue() };
     if (benefitColumnId && isFirstMonthPrice) columnValues[benefitColumnId] = { label: BENEFIT_LABEL };
+    // "מקור הצטרפות" - מאיפה הגיע/ה כשלחץ/ה על התשלום (ר' lib/joinSource.ts), רק בהצטרפות ב-₪1
+    if (joinSourceColumnId && isFirstMonthPrice) columnValues[joinSourceColumnId] = await lookupJoinSource(payment.phone, payment.email);
     if (phoneColumnId && payment.phone) {
       columnValues[phoneColumnId] = { phone: payment.phone.startsWith('0') ? `972${payment.phone.slice(1)}` : payment.phone, countryShortName: 'IL' };
     }

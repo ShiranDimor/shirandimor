@@ -4,6 +4,7 @@ import { classifyContactMonday } from '@/lib/tradingPlan/monday';
 import { isPhoneBlocked } from '@/lib/blockedContacts';
 import { supabaseAdmin } from '@/lib/instantLogin';
 import { sendPushToUsers } from '@/lib/webPush';
+import { recordSignupSource } from '@/lib/joinSource';
 
 // אם כל ניסיון היצירה במאנדיי נכשל (לא רק סימון כפילות/עדכון, אלא כל הבלוק) - הליד לא נשמר
 // בשום מקום אחר (אין טבלה מקומית ל"לידים טהורים", רק במאנדיי). בלי ההתראה הזו הוא היה נעלם
@@ -102,10 +103,15 @@ async function findExistingItemByPhone(token: string, boardId: string, phoneColu
 }
 
 export async function POST(request: Request) {
-  const { name, phone, email, source } = await request.json();
+  const { name, phone, email, source, joinSrc } = await request.json();
 
   if (!phone) {
     return NextResponse.json({ error: 'חסרים פרטים' }, { status: 400 });
+  }
+
+  // מקור ההצטרפות מדף ה-₪1 - נשמר לפני כל שאר הבדיקות, כדי שיהיה זמין כשהתשלום מגיע מ-Grow
+  if (typeof joinSrc === 'string') {
+    await recordSignupSource(phone, email, joinSrc).catch((e) => console.error('lead: נכשלה שמירת מקור הצטרפות', e));
   }
 
   // איש קשר חסום - מגיב כמו הרשמה רגילה (בלי לחשוף שהוא חסום) אבל לא יוצר שום ליד/רשומה בפועל

@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { trackFunnelEvent } from '@/lib/trackEvent';
-import { captureSourceFromUrl } from '@/lib/attribution';
+import { captureSourceFromUrl, getJoinSource } from '@/lib/attribution';
 import { supabase } from '@/lib/supabase';
 import { hasActiveEntitlement } from '@/lib/entitlement';
 import TradeDisclaimer from '@/components/TradeDisclaimer';
@@ -64,6 +64,8 @@ export default function SubscribePage() {
             name: leadName.trim(),
             phone: leadPhone.trim(),
             source: usedBefore ? 'דף ₪1 - זוהה/תה כמי שכבר ניצל/ה את ההטבה בעבר' : 'דף ₪1 - בדרך לתשלום',
+            // "מקור הצטרפות" - נכתב למאנדיי כשהתשלום מגיע (ר' lib/joinSource.ts)
+            joinSrc: getJoinSource() || 'direct',
           }),
           keepalive: true,
         }),

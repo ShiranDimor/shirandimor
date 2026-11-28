@@ -1,6 +1,7 @@
 // שמירת מקור הכניסה הראשוני (מפרמטר ?source= או ?utm_source= בקישור) לכל אורך הביקור באתר -
 // כדי שאפשר יהיה לדעת מאיזה קמפיין הגיע כל אירוע במשפך ההמרה, ולחשב עלות-לתוצאה אמיתית
 const SOURCE_KEY = 'sd_source_attribution';
+const LAST_SOURCE_KEY = 'sd_last_source';
 
 // פרמטרים נוספים ממודעות פייסבוק/אינסטגרם - נשמרים בנפרד מ-source הכללי כדי לא לשבור קוד
 // קיים שכבר משתמש ב-getStoredSource. fbclid בפרט חשוב לשמר (גם אם עדיין לא בשימוש בפועל) -
@@ -15,7 +16,12 @@ export function captureSourceFromUrl() {
   if (typeof window === 'undefined') return;
   try {
     const params = new URLSearchParams(window.location.search);
-    const source = params.get('source') || params.get('utm_source');
+    // src - הקיצור שמופיע בלינקים מהאוטומציות של "בא לי" ובמיילים/התראות (?src=dm וכו')
+    const source = params.get('source') || params.get('utm_source') || params.get('src');
+    if (source) {
+      // "מקור הצטרפות" - המקור האחרון שהביא את האדם לאתר, נשמר גם בין ביקורים (30 יום) - ר' lib/joinSource.ts
+      try { localStorage.setItem(LAST_SOURCE_KEY, JSON.stringify({ s: source, t: Date.now() })); } catch {}
+    }
     if (source && !sessionStorage.getItem(SOURCE_KEY)) {
       sessionStorage.setItem(SOURCE_KEY, source);
       // תנועה מהסושיאל (ביו באינסטגרם, קישור בפוסט בפייסבוק) - נספרת פעם אחת לביקור, כדי
@@ -60,5 +66,20 @@ export function getStoredAttributionExtras(): Partial<Record<(typeof EXTRA_KEYS)
     return result;
   } catch {
     return {};
+  }
+}
+
+// מקור ההצטרפות לתשלום: המקור של הביקור הנוכחי, ואם אין - המקור האחרון מ-30 הימים האחרונים
+export function getJoinSource(): string | null {
+  if (typeof window === 'undefined') return null;
+  const current = getStoredSource();
+  if (current) return current;
+  try {
+    const raw = localStorage.getItem(LAST_SOURCE_KEY);
+    if (!raw) return null;
+    const { s, t } = JSON.parse(raw);
+    return typeof s === 'string' && Date.now() - Number(t) < 30 * 24 * 3600 * 1000 ? s : null;
+  } catch {
+    return null;
   }
 }
