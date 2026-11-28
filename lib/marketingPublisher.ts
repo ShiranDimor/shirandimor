@@ -42,7 +42,7 @@ function facebookCaption(caption: string, postId: string, ctaPath: string | null
 // "בא לי בתגובות - לינק בפרטי" ו"בא לי - לינק לחודש ב-₪1"), לא בקוד. lib/metaAutoReply.ts הוא גיבוי רדום.
 function instagramCaption(caption: string): string {
   if (process.env.IG_BA_LI_LINE === 'false' || caption.includes('בא לי')) return caption;
-  const line = 'רוצים את הלינק? כתבו לי "בא לי" בתגובה ואשלח לכם בפרטי 💌';
+  const line = 'רוצים את הלינק? כתבו לי "בא לי" בתגובה ואשלח לכם בפרטי 🙂';
   if (caption.includes('כנסו ללינק')) return caption.replace('כנסו ללינק', `${line}\n\nכנסו ללינק`);
   return `${caption}\n\n${line}`;
 }
