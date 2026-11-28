@@ -37,6 +37,15 @@ function facebookCaption(caption: string, postId: string, ctaPath: string | null
   return `${caption}\n\n${url}`;
 }
 
+// באינסטגרם הלינק בכיתוב לא לחיץ - כשהמענה האוטומטי "בא לי" פעיל (lib/metaAutoReply.ts), מוסיפים
+// לפני "כנסו ללינק" שורה שמזמינה לכתוב "בא לי" בתגובה, ומי שכותב מקבל את הלינק בהודעה פרטית
+function instagramCaption(caption: string): string {
+  if (process.env.META_AUTO_REPLY_ENABLED !== 'true' || caption.includes('בא לי')) return caption;
+  const line = 'רוצים את הלינק? כתבו לי "בא לי" בתגובה ואשלח לכם בפרטי 💌';
+  if (caption.includes('כנסו ללינק')) return caption.replace('כנסו ללינק', `${line}\n\nכנסו ללינק`);
+  return `${caption}\n\n${line}`;
+}
+
 type MarketingPostRow = {
   id: string;
   platform: 'instagram' | 'facebook' | 'both';
@@ -161,7 +170,7 @@ export async function publishMarketingPost(
       try {
         let containerId = post.ig_container_id;
         if (!containerId) {
-          containerId = (await createInstagramReelContainer({ videoUrl, caption })).containerId;
+          containerId = (await createInstagramReelContainer({ videoUrl, caption: instagramCaption(caption) })).containerId;
           updates.ig_container_id = containerId;
         }
         const published = await publishInstagramReelIfReady(containerId);
@@ -214,7 +223,7 @@ export async function publishMarketingPost(
     }
     if (wantsInstagram) {
       await attempt('אינסטגרם - פיד', Boolean(post.ig_post_id), async () => {
-        const { postId: id, permalink } = await publishToInstagram({ images: feedImages, caption });
+        const { postId: id, permalink } = await publishToInstagram({ images: feedImages, caption: instagramCaption(caption) });
         return { ig_post_id: id, ig_permalink: permalink, ig_published_at: new Date().toISOString() };
       });
     }
