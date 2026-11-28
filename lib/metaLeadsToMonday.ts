@@ -207,7 +207,7 @@ export async function syncMetaLeadsToMonday(dryRun = false) {
     created,
     toCreate: missing.map((m) => m.name),
     columns: { knowledgeCol: !!knowledgeCol, formNameCol: !!formNameCol, platformCol: !!platformCol, campaignCol: !!campaignCol, leadIdCol: !!leadIdCol },
-    questions: [...forms.values()].map((f) => ({ form: f.name, questions: f.questions.map((q) => q.label) })),
+    questions: [...forms.entries()].map(([id, f]) => ({ id, form: f.name, questions: f.questions.map((q) => ({ key: q.key, label: q.label, options: [...q.options.entries()] })) })),
     dryRun,
     ...(dryRun ? { recent } : {}),
   };
