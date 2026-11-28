@@ -37,10 +37,11 @@ function facebookCaption(caption: string, postId: string, ctaPath: string | null
   return `${caption}\n\n${url}`;
 }
 
-// באינסטגרם הלינק בכיתוב לא לחיץ - כשהמענה האוטומטי "בא לי" פעיל (lib/metaAutoReply.ts), מוסיפים
-// לפני "כנסו ללינק" שורה שמזמינה לכתוב "בא לי" בתגובה, ומי שכותב מקבל את הלינק בהודעה פרטית
+// באינסטגרם הלינק בכיתוב לא לחיץ - מוסיפים לפני "כנסו ללינק" שורה שמזמינה לכתוב "בא לי" בתגובה.
+// המענה עצמו (הודעה פרטית עם הלינק) מוגדר באוטומציות של Meta Business Suite (תיבת דואר ← אוטומציות:
+// "בא לי בתגובות - לינק בפרטי" ו"בא לי - לינק לחודש ב-₪1"), לא בקוד. lib/metaAutoReply.ts הוא גיבוי רדום.
 function instagramCaption(caption: string): string {
-  if (process.env.META_AUTO_REPLY_ENABLED !== 'true' || caption.includes('בא לי')) return caption;
+  if (process.env.IG_BA_LI_LINE === 'false' || caption.includes('בא לי')) return caption;
   const line = 'רוצים את הלינק? כתבו לי "בא לי" בתגובה ואשלח לכם בפרטי 💌';
   if (caption.includes('כנסו ללינק')) return caption.replace('כנסו ללינק', `${line}\n\nכנסו ללינק`);
   return `${caption}\n\n${line}`;
