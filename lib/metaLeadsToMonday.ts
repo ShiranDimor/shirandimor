@@ -3,6 +3,8 @@
 // את הלידים ישירות מ-Meta (Graph API, עם טוקן העמוד) ומשלימים את העמודות האלה בכרטיס הקיים לפי נייד.
 // לא יוצרים כרטיסים ולא דורסים ערך שכבר מולא ידנית (חוץ מ-campaign_name, שהאוטומציה ממלאת בערך כללי)
 
+import { supabaseAdmin } from '@/lib/instantLogin';
+
 const GRAPH = 'https://graph.facebook.com/v21.0';
 const BOARD_ID = process.env.MONDAY_BOARD_ID;
 // טופס הקמפיין "מדברים עסקאות ₪1 - כוונה גבוהה 12.2026". אפשר להוסיף טפסים נוספים ב-META_LEAD_FORM_IDS (מופרד בפסיקים)
@@ -127,6 +129,15 @@ export async function syncMetaLeadsToMonday(dryRun = false) {
   let notInMonday = 0;
   const missing: { name: string; phone: string; email?: string; knowledge: string; ad?: string }[] = [];
   const recent: { name: string; created: string; ad?: string; monday: string | null }[] = [];
+  // לידים "פנימיים" שלא פותחים להם כרטיס: הטלפון של שירן/אדמינים (בדיקות של הטופס מחשבון הפייסבוק שלה,
+  // קרה ב-28.11) ואנשי קשר חסומים
+  const skipPhones = new Set<string>();
+  try {
+    const { data: admins } = await supabaseAdmin.from('profiles').select('phone').eq('role', 'admin');
+    for (const a of admins || []) if (a.phone) skipPhones.add(norm(a.phone));
+    const { data: blocked } = await supabaseAdmin.from('blocked_contacts').select('phone_normalized');
+    for (const b of blocked || []) if (b.phone_normalized) skipPhones.add(norm(b.phone_normalized));
+  } catch { /* בלי החרגה אם ה-DB לא זמין */ }
   for (const lead of leads) {
     const fields = Object.fromEntries(lead.field_data.map((f) => [f.name, f.values?.[0] || '']));
     const item = byPhone.get(norm(fields.phone_number));
@@ -139,7 +150,7 @@ export async function syncMetaLeadsToMonday(dryRun = false) {
       // האוטומציה של מאנדיי לפעמים לא יוצרת כרטיס (קרה ב-24.11). ליד חדש בלי כרטיס אחרי 30 דקות -
       // יוצרים לו כרטיס ב"לידים חדשים" בעצמנו. רק לידים מ-24.11 והלאה, כדי לא לפתוח מחדש ישנים
       const age = Date.now() - new Date(lead.created_time).getTime();
-      if (new Date(lead.created_time) >= CREATE_FROM && age > 30 * 60_000 && fields.phone_number) {
+      if (new Date(lead.created_time) >= CREATE_FROM && age > 30 * 60_000 && fields.phone_number && !skipPhones.has(norm(fields.phone_number))) {
         const form = forms.get(lead.formId)!;
         const answers = form.questions
           .filter((q) => fields[q.key] && !['full_name', 'phone_number', 'email', 'first_name', 'last_name'].includes(q.key))
