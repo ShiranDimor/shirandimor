@@ -43,6 +43,8 @@ export function extractGammaEmbedSrc(input: string): string | null {
   try {
     const url = new URL(candidate);
     if (!url.hostname.endsWith('gamma.app')) return null;
+    // לינק "docs" רגיל של גאמה נחסם בתוך iframe (מסך אפור עם אייקון קובץ שבור) - רק /embed/ עובד
+    url.pathname = url.pathname.replace(/^\/docs\//, '/embed/');
     return url.toString();
   } catch {
     return null;

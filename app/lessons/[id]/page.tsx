@@ -130,7 +130,7 @@ export default function LessonDetailPage() {
           {!lesson.locked && lesson.videoId && lesson.videoProvider === 'gamma' && (
             <div style={{ position: 'relative', aspectRatio: '16 / 9', borderRadius: '12px', overflow: 'hidden', marginBottom: '18px' }}>
               <iframe
-                src={lesson.videoId}
+                src={lesson.videoId.replace('gamma.app/docs/', 'gamma.app/embed/')}
                 title={lesson.title}
                 allow="fullscreen"
                 allowFullScreen
