@@ -203,12 +203,18 @@ export async function sendPushToActiveSubscribers(payload: PushPayload, kind: No
 
 // שולח לכל מי שאינו מנוי פעיל כרגע - גם לידים בלי חשבון בכלל (user_id null, נרשמו דרך שער
 // ההרשמה), וגם למי שכן מחובר עם חשבון אבל אינו מנוי פעיל (למשל מנוי שפג)
-export async function sendPushToNonSubscribers(payload: PushPayload, kind: NotificationKind, sourceId?: string): Promise<SendResult> {
+export async function sendPushToNonSubscribers(
+  payload: PushPayload,
+  kind: NotificationKind,
+  sourceId?: string,
+  // החרגה נוספת (למשל אנשי קשר חסומים, או מי שכבר מימש את ההטבה) - ר' lib/deadlineCampaign.ts
+  exclude?: (row: { user_id: string | null; phone: string | null; email: string | null }) => boolean
+): Promise<SendResult> {
   const logId = await logNotification(kind, 'non_subscribers', payload, sourceId);
   const subscriberIds = await getActiveSubscriberUserIds();
   const query = supabaseAdmin.from('push_subscriptions').select('id, endpoint, p256dh, auth, user_id, phone, email').is('invalid_at', null);
   const { data: allSubs } = await query;
-  const rows = (allSubs || []).filter((s) => !s.user_id || !subscriberIds.includes(s.user_id));
+  const rows = (allSubs || []).filter((s) => (!s.user_id || !subscriberIds.includes(s.user_id)) && !(exclude && exclude(s)));
   const result = await sendToRows(rows, { ...payload, kind, logId: logId || undefined });
   await recordSendResult(logId, result);
   return result;
