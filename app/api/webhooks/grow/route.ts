@@ -3,6 +3,7 @@ import { parseGrowPayload, syncGrowPaymentToMonday, FIRST_MONTH_PRICE } from '@/
 import { ensureActiveSubscriberAccount } from '@/lib/subscriberStatus';
 import { sendLoginEmail, supabaseAdmin } from '@/lib/instantLogin';
 import { sendPushToUsers } from '@/lib/webPush';
+import { sendWelcomeEmail } from '@/lib/welcomeEmail';
 import { startSequence } from '@/lib/sequenceEngine';
 import { createTrialBillingReminders } from '@/lib/googleCalendar';
 
@@ -97,6 +98,8 @@ export async function POST(request: Request) {
       // יצא) - ר' בקשה מפורשת של שירן, 19.11
       await createTrialBillingReminders(payment.fullName || payment.email || payment.phone || 'מנוי/ה חדש/ה', new Date())
         .catch((e) => console.error('Grow webhook: נכשלה יצירת תזכורות חיוב ביומן', e));
+      // מייל "ברוכים הבאים" עם הסבר על כניסה והדלקת עדכונים בפעמון - ר' lib/welcomeEmail.ts (אושר 28.11)
+      if (payment.email) await sendWelcomeEmail(payment.email, payment.fullName || '').catch((e) => console.error('Grow webhook: נכשל מייל ברוכים הבאים', e));
     }
     if (payment.email) {
       await sendLoginEmail(payment.email);
