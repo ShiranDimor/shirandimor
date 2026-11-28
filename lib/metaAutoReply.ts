@@ -162,6 +162,9 @@ export async function setupStatus(subscribe: boolean) {
     const scopes: string[] = dbg?.data?.scopes || [];
     const need = ['instagram_manage_messages', 'instagram_manage_comments', 'pages_messaging', 'pages_manage_metadata'];
     out.missingScopes = need.filter((s) => !scopes.includes(s));
+    out.tokenUserId = dbg?.data?.user_id ?? null;
+    out.appId = dbg?.data?.app_id ?? null;
+    out.application = dbg?.data?.application ?? null;
     const token = await pageToken();
     if (subscribe) {
       const r = await fetch(`${GRAPH}/${process.env.META_PAGE_ID}/subscribed_apps?subscribed_fields=messages,feed&access_token=${encodeURIComponent(token)}`, { method: 'POST' }).then((x) => x.json());
